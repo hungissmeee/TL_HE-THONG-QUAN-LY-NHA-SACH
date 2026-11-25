@@ -18,7 +18,7 @@ from ui.reports import (
     ImportReportPage,
     ReturnReportPage,
     InventoryReportPage,
-    ProductReportPage,
+    ProductReportPage, report_invoice,
 )
 from ui.reports.report_base import ReportBasePage
 from ui.fPhieuNhap import ImportWindow
@@ -798,7 +798,7 @@ class MainWindow(QMainWindow):
                 ],
                 "Kế toán": [
                     "home", "products", "suppliers", "imports",
-                    "invoices", "returns", "statistics", "shifts",
+                    "invoices", "returns", "statistics", "shifts", "report_product", "report_inventory", "report_return", "report_import", "report_invoice", "report_revenue", "report_overview"
                 ],
             }
             allowed = set(role_pages.get(self.employee_role, ["home"]))
