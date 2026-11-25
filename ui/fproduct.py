@@ -194,6 +194,8 @@ class ProductDetailDialog(QDialog):
 
     def __init__(self, db, product, parent=None, can_edit=False, can_delete=False):
         super().__init__(parent)
+        # Hiển thị nút thu nhỏ trên thanh tiêu đề cửa sổ.
+        self.setWindowFlag(Qt.WindowType.WindowMinimizeButtonHint, True)
         self.db = db
         self.product = product
         self.can_edit = can_edit
@@ -371,6 +373,8 @@ class ProductFormDialog(QDialog):
 
     def __init__(self, db, parent=None, product_code=None):
         super().__init__(parent)
+        # Hiển thị nút thu nhỏ trên thanh tiêu đề cửa sổ.
+        self.setWindowFlag(Qt.WindowType.WindowMinimizeButtonHint, True)
         self.db = db
         self.product_code = product_code
         self.is_edit = product_code is not None
