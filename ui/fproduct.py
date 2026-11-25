@@ -1,7 +1,5 @@
 from decimal import Decimal, InvalidOperation
 
-from ui.window_helpers import show_minimizable_dialog
-
 from PySide6.QtCore import Qt, QDate
 from PySide6.QtGui import QDoubleValidator, QIntValidator
 from PySide6.QtWidgets import (
@@ -196,8 +194,6 @@ class ProductDetailDialog(QDialog):
 
     def __init__(self, db, product, parent=None, can_edit=False, can_delete=False):
         super().__init__(parent)
-        # Hiển thị nút thu nhỏ trên thanh tiêu đề cửa sổ.
-        self.setWindowFlag(Qt.WindowType.WindowMinimizeButtonHint, True)
         self.db = db
         self.product = product
         self.can_edit = can_edit
@@ -361,12 +357,9 @@ class ProductDetailDialog(QDialog):
             dialog = ProductFormDialog(
                 self.db, self, product_code=self.product["masp"]
             )
-            def handle_finished(result):
+            if dialog.exec():
                 # Báo cho cửa sổ danh sách biết dữ liệu đã được cập nhật.
-                if result == QDialog.DialogCode.Accepted:
-                    self.accept()
-
-            show_minimizable_dialog(self, dialog, handle_finished)
+                self.accept()
         except Exception as e:
             QMessageBox.critical(
                 self, "Lỗi mở chỉnh sửa sản phẩm", str(e)
@@ -378,8 +371,6 @@ class ProductFormDialog(QDialog):
 
     def __init__(self, db, parent=None, product_code=None):
         super().__init__(parent)
-        # Hiển thị nút thu nhỏ trên thanh tiêu đề cửa sổ.
-        self.setWindowFlag(Qt.WindowType.WindowMinimizeButtonHint, True)
         self.db = db
         self.product_code = product_code
         self.is_edit = product_code is not None
@@ -1238,12 +1229,8 @@ class ProductWindow(QWidget):
             can_edit=self.can_edit_products,
             can_delete=self.can_delete_products
         )
-        show_minimizable_dialog(
-            self,
-            dialog,
-            lambda result: self.load_products()
-            if result == QDialog.DialogCode.Accepted else None
-        )
+        if dialog.exec():
+            self.load_products()
 
     def delete_product_by_code(self, masp, product_name=None):
         """Xóa mềm sản phẩm theo mã; được gọi từ popup chi tiết."""
@@ -1308,12 +1295,8 @@ class ProductWindow(QWidget):
 
     def open_add_dialog(self):
         dialog = ProductFormDialog(self.db, self)
-        show_minimizable_dialog(
-            self,
-            dialog,
-            lambda result: self.load_products()
-            if result == QDialog.DialogCode.Accepted else None
-        )
+        if dialog.exec():
+            self.load_products()
 
     def open_edit_selected_product(self):
         masp = self.get_selected_product()
@@ -1324,12 +1307,8 @@ class ProductWindow(QWidget):
             dialog = ProductFormDialog(
                 self.db, self, product_code=masp
             )
-            show_minimizable_dialog(
-                self,
-                dialog,
-                lambda result: self.load_products()
-                if result == QDialog.DialogCode.Accepted else None
-            )
+            if dialog.exec():
+                self.load_products()
         except Exception as e:
             QMessageBox.critical(
                 self, "Lỗi mở chỉnh sửa sản phẩm", str(e)
