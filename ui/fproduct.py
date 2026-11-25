@@ -1324,8 +1324,12 @@ class ProductWindow(QWidget):
             dialog = ProductFormDialog(
                 self.db, self, product_code=masp
             )
-            if dialog.exec():
-                self.load_products()
+            show_minimizable_dialog(
+                self,
+                dialog,
+                lambda result: self.load_products()
+                if result == QDialog.DialogCode.Accepted else None
+            )
         except Exception as e:
             QMessageBox.critical(
                 self, "Lỗi mở chỉnh sửa sản phẩm", str(e)
