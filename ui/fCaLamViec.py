@@ -1,6 +1,7 @@
 from decimal import Decimal, InvalidOperation
 
 from PySide6.QtCore import Qt, QTimer, QDate, QTime
+from ui.window_helpers import show_minimizable_dialog
 from PySide6.QtWidgets import (
     QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
     QTableWidget, QTableWidgetItem, QHeaderView,
