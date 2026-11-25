@@ -4,10 +4,15 @@ from PySide6.QtCore import Qt, QDate
 from PySide6.QtGui import QDoubleValidator, QIntValidator
 from PySide6.QtWidgets import (
     QWidget, QDialog, QLabel, QPushButton, QLineEdit,
-    QVBoxLayout, QHBoxLayout, QFormLayout, QTableWidget,
-    QTableWidgetItem, QHeaderView, QMessageBox,
+    QVBoxLayout, QHBoxLayout, QFormLayout, QTableWidget, QHeaderView, QMessageBox,
     QAbstractItemView, QComboBox, QStackedWidget,
     QListWidget, QListWidgetItem, QDateEdit, QGroupBox
+)
+from ui.table_sort import (
+    SortableTableWidgetItem as QTableWidgetItem,
+    prepare_sortable_table,
+    pause_table_sorting,
+    resume_table_sorting
 )
 
 
@@ -976,6 +981,7 @@ class ProductWindow(QWidget):
             "Mã sản phẩm", "Tên sản phẩm", "Loại sản phẩm", "Đơn vị tính",
             "Giá nhập", "Giá bán", "Số lượng tồn", "VAT (%)"
         ])
+        prepare_sortable_table(self.table)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
@@ -1144,6 +1150,9 @@ class ProductWindow(QWidget):
                 cursor.execute(query)
 
             products = cursor.fetchall()
+
+            pause_table_sorting(self.table)
+
             self.table.setRowCount(0)
 
             for row_index, product in enumerate(products):
@@ -1166,7 +1175,7 @@ class ProductWindow(QWidget):
         finally:
             if cursor is not None:
                 cursor.close()
-
+            resume_table_sorting(self.table)
     def clear_search(self):
         self.search_input.clear()
         self.load_products()

@@ -1,8 +1,15 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QWidget, QDialog, QLabel, QLineEdit, QPushButton, QVBoxLayout,
-    QHBoxLayout, QFormLayout, QTableWidget, QTableWidgetItem,
+    QHBoxLayout, QFormLayout, QTableWidget,
     QHeaderView, QMessageBox, QAbstractItemView, QCheckBox, QGroupBox
+)
+
+from ui.table_sort import (
+    SortableTableWidgetItem as QTableWidgetItem,
+    prepare_sortable_table,
+    pause_table_sorting,
+    resume_table_sorting,
 )
 
 
@@ -297,6 +304,7 @@ class SupplierWindow(QWidget):
             "Mã NCC", "Tên nhà cung cấp", "Số điện thoại",
             "Địa chỉ", "Mã số thuế", "Trạng thái"
         ])
+        prepare_sortable_table(self.table)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
@@ -342,6 +350,9 @@ class SupplierWindow(QWidget):
 
             cursor.execute(sql, *params)
             rows = cursor.fetchall()
+
+            pause_table_sorting(self.table)
+
             self.table.setRowCount(0)
             for row_index, row in enumerate(rows):
                 self.table.insertRow(row_index)
@@ -358,6 +369,8 @@ class SupplierWindow(QWidget):
         except Exception as error:
             QMessageBox.critical(self, "Lỗi tải dữ liệu", str(error))
         finally:
+            resume_table_sorting(self.table)
+
             if cursor is not None:
                 cursor.close()
 

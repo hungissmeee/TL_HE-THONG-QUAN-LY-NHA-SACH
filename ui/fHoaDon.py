@@ -6,11 +6,16 @@ from PySide6.QtGui import QTextDocument, QPageSize, QPageLayout
 from PySide6.QtPrintSupport import QPrinter, QPrintDialog
 from PySide6.QtWidgets import (
     QWidget, QDialog, QLabel, QPushButton, QLineEdit, QComboBox,
-    QVBoxLayout, QHBoxLayout, QFormLayout, QTableWidget,
-    QTableWidgetItem, QHeaderView, QAbstractItemView, QMessageBox,
+    QVBoxLayout, QHBoxLayout, QFormLayout, QTableWidget, QHeaderView, QAbstractItemView, QMessageBox,
     QSpinBox, QGroupBox, QDateEdit
 )
 
+from ui.table_sort import (
+    SortableTableWidgetItem as QTableWidgetItem,
+    prepare_sortable_table,
+    pause_table_sorting,
+    resume_table_sorting,
+)
 
 MONEY_QUANT = Decimal("0.01")
 
@@ -165,7 +170,11 @@ class CreateInvoiceDialog(QDialog):
             "Mã SP", "Tên sản phẩm", "ĐVT", "Giá bán (đã gồm VAT)",
             "Tồn kho", "VAT (%)"
         ])
-        self._configure_table(self.product_table, stretch_column=1)
+        self._configure_table(
+            self.product_table,
+            stretch_column=1,
+            default_sort_column=1
+        )
         self.product_table.cellDoubleClicked.connect(
             lambda *_: self.add_selected_product()
         )
@@ -179,7 +188,11 @@ class CreateInvoiceDialog(QDialog):
             "Mã SP", "Tên sản phẩm", "SL", "Đơn giá (đã gồm VAT)",
             "VAT (%)", "Thành tiền", ""
         ])
-        self._configure_table(self.cart_table, stretch_column=1)
+        self._configure_table(
+            self.cart_table,
+            stretch_column=1,
+            default_sort_column=0
+        )
         cart_layout.addWidget(self.cart_table)
 
         remove_row = QHBoxLayout()
@@ -222,18 +235,29 @@ class CreateInvoiceDialog(QDialog):
         root.addLayout(bottom)
 
     @staticmethod
-    def _configure_table(table, stretch_column=None):
+    def _configure_table(
+            table,
+            stretch_column=None,
+            default_sort_column=0
+    ):
         table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         table.setAlternatingRowColors(True)
         table.verticalHeader().setVisible(False)
+
         header = table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+
         if stretch_column is not None:
             header.setSectionResizeMode(
                 stretch_column, QHeaderView.ResizeMode.Stretch
             )
+
+        prepare_sortable_table(
+            table,
+            default_column=default_sort_column
+        )
 
     @staticmethod
     def _set_cell(table, row, column, value, data=None):
@@ -275,6 +299,9 @@ class CreateInvoiceDialog(QDialog):
                 ORDER BY TENSP
             """, (f"%{keyword}%", f"%{keyword}%"))
             rows = cursor.fetchall()
+
+            pause_table_sorting(self.product_table)
+
             self.product_table.setRowCount(0)
             self.products = {}
 
@@ -300,6 +327,7 @@ class CreateInvoiceDialog(QDialog):
         except Exception as error:
             QMessageBox.critical(self, "Lỗi tải sản phẩm", str(error))
         finally:
+            resume_table_sorting(self.product_table)
             cursor.close()
 
     def add_selected_product(self):
@@ -337,25 +365,35 @@ class CreateInvoiceDialog(QDialog):
         self.update_totals()
 
     def _refresh_cart(self):
-        self.cart_table.setRowCount(0)
-        for row_index, (masp, item) in enumerate(self.cart.items()):
-            # GIABAN đã gồm VAT nên thành tiền chỉ là đơn giá nhân số lượng.
-            line_total = item["price"] * item["quantity"]
-            values = [
-                masp,
-                item["tensp"],
-                item["quantity"],
-                money(item["price"]),
-                money(item["vat"]),
-                money(line_total),
-                "Bỏ",
-            ]
-            self.cart_table.insertRow(row_index)
-            for col, value in enumerate(values):
-                self._set_cell(
-                    self.cart_table, row_index, col, value,
-                    masp if col == 6 else None
-                )
+        pause_table_sorting(self.cart_table)
+
+        try:
+            self.cart_table.setRowCount(0)
+
+            for row_index, (masp, item) in enumerate(self.cart.items()):
+                # GIABAN đã gồm VAT nên thành tiền chỉ là đơn giá nhân số lượng.
+                line_total = item["price"] * item["quantity"]
+
+                values = [
+                    masp,
+                    item["tensp"],
+                    item["quantity"],
+                    money(item["price"]),
+                    money(item["vat"]),
+                    money(line_total),
+                    "Bỏ",
+                ]
+
+                self.cart_table.insertRow(row_index)
+
+                for col, value in enumerate(values):
+                    self._set_cell(
+                        self.cart_table, row_index, col, value,
+                        masp if col == 6 else None
+                    )
+
+        finally:
+            resume_table_sorting(self.cart_table)
 
     def remove_selected_cart_item(self):
         row = self.cart_table.currentRow()
@@ -685,6 +723,9 @@ class InvoiceDetailDialog(QDialog):
                 self.table.setItem(
                     i, col, QTableWidgetItem(str(value or ""))
                 )
+
+        prepare_sortable_table(self.table)
+
         root.addWidget(self.table, 1)
 
         subtotal, discount, total, change = self._totals()
@@ -960,6 +1001,13 @@ class InvoiceWindow(QWidget):
             "Mã hóa đơn", "Ngày lập", "Nhân viên", "Mã ca",
             "Số ca", "Tổng thanh toán", "Tiền khách đưa", "Trạng thái"
         ])
+
+        prepare_sortable_table(
+            self.table,
+            default_column=1,
+            default_order=Qt.SortOrder.DescendingOrder
+        )
+
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
@@ -1072,6 +1120,9 @@ class InvoiceWindow(QWidget):
         try:
             cursor.execute(sql, tuple(params))
             rows = cursor.fetchall()
+
+            pause_table_sorting(self.table)
+
             self.table.setRowCount(0)
 
             for i, row in enumerate(rows):
@@ -1104,6 +1155,7 @@ class InvoiceWindow(QWidget):
         except Exception as error:
             QMessageBox.critical(self, "Lỗi tải hóa đơn", str(error))
         finally:
+            resume_table_sorting(self.table)
             cursor.close()
 
     def update_action_buttons(self):

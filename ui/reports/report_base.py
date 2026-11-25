@@ -6,10 +6,14 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from PySide6.QtCore import Qt, QDate
 from PySide6.QtWidgets import (
     QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QGridLayout,
-    QFrame, QDateEdit, QTableWidget, QTableWidgetItem, QHeaderView,
+    QFrame, QDateEdit, QTableWidget, QHeaderView,
     QAbstractItemView, QMessageBox, QFileDialog, QComboBox,
 )
 
+from ui.table_sort import (
+    SortableTableWidgetItem as QTableWidgetItem,
+    prepare_sortable_table,
+)
 
 MONEY_QUANT = Decimal("0.01")
 
@@ -149,13 +153,13 @@ class ReportBasePage(QWidget):
         table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
-        table.setSortingEnabled(False)
         table.verticalHeader().setVisible(False)
         table.horizontalHeader().setSectionResizeMode(
             QHeaderView.ResizeMode.ResizeToContents
         )
         table.horizontalHeader().setStretchLastSection(True)
         table.setMinimumHeight(min_height)
+        prepare_sortable_table(table)
         return table
 
     def register_export_table(self, label, table):
@@ -179,6 +183,12 @@ class ReportBasePage(QWidget):
                     )
                 table.setItem(row_index, column, item)
         table.setSortingEnabled(True)
+
+        header = table.horizontalHeader()
+        column = header.sortIndicatorSection()
+
+        if 0 <= column < table.columnCount():
+            table.sortItems(column, header.sortIndicatorOrder())
 
     def add_stat_cards(self, definitions, columns=3):
         """definitions: [(key, title, initial_value), ...]"""

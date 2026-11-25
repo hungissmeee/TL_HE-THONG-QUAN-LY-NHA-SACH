@@ -4,13 +4,18 @@ import re
 from PySide6.QtWidgets import (
     QWidget, QLabel, QPushButton, QLineEdit,
     QVBoxLayout, QHBoxLayout, QFormLayout,
-    QTableWidget, QTableWidgetItem, QHeaderView,
+    QTableWidget, QHeaderView,
     QStackedWidget, QMessageBox, QAbstractItemView, QComboBox
 )
 
 from PySide6.QtCore import Qt
 from ui.fAccount import EmployeePermissionDialog
-
+from ui.table_sort import (
+    SortableTableWidgetItem as QTableWidgetItem,
+    prepare_sortable_table,
+    pause_table_sorting,
+    resume_table_sorting,
+)
 
 class EmployeeWindow(QWidget):
 
@@ -109,6 +114,7 @@ class EmployeeWindow(QWidget):
             "Vai trò",
             "Số điện thoại"
         ])
+        prepare_sortable_table(self.table)
 
         self.table.setEditTriggers(
             QAbstractItemView.EditTrigger.NoEditTriggers
@@ -181,6 +187,8 @@ class EmployeeWindow(QWidget):
 
             employees = cursor.fetchall()
 
+            pause_table_sorting(self.table)
+
             self.table.setRowCount(0)
 
             for row_index, employee in enumerate(employees):
@@ -218,6 +226,8 @@ class EmployeeWindow(QWidget):
             )
 
         finally:
+
+            resume_table_sorting(self.table)
 
             if cursor is not None:
                 cursor.close()

@@ -3,12 +3,17 @@ from decimal import Decimal, InvalidOperation
 from PySide6.QtCore import Qt, QTimer, QDate, QTime
 from PySide6.QtWidgets import (
     QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
-    QTableWidget, QTableWidgetItem, QHeaderView,
+    QTableWidget, QHeaderView,
     QAbstractItemView, QMessageBox, QComboBox,
     QGroupBox, QFormLayout, QDialog, QDateEdit,
     QLineEdit, QInputDialog
 )
-
+from ui.table_sort import (
+    SortableTableWidgetItem as QTableWidgetItem,
+    prepare_sortable_table,
+    pause_table_sorting,
+    resume_table_sorting,
+)
 
 class ShiftCreateDialog(QDialog):
     """Tạo một trong ba ca cố định mỗi ngày, trong khung 07:00–22:00."""
@@ -219,19 +224,36 @@ class ShiftWindow(QWidget):
             return str(value)
 
     @staticmethod
-    def _make_table(headers, stretch_column=None):
+    def _make_table(
+            headers,
+            stretch_column=None,
+            default_sort_column=0,
+            default_sort_order=Qt.SortOrder.AscendingOrder
+    ):
         table = QTableWidget()
         table.setColumnCount(len(headers))
         table.setHorizontalHeaderLabels(headers)
+
         table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         table.setAlternatingRowColors(True)
         table.verticalHeader().setVisible(False)
+
         header = table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+
         if stretch_column is not None:
-            header.setSectionResizeMode(stretch_column, QHeaderView.ResizeMode.Stretch)
+            header.setSectionResizeMode(
+                stretch_column, QHeaderView.ResizeMode.Stretch
+            )
+
+        prepare_sortable_table(
+            table,
+            default_column=default_sort_column,
+            default_order=default_sort_order
+        )
+
         return table
 
     @staticmethod
@@ -291,7 +313,9 @@ class ShiftWindow(QWidget):
             ["Mã ca", "Ca", "Ngày làm", "Giờ mở", "Giờ đóng",
              "Số nhân viên", "Trạng thái ca", "Đăng ký", "Tiền cuối ca",
              "Đăng ký ca", "Ghi tiền cuối ca"],
-            stretch_column=6
+            stretch_column=6,
+            default_sort_column=2,
+            default_sort_order=Qt.SortOrder.DescendingOrder
         )
         root.addWidget(self.employee_shift_table)
 
@@ -374,6 +398,9 @@ class ShiftWindow(QWidget):
             # Hai dấu ? trong SQL: tài khoản hiện tại và cờ kế toán.
             cursor.execute(sql, (self.username, int(self.is_accountant)))
             rows = cursor.fetchall()
+
+            pause_table_sorting(self.employee_shift_table)
+
             self.employee_shift_table.setRowCount(0)
 
             for row_index, shift in enumerate(rows):
@@ -459,6 +486,7 @@ class ShiftWindow(QWidget):
         except Exception as error:
             self._show_db_error("Không thể tải ca làm việc", error)
         finally:
+            resume_table_sorting(self.employee_shift_table)
             cursor.close()
 
     def _register_current_shift(self, maca):
@@ -758,7 +786,8 @@ class ShiftWindow(QWidget):
         current_layout = QVBoxLayout(current_group)
         self.current_table = self._make_table(
             ["Mã ca", "Ngày làm", "Ca", "Giờ mở", "Giờ đóng", "Số nhân viên", "Tiền cuối ca"],
-            stretch_column=2
+            stretch_column=2,
+            default_sort_column=2
         )
         self.current_table.setMaximumHeight(190)
         self.current_table.cellClicked.connect(self._current_shift_selected)
@@ -783,7 +812,9 @@ class ShiftWindow(QWidget):
         self.history_table = self._make_table(
             ["Mã ca", "Ngày làm", "Ca", "Giờ mở", "Giờ đóng", "Số nhân viên",
              "Tiền đầu ca", "Tiền cuối ca", "Trạng thái ca"],
-            stretch_column=8
+            stretch_column=8,
+            default_sort_column=1,
+            default_sort_order=Qt.SortOrder.DescendingOrder
         )
         self.history_table.setMaximumHeight(250)
         self.history_table.cellClicked.connect(self._history_shift_selected)
@@ -970,6 +1001,9 @@ class ShiftWindow(QWidget):
                 ORDER BY C.SOCA;
             """)
             rows = cursor.fetchall()
+
+            pause_table_sorting(self.current_table)
+
             self.current_table.setRowCount(0)
             for row_index, shift in enumerate(rows):
                 self.current_table.insertRow(row_index)
@@ -1063,7 +1097,7 @@ class ShiftWindow(QWidget):
             # Chỉ có 1 dấu ? trong SQL: @Period.
             cursor.execute(sql, (period,))
             rows = cursor.fetchall()
-
+            pause_table_sorting(self.history_table)
             self.history_table.setRowCount(0)
             for row_index, shift in enumerate(rows):
                 self.history_table.insertRow(row_index)
@@ -1081,6 +1115,7 @@ class ShiftWindow(QWidget):
         except Exception as error:
             self._show_db_error("Không thể tải lịch sử ca", error)
         finally:
+            resume_table_sorting(self.history_table)
             cursor.close()
 
     def _current_shift_selected(self, row, column):
@@ -1112,6 +1147,7 @@ class ShiftWindow(QWidget):
                 (int(maca),)
             )
             rows = cursor.fetchall()
+            pause_table_sorting(self.roster_table)
             self.roster_table.setRowCount(0)
             for row_index, employee in enumerate(rows):
                 self.roster_table.insertRow(row_index)
@@ -1123,4 +1159,5 @@ class ShiftWindow(QWidget):
         except Exception as error:
             self._show_db_error("Không thể tải danh sách nhân viên trong ca", error)
         finally:
+            resume_table_sorting(self.roster_table)
             cursor.close()

@@ -6,9 +6,15 @@ from PySide6.QtGui import QTextDocument, QPageSize, QPageLayout
 from PySide6.QtPrintSupport import QPrinter, QPrintDialog
 from PySide6.QtWidgets import (
     QWidget, QDialog, QLabel, QPushButton, QLineEdit, QComboBox,
-    QVBoxLayout, QHBoxLayout, QFormLayout, QTableWidget,
-    QTableWidgetItem, QHeaderView, QAbstractItemView, QMessageBox,
+    QVBoxLayout, QHBoxLayout, QFormLayout, QTableWidget, QHeaderView, QAbstractItemView, QMessageBox,
     QSpinBox, QDoubleSpinBox, QGroupBox, QDateEdit
+)
+
+from ui.table_sort import (
+    SortableTableWidgetItem as QTableWidgetItem,
+    prepare_sortable_table,
+    pause_table_sorting,
+    resume_table_sorting,
 )
 
 
@@ -252,7 +258,11 @@ class CreateImportDialog(QDialog):
             "Mã SP", "Tên sản phẩm", "ĐVT", "Giá nhập hiện tại",
             "Tồn kho", "VAT (%)"
         ])
-        self._configure_table(self.product_table, stretch_column=1)
+        self._configure_table(
+            self.product_table,
+            stretch_column=1,
+            default_sort_column=1
+        )
         self.product_table.cellClicked.connect(self.select_product_row)
         self.product_table.cellDoubleClicked.connect(
             lambda *_: self.add_selected_product()
@@ -267,7 +277,11 @@ class CreateImportDialog(QDialog):
             "Mã SP", "Tên sản phẩm", "ĐVT", "Số lượng",
             "Đơn giá (đã gồm VAT)", "VAT (%)", "Thành tiền"
         ])
-        self._configure_table(self.cart_table, stretch_column=1)
+        self._configure_table(
+            self.cart_table,
+            stretch_column=1,
+            default_sort_column=0
+        )
         cart_layout.addWidget(self.cart_table)
         remove_row = QHBoxLayout()
         remove_row.addStretch()
@@ -303,18 +317,29 @@ class CreateImportDialog(QDialog):
         root.addLayout(bottom)
 
     @staticmethod
-    def _configure_table(table, stretch_column=None):
+    def _configure_table(
+            table,
+            stretch_column=None,
+            default_sort_column=0
+    ):
         table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         table.setAlternatingRowColors(True)
         table.verticalHeader().setVisible(False)
+
         header = table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+
         if stretch_column is not None:
             header.setSectionResizeMode(
                 stretch_column, QHeaderView.ResizeMode.Stretch
             )
+
+        prepare_sortable_table(
+            table,
+            default_column=default_sort_column
+        )
 
     @staticmethod
     def _set_cell(table, row, column, value):
@@ -366,6 +391,9 @@ class CreateImportDialog(QDialog):
                 ORDER BY TENSP, MASP
             """, (f"%{keyword}%", f"%{keyword}%"))
             rows = cursor.fetchall()
+
+            pause_table_sorting(self.product_table)
+
             self.product_table.setRowCount(0)
             self.products = {}
             for index, row in enumerate(rows):
@@ -388,6 +416,7 @@ class CreateImportDialog(QDialog):
         except Exception as error:
             QMessageBox.critical(self, "Lỗi tải sản phẩm", str(error))
         finally:
+            resume_table_sorting(self.product_table)
             cursor.close()
 
     def select_product_row(self, row, column):
@@ -441,16 +470,33 @@ class CreateImportDialog(QDialog):
         self.update_total()
 
     def refresh_cart(self):
-        self.cart_table.setRowCount(0)
-        for index, (code, item) in enumerate(self.cart.items()):
-            amount = item["price"] * item["quantity"]
-            self.cart_table.insertRow(index)
-            values = [
-                code, item["tensp"], item["dvt"], item["quantity"],
-                money(item["price"]), money(item["vat"]), money(amount)
-            ]
-            for column, value in enumerate(values):
-                self._set_cell(self.cart_table, index, column, value)
+        pause_table_sorting(self.cart_table)
+
+        try:
+            self.cart_table.setRowCount(0)
+
+            for index, (code, item) in enumerate(self.cart.items()):
+                amount = item["price"] * item["quantity"]
+
+                self.cart_table.insertRow(index)
+
+                values = [
+                    code,
+                    item["tensp"],
+                    item["dvt"],
+                    item["quantity"],
+                    money(item["price"]),
+                    money(item["vat"]),
+                    money(amount)
+                ]
+
+                for column, value in enumerate(values):
+                    self._set_cell(
+                        self.cart_table, index, column, value
+                    )
+
+        finally:
+            resume_table_sorting(self.cart_table)
 
     def remove_selected_cart_item(self):
         row = self.cart_table.currentRow()
@@ -722,6 +768,7 @@ class ImportDetailDialog(QDialog):
             ]
             for column, value in enumerate(values):
                 self.table.setItem(index, column, QTableWidgetItem(str(value or "")))
+        prepare_sortable_table(self.table)
         root.addWidget(self.table, 1)
 
         total = sum((item["amount"] for item in self.items), Decimal("0.00"))
@@ -900,6 +947,11 @@ class ImportWindow(QWidget):
             "Mã phiếu", "Ngày nhập", "Nhà cung cấp", "Nhân viên lập",
             "Loại phiếu", "Số HĐ NCC", "Tổng giá trị", "Trạng thái"
         ])
+        prepare_sortable_table(
+            self.table,
+            default_column=1,
+            default_order=Qt.SortOrder.DescendingOrder
+        )
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
@@ -974,6 +1026,9 @@ class ImportWindow(QWidget):
         try:
             cursor.execute(sql, tuple(params))
             rows = cursor.fetchall()
+
+            pause_table_sorting(self.table)
+
             self.table.setRowCount(0)
             for index, row in enumerate(rows):
                 self.table.insertRow(index)
@@ -996,6 +1051,7 @@ class ImportWindow(QWidget):
         except Exception as error:
             QMessageBox.critical(self, "Lỗi tải phiếu nhập", str(error))
         finally:
+            resume_table_sorting(self.table)
             cursor.close()
 
     def update_action_buttons(self):

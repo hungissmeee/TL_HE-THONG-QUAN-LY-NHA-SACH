@@ -1,10 +1,17 @@
 from PySide6.QtWidgets import (
     QWidget, QLabel, QLineEdit, QPushButton,
     QVBoxLayout, QHBoxLayout, QFormLayout,
-    QTableWidget, QTableWidgetItem, QHeaderView,
+    QTableWidget, QHeaderView,
     QMessageBox, QAbstractItemView
 )
 from PySide6.QtCore import Qt
+
+from ui.table_sort import (
+    SortableTableWidgetItem as QTableWidgetItem,
+    prepare_sortable_table,
+    pause_table_sorting,
+    resume_table_sorting
+)
 
 
 # Cấu hình cố định theo cấu trúc CSDL CSDLQLNHASACH.
@@ -188,6 +195,9 @@ class CatalogPage(QWidget):
         self.table = QTableWidget()
         self.table.setColumnCount(len(self.config["headers"]))
         self.table.setHorizontalHeaderLabels(self.config["headers"])
+
+        prepare_sortable_table(self.table)
+
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
@@ -303,6 +313,8 @@ class CatalogPage(QWidget):
             cursor.execute(sql, *params)
             rows = cursor.fetchall()
 
+            pause_table_sorting(self.table)
+
             self.table.setRowCount(0)
             for row_index, row in enumerate(rows):
                 self.table.insertRow(row_index)
@@ -328,6 +340,8 @@ class CatalogPage(QWidget):
                 f"Không thể tải danh sách {self.config['table']}!\n{e}"
             )
         finally:
+            resume_table_sorting(self.table)
+
             if cursor is not None:
                 cursor.close()
 
