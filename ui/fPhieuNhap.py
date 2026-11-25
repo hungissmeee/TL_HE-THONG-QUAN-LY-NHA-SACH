@@ -1,4 +1,6 @@
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+
+from ui.window_helpers import show_minimizable_dialog
 from html import escape
 
 from PySide6.QtCore import Qt, QDate, QSizeF, QMarginsF, QTimer
@@ -354,8 +356,11 @@ class CreateImportDialog(QDialog):
 
     def add_supplier(self):
         dialog = CreateSupplierDialog(self.db, self)
-        if dialog.exec() == QDialog.DialogCode.Accepted and dialog.saved_supplier:
-            self.load_suppliers(dialog.saved_supplier[0])
+        def handle_finished(result):
+            if result == QDialog.DialogCode.Accepted and dialog.saved_supplier:
+                self.load_suppliers(dialog.saved_supplier[0])
+
+        show_minimizable_dialog(self, dialog, handle_finished)
 
     def search_products(self, *_):
         conn = self.db.get_connection()
@@ -1184,7 +1189,7 @@ class ImportWindow(QWidget):
             return
         try:
             dialog = ImportDetailDialog(self.db, item.text(), self)
-            dialog.exec()
+            show_minimizable_dialog(self, dialog)
         except Exception as error:
             QMessageBox.critical(self, "Lỗi xem phiếu nhập", str(error))
 
@@ -1194,7 +1199,10 @@ class ImportWindow(QWidget):
             return
         try:
             dialog = CreateImportDialog(self.db, self)
-            if dialog.exec() == QDialog.DialogCode.Accepted:
+            def handle_finished(result):
+                if result != QDialog.DialogCode.Accepted:
+                    return
+
                 self.load_imports()
                 if dialog.saved_import_code:
                     answer = QMessageBox.question(
@@ -1208,5 +1216,7 @@ class ImportWindow(QWidget):
                             self.db, dialog.saved_import_code, self
                         )
                         detail.print_import()
+
+            show_minimizable_dialog(self, dialog, handle_finished)
         except Exception as error:
             QMessageBox.critical(self, "Không thể lập phiếu nhập", str(error))
