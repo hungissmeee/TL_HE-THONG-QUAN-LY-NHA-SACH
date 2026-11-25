@@ -1,6 +1,4 @@
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
-
-from ui.window_helpers import show_minimizable_dialog
 from html import escape
 
 from PySide6.QtCore import Qt, QDate, QSizeF, QMarginsF, QTimer
@@ -49,8 +47,6 @@ class CreateSupplierDialog(QDialog):
 
     def __init__(self, db, parent=None):
         super().__init__(parent)
-        # Hiển thị nút thu nhỏ trên thanh tiêu đề cửa sổ.
-        self.setWindowFlag(Qt.WindowType.WindowMinimizeButtonHint, True)
         self.db = db
         self.saved_supplier = None
         self.setWindowTitle("Thêm nhà cung cấp")
@@ -141,8 +137,6 @@ class CreateImportDialog(QDialog):
 
     def __init__(self, db, parent=None):
         super().__init__(parent)
-        # Hiển thị nút thu nhỏ trên thanh tiêu đề cửa sổ.
-        self.setWindowFlag(Qt.WindowType.WindowMinimizeButtonHint, True)
         self.db = db
         self.username = (getattr(db, "username", "") or "").strip()
         self.employee = None
@@ -356,11 +350,8 @@ class CreateImportDialog(QDialog):
 
     def add_supplier(self):
         dialog = CreateSupplierDialog(self.db, self)
-        def handle_finished(result):
-            if result == QDialog.DialogCode.Accepted and dialog.saved_supplier:
-                self.load_suppliers(dialog.saved_supplier[0])
-
-        show_minimizable_dialog(self, dialog, handle_finished)
+        if dialog.exec() == QDialog.DialogCode.Accepted and dialog.saved_supplier:
+            self.load_suppliers(dialog.saved_supplier[0])
 
     def search_products(self, *_):
         conn = self.db.get_connection()
@@ -628,8 +619,6 @@ class ImportDetailDialog(QDialog):
 
     def __init__(self, db, import_code, parent=None):
         super().__init__(parent)
-        # Hiển thị nút thu nhỏ trên thanh tiêu đề cửa sổ.
-        self.setWindowFlag(Qt.WindowType.WindowMinimizeButtonHint, True)
         self.db = db
         self.import_code = import_code
         self.header = None
@@ -1189,7 +1178,7 @@ class ImportWindow(QWidget):
             return
         try:
             dialog = ImportDetailDialog(self.db, item.text(), self)
-            show_minimizable_dialog(self, dialog)
+            dialog.exec()
         except Exception as error:
             QMessageBox.critical(self, "Lỗi xem phiếu nhập", str(error))
 
@@ -1199,10 +1188,7 @@ class ImportWindow(QWidget):
             return
         try:
             dialog = CreateImportDialog(self.db, self)
-            def handle_finished(result):
-                if result != QDialog.DialogCode.Accepted:
-                    return
-
+            if dialog.exec() == QDialog.DialogCode.Accepted:
                 self.load_imports()
                 if dialog.saved_import_code:
                     answer = QMessageBox.question(
@@ -1216,7 +1202,5 @@ class ImportWindow(QWidget):
                             self.db, dialog.saved_import_code, self
                         )
                         detail.print_import()
-
-            show_minimizable_dialog(self, dialog, handle_finished)
         except Exception as error:
             QMessageBox.critical(self, "Không thể lập phiếu nhập", str(error))
