@@ -12,6 +12,8 @@ class EmployeePermissionDialog(QDialog):
 
     def __init__(self, db, manv, parent=None):
         super().__init__(parent)
+        # Hiển thị nút thu nhỏ trên thanh tiêu đề cửa sổ.
+        self.setWindowFlag(Qt.WindowType.WindowMinimizeButtonHint, True)
 
         self.db = db
         self.manv = manv
