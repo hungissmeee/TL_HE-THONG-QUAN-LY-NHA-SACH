@@ -21,6 +21,8 @@ class ShiftCreateDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        # Hiển thị nút thu nhỏ trên thanh tiêu đề cửa sổ.
+        self.setWindowFlag(Qt.WindowType.WindowMinimizeButtonHint, True)
         self.setWindowTitle("Thêm ca làm việc")
         self.setMinimumWidth(480)
 
