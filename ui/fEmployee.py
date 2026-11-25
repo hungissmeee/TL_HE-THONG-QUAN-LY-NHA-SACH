@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
 
 from PySide6.QtCore import Qt
 from ui.fAccount import EmployeePermissionDialog
+from ui.window_helpers import show_minimizable_dialog
 
 
 class EmployeeWindow(QWidget):
@@ -520,9 +521,10 @@ class EmployeeWindow(QWidget):
                 self
             )
 
-            dialog.exec()
-
-            self.load_employees()
+            show_minimizable_dialog(
+                self, dialog,
+                lambda result: self.load_employees()
+            )
 
         except Exception as e:
 
