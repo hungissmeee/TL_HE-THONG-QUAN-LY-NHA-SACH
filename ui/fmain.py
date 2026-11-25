@@ -7,6 +7,7 @@ from PySide6.QtCore import Qt
 
 from ui.fproduct import ProductWindow
 from ui.fChangePassword import ChangePasswordDialog
+from ui.window_helpers import show_minimizable_dialog
 from ui.fEmployee import EmployeeWindow
 from ui.fCatalog import CatalogPage
 from ui.fCaLamViec import ShiftWindow
@@ -695,7 +696,7 @@ class MainWindow(QMainWindow):
     # ==================================================
     def open_change_password(self):
         dialog = ChangePasswordDialog(self.db, self)
-        dialog.exec()
+        show_minimizable_dialog(self, dialog)
 
     # ==================================================
     # THÔNG TIN NHÂN VIÊN
