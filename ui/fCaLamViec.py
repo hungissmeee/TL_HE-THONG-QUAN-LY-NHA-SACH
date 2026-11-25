@@ -810,9 +810,14 @@ class ShiftWindow(QWidget):
             return
 
         dialog = ShiftCreateDialog(self)
-        if dialog.exec() != QDialog.DialogCode.Accepted:
-            return
 
+        def handle_finished(result):
+            if result == QDialog.DialogCode.Accepted:
+                self._save_shift_dialog(dialog)
+
+        show_minimizable_dialog(self, dialog, handle_finished)
+
+    def _save_shift_dialog(self, dialog):
         try:
             values = dialog.get_values()
         except ValueError as error:
