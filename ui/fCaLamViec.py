@@ -1,7 +1,6 @@
 from decimal import Decimal, InvalidOperation
 
 from PySide6.QtCore import Qt, QTimer, QDate, QTime
-from ui.window_helpers import show_minimizable_dialog
 from PySide6.QtWidgets import (
     QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
     QTableWidget, QTableWidgetItem, QHeaderView,
@@ -22,8 +21,6 @@ class ShiftCreateDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        # Hiển thị nút thu nhỏ trên thanh tiêu đề cửa sổ.
-        self.setWindowFlag(Qt.WindowType.WindowMinimizeButtonHint, True)
         self.setWindowTitle("Thêm ca làm việc")
         self.setMinimumWidth(480)
 
@@ -811,14 +808,9 @@ class ShiftWindow(QWidget):
             return
 
         dialog = ShiftCreateDialog(self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
 
-        def handle_finished(result):
-            if result == QDialog.DialogCode.Accepted:
-                self._save_shift_dialog(dialog)
-
-        show_minimizable_dialog(self, dialog, handle_finished)
-
-    def _save_shift_dialog(self, dialog):
         try:
             values = dialog.get_values()
         except ValueError as error:
