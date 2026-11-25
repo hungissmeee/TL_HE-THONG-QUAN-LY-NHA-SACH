@@ -53,6 +53,8 @@ class CreateInvoiceDialog(QDialog):
 
     def __init__(self, db, parent=None):
         super().__init__(parent)
+        # Hiển thị nút thu nhỏ trên thanh tiêu đề cửa sổ.
+        self.setWindowFlag(Qt.WindowType.WindowMinimizeButtonHint, True)
         self.db = db
         self.username = (getattr(db, "username", "") or "").strip()
         self.employee = None
@@ -529,6 +531,8 @@ class CreateInvoiceDialog(QDialog):
 class InvoiceDetailDialog(QDialog):
     def __init__(self, db, invoice_code, parent=None):
         super().__init__(parent)
+        # Hiển thị nút thu nhỏ trên thanh tiêu đề cửa sổ.
+        self.setWindowFlag(Qt.WindowType.WindowMinimizeButtonHint, True)
         self.db = db
         self.invoice_code = invoice_code
         self.setWindowTitle(f"Chi tiết hóa đơn {invoice_code}")
