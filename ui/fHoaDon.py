@@ -1,6 +1,4 @@
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
-
-from ui.window_helpers import show_minimizable_dialog
 from html import escape
 
 from PySide6.QtCore import Qt, QDate, QSizeF, QMarginsF, QTimer
@@ -55,8 +53,6 @@ class CreateInvoiceDialog(QDialog):
 
     def __init__(self, db, parent=None):
         super().__init__(parent)
-        # Hiển thị nút thu nhỏ trên thanh tiêu đề cửa sổ.
-        self.setWindowFlag(Qt.WindowType.WindowMinimizeButtonHint, True)
         self.db = db
         self.username = (getattr(db, "username", "") or "").strip()
         self.employee = None
@@ -533,8 +529,6 @@ class CreateInvoiceDialog(QDialog):
 class InvoiceDetailDialog(QDialog):
     def __init__(self, db, invoice_code, parent=None):
         super().__init__(parent)
-        # Hiển thị nút thu nhỏ trên thanh tiêu đề cửa sổ.
-        self.setWindowFlag(Qt.WindowType.WindowMinimizeButtonHint, True)
         self.db = db
         self.invoice_code = invoice_code
         self.setWindowTitle(f"Chi tiết hóa đơn {invoice_code}")
@@ -1370,7 +1364,7 @@ class InvoiceWindow(QWidget):
             dialog = InvoiceDetailDialog(
                 self.db, invoice_code, self
             )
-            show_minimizable_dialog(self, dialog)
+            dialog.exec()
         except Exception as error:
             QMessageBox.critical(
                 self, "Lỗi xem hóa đơn", str(error)
@@ -1386,10 +1380,7 @@ class InvoiceWindow(QWidget):
 
         try:
             dialog = CreateInvoiceDialog(self.db, self)
-            def handle_finished(result):
-                if result != QDialog.DialogCode.Accepted:
-                    return
-
+            if dialog.exec() == QDialog.DialogCode.Accepted:
                 self.load_invoices()
                 if dialog.saved_invoice_code:
                     ask = QMessageBox.question(
@@ -1411,8 +1402,6 @@ class InvoiceWindow(QWidget):
                             QMessageBox.critical(
                                 self, "Lỗi in hóa đơn", str(error)
                             )
-
-            show_minimizable_dialog(self, dialog, handle_finished)
         except Exception as error:
             QMessageBox.critical(
                 self, "Không thể lập hóa đơn", str(error)
