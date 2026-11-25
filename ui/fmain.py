@@ -11,7 +11,18 @@ from ui.fEmployee import EmployeeWindow
 from ui.fCatalog import CatalogPage
 from ui.fCaLamViec import ShiftWindow
 from ui.fHoaDon import InvoiceWindow
-
+from ui.reports import (
+    OverviewReportPage,
+    RevenueReportPage,
+    InvoiceReportPage,
+    ImportReportPage,
+    ReturnReportPage,
+    InventoryReportPage,
+    ProductReportPage,
+)
+from ui.reports.report_base import ReportBasePage
+from ui.fPhieuNhap import ImportWindow
+from ui.fNhaCungCap import SupplierWindow
 
 class MainWindow(QMainWindow):
 
@@ -49,26 +60,34 @@ class MainWindow(QMainWindow):
             },
             {
                 "key": "inventory",
-                "title": "KHO & NHẬP HÀNG",
+                "title": "QUẢN LÝ KHO",
                 "pages": ["products", "suppliers", "imports"],
                 "expanded": True,
             },
             {
                 "key": "catalogs",
-                "title": "DANH MỤC SÁCH",
+                "title": "QUẢN LÝ DANH MỤC",
                 "pages": ["authors", "genres", "publishers", "brands"],
                 "expanded": False,
             },
             {
                 "key": "people",
-                "title": "NHÂN SỰ",
+                "title": "QUẢN LÝ NHÂN SỰ",
                 "pages": ["employees", "shifts"],
                 "expanded": True,
             },
             {
                 "key": "reports",
                 "title": "BÁO CÁO",
-                "pages": ["statistics"],
+                "pages": [
+                    "report_overview",
+                    "report_revenue",
+                    "report_invoice",
+                    "report_import",
+                    "report_return",
+                    "report_inventory",
+                    "report_product",
+                ],
                 "expanded": False,
             },
         ]
@@ -223,13 +242,23 @@ class MainWindow(QMainWindow):
         self.add_page(
             "invoices", "Hóa đơn", InvoiceWindow(self.db)
         )
+        self.add_page("report_overview", "Tổng quan", OverviewReportPage(self.db))
+        self.add_page("report_revenue", "Doanh thu", RevenueReportPage(self.db))
+        self.add_page("report_invoice", "Báo cáo hóa đơn", InvoiceReportPage(self.db))
+        self.add_page("report_import", "Báo cáo nhập hàng", ImportReportPage(self.db))
+        self.add_page("report_return", "Báo cáo đổi trả", ReturnReportPage(self.db))
+        self.add_page("report_inventory", "Báo cáo tồn kho", InventoryReportPage(self.db))
+        self.add_page("report_product", "Báo cáo sản phẩm", ProductReportPage(self.db))
+        self.add_page(
+            "imports", "Phiếu nhập", ImportWindow(self.db)
+        )
+        self.add_page(
+            "suppliers", "Nhà cung cấp", SupplierWindow(self.db)
+        )
 
         # Các trang đang phát triển sau
         future_pages = [
-            ("suppliers", "Nhà cung cấp"),
-            ("imports", "Phiếu nhập"),
-            ("returns", "Đổi trả"),
-            ("statistics", "Thống kê"),
+            ("returns", "Đổi trả")
         ]
 
         for key, title in future_pages:
@@ -614,6 +643,12 @@ class MainWindow(QMainWindow):
         # Tải lại dữ liệu danh mục khi mở trang.
         page = self.pages[key]
         if isinstance(page, CatalogPage):
+            page.load_data()
+
+        if isinstance(page, ReportBasePage):
+            page.refresh_data()
+
+        if isinstance(page, (CatalogPage, SupplierWindow)):
             page.load_data()
 
         for page_key, button in self.nav_buttons.items():
