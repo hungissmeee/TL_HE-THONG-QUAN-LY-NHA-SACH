@@ -1,5 +1,4 @@
 from PySide6.QtCore import Qt
-from ui.window_helpers import show_minimizable_dialog
 from PySide6.QtWidgets import (
     QWidget, QDialog, QLabel, QLineEdit, QPushButton, QVBoxLayout,
     QHBoxLayout, QFormLayout, QTableWidget, QTableWidgetItem,
@@ -12,8 +11,6 @@ class SupplierFormDialog(QDialog):
 
     def __init__(self, db, parent=None, supplier=None):
         super().__init__(parent)
-        # Hiển thị nút thu nhỏ trên thanh tiêu đề cửa sổ.
-        self.setWindowFlag(Qt.WindowType.WindowMinimizeButtonHint, True)
         self.db = db
         self.supplier = supplier
         self.is_edit = supplier is not None
@@ -179,8 +176,6 @@ class SupplierDetailDialog(QDialog):
 
     def __init__(self, supplier, parent=None):
         super().__init__(parent)
-        # Hiển thị nút thu nhỏ trên thanh tiêu đề cửa sổ.
-        self.setWindowFlag(Qt.WindowType.WindowMinimizeButtonHint, True)
         self.setWindowTitle("Chi tiết nhà cung cấp")
         self.setMinimumWidth(440)
 
@@ -412,11 +407,8 @@ class SupplierWindow(QWidget):
             QMessageBox.warning(self, "Không có quyền", "Chỉ Quản lý/Admin được thêm nhà cung cấp.")
             return
         dialog = SupplierFormDialog(self.db, self)
-        show_minimizable_dialog(
-            self, dialog,
-            lambda result: self.load_data()
-            if result == QDialog.DialogCode.Accepted else None
-        )
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.load_data()
 
     def edit_supplier(self):
         if not self.can_manage:
@@ -431,11 +423,8 @@ class SupplierWindow(QWidget):
             self.load_data()
             return
         dialog = SupplierFormDialog(self.db, self, supplier=supplier)
-        show_minimizable_dialog(
-            self, dialog,
-            lambda result: self.load_data()
-            if result == QDialog.DialogCode.Accepted else None
-        )
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.load_data()
 
     def view_supplier(self):
         code = self._selected_supplier()
@@ -446,8 +435,7 @@ class SupplierWindow(QWidget):
             QMessageBox.warning(self, "Không tìm thấy", "Nhà cung cấp không còn tồn tại.")
             self.load_data()
             return
-        dialog = SupplierDetailDialog(supplier, self)
-        show_minimizable_dialog(self, dialog)
+        SupplierDetailDialog(supplier, self).exec()
 
     def _set_supplier_status(self, inactive):
         if not self.can_manage:
