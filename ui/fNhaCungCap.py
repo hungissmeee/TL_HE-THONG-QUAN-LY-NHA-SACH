@@ -11,6 +11,8 @@ class SupplierFormDialog(QDialog):
 
     def __init__(self, db, parent=None, supplier=None):
         super().__init__(parent)
+        # Hiển thị nút thu nhỏ trên thanh tiêu đề cửa sổ.
+        self.setWindowFlag(Qt.WindowType.WindowMinimizeButtonHint, True)
         self.db = db
         self.supplier = supplier
         self.is_edit = supplier is not None
@@ -176,6 +178,8 @@ class SupplierDetailDialog(QDialog):
 
     def __init__(self, supplier, parent=None):
         super().__init__(parent)
+        # Hiển thị nút thu nhỏ trên thanh tiêu đề cửa sổ.
+        self.setWindowFlag(Qt.WindowType.WindowMinimizeButtonHint, True)
         self.setWindowTitle("Chi tiết nhà cung cấp")
         self.setMinimumWidth(440)
 
