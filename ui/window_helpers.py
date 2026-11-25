@@ -3,7 +3,7 @@ from PySide6.QtCore import Qt
 
 def show_minimizable_dialog(owner, dialog, on_finished=None):
     """
-    Hiển thị QDialog dạng cửa sổ độc lập, không khóa cửa sổ chính.
+    Hiển thị QDialog không modal với nút thu nhỏ riêng.
 
     Giữ tham chiếu đến dialog trong owner để hộp thoại không bị thu gom
     trước khi người dùng đóng. Khi đóng, callback nhận mã kết quả QDialog.
@@ -15,6 +15,7 @@ def show_minimizable_dialog(owner, dialog, on_finished=None):
     flags |= Qt.WindowType.WindowCloseButtonHint
     dialog.setWindowFlags(flags)
     dialog.setWindowModality(Qt.WindowModality.NonModal)
+    dialog.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
 
     if not hasattr(owner, "_managed_dialogs"):
         owner._managed_dialogs = []
@@ -22,12 +23,14 @@ def show_minimizable_dialog(owner, dialog, on_finished=None):
     owner._managed_dialogs.append(dialog)
 
     def _finished(result):
-        if on_finished is not None:
-            on_finished(result)
         try:
-            owner._managed_dialogs.remove(dialog)
-        except (AttributeError, ValueError):
-            pass
+            if on_finished is not None:
+                on_finished(result)
+        finally:
+            try:
+                owner._managed_dialogs.remove(dialog)
+            except (AttributeError, ValueError):
+                pass
 
     dialog.finished.connect(_finished)
     dialog.show()
