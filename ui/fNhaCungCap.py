@@ -1,4 +1,5 @@
 from PySide6.QtCore import Qt
+from ui.window_helpers import show_minimizable_dialog
 from PySide6.QtWidgets import (
     QWidget, QDialog, QLabel, QLineEdit, QPushButton, QVBoxLayout,
     QHBoxLayout, QFormLayout, QTableWidget, QTableWidgetItem,
@@ -411,8 +412,11 @@ class SupplierWindow(QWidget):
             QMessageBox.warning(self, "Không có quyền", "Chỉ Quản lý/Admin được thêm nhà cung cấp.")
             return
         dialog = SupplierFormDialog(self.db, self)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            self.load_data()
+        show_minimizable_dialog(
+            self, dialog,
+            lambda result: self.load_data()
+            if result == QDialog.DialogCode.Accepted else None
+        )
 
     def edit_supplier(self):
         if not self.can_manage:
@@ -439,7 +443,8 @@ class SupplierWindow(QWidget):
             QMessageBox.warning(self, "Không tìm thấy", "Nhà cung cấp không còn tồn tại.")
             self.load_data()
             return
-        SupplierDetailDialog(supplier, self).exec()
+        dialog = SupplierDetailDialog(supplier, self)
+        show_minimizable_dialog(self, dialog)
 
     def _set_supplier_status(self, inactive):
         if not self.can_manage:
