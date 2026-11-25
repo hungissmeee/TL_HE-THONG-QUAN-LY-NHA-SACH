@@ -431,8 +431,11 @@ class SupplierWindow(QWidget):
             self.load_data()
             return
         dialog = SupplierFormDialog(self.db, self, supplier=supplier)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            self.load_data()
+        show_minimizable_dialog(
+            self, dialog,
+            lambda result: self.load_data()
+            if result == QDialog.DialogCode.Accepted else None
+        )
 
     def view_supplier(self):
         code = self._selected_supplier()
