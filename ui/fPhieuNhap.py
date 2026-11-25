@@ -47,6 +47,8 @@ class CreateSupplierDialog(QDialog):
 
     def __init__(self, db, parent=None):
         super().__init__(parent)
+        # Hiển thị nút thu nhỏ trên thanh tiêu đề cửa sổ.
+        self.setWindowFlag(Qt.WindowType.WindowMinimizeButtonHint, True)
         self.db = db
         self.saved_supplier = None
         self.setWindowTitle("Thêm nhà cung cấp")
@@ -137,6 +139,8 @@ class CreateImportDialog(QDialog):
 
     def __init__(self, db, parent=None):
         super().__init__(parent)
+        # Hiển thị nút thu nhỏ trên thanh tiêu đề cửa sổ.
+        self.setWindowFlag(Qt.WindowType.WindowMinimizeButtonHint, True)
         self.db = db
         self.username = (getattr(db, "username", "") or "").strip()
         self.employee = None
@@ -619,6 +623,8 @@ class ImportDetailDialog(QDialog):
 
     def __init__(self, db, import_code, parent=None):
         super().__init__(parent)
+        # Hiển thị nút thu nhỏ trên thanh tiêu đề cửa sổ.
+        self.setWindowFlag(Qt.WindowType.WindowMinimizeButtonHint, True)
         self.db = db
         self.import_code = import_code
         self.header = None
