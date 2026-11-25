@@ -1,4 +1,6 @@
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+
+from ui.window_helpers import show_minimizable_dialog
 from html import escape
 
 from PySide6.QtCore import Qt, QDate, QSizeF, QMarginsF, QTimer
@@ -1368,7 +1370,7 @@ class InvoiceWindow(QWidget):
             dialog = InvoiceDetailDialog(
                 self.db, invoice_code, self
             )
-            dialog.exec()
+            show_minimizable_dialog(self, dialog)
         except Exception as error:
             QMessageBox.critical(
                 self, "Lỗi xem hóa đơn", str(error)
@@ -1384,7 +1386,10 @@ class InvoiceWindow(QWidget):
 
         try:
             dialog = CreateInvoiceDialog(self.db, self)
-            if dialog.exec() == QDialog.DialogCode.Accepted:
+            def handle_finished(result):
+                if result != QDialog.DialogCode.Accepted:
+                    return
+
                 self.load_invoices()
                 if dialog.saved_invoice_code:
                     ask = QMessageBox.question(
@@ -1406,6 +1411,8 @@ class InvoiceWindow(QWidget):
                             QMessageBox.critical(
                                 self, "Lỗi in hóa đơn", str(error)
                             )
+
+            show_minimizable_dialog(self, dialog, handle_finished)
         except Exception as error:
             QMessageBox.critical(
                 self, "Không thể lập hóa đơn", str(error)
