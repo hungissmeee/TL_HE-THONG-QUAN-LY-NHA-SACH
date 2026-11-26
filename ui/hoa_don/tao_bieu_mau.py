@@ -276,6 +276,7 @@ class CreateInvoiceDialog(QDialog):
                 FROM dbo.CHUONG_TRINH_KM
                 WHERE NGAYBD <= SYSDATETIME()
                   AND NGAYKT >= SYSDATETIME()
+                  AND ISNULL(IS_DELETED, 0) = 0
                 ORDER BY TENKM
             """)
             for row in cursor.fetchall():
@@ -501,6 +502,7 @@ class CreateInvoiceDialog(QDialog):
                 WHERE MAKM = ?
                   AND NGAYBD <= SYSDATETIME()
                   AND NGAYKT >= SYSDATETIME()
+                  AND ISNULL(IS_DELETED, 0) = 0
             """, promotion_code)
             promotion = cursor.fetchone()
             if (
