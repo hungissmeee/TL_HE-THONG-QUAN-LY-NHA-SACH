@@ -15,36 +15,11 @@ from ui.table_sort import (
     prepare_sortable_table,
 )
 
-MONEY_QUANT = Decimal("0.01")
-
-
-def money_text(value, decimals=0):
-    """Định dạng tiền Việt Nam; mặc định không hiển thị phần thập phân."""
-    try:
-        amount = Decimal(str(value or 0)).quantize(
-            MONEY_QUANT, rounding=ROUND_HALF_UP
-        )
-    except (InvalidOperation, ValueError, TypeError):
-        amount = Decimal("0.00")
-
-    if decimals <= 0:
-        return f"{amount:,.0f} đ".replace(",", ".")
-    return f"{amount:,.{decimals}f} đ".replace(",", "X").replace(".", ",").replace("X", ".")
-
-
-def number_text(value):
-    try:
-        return f"{int(value or 0):,}".replace(",", ".")
-    except (ValueError, TypeError):
-        return "0"
-
-
-def date_text(value, include_time=True):
-    if value is None:
-        return ""
-    if hasattr(value, "strftime"):
-        return value.strftime("%d/%m/%Y %H:%M" if include_time else "%d/%m/%Y")
-    return str(value)
+from ui.formatters import (
+    format_report_money as money_text,
+    format_number as number_text,
+    format_report_date as date_text,
+)
 
 
 class ReportBasePage(QWidget):
