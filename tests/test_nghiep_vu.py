@@ -21,6 +21,7 @@ from ui.san_pham.bieu_mau import ProductFormDialog
 from ui.san_pham.bo_chon import SearchableSingleSelect, SearchableMultiSelect
 from ui.danh_muc import CatalogPage, CATALOGS
 from ui.nha_cung_cap.bieu_mau import SupplierFormDialog
+from ui.nha_cung_cap.danh_sach import can_view_suppliers
 from ui.nhan_vien import EmployeeWindow
 from ui.phieu_nhap.tao_bieu_mau import CreateImportDialog
 from ui.phieu_nhap.danh_sach import can_view_imports
@@ -211,6 +212,21 @@ class SearchableSelectorTests(unittest.TestCase):
         self.assertIn("Tác giả cũ", selector.results.item(0).text())
         self.assertIn("đã xóa mềm", selector.results.item(0).text())
         selector.close()
+
+
+class SupplierPagePermissionTests(unittest.TestCase):
+    """Đảm bảo Thu ngân không truy vấn bảng nhà cung cấp khi khởi tạo trang."""
+
+    def test_cashier_cannot_view_suppliers(self):
+        self.assertFalse(can_view_suppliers("NV02", "Thu ngân"))
+
+    def test_warehouse_manager_and_accounting_can_view_suppliers(self):
+        for role in ("Nhân viên kho", "Quản lý", "Kế toán"):
+            with self.subTest(role=role):
+                self.assertTrue(can_view_suppliers("NV01", role))
+
+    def test_admin_can_view_suppliers(self):
+        self.assertTrue(can_view_suppliers("admin", ""))
 
 
 class CodeGenerationTests(unittest.TestCase):

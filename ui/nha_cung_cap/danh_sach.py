@@ -25,6 +25,16 @@ from .bieu_mau import SupplierFormDialog
 from .chi_tiet import SupplierDetailDialog
 
 
+SUPPLIER_VIEW_ROLES = frozenset({"quản lý", "nhân viên kho", "kế toán"})
+
+
+def can_view_suppliers(username, employee_role):
+    """Xác định tài khoản có quyền đọc danh sách nhà cung cấp."""
+    if (username or "").strip().casefold() == "admin":
+        return True
+    return (employee_role or "").strip().casefold() in SUPPLIER_VIEW_ROLES
+
+
 class SupplierWindow(QWidget):
     """Quản lý nhà cung cấp; dùng xóa mềm để giữ liên kết với phiếu nhập."""
 
@@ -34,9 +44,13 @@ class SupplierWindow(QWidget):
         self.username = (getattr(db, "username", "") or "").strip()
         self.employee_role = self._get_employee_role()
         self.is_admin = self.username.casefold() == "admin"
+        self.can_view = can_view_suppliers(self.username, self.employee_role)
         self.can_manage = self.is_admin or self.employee_role.casefold() == "quản lý"
         self._build_ui()
-        self.load_data()
+        # MainWindow tạo sẵn các trang kể cả khi vai trò không có quyền truy cập.
+        # Không truy vấn NHA_CUNG_CAP cho Thu ngân hoặc vai trò không được phép xem.
+        if self.can_view:
+            self.load_data()
 
     def _get_employee_role(self):
         """Lấy vai trò của nhân viên để xác định quyền quản lý nhà cung cấp."""
@@ -133,6 +147,9 @@ class SupplierWindow(QWidget):
 
     def load_data(self, *_):
         """Tải danh sách nhà cung cấp theo từ khóa và trạng thái đang chọn."""
+        if not self.can_view:
+            return
+
         conn = self.db.get_connection()
         if conn is None:
             QMessageBox.warning(self, "Thông báo", "Chưa có kết nối SQL Server.")
@@ -240,6 +257,9 @@ class SupplierWindow(QWidget):
 
     def view_supplier(self):
         """Mở cửa sổ xem chi tiết nhà cung cấp đang chọn."""
+        if not self.can_view:
+            return
+
         code = self._selected_supplier()
         if not code:
             return
