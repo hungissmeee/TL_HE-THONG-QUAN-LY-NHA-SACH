@@ -18,13 +18,35 @@ from ui.reports import (
     ImportReportPage,
     ReturnReportPage,
     InventoryReportPage,
-    ProductReportPage, report_invoice,
+    ProductReportPage,
 )
 from ui.reports.report_base import ReportBasePage
 from ui.fPhieuNhap import ImportWindow
 from ui.fNhaCungCap import SupplierWindow
 
 class MainWindow(QMainWindow):
+    """Cửa sổ chính, điều hướng các chức năng theo vai trò nhân viên."""
+
+    ROLE_PAGE_ACCESS = {
+        "Quản lý": (
+            "home", "products", "suppliers", "employees", "imports",
+            "invoices", "returns", "statistics", "authors", "genres",
+            "publishers", "brands", "shifts",
+        ),
+        "Thu ngân": (
+            "home", "products", "invoices", "shifts",
+        ),
+        "Nhân viên kho": (
+            "home", "products", "suppliers", "imports", "authors",
+            "genres", "publishers", "brands", "shifts",
+        ),
+        "Kế toán": (
+            "home", "products", "suppliers", "imports", "invoices",
+            "returns", "statistics", "shifts", "report_product",
+            "report_inventory", "report_return", "report_import",
+            "report_invoice", "report_revenue", "report_overview",
+        ),
+    }
 
     def __init__(self, db, login_window=None):
         super().__init__()
@@ -573,6 +595,10 @@ class MainWindow(QMainWindow):
             group_key = self._ensure_other_group()
             self.page_to_group[key] = group_key
 
+        group_pages = self.nav_group_widgets[group_key]["pages"]
+        if key not in group_pages:
+            group_pages.append(key)
+
         self.nav_group_widgets[group_key]["layout"].addWidget(button)
         self.nav_buttons[key] = button
 
@@ -640,16 +666,15 @@ class MainWindow(QMainWindow):
                 self.nav_group_widgets[group_key]["header"].setChecked(True)
                 self.toggle_nav_group(group_key, True)
 
-        # Tải lại dữ liệu danh mục khi mở trang.
-        page = self.pages[key]
-        if isinstance(page, CatalogPage):
-            page.load_data()
+        self._refresh_page_data(self.pages[key])
 
-        if isinstance(page, ReportBasePage):
-            page.refresh_data()
-
+    @staticmethod
+    def _refresh_page_data(page):
+        """Tải dữ liệu cần thiết khi người dùng chuyển sang một trang."""
         if isinstance(page, (CatalogPage, SupplierWindow)):
             page.load_data()
+        elif isinstance(page, ReportBasePage):
+            page.refresh_data()
 
         for page_key, button in self.nav_buttons.items():
             button.setChecked(page_key == key)
@@ -781,27 +806,7 @@ class MainWindow(QMainWindow):
         if username == "admin":
             allowed = set(self.nav_buttons.keys())
         else:
-            role_pages = {
-                "Quản lý": [
-                    "home", "products", "suppliers",
-                    "employees", "imports", "invoices",
-                    "returns", "statistics", "authors",
-                    "genres", "publishers", "brands", "shifts",
-                ],
-                "Thu ngân": [
-                    "home", "products", "invoices", "shifts",
-                ],
-                "Nhân viên kho": [
-                    "home", "products", "suppliers", "imports",
-                    "authors", "genres", "publishers", "brands",
-                    "shifts",
-                ],
-                "Kế toán": [
-                    "home", "products", "suppliers", "imports",
-                    "invoices", "returns", "statistics", "shifts", "report_product", "report_inventory", "report_return", "report_import", "report_invoice", "report_revenue", "report_overview"
-                ],
-            }
-            allowed = set(role_pages.get(self.employee_role, ["home"]))
+            allowed = set(self.ROLE_PAGE_ACCESS.get(self.employee_role, ("home",)))
 
         for key, button in self.nav_buttons.items():
             button.setVisible(key in allowed)
