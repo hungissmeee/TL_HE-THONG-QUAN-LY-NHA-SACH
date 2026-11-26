@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QDateTimeEdit,
 )
-from PySide6.QtCore import QDateTime
+from PySide6.QtCore import QDateTime, QLocale
 
 
 class PromotionFormDialog(QDialog):
@@ -45,6 +45,8 @@ class PromotionFormDialog(QDialog):
         form.addRow("Tên khuyến mãi:", self.name_input)
 
         self.rate_input = QDoubleSpinBox()
+        self.rate_input.setLocale(QLocale.c())
+        self.rate_input.setGroupSeparatorShown(False)
         self.rate_input.setRange(0, 100)
         self.rate_input.setDecimals(2)
         self.rate_input.setSingleStep(1)
