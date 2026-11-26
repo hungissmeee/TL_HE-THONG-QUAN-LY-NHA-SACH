@@ -65,8 +65,8 @@ class DatabaseUtilityTests(unittest.TestCase):
 
         result = db._connection_string("NV01", "ExamplePass123!")
 
-        self.assertIn("SERVER=localhost\\SQLEXPRESS;", result)
-        self.assertIn("DATABASE=CSDLQLNHASACH;", result)
+        self.assertIn("SERVER={localhost\\SQLEXPRESS};", result)
+        self.assertIn("DATABASE={CSDLQLNHASACH};", result)
         self.assertIn("UID={NV01};", result)
         self.assertIn("PWD={ExamplePass123!};", result)
         self.assertIn("Encrypt=yes;", result)
