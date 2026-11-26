@@ -1,16 +1,15 @@
 """SupplierFormDialog: thành phần giao diện nghiệp vụ."""
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QWidget, QDialog, QLabel, QLineEdit, QPushButton, QVBoxLayout,
-    QHBoxLayout, QFormLayout, QTableWidget, QHeaderView,
-    QMessageBox, QAbstractItemView, QCheckBox, QGroupBox,
-)
-from ui.table_sort import (
-    SortableTableWidgetItem as QTableWidgetItem,
-    prepare_sortable_table,
-    pause_table_sorting,
-    resume_table_sorting,
+    QDialog,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QVBoxLayout,
+    QHBoxLayout,
+    QFormLayout,
+    QMessageBox,
+    QGroupBox,
 )
 
 
@@ -177,5 +176,6 @@ class SupplierFormDialog(QDialog):
         finally:
             if cursor is not None:
                 cursor.close()
+
 
 
