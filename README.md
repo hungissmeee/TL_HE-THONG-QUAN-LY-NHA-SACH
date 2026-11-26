@@ -87,6 +87,7 @@ Giao diện được tổ chức theo nhóm chức năng. Mỗi package chứa c
 │   ├── connection.py
 │   └── script.sql
 └── ui/
+    ├── __init__.py
     ├── main_window.py
     ├── login.py
     ├── account.py
@@ -124,7 +125,7 @@ Giao diện được tổ chức theo nhóm chức năng. Mỗi package chứa c
         └── report_*.py
 ```
 
-Các file cũ có tiền tố `f` (ví dụ `fHoaDon.py`, `fproduct.py`) được giữ làm module tương thích ngược và chỉ export lại class từ package mới. Code mới nên import từ các module/package có tên `snake_case`.
+Các module legacy có tiền tố `f` đã được loại bỏ. Toàn bộ import nội bộ sử dụng trực tiếp module/package có tên `snake_case`; không duy trì facade hoặc alias cho tên file cũ.
 
 ## 4.1. Quy ước phân chia trách nhiệm
 
@@ -139,7 +140,7 @@ Các file cũ có tiền tố `f` (ví dụ `fHoaDon.py`, `fproduct.py`) đượ
 ## 4.2. Nguyên tắc refactor
 
 - Giữ nguyên câu SQL, tên bảng/cột, quy tắc tính tiền, cập nhật tồn kho và phân quyền khi chỉ thực hiện refactor cấu trúc.
-- Trước khi xóa hoặc đổi tên module cũ, phải kiểm tra và cập nhật toàn bộ import; trong giai đoạn chuyển đổi, giữ facade tương thích.
+- Khi thêm hoặc đổi tên module, phải cập nhật toàn bộ import và chạy `tests/test_local_imports.py` cùng UI import smoke-test; không tạo facade legacy nếu không có yêu cầu tương thích bên ngoài.
 - Mỗi thay đổi nghiệp vụ cần có kiểm thử riêng, không gộp chung với commit chỉ định dạng hoặc sắp xếp mã nguồn.
 
 
@@ -147,5 +148,5 @@ Các file cũ có tiền tố `f` (ví dụ `fHoaDon.py`, `fproduct.py`) đượ
 
 - `tests/test_formatters.py`: kiểm thử định dạng tiền, ngày giờ và số liệu.
 - `tests/test_local_imports.py`: kiểm tra import nội bộ trỏ tới module/package có tồn tại.
-- `tests/ui_import_smoke.py`: kiểm tra import package UI mới và các module tương thích cũ với PySide6.
+- `tests/ui_import_smoke.py`: kiểm tra import toàn bộ package UI hiện tại với PySide6.
 - GitHub Actions chạy `compileall`, unit test và UI import smoke-test khi có push lên nhánh refactor hoặc mở Pull Request vào `main`.
