@@ -32,6 +32,7 @@ class ShiftCreateDialog(QDialog):
     }
 
     def __init__(self, parent=None):
+        """Khởi tạo biểu mẫu tạo ca và thiết lập lịch giờ theo số ca được chọn."""
         super().__init__(parent)
         self.setWindowTitle("Thêm ca làm việc")
         self.setMinimumWidth(480)
@@ -95,6 +96,7 @@ class ShiftCreateDialog(QDialog):
         self._update_shift_times()
 
     def _update_shift_times(self, *_):
+        """Tự điền giờ bắt đầu và kết thúc theo ca làm việc cố định."""
         shift_number = int(self.shift_number.currentData())
         start, end = self.SHIFT_SCHEDULE[shift_number]
         self.open_time.setText(start.toString("HH:mm"))
@@ -102,6 +104,7 @@ class ShiftCreateDialog(QDialog):
 
     @staticmethod
     def _parse_cash(text, field_name):
+        """Chuyển số tiền đầu ca thành giá trị Decimal hợp lệ."""
         text = text.strip().replace(",", "").replace(" ", "")
         if not text:
             raise ValueError(f"Vui lòng nhập {field_name}.")
@@ -116,6 +119,7 @@ class ShiftCreateDialog(QDialog):
         return value.quantize(Decimal("0.01"))
 
     def _validate_and_accept(self):
+        """Kiểm tra ngày, khung giờ và tiền đầu ca trước khi chấp nhận biểu mẫu."""
         try:
             self.get_values()
         except ValueError as error:
@@ -124,6 +128,7 @@ class ShiftCreateDialog(QDialog):
         self.accept()
 
     def get_values(self):
+        """Trả về ngày làm, số ca, giờ bắt đầu, giờ kết thúc và tiền đầu ca."""
         shift_number = int(self.shift_number.currentData())
         start, end = self.SHIFT_SCHEDULE[shift_number]
         opening_cash = self._parse_cash(self.opening_cash.text(), "tiền đầu ca")

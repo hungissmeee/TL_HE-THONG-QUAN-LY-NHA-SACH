@@ -29,6 +29,7 @@ class ProductWindow(QWidget):
     """Trang danh sách sản phẩm, xem chi tiết, thêm và chỉnh sửa sản phẩm."""
 
     def __init__(self, db):
+        """Khởi tạo trang sản phẩm, tải dữ liệu và áp dụng quyền của nhân viên."""
         super().__init__()
         self.db = db
         self.can_edit_products = False
@@ -40,9 +41,11 @@ class ProductWindow(QWidget):
 
     @staticmethod
     def format_number(value):
+        """Định dạng số lượng hoặc đơn giá để hiển thị thống nhất."""
         return format_product_number(value)
 
     def setup_ui(self):
+        """Tạo thanh tìm kiếm, bảng sản phẩm và các nút thao tác."""
         root = QVBoxLayout(self)
 
         top = QHBoxLayout()
@@ -158,6 +161,7 @@ class ProductWindow(QWidget):
                 cursor.close()
 
     def load_products(self):
+        """Tải danh sách sản phẩm theo từ khóa tìm kiếm."""
         conn = self.db.get_connection()
         if conn is None:
             QMessageBox.warning(self, "Thông báo", "Chưa có kết nối database!")
@@ -282,10 +286,12 @@ class ProductWindow(QWidget):
                 cursor.close()
             resume_table_sorting(self.table)
     def clear_search(self):
+        """Xóa từ khóa và tải lại toàn bộ sản phẩm."""
         self.search_input.clear()
         self.load_products()
 
     def get_selected_product(self):
+        """Lấy mã và dữ liệu sản phẩm đang được chọn trong bảng."""
         row = self.table.currentRow()
         if row < 0:
             QMessageBox.information(self, "Thông báo", "Vui lòng chọn một sản phẩm!")
@@ -294,16 +300,19 @@ class ProductWindow(QWidget):
         return item.text() if item else None
 
     def open_selected_product_detail(self):
+        """Mở chi tiết sản phẩm đang được chọn."""
         masp = self.get_selected_product()
         if masp:
             self.open_product_detail_by_code(masp)
 
     def open_product_detail(self, row, column):
+        """Hiển thị thông tin chi tiết sản phẩm và các thao tác được phép."""
         item = self.table.item(row, 0)
         if item:
             self.open_product_detail_by_code(item.text())
 
     def open_product_detail_by_code(self, masp):
+        """Tìm sản phẩm theo mã rồi mở cửa sổ chi tiết."""
         cursor = None
         try:
             cursor = self.db.get_connection().cursor()
@@ -408,11 +417,13 @@ class ProductWindow(QWidget):
                 cursor.close()
 
     def open_add_dialog(self):
+        """Mở biểu mẫu thêm sản phẩm mới."""
         dialog = ProductFormDialog(self.db, self)
         if dialog.exec():
             self.load_products()
 
     def open_edit_selected_product(self):
+        """Mở biểu mẫu chỉnh sửa sản phẩm đang được chọn."""
         masp = self.get_selected_product()
         if not masp:
             return

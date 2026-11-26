@@ -82,6 +82,7 @@ class ShiftWindow(QWidget):
     # COMMON HELPERS
     # ---------------------------------------------------------
     def _load_current_user_role(self):
+        """Lấy vai trò của nhân viên đang đăng nhập để phân biệt quyền đăng ký, xem và chốt ca."""
         conn = self.db.get_connection()
         if conn is None:
             raise RuntimeError("Chưa có kết nối database!")
@@ -106,18 +107,21 @@ class ShiftWindow(QWidget):
 
     @staticmethod
     def _format_date(value):
+        """Định dạng ngày làm theo cách hiển thị thống nhất."""
         if value is None:
             return ""
         return value.strftime("%d/%m/%Y") if hasattr(value, "strftime") else str(value)[:10]
 
     @staticmethod
     def _format_time(value):
+        """Định dạng giờ bắt đầu và kết thúc của ca."""
         if value is None:
             return ""
         return value.strftime("%H:%M") if hasattr(value, "strftime") else str(value)[:5]
 
     @staticmethod
     def _format_cash(value):
+        """Định dạng tiền đầu ca hoặc cuối ca."""
         if value is None:
             return "Chưa ghi"
         try:
@@ -132,6 +136,7 @@ class ShiftWindow(QWidget):
             default_sort_column=0,
             default_sort_order=Qt.SortOrder.AscendingOrder
     ):
+        """Tạo bảng có cấu hình cột, sắp xếp và lựa chọn dòng."""
         table = QTableWidget()
         table.setColumnCount(len(headers))
         table.setHorizontalHeaderLabels(headers)
@@ -160,6 +165,7 @@ class ShiftWindow(QWidget):
 
     @staticmethod
     def _set_item(table, row, column, value, user_data=None):
+        """Đặt giá trị và kiểu hiển thị cho một ô trong bảng ca làm việc."""
         item = QTableWidgetItem("" if value is None else str(value))
         if user_data is not None:
             item.setData(Qt.ItemDataRole.UserRole, user_data)
@@ -167,12 +173,14 @@ class ShiftWindow(QWidget):
         return item
 
     def _show_db_error(self, title, error):
+        """Hiển thị thông báo lỗi truy vấn cơ sở dữ liệu cho người dùng."""
         QMessageBox.critical(self, title, str(error))
 
     # ---------------------------------------------------------
     # EMPLOYEE / ACCOUNTANT UI
     # ---------------------------------------------------------
     def _build_employee_ui(self):
+        """Tạo giao diện ca làm việc dành cho nhân viên thông thường."""
         root = QVBoxLayout(self)
         root.setContentsMargins(4, 4, 4, 4)
         root.setSpacing(12)
@@ -225,6 +233,7 @@ class ShiftWindow(QWidget):
         root.addWidget(self.employee_total_label)
 
     def refresh_employee_view(self):
+        """Làm mới danh sách ca có thể đăng ký của nhân viên."""
         conn = self.db.get_connection()
         if conn is None:
             QMessageBox.warning(self, "Thông báo", "Chưa có kết nối database!")
@@ -392,6 +401,7 @@ class ShiftWindow(QWidget):
             cursor.close()
 
     def _register_current_shift(self, maca):
+        """Đăng ký nhân viên vào ca đang diễn ra sau khi kiểm tra điều kiện."""
         answer = QMessageBox.question(
             self,
             "Xác nhận đăng ký ca",
@@ -650,6 +660,7 @@ class ShiftWindow(QWidget):
     # MANAGER UI
     # ---------------------------------------------------------
     def _build_manager_ui(self):
+        """Tạo giao diện quản lý lịch ca và danh sách nhân viên theo ca."""
         root = QVBoxLayout(self)
         root.setContentsMargins(4, 4, 4, 4)
         root.setSpacing(10)
@@ -736,6 +747,7 @@ class ShiftWindow(QWidget):
         root.addWidget(roster_group)
 
     def add_shift(self):
+        """Tạo ca mới theo một trong các khung giờ cố định trong ngày."""
         if not self.is_manager:
             QMessageBox.warning(self, "Không có quyền", "Chỉ Quản lý/Admin mới được thêm ca.")
             return
@@ -805,6 +817,7 @@ class ShiftWindow(QWidget):
             cursor.close()
 
     def refresh_manager_view(self):
+        """Làm mới các bảng ca hiện tại, lịch sử và danh sách nhân viên."""
         conn = self.db.get_connection()
         if conn is None:
             QMessageBox.warning(self, "Thông báo", "Chưa có kết nối database!")
@@ -865,6 +878,7 @@ class ShiftWindow(QWidget):
         self.load_shift_history()
 
     def load_current_shifts(self):
+        """Tải các ca hiện tại và trạng thái hoạt động của từng ca."""
         conn = self.db.get_connection()
         if conn is None:
             return
@@ -932,6 +946,7 @@ class ShiftWindow(QWidget):
             cursor.close()
 
     def load_shift_history(self, *_):
+        """Tải lịch sử ca làm việc theo bộ lọc thời gian."""
         conn = self.db.get_connection()
         if conn is None:
             return
@@ -1021,18 +1036,21 @@ class ShiftWindow(QWidget):
             cursor.close()
 
     def _current_shift_selected(self, row, column):
+        """Lấy mã ca hiện đang được chọn trong bảng ca hiện tại."""
         item = self.current_table.item(row, 0)
         if item is not None:
             maca = item.data(Qt.ItemDataRole.UserRole)
             self.load_roster(int(maca), f"Ca {self.current_table.item(row, 2).text()}")
 
     def _history_shift_selected(self, row, column):
+        """Lấy mã ca được chọn trong bảng lịch sử."""
         item = self.history_table.item(row, 0)
         if item is not None:
             maca = item.data(Qt.ItemDataRole.UserRole)
             self.load_roster(int(maca), f"Ca {self.history_table.item(row, 2).text()}")
 
     def load_roster(self, maca, shift_description=""):
+        """Tải danh sách nhân viên đã đăng ký vào ca được chọn."""
         conn = self.db.get_connection()
         if conn is None:
             return

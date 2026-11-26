@@ -39,6 +39,7 @@ class SupplierWindow(QWidget):
         self.load_data()
 
     def _get_employee_role(self):
+        """Lấy vai trò của nhân viên để xác định quyền quản lý nhà cung cấp."""
         if (self.username or "").casefold() == "admin":
             return "Quản lý"
         conn = self.db.get_connection()
@@ -57,6 +58,7 @@ class SupplierWindow(QWidget):
                 cursor.close()
 
     def _build_ui(self):
+        """Tạo bộ lọc, bảng nhà cung cấp và các nút thao tác."""
         root = QVBoxLayout(self)
         root.setContentsMargins(4, 4, 4, 4)
         root.setSpacing(10)
@@ -144,6 +146,7 @@ class SupplierWindow(QWidget):
                 button.hide()
 
     def load_data(self, *_):
+        """Tải danh sách nhà cung cấp theo từ khóa và trạng thái đang chọn."""
         conn = self.db.get_connection()
         if conn is None:
             QMessageBox.warning(self, "Thông báo", "Chưa có kết nối SQL Server.")
@@ -193,10 +196,12 @@ class SupplierWindow(QWidget):
                 cursor.close()
 
     def clear_search(self):
+        """Xóa từ khóa và tải lại danh sách nhà cung cấp."""
         self.search_input.clear()
         self.load_data()
 
     def _selected_supplier(self):
+        """Lấy mã nhà cung cấp của dòng đang được chọn."""
         row = self.table.currentRow()
         if row < 0:
             return None
@@ -206,6 +211,7 @@ class SupplierWindow(QWidget):
         return code_item.data(Qt.ItemDataRole.UserRole)
 
     def _selected_is_inactive(self):
+        """Kiểm tra nhà cung cấp đang chọn có ở trạng thái ngừng hoạt động hay không."""
         row = self.table.currentRow()
         if row < 0:
             return False
@@ -213,6 +219,7 @@ class SupplierWindow(QWidget):
         return bool(status_item and status_item.text() == "Ngừng hoạt động")
 
     def _update_buttons(self):
+        """Bật hoặc khóa các nút sửa, xem, ngừng hoạt động và khôi phục theo lựa chọn hiện tại."""
         selected = self._selected_supplier() is not None
         inactive = self._selected_is_inactive() if selected else False
         self.detail_button.setEnabled(selected)
@@ -221,6 +228,7 @@ class SupplierWindow(QWidget):
         self.restore_button.setEnabled(selected and inactive and self.can_manage)
 
     def _get_supplier(self, code):
+        """Lấy thông tin đầy đủ của một nhà cung cấp từ SQL Server."""
         conn = self.db.get_connection()
         cursor = conn.cursor()
         try:
@@ -234,6 +242,7 @@ class SupplierWindow(QWidget):
             cursor.close()
 
     def add_supplier(self):
+        """Mở biểu mẫu tạo nhà cung cấp mới và làm mới danh sách sau khi lưu."""
         if not self.can_manage:
             QMessageBox.warning(self, "Không có quyền", "Chỉ Quản lý/Admin được thêm nhà cung cấp.")
             return
@@ -242,6 +251,7 @@ class SupplierWindow(QWidget):
             self.load_data()
 
     def edit_supplier(self):
+        """Mở biểu mẫu chỉnh sửa nhà cung cấp đang chọn."""
         if not self.can_manage:
             return
         code = self._selected_supplier()
@@ -258,6 +268,7 @@ class SupplierWindow(QWidget):
             self.load_data()
 
     def view_supplier(self):
+        """Mở cửa sổ xem chi tiết nhà cung cấp đang chọn."""
         code = self._selected_supplier()
         if not code:
             return
@@ -269,6 +280,7 @@ class SupplierWindow(QWidget):
         SupplierDetailDialog(supplier, self).exec()
 
     def _set_supplier_status(self, inactive):
+        """Cập nhật trạng thái hoạt động của nhà cung cấp mà không xóa dữ liệu."""
         if not self.can_manage:
             QMessageBox.warning(self, "Không có quyền", "Chỉ Quản lý/Admin được thay đổi trạng thái nhà cung cấp.")
             return
@@ -308,9 +320,11 @@ class SupplierWindow(QWidget):
                 cursor.close()
 
     def deactivate_supplier(self):
+        """Chuyển nhà cung cấp sang trạng thái ngừng hoạt động sau khi xác nhận."""
         self._set_supplier_status(True)
 
     def restore_supplier(self):
+        """Khôi phục trạng thái hoạt động cho nhà cung cấp đã ngừng."""
         self._set_supplier_status(False)
 
 

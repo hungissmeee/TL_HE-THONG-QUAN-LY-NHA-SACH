@@ -35,6 +35,7 @@ class ProductFormDialog(QDialog):
     """Form thêm mới hoặc chỉnh sửa sản phẩm."""
 
     def __init__(self, db, parent=None, product_code=None):
+        """Khởi tạo biểu mẫu sản phẩm và chọn chế độ thêm mới hoặc chỉnh sửa."""
         super().__init__(parent)
         self.db = db
         self.product_code = product_code
@@ -107,6 +108,7 @@ class ProductFormDialog(QDialog):
                 cursor.close()
 
     def load_existing_product(self):
+        """Tải thông tin sản phẩm cần chỉnh sửa."""
         cursor = None
         try:
             cursor = self.db.get_connection().cursor()
@@ -158,6 +160,7 @@ class ProductFormDialog(QDialog):
                 cursor.close()
 
     def setup_ui(self):
+        """Tạo các trường thông tin chung và trường riêng theo loại sản phẩm."""
         root = QVBoxLayout(self)
 
         title = QLabel("CHỈNH SỬA SẢN PHẨM" if self.is_edit else "THÊM SẢN PHẨM MỚI")
@@ -285,6 +288,7 @@ class ProductFormDialog(QDialog):
             self.masp.setReadOnly(True)
 
     def _fill_combo(self, cursor, sql, combo, placeholder, selected_code=None):
+        """Điền dữ liệu danh mục vào hộp chọn và thiết lập giá trị hiện tại."""
         cursor.execute(sql, selected_code) if "?" in sql else cursor.execute(sql)
         combo.clear()
         combo.addItem(placeholder, None)
@@ -400,6 +404,7 @@ class ProductFormDialog(QDialog):
             cursor.close()
 
     def populate_form(self):
+        """Đưa dữ liệu sản phẩm hiện có lên các trường nhập."""
         p = self.existing
         self.masp.setText(str(p["masp"]))
         self.tensp.setText(p["tensp"] or "")
@@ -424,6 +429,7 @@ class ProductFormDialog(QDialog):
 
     @staticmethod
     def parse_decimal(value, field_name):
+        """Kiểm tra và chuyển nội dung số thành Decimal để tính tiền chính xác."""
         try:
             result = Decimal(value.strip().replace(",", "."))
         except (InvalidOperation, AttributeError):
@@ -433,6 +439,7 @@ class ProductFormDialog(QDialog):
         return result
 
     def save_product(self):
+        """Kiểm tra dữ liệu rồi thêm mới hoặc cập nhật sản phẩm trong SQL Server."""
         masp = self.masp.text().strip()
         tensp = self.tensp.text().strip()
         dvt = self.dvt.text().strip()

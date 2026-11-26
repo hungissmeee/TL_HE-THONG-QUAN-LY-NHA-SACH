@@ -17,6 +17,7 @@ class SupplierFormDialog(QDialog):
     """Thu thập và kiểm tra thông tin trước khi lưu nhà cung cấp."""
 
     def __init__(self, db, parent=None, supplier=None):
+        """Khởi tạo biểu mẫu và nạp dữ liệu nhà cung cấp nếu đang ở chế độ chỉnh sửa."""
         super().__init__(parent)
         self.db = db
         self.supplier = supplier
@@ -33,6 +34,7 @@ class SupplierFormDialog(QDialog):
             self._refresh_code_preview()
 
     def _build_ui(self):
+        """Tạo các trường nhập thông tin, nút lưu và nút hủy."""
         root = QVBoxLayout(self)
         root.setSpacing(12)
 
@@ -82,6 +84,7 @@ class SupplierFormDialog(QDialog):
         root.addLayout(buttons)
 
     def _populate(self):
+        """Đưa dữ liệu nhà cung cấp hiện tại lên biểu mẫu chỉnh sửa."""
         row = self.supplier
         self.code_input.setText(str(row[0] or ""))
         self.name_input.setText(str(row[1] or ""))
@@ -91,6 +94,7 @@ class SupplierFormDialog(QDialog):
 
     @staticmethod
     def _next_code(cursor, lock_table=False):
+        """Sinh mã nhà cung cấp kế tiếp theo dữ liệu đã có trong SQL Server."""
         hint = " WITH (TABLOCKX, HOLDLOCK)" if lock_table else ""
         cursor.execute(f"""
             SELECT COALESCE(
@@ -107,6 +111,7 @@ class SupplierFormDialog(QDialog):
         return code
 
     def _refresh_code_preview(self):
+        """Hiển thị trước mã nhà cung cấp sẽ được cấp khi lưu."""
         conn = self.db.get_connection()
         if conn is None:
             return
@@ -124,6 +129,7 @@ class SupplierFormDialog(QDialog):
                 cursor.close()
 
     def save(self):
+        """Kiểm tra dữ liệu bắt buộc rồi thêm mới hoặc cập nhật nhà cung cấp."""
         name = self.name_input.text().strip()
         if not name:
             QMessageBox.warning(self, "Thiếu thông tin", "Vui lòng nhập tên nhà cung cấp.")

@@ -20,6 +20,7 @@ class ProductDetailDialog(QDialog):
     """Hiển thị chi tiết sản phẩm theo loại sách hoặc sản phẩm khác."""
 
     def __init__(self, db, product, parent=None, can_edit=False, can_delete=False):
+        """Khởi tạo hộp thoại chi tiết và xác định các thao tác được phép."""
         super().__init__(parent)
         self.db = db
         self.product = product
@@ -30,17 +31,20 @@ class ProductDetailDialog(QDialog):
         self.setup_ui()
 
     def add_info(self, form, label, value):
+        """Thêm một dòng nhãn và giá trị vào biểu mẫu thông tin."""
         value_label = QLabel("" if value is None else str(value))
         value_label.setWordWrap(True)
         form.addRow(label, value_label)
 
     @staticmethod
     def format_money(value):
+        """Định dạng giá trị tiền để hiển thị."""
         if value is None:
             return ""
         return f"{Decimal(str(value)):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
     def setup_ui(self):
+        """Tạo các nhóm thông tin chung và thông tin riêng của sản phẩm."""
         p = self.product
         layout = QVBoxLayout(self)
 
@@ -180,6 +184,7 @@ class ProductDetailDialog(QDialog):
             self.accept()
 
     def open_edit_dialog(self):
+        """Mở biểu mẫu chỉnh sửa sản phẩm hiện tại."""
         try:
             dialog = ProductFormDialog(
                 self.db, self, product_code=self.product["masp"]
