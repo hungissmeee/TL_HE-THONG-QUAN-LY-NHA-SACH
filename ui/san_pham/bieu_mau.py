@@ -193,16 +193,21 @@ class ProductFormDialog(QDialog):
         self.dvt.setMaxLength(30)
         self.dvt.setPlaceholderText("Ví dụ: Quyển, Cái, Chiếc")
 
-        self.gianhap = QLineEdit()
-        self.gianhap.setPlaceholderText("0.00")
-        self.gianhap.setValidator(QDoubleValidator(0, 9999999999999.99, 2, self))
+        self.gianhap = QLineEdit("0.00")
+        self.gianhap.setReadOnly(True)
+        self.gianhap.setToolTip(
+            "Giá nhập được hệ thống tính tự động từ các phiếu nhập."
+        )
 
         self.giaban = QLineEdit()
         self.giaban.setPlaceholderText("0.00")
         self.giaban.setValidator(QDoubleValidator(0, 9999999999999.99, 2, self))
 
         self.slton = QLineEdit("0")
-        self.slton.setValidator(QIntValidator(0, 2147483647, self))
+        self.slton.setReadOnly(True)
+        self.slton.setToolTip(
+            "Tồn kho được hệ thống cập nhật tự động từ phiếu nhập, hóa đơn và đổi trả."
+        )
 
         self.vat = QLineEdit("0")
         self.vat.setValidator(QDoubleValidator(0, 999.99, 2, self))
@@ -210,10 +215,19 @@ class ProductFormDialog(QDialog):
         common_form.addRow("Mã sản phẩm:", self.masp)
         common_form.addRow("Tên sản phẩm:", self.tensp)
         common_form.addRow("Đơn vị tính:", self.dvt)
-        common_form.addRow("Giá nhập:", self.gianhap)
+        common_form.addRow("Giá nhập (tự động):", self.gianhap)
         common_form.addRow("Giá bán:", self.giaban)
-        common_form.addRow("Số lượng tồn:", self.slton)
+        common_form.addRow("Số lượng tồn (tự động):", self.slton)
         common_form.addRow("VAT (%):", self.vat)
+
+        inventory_note = QLabel(
+            "Giá nhập bình quân và số lượng tồn không chỉnh sửa tại biểu mẫu "
+            "sản phẩm. Hệ thống tự cập nhật khi lập/hủy phiếu nhập, hóa đơn "
+            "và xử lý đổi trả."
+        )
+        inventory_note.setWordWrap(True)
+        inventory_note.setStyleSheet("color: #AAB7C8; font-size: 11px;")
+        common_form.addRow("", inventory_note)
         root.addWidget(common_group)
 
         self.type_stack = QStackedWidget()
@@ -451,15 +465,16 @@ class ProductFormDialog(QDialog):
             )
             return
 
-        if not self.gianhap.text().strip() or not self.giaban.text().strip() or not self.slton.text().strip():
-            QMessageBox.warning(self, "Thiếu thông tin", "Vui lòng nhập giá nhập, giá bán và số lượng tồn.")
+        if not self.giaban.text().strip():
+            QMessageBox.warning(
+                self, "Thiếu thông tin", "Vui lòng nhập giá bán."
+            )
+            self.giaban.setFocus()
             return
 
         try:
-            gianhap = self.parse_decimal(self.gianhap.text(), "Giá nhập")
             giaban = self.parse_decimal(self.giaban.text(), "Giá bán")
             vat = self.parse_decimal(self.vat.text() or "0", "VAT")
-            slton = int(self.slton.text())
             namxb_text = self.namxb.text().strip()
             namxb = int(namxb_text) if namxb_text else None
         except (ValueError, InvalidOperation) as e:
@@ -494,11 +509,10 @@ class ProductFormDialog(QDialog):
                 # Cập nhật thông tin chung
                 cursor.execute("""
                     UPDATE dbo.SAN_PHAM
-                    SET TENSP = ?, DVT = ?, GIANHAP = ?,
-                        GIABAN = ?, SLTON = ?, VAT = ?
+                    SET TENSP = ?, DVT = ?, GIABAN = ?, VAT = ?
                     OUTPUT inserted.MASP
                     WHERE MASP = ? AND ISNULL(IS_DELETED, 0) = 0
-                """, tensp, dvt, gianhap, giaban, slton, vat, masp)
+                """, tensp, dvt, giaban, vat, masp)
                 if cursor.fetchone() is None:
                     raise Exception("Sản phẩm không tồn tại hoặc đã bị xóa mềm!")
 
@@ -537,8 +551,8 @@ class ProductFormDialog(QDialog):
                 cursor.execute("""
                     INSERT INTO dbo.SAN_PHAM
                         (MASP, TENSP, DVT, GIANHAP, GIABAN, SLTON, VAT, IS_DELETED)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, 0)
-                """, masp, tensp, dvt, gianhap, giaban, slton, vat)
+                    VALUES (?, ?, ?, 0, ?, 0, ?, 0)
+                """, masp, tensp, dvt, giaban, vat)
 
                 if product_type == "book":
                     cursor.execute("""
