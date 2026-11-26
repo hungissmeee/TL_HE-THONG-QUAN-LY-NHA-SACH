@@ -1,6 +1,9 @@
 -- Chay tren database hien tai neu da tao tu cac phien ban script cu.
--- Migration nay them cot (neu chua co) va chi cho rl_QuanLy cap nhat co IS_DELETED.
+-- Neu ung dung dang ket noi database khac CSDLTEST, thay ten database ben duoi.
+USE CSDLTEST;
+GO
 
+-- Migration nay them cot (neu chua co) va chi cho rl_QuanLy cap nhat co IS_DELETED.
 IF COL_LENGTH(N'dbo.CHUONG_TRINH_KM', N'IS_DELETED') IS NULL
 BEGIN
     ALTER TABLE dbo.CHUONG_TRINH_KM
