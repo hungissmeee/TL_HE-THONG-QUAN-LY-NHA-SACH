@@ -1,22 +1,23 @@
 """InvoiceDetailDialog: thành phần giao diện nghiệp vụ hóa đơn."""
 
-from PySide6.QtCore import Qt, QDate, QSizeF, QMarginsF, QTimer
-from PySide6.QtGui import QTextDocument, QPageSize, QPageLayout
-from PySide6.QtPrintSupport import QPrinter, QPrintDialog
+from html import escape
 from PySide6.QtWidgets import (
-    QWidget, QDialog, QLabel, QPushButton, QLineEdit, QComboBox,
-    QVBoxLayout, QHBoxLayout, QFormLayout, QTableWidget, QHeaderView,
-    QAbstractItemView, QMessageBox, QSpinBox, QGroupBox, QDateEdit,
+    QDialog,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+    QHBoxLayout,
+    QFormLayout,
+    QTableWidget,
+    QHeaderView,
+    QAbstractItemView,
+    QGroupBox,
 )
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
     prepare_sortable_table,
-    pause_table_sorting,
-    resume_table_sorting,
 )
-
 from .common import MONEY_QUANT, Decimal, ROUND_HALF_UP, money, as_decimal, date_text, time_text
-
 
 class InvoiceDetailDialog(QDialog):
     def __init__(self, db, invoice_code, parent=None):
@@ -356,5 +357,6 @@ class InvoiceDetailDialog(QDialog):
         printer.setPageSize(page_size)
         printer.setPageMargins(margins, QPageLayout.Unit.Millimeter)
         document.print_(printer)
+
 
 
