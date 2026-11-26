@@ -1,5 +1,7 @@
 """Các thành phần kết nối và cấu hình cơ sở dữ liệu SQL Server."""
 
+import os
+
 import pyodbc
 
 
@@ -23,21 +25,32 @@ class Database:
         self.conn = None
         self.username = None
 
-        self.server = r"localhost"
-        self.database = "CSDLQLNHASACH"
-        self.driver = "ODBC Driver 18 for SQL Server"
+        # Cấu hình có thể thay đổi theo máy triển khai mà không sửa mã nguồn.
+        self.server = os.getenv("BOOKHUB_SQL_SERVER", r"localhost")
+        self.database = os.getenv("BOOKHUB_SQL_DATABASE", "CSDLQLNHASACH")
+        self.driver = os.getenv(
+            "BOOKHUB_SQL_DRIVER", "ODBC Driver 18 for SQL Server"
+        )
+        self.encrypt = os.getenv("BOOKHUB_SQL_ENCRYPT", "yes")
+        self.trust_server_certificate = os.getenv(
+            "BOOKHUB_TRUST_SERVER_CERTIFICATE", "yes"
+        )
+
+    @staticmethod
+    def _odbc_value(value):
+        """Bao giá trị theo cú pháp ODBC, kể cả khi chứa dấu ngoặc nhọn đóng."""
+        return "{" + str(value).replace("}", "}}") + "}"
 
     def _connection_string(self, username, password):
-        """Tạo chuỗi kết nối SQL Server từ tên tài khoản và mật khẩu đã nhập."""
-
+        """Tạo chuỗi kết nối SQL Server từ cấu hình môi trường và thông tin đăng nhập."""
         return (
-            f"DRIVER={{{self.driver}}};"
-            f"SERVER={self.server};"
-            f"DATABASE={self.database};"
-            f"UID={{{username}}};"
-            f"PWD={{{password}}};"
-            "Encrypt=yes;"
-            "TrustServerCertificate=yes;"
+            f"DRIVER={self._odbc_value(self.driver)};"
+            f"SERVER={self._odbc_value(self.server)};"
+            f"DATABASE={self._odbc_value(self.database)};"
+            f"UID={self._odbc_value(username)};"
+            f"PWD={self._odbc_value(password)};"
+            f"Encrypt={self.encrypt};"
+            f"TrustServerCertificate={self.trust_server_certificate};"
         )
 
     def connect(self, username, password):
