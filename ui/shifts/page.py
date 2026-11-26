@@ -1,13 +1,27 @@
 """ShiftWindow: thành phần giao diện nghiệp vụ."""
 
-from decimal import Decimal, InvalidOperation
-
-from PySide6.QtCore import Qt, QTimer, QDate, QTime
+from decimal import (
+    Decimal,
+    InvalidOperation,
+)
+from PySide6.QtCore import (
+    Qt,
+    QTimer,
+)
 from PySide6.QtWidgets import (
-    QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
-    QTableWidget, QHeaderView, QAbstractItemView, QMessageBox,
-    QComboBox, QGroupBox, QFormLayout, QDialog, QDateEdit,
-    QLineEdit, QInputDialog,
+    QWidget,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+    QHBoxLayout,
+    QTableWidget,
+    QHeaderView,
+    QAbstractItemView,
+    QMessageBox,
+    QComboBox,
+    QGroupBox,
+    QDialog,
+    QInputDialog,
 )
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
@@ -15,8 +29,9 @@ from ui.table_sort import (
     pause_table_sorting,
     resume_table_sorting,
 )
-
+from .common import Decimal, InvalidOperation
 from .create_dialog import ShiftCreateDialog
+
 
 class ShiftWindow(QWidget):
     """Trang ca làm việc dùng trực tiếp CA_LAM_VIEC, LAMCA, NHAN_VIEN.
@@ -1048,4 +1063,5 @@ class ShiftWindow(QWidget):
         finally:
             resume_table_sorting(self.roster_table)
             cursor.close()
+
 
