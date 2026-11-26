@@ -20,7 +20,6 @@ from PySide6.QtWidgets import (
     QDateEdit,
     QLineEdit,
 )
-from .common import Decimal, InvalidOperation
 
 
 class ShiftCreateDialog(QDialog):
