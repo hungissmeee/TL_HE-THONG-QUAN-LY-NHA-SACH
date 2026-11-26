@@ -2,11 +2,12 @@
 
 from decimal import Decimal, ROUND_HALF_UP
 
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QIntValidator
 from PySide6.QtWidgets import (
     QDialog, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
-    QFormLayout, QGroupBox, QComboBox, QLineEdit, QTableWidget,
-    QTableWidgetItem, QHeaderView, QAbstractItemView, QSpinBox,
-    QMessageBox,
+    QFormLayout, QGroupBox, QComboBox, QCompleter, QLineEdit, QTableWidget,
+    QTableWidgetItem, QHeaderView, QAbstractItemView, QMessageBox,
 )
 
 from .dung_chung import MONEY_QUANT, as_decimal, date_text, money
@@ -82,7 +83,23 @@ class CreateReturnDialog(QDialog):
         invoice_group = QGroupBox("Hóa đơn gốc")
         invoice_form = QFormLayout(invoice_group)
         self.invoice_combo = QComboBox()
+        self.invoice_combo.setEditable(True)
+        self.invoice_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self.invoice_combo.setMaxVisibleItems(15)
+        self.invoice_combo.lineEdit().setPlaceholderText(
+            "Nhập mã hóa đơn để tìm..."
+        )
+        self.invoice_combo.setToolTip(
+            "Nhập mã hóa đơn hoặc một phần mã để tìm trong các hóa đơn hợp lệ."
+        )
+        completer = self.invoice_combo.completer()
+        completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self.invoice_combo.currentIndexChanged.connect(self.load_invoice_items)
+        self.invoice_combo.lineEdit().editingFinished.connect(
+            self._select_typed_invoice
+        )
         self.invoice_info = QLabel("Chọn hóa đơn trong ngày để xem sản phẩm.")
         self.invoice_info.setWordWrap(True)
         invoice_form.addRow("Mã hóa đơn:", self.invoice_combo)
@@ -136,6 +153,51 @@ class CreateReturnDialog(QDialog):
         bottom.addWidget(self.save_button)
         bottom.addWidget(close_button)
         root.addLayout(bottom)
+
+    @staticmethod
+    def _find_invoice_index(invoice_combo, typed_text):
+        """Tìm chỉ số hóa đơn từ mã hoặc nội dung đầy đủ người dùng đã nhập."""
+        keyword = str(typed_text or "").strip().casefold()
+        if not keyword:
+            return -1
+
+        for index in range(invoice_combo.count()):
+            code = str(invoice_combo.itemData(index) or "").strip().casefold()
+            label = invoice_combo.itemText(index).strip().casefold()
+            if keyword == code or keyword == label:
+                return index
+        return -1
+
+    def _select_typed_invoice(self):
+        """Chọn hóa đơn khi người dùng nhập chính xác mã hoặc nội dung hóa đơn."""
+        typed_text = self.invoice_combo.currentText().strip()
+        index = self._find_invoice_index(self.invoice_combo, typed_text)
+        if index >= 0:
+            self.invoice_combo.setCurrentIndex(index)
+            return
+
+        self.invoice_combo.setCurrentIndex(-1)
+        self.table.setRowCount(0)
+        self.row_controls.clear()
+        self.invoice_info.setText(
+            "Không tìm thấy hóa đơn phù hợp. Hãy chọn một kết quả trong danh sách."
+        )
+        self.save_button.setEnabled(False)
+        self.update_totals()
+
+    @staticmethod
+    def _parse_quantity_input(text):
+        """Đọc số lượng từ ô nhập dạng chữ số; ô trống được xem là 0."""
+        value = str(text or "").strip()
+        if not value:
+            return 0
+        try:
+            quantity = int(value)
+        except (TypeError, ValueError):
+            raise ValueError("Số lượng phải là số nguyên không âm.")
+        if quantity < 0:
+            raise ValueError("Số lượng phải là số nguyên không âm.")
+        return quantity
 
     def _load_eligible_invoices(self):
         """Chỉ liệt kê hóa đơn có hiệu lực được lập trong ngày hiện tại."""
@@ -244,10 +306,13 @@ class CreateReturnDialog(QDialog):
                 for column, value in enumerate(values):
                     self.table.setItem(row, column, QTableWidgetItem(str(value)))
 
-                quantity = QSpinBox()
-                quantity.setRange(0, remaining)
-                quantity.setValue(0)
-                quantity.setToolTip(f"Đơn vị tính: {data[2] or 'Không xác định'}")
+                quantity = QLineEdit("0")
+                quantity.setValidator(QIntValidator(0, remaining, quantity))
+                quantity.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                quantity.setToolTip(
+                    f"Chỉ nhập số nguyên từ 0 đến {remaining}. "
+                    f"Đơn vị tính: {data[2] or 'Không xác định'}"
+                )
 
                 condition = QComboBox()
                 condition.addItem("Còn nguyên vẹn", 1)
@@ -263,11 +328,12 @@ class CreateReturnDialog(QDialog):
                 self.row_controls[masp] = {
                     "row": row,
                     "quantity": quantity,
+                    "remaining": remaining,
                     "condition": condition,
                     "action": action,
                     "net_price": net_price,
                 }
-                quantity.valueChanged.connect(self.update_totals)
+                quantity.textChanged.connect(self.update_totals)
                 condition.currentIndexChanged.connect(self.update_totals)
                 action.currentIndexChanged.connect(self.update_totals)
 
@@ -280,7 +346,9 @@ class CreateReturnDialog(QDialog):
         """Tính tiền hoàn dự kiến; dòng đổi sản phẩm không hoàn tiền."""
         total = Decimal("0.00")
         for controls in self.row_controls.values():
-            quantity = controls["quantity"].value()
+            quantity = self._parse_quantity_input(
+                controls["quantity"].text()
+            )
             condition = controls["condition"].currentData()
             action = controls["action"].currentData()
             amount_item = self.table.item(controls["row"], 8)
@@ -309,7 +377,21 @@ class CreateReturnDialog(QDialog):
 
         selected = []
         for masp, controls in self.row_controls.items():
-            quantity = controls["quantity"].value()
+            try:
+                quantity = self._parse_quantity_input(
+                    controls["quantity"].text()
+                )
+            except ValueError as error:
+                QMessageBox.warning(self, "Số lượng không hợp lệ", str(error))
+                controls["quantity"].setFocus()
+                return
+            if quantity > controls["remaining"]:
+                QMessageBox.warning(
+                    self, "Số lượng vượt giới hạn",
+                    f"Sản phẩm {masp} chỉ còn {controls['remaining']} sản phẩm có thể xử lý."
+                )
+                controls["quantity"].setFocus()
+                return
             if quantity <= 0:
                 continue
             condition = int(controls["condition"].currentData())

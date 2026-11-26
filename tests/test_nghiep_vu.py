@@ -27,6 +27,7 @@ from ui.hoa_don.tao_bieu_mau import CreateInvoiceDialog
 from ui.ca_lam_viec.tao_bieu_mau import ShiftCreateDialog
 from ui.main_windows import MainWindow
 from ui.permissions import is_admin_account, allowed_pages_for_user
+from ui.doi_tra.tao_bieu_mau import CreateReturnDialog
 
 
 _APP = QApplication.instance() or QApplication([])
@@ -338,6 +339,39 @@ class InputValidationTests(unittest.TestCase):
         self.assertEqual(allowed, set(MainWindow.ROLE_PAGE_ACCESS["Thu ngân"]))
         self.assertNotIn("returns", allowed)
         self.assertNotIn("reports", allowed)
+
+
+class ReturnDialogInputTests(unittest.TestCase):
+    """Kiểm thử nhập mã hóa đơn và số lượng trong form đổi trả."""
+
+    def test_invoice_search_resolves_exact_invoice_code_case_insensitively(self):
+        from PySide6.QtWidgets import QComboBox
+
+        combo = QComboBox()
+        combo.setEditable(True)
+        combo.addItem("HD000001 | 27/11/2026", "HD000001")
+        combo.addItem("HD000002 | 27/11/2026", "HD000002")
+
+        self.assertEqual(
+            CreateReturnDialog._find_invoice_index(combo, "hd000002"),
+            1,
+        )
+        self.assertEqual(
+            CreateReturnDialog._find_invoice_index(combo, "HD999999"),
+            -1,
+        )
+        combo.close()
+
+    def test_quantity_input_accepts_integer_and_empty_as_zero(self):
+        self.assertEqual(CreateReturnDialog._parse_quantity_input("5"), 5)
+        self.assertEqual(CreateReturnDialog._parse_quantity_input("0"), 0)
+        self.assertEqual(CreateReturnDialog._parse_quantity_input(""), 0)
+
+    def test_quantity_input_rejects_negative_and_non_numeric_values(self):
+        for value in ("-1", "1.5", "abc"):
+            with self.subTest(value=value):
+                with self.assertRaises(ValueError):
+                    CreateReturnDialog._parse_quantity_input(value)
 
 
 class ShiftScheduleTests(unittest.TestCase):
