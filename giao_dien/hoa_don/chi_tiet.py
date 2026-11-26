@@ -26,14 +26,15 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QGroupBox,
 )
-from ui.table_sort import (
+from giao_dien.sap_xep_bang import (
     SortableTableWidgetItem as QTableWidgetItem,
     prepare_sortable_table,
 )
-from .common import MONEY_QUANT, Decimal, ROUND_HALF_UP, money, as_decimal, date_text, time_text
+from .dung_chung import MONEY_QUANT, Decimal, ROUND_HALF_UP, money, as_decimal, date_text, time_text
 
 
 class InvoiceDetailDialog(QDialog):
+    """Hộp thoại xem và in chi tiết hóa đơn."""
     def __init__(self, db, invoice_code, parent=None):
         super().__init__(parent)
         self.db = db

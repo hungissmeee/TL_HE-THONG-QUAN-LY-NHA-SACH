@@ -1,3 +1,5 @@
+"""Cửa sổ chính, điều hướng giữa các chức năng và áp dụng quyền của nhân viên."""
+
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QLabel, QPushButton,
     QVBoxLayout, QHBoxLayout, QStackedWidget,
@@ -5,13 +7,13 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
-from ui.products import ProductWindow
-from ui.change_password import ChangePasswordDialog
-from ui.employee import EmployeeWindow
-from ui.catalog import CatalogPage
-from ui.shifts import ShiftWindow
-from ui.invoices import InvoiceWindow
-from ui.reports import (
+from giao_dien.san_pham import ProductWindow
+from giao_dien.doi_mat_khau import ChangePasswordDialog
+from giao_dien.nhan_vien import EmployeeWindow
+from giao_dien.danh_muc import CatalogPage
+from giao_dien.ca_lam_viec import ShiftWindow
+from giao_dien.hoa_don import InvoiceWindow
+from giao_dien.bao_cao import (
     OverviewReportPage,
     RevenueReportPage,
     InvoiceReportPage,
@@ -20,12 +22,13 @@ from ui.reports import (
     InventoryReportPage,
     ProductReportPage,
 )
-from ui.reports.report_base import ReportBasePage
-from ui.styles import MAIN_WINDOW_STYLESHEET
-from ui.imports import ImportWindow
-from ui.suppliers import SupplierWindow
+from giao_dien.bao_cao.bao_cao_co_so import ReportBasePage
+from giao_dien.dinh_dang_giao_dien import MAIN_WINDOW_STYLESHEET
+from giao_dien.phieu_nhap import ImportWindow
+from giao_dien.nha_cung_cap import SupplierWindow
 
 class MainWindow(QMainWindow):
+    """Cửa sổ điều hướng chính, quản lý trang và phân quyền hiển thị."""
     """Cửa sổ chính, điều hướng các chức năng theo vai trò nhân viên."""
 
     ROLE_PAGE_ACCESS = {
@@ -59,9 +62,9 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("BookHub - Quản lý nhà sách")
         self.resize(1200, 750)
 
-        self.pages = {}
+        self.danh_sachs = {}
         self.nav_buttons = {}
-        self.page_titles = {}
+        self.danh_sach_titles = {}
 
         # ==================================================
         # CẤU HÌNH NHÓM MENU TẠI ĐÂY
@@ -116,7 +119,7 @@ class MainWindow(QMainWindow):
         ]
 
         self.nav_group_widgets = {}
-        self.page_to_group = {}
+        self.danh_sach_to_group = {}
         self.nav_group_state = {}
 
         # Widget chính
@@ -221,9 +224,9 @@ class MainWindow(QMainWindow):
         content_layout.setSpacing(15)
 
         topbar = QHBoxLayout()
-        self.page_title = QLabel("Tổng quan")
-        self.page_title.setObjectName("pageTitle")
-        topbar.addWidget(self.page_title)
+        self.danh_sach_title = QLabel("Tổng quan")
+        self.danh_sach_title.setObjectName("pageTitle")
+        topbar.addWidget(self.danh_sach_title)
         topbar.addStretch()
         content_layout.addLayout(topbar)
 
@@ -343,7 +346,7 @@ class MainWindow(QMainWindow):
             self.nav_group_state[group_key] = expanded
 
             for page_key in group["pages"]:
-                self.page_to_group[page_key] = group_key
+                self.danh_sach_to_group[page_key] = group_key
 
             header.toggled.connect(
                 lambda checked, key=group_key:
@@ -383,8 +386,8 @@ class MainWindow(QMainWindow):
     # THÊM TRANG VÀO HỆ THỐNG
     # ==================================================
     def add_page(self, key, title, page):
-        self.pages[key] = page
-        self.page_titles[key] = title
+        self.danh_sachs[key] = page
+        self.danh_sach_titles[key] = title
         self.stack.addWidget(page)
 
         button = QPushButton(title)
@@ -394,11 +397,11 @@ class MainWindow(QMainWindow):
             lambda checked=False, k=key: self.show_page(k)
         )
 
-        group_key = self.page_to_group.get(key)
+        group_key = self.danh_sach_to_group.get(key)
         if group_key not in self.nav_group_widgets:
             # Trang chưa được khai báo nhóm sẽ tự đưa vào nhóm Khác.
             group_key = self._ensure_other_group()
-            self.page_to_group[key] = group_key
+            self.danh_sach_to_group[key] = group_key
 
         group_pages = self.nav_group_widgets[group_key]["pages"]
         if key not in group_pages:
@@ -458,20 +461,20 @@ class MainWindow(QMainWindow):
     # CHUYỂN TRANG
     # ==================================================
     def show_page(self, key):
-        if key not in self.pages:
+        if key not in self.danh_sachs:
             return
 
-        self.stack.setCurrentWidget(self.pages[key])
-        self.page_title.setText(self.page_titles[key])
+        self.stack.setCurrentWidget(self.danh_sachs[key])
+        self.danh_sach_title.setText(self.danh_sach_titles[key])
 
         # Tự mở nhóm chứa trang hiện tại nếu nhóm đang thu gọn.
-        group_key = self.page_to_group.get(key)
+        group_key = self.danh_sach_to_group.get(key)
         if group_key in self.nav_group_widgets:
             if not self.nav_group_state.get(group_key, False):
                 self.nav_group_widgets[group_key]["header"].setChecked(True)
                 self.toggle_nav_group(group_key, True)
 
-        self._refresh_page_data(self.pages[key])
+        self._refresh_page_data(self.danh_sachs[key])
 
         for page_key, button in self.nav_buttons.items():
             button.setChecked(page_key == key)
@@ -620,7 +623,7 @@ class MainWindow(QMainWindow):
 
         current_key = next(
             (
-                key for key, page in self.pages.items()
+                key for key, page in self.danh_sachs.items()
                 if page is self.stack.currentWidget()
             ),
             None,

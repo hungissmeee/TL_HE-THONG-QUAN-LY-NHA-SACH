@@ -1,9 +1,9 @@
 """Các màn hình tạo, xem và quản lý phiếu nhập."""
 
-from .create_supplier_dialog import CreateSupplierDialog
-from .create_dialog import CreateImportDialog
-from .detail_dialog import ImportDetailDialog
-from .page import ImportWindow
+from .tao_nha_cung_cap import CreateSupplierDialog
+from .tao_bieu_mau import CreateImportDialog
+from .chi_tiet import ImportDetailDialog
+from .danh_sach import ImportWindow
 
 __all__ = [
     "CreateSupplierDialog",

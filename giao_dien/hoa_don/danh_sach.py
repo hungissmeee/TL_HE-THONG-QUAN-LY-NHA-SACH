@@ -19,18 +19,19 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QDateEdit,
 )
-from ui.table_sort import (
+from giao_dien.sap_xep_bang import (
     SortableTableWidgetItem as QTableWidgetItem,
     prepare_sortable_table,
     pause_table_sorting,
     resume_table_sorting,
 )
-from .common import money, date_text
-from .create_dialog import CreateInvoiceDialog
-from .detail_dialog import InvoiceDetailDialog
+from .dung_chung import money, date_text
+from .tao_bieu_mau import CreateInvoiceDialog
+from .chi_tiet import InvoiceDetailDialog
 
 
 class InvoiceWindow(QWidget):
+    """Trang tìm kiếm, lập, xem và quản lý hóa đơn."""
     """Trang danh sách, lập, xem và in hóa đơn."""
 
     def __init__(self, db):

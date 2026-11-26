@@ -1,13 +1,16 @@
+"""Cửa sổ xác thực tài khoản nhân viên trước khi mở phần mềm."""
+
 from PySide6.QtWidgets import (
     QWidget, QLabel, QLineEdit,
     QPushButton, QVBoxLayout, QMessageBox
 )
 
-from ui.main_window import MainWindow
+from giao_dien.cua_so_chinh import MainWindow
 
 
 class LoginWindow(QWidget):
 
+    """Cửa sổ đăng nhập và xác thực nhân viên."""
     def __init__(self, db):
         super().__init__()
 

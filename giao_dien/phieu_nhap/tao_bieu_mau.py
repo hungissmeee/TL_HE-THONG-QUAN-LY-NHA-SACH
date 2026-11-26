@@ -18,17 +18,18 @@ from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QGroupBox,
 )
-from ui.table_sort import (
+from giao_dien.sap_xep_bang import (
     SortableTableWidgetItem as QTableWidgetItem,
     prepare_sortable_table,
     pause_table_sorting,
     resume_table_sorting,
 )
-from .common import MONEY_QUANT, Decimal, ROUND_HALF_UP, money, as_decimal
-from .create_supplier_dialog import CreateSupplierDialog
+from .dung_chung import MONEY_QUANT, Decimal, ROUND_HALF_UP, money, as_decimal
+from .tao_nha_cung_cap import CreateSupplierDialog
 
 
 class CreateImportDialog(QDialog):
+    """Hộp thoại lập phiếu nhập và quản lý các sản phẩm trong phiếu."""
     """Lập phiếu nhập; đơn giá nhập được nhập theo giá đã gồm VAT."""
 
     def __init__(self, db, parent=None):
