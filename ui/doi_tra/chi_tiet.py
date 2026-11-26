@@ -11,10 +11,11 @@ from .dung_chung import date_text, money
 class ReturnDetailDialog(QDialog):
     """Hiển thị hóa đơn gốc và từng dòng xử lý đổi trả."""
 
-    def __init__(self, db, return_code, parent=None):
+    def __init__(self, db, return_code, parent=None, on_delete=None):
         super().__init__(parent)
         self.db = db
         self.return_code = return_code
+        self.on_delete = on_delete
         self.setWindowTitle(f"Chi tiết phiếu đổi trả {return_code}")
         self.resize(920, 620)
         self.setMinimumSize(780, 520)
@@ -74,6 +75,11 @@ class ReturnDetailDialog(QDialog):
         finally:
             cursor.close()
 
+    def _delete_return(self):
+        """Gọi thao tác xóa từ trang danh sách; đóng chi tiết khi xóa thành công."""
+        if self.on_delete and self.on_delete(self.return_code, self):
+            self.accept()
+
     def _build_ui(self):
         root = QVBoxLayout(self)
         title = QLabel(f"PHIẾU ĐỔI TRẢ - {self.header['mapdt']}")
@@ -129,6 +135,14 @@ class ReturnDetailDialog(QDialog):
 
         buttons = QHBoxLayout()
         buttons.addStretch()
+        if self.on_delete is not None:
+            delete_button = QPushButton("Xóa phiếu")
+            delete_button.setToolTip(
+                "Xóa phiếu này và đảo ngược biến động tồn kho do phiếu tạo ra."
+            )
+            delete_button.clicked.connect(self._delete_return)
+            buttons.addWidget(delete_button)
+
         close_button = QPushButton("Đóng")
         close_button.clicked.connect(self.accept)
         buttons.addWidget(close_button)

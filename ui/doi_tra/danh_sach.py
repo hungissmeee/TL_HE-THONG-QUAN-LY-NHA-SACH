@@ -17,7 +17,7 @@ from .chi_tiet import ReturnDetailDialog
 
 
 class ReturnWindow(QWidget):
-    """Quản lý lịch sử phiếu đổi trả; chỉ vai trò Quản lý được thao tác."""
+    """Quản lý lịch sử phiếu đổi trả; Quản lý và Admin được thao tác."""
 
     def __init__(self, db):
         super().__init__()
@@ -63,15 +63,6 @@ class ReturnWindow(QWidget):
         self.create_button.setVisible(self.can_manage)
         self.create_button.clicked.connect(self.open_create_dialog)
         top.addWidget(self.create_button)
-
-        self.delete_button = QPushButton("Xóa phiếu đã chọn")
-        self.delete_button.setVisible(self.can_manage)
-        self.delete_button.setEnabled(False)
-        self.delete_button.setToolTip(
-            "Xóa phiếu đổi trả đang chọn và đảo ngược biến động tồn kho của phiếu."
-        )
-        self.delete_button.clicked.connect(self.delete_selected_return)
-        top.addWidget(self.delete_button)
 
         refresh_button = QPushButton("Làm mới")
         refresh_button.clicked.connect(self.load_returns)
@@ -132,7 +123,6 @@ class ReturnWindow(QWidget):
         header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
         self.table.cellDoubleClicked.connect(self.open_detail)
-        self.table.itemSelectionChanged.connect(self.update_delete_button)
         root.addWidget(self.table, 1)
 
         self.total_label = QLabel("Tổng số phiếu đổi trả: 0")
@@ -170,11 +160,6 @@ class ReturnWindow(QWidget):
                 actions.append((product_code, quantity, "SUBTRACT"))
 
         return actions
-
-    def update_delete_button(self):
-        """Chỉ bật nút xóa khi người có quyền đã chọn một phiếu."""
-        selected = self.can_manage and self.table.currentRow() >= 0
-        self.delete_button.setEnabled(bool(selected))
 
     def clear_filters(self):
         """Xóa từ khóa và đưa khoảng ngày về 30 ngày gần nhất."""
@@ -250,41 +235,32 @@ class ReturnWindow(QWidget):
                         cell.setData(Qt.ItemDataRole.UserRole, str(row[0]))
                     self.table.setItem(row_index, column, cell)
             self.total_label.setText(f"Tổng số phiếu đổi trả: {len(rows)}")
-            self.update_delete_button()
         except Exception as error:
             QMessageBox.critical(self, "Lỗi tải phiếu đổi trả", str(error))
         finally:
             resume_table_sorting(self.table)
             cursor.close()
 
-    def delete_selected_return(self):
-        """Xóa phiếu đã chọn và đảo biến động tồn kho trong cùng transaction."""
+    def delete_return(self, return_code, parent_dialog=None):
+        """Xóa phiếu được mở trong chi tiết và đảo tồn kho cùng transaction."""
         if not self.can_manage:
             QMessageBox.warning(
                 self, "Không có quyền",
                 "Chỉ Quản lý và Admin được xóa phiếu đổi trả."
             )
-            return
+            return False
 
-        row = self.table.currentRow()
-        if row < 0:
-            QMessageBox.information(
-                self, "Chưa chọn phiếu",
-                "Vui lòng chọn phiếu đổi trả cần xóa."
-            )
-            return
-
-        code_item = self.table.item(row, 0)
-        if code_item is None:
-            return
-        return_code = str(
-            code_item.data(Qt.ItemDataRole.UserRole) or code_item.text()
-        ).strip()
+        return_code = str(return_code or "").strip()
         if not return_code:
-            return
+            QMessageBox.warning(
+                parent_dialog or self, "Thiếu mã phiếu",
+                "Không xác định được mã phiếu đổi trả cần xóa."
+            )
+            return False
 
+        dialog_parent = parent_dialog or self
         answer = QMessageBox.question(
-            self,
+            dialog_parent,
             "Xác nhận xóa phiếu đổi trả",
             (
                 f"Bạn có chắc chắn muốn xóa phiếu {return_code}?\n\n"
@@ -298,14 +274,14 @@ class ReturnWindow(QWidget):
             QMessageBox.StandardButton.No,
         )
         if answer != QMessageBox.StandardButton.Yes:
-            return
+            return False
 
         conn = self.db.get_connection()
         if conn is None:
             QMessageBox.warning(
-                self, "Thông báo", "Chưa có kết nối SQL Server."
+                dialog_parent, "Thông báo", "Chưa có kết nối SQL Server."
             )
-            return
+            return False
 
         cursor = conn.cursor()
         try:
@@ -375,17 +351,19 @@ class ReturnWindow(QWidget):
 
             conn.commit()
             QMessageBox.information(
-                self, "Xóa phiếu thành công",
+                dialog_parent, "Xóa phiếu thành công",
                 f"Đã xóa phiếu {return_code} và đảo biến động tồn kho."
             )
             self.load_returns()
+            return True
         except Exception as error:
             conn.rollback()
             QMessageBox.critical(
-                self, "Không thể xóa phiếu đổi trả",
+                dialog_parent, "Không thể xóa phiếu đổi trả",
                 f"{error}\n\nMọi thay đổi trong giao dịch đã được hoàn tác."
             )
             self.load_returns()
+            return False
         finally:
             cursor.close()
 
@@ -410,6 +388,13 @@ class ReturnWindow(QWidget):
             return
         return_code = str(cell.data(Qt.ItemDataRole.UserRole) or cell.text()).strip()
         try:
-            ReturnDetailDialog(self.db, return_code, self).exec()
+            dialog = ReturnDetailDialog(
+                self.db,
+                return_code,
+                self,
+                on_delete=self.delete_return if self.can_manage else None,
+            )
+            dialog.exec()
+            self.load_returns()
         except Exception as error:
             QMessageBox.critical(self, "Lỗi chi tiết phiếu đổi trả", str(error))
