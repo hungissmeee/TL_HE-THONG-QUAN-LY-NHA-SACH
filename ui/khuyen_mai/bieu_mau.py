@@ -55,12 +55,22 @@ class PromotionFormDialog(QDialog):
         self.start_input = QDateTimeEdit(now)
         self.start_input.setCalendarPopup(True)
         self.start_input.setDisplayFormat("dd/MM/yyyy HH:mm")
-        form.addRow("Thời gian bắt đầu:", self.start_input)
+        self.start_input.setKeyboardTracking(False)
+        form.addRow("Ngày và giờ bắt đầu:", self.start_input)
 
         self.end_input = QDateTimeEdit(now.addDays(30))
         self.end_input.setCalendarPopup(True)
         self.end_input.setDisplayFormat("dd/MM/yyyy HH:mm")
-        form.addRow("Thời gian kết thúc:", self.end_input)
+        self.end_input.setKeyboardTracking(False)
+        form.addRow("Ngày và giờ kết thúc:", self.end_input)
+
+        time_hint = QLabel(
+            "Chọn ngày bằng biểu tượng lịch; chỉnh giờ và phút trực tiếp "
+            "trên ô ngày giờ."
+        )
+        time_hint.setWordWrap(True)
+        time_hint.setStyleSheet("color: #AAB7C8; font-size: 11px;")
+        form.addRow("", time_hint)
 
         root.addLayout(form)
 
