@@ -1,3 +1,5 @@
+"""Các tiện ích sắp xếp dữ liệu trong QTableWidget theo kiểu dữ liệu phù hợp."""
+
 
 import re
 from datetime import datetime
@@ -11,6 +13,7 @@ SORT_ROLE = Qt.ItemDataRole.UserRole + 100
 
 
 class SortableTableWidgetItem(QTableWidgetItem):
+    """Thành phần này phụ trách chức năng SortableTableWidgetItem trong hệ thống."""
     """QTableWidgetItem hỗ trợ sắp xếp số, ngày tháng và văn bản."""
 
     def _sort_key(self):

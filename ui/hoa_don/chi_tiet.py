@@ -26,7 +26,7 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QGroupBox,
 )
-from giao_dien.sap_xep_bang import (
+from ui.sap_xep_bang import (
     SortableTableWidgetItem as QTableWidgetItem,
     prepare_sortable_table,
 )
@@ -34,6 +34,7 @@ from .dung_chung import MONEY_QUANT, Decimal, ROUND_HALF_UP, money, as_decimal, 
 
 
 class InvoiceDetailDialog(QDialog):
+    """Hiển thị thông tin, chi tiết sản phẩm và nội dung in của hóa đơn."""
     """Hộp thoại xem và in chi tiết hóa đơn."""
     def __init__(self, db, invoice_code, parent=None):
         super().__init__(parent)

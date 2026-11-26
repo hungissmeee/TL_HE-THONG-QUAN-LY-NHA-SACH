@@ -11,8 +11,8 @@ from PySide6.QtWidgets import (
 )
 
 from PySide6.QtCore import Qt
-from giao_dien.tai_khoan import EmployeePermissionDialog
-from giao_dien.sap_xep_bang import (
+from ui.tai_khoan import EmployeePermissionDialog
+from ui.sap_xep_bang import (
     SortableTableWidgetItem as QTableWidgetItem,
     prepare_sortable_table,
     pause_table_sorting,
@@ -21,6 +21,7 @@ from giao_dien.sap_xep_bang import (
 
 class EmployeeWindow(QWidget):
 
+    """Trang tìm kiếm, xem và quản lý hồ sơ nhân viên; chỉ admin được tạo tài khoản."""
     """Trang hiển thị, tìm kiếm và quản lý hồ sơ nhân viên."""
     def __init__(self, db):
         super().__init__()

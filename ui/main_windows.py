@@ -7,13 +7,13 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
-from giao_dien.san_pham import ProductWindow
-from giao_dien.doi_mat_khau import ChangePasswordDialog
-from giao_dien.nhan_vien import EmployeeWindow
-from giao_dien.danh_muc import CatalogPage
-from giao_dien.ca_lam_viec import ShiftWindow
-from giao_dien.hoa_don import InvoiceWindow
-from giao_dien.bao_cao import (
+from ui.san_pham import ProductWindow
+from ui.doi_mat_khau import ChangePasswordDialog
+from ui.nhan_vien import EmployeeWindow
+from ui.danh_muc import CatalogPage
+from ui.ca_lam_viec import ShiftWindow
+from ui.hoa_don import InvoiceWindow
+from ui.bao_cao import (
     OverviewReportPage,
     RevenueReportPage,
     InvoiceReportPage,
@@ -22,12 +22,13 @@ from giao_dien.bao_cao import (
     InventoryReportPage,
     ProductReportPage,
 )
-from giao_dien.bao_cao.bao_cao_co_so import ReportBasePage
-from giao_dien.dinh_dang_giao_dien import MAIN_WINDOW_STYLESHEET
-from giao_dien.phieu_nhap import ImportWindow
-from giao_dien.nha_cung_cap import SupplierWindow
+from ui.bao_cao.bao_cao_co_so import ReportBasePage
+from ui.dinh_dang_ui import MAIN_WINDOW_STYLESHEET
+from ui.phieu_nhap import ImportWindow
+from ui.nha_cung_cap import SupplierWindow
 
 class MainWindow(QMainWindow):
+    """Cửa sổ chính quản lý điều hướng, nhóm menu và quyền hiển thị chức năng."""
     """Cửa sổ điều hướng chính, quản lý trang và phân quyền hiển thị."""
     """Cửa sổ chính, điều hướng các chức năng theo vai trò nhân viên."""
 
