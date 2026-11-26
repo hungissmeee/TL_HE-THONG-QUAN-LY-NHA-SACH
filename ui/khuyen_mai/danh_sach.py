@@ -351,8 +351,6 @@ class PromotionWindow(QWidget):
             resume_table_sorting(self.table)
             if cursor is not None:
                 cursor.close()
-        self.update_action_buttons()
-
     def clear_search(self):
         self.search_input.clear()
         self.load_promotions()
@@ -481,7 +479,7 @@ class PromotionWindow(QWidget):
             self,
             "Xác nhận xóa khuyến mãi",
             f"Bạn có chắc muốn ngừng áp dụng chương trình {code}"
-            f"{' - ' + name if name else ''}?\\n\\n"
+            f"{' - ' + name if name else ''}?\n\n"
             "Chương trình sẽ được đánh dấu IS_DELETED = 1. "
             "Hóa đơn cũ và dữ liệu tính tiền hoàn vẫn được giữ nguyên.",
             QMessageBox.StandardButton.Yes
@@ -527,6 +525,4 @@ class PromotionWindow(QWidget):
             )
         finally:
             if cursor is not None:
-                cursor.close()
-
                 cursor.close()
