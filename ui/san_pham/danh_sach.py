@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
 )
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
+    create_table_action_panel,
     prepare_sortable_table,
     pause_table_sorting,
     resume_table_sorting,
@@ -96,26 +97,44 @@ class ProductWindow(QWidget):
         self.table.setAlternatingRowColors(True)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        self.table.cellClicked.connect(self.open_product_detail)
+        self.table.cellDoubleClicked.connect(self.open_product_detail)
+        self.table.itemSelectionChanged.connect(self.update_selection_actions)
         root.addWidget(self.table)
 
-        bottom = QHBoxLayout()
         self.total_label = QLabel("Tổng số sản phẩm: 0")
-        hint = QLabel("Nhấn vào sản phẩm để xem chi tiết và chỉnh sửa.")
-        hint.setStyleSheet("color: #AAB7C8; font-size: 11px;")
+        root.addWidget(self.total_label)
+
+        # Một lần nhấn chỉ chọn dòng; double-click mới mở chi tiết.
+        self.action_panel, action_layout, self.action_hint = create_table_action_panel(
+            "Chọn sản phẩm để xem chi tiết hoặc chỉnh sửa. Double-click để mở chi tiết nhanh.",
+            self,
+        )
+        self.detail_button = QPushButton("Xem chi tiết")
+        self.detail_button.setEnabled(False)
+        self.detail_button.clicked.connect(self.open_selected_product_detail)
+        action_layout.addWidget(self.detail_button)
 
         self.edit_button = QPushButton("Chỉnh sửa")
+        self.edit_button.setEnabled(False)
         self.edit_button.clicked.connect(self.open_edit_selected_product)
+        action_layout.addWidget(self.edit_button)
+        root.addWidget(self.action_panel)
 
-        self.detail_button = QPushButton("Xem chi tiết")
-        self.detail_button.clicked.connect(self.open_selected_product_detail)
-
-        bottom.addWidget(self.total_label)
-        bottom.addStretch()
-        bottom.addWidget(hint)
-        bottom.addWidget(self.detail_button)
-        bottom.addWidget(self.edit_button)
-        root.addLayout(bottom)
+    def update_selection_actions(self):
+        """Bật các thao tác sản phẩm theo dòng đang chọn và quyền hiện tại."""
+        selected = self.table.currentRow() >= 0
+        self.detail_button.setEnabled(selected)
+        self.edit_button.setEnabled(selected and self.can_edit_products)
+        if selected:
+            item = self.table.item(self.table.currentRow(), 0)
+            self.action_hint.setText(
+                f"Đang chọn sản phẩm {item.text()}." if item else
+                "Chọn sản phẩm để xem chi tiết hoặc chỉnh sửa."
+            )
+        else:
+            self.action_hint.setText(
+                "Chọn sản phẩm để xem chi tiết hoặc chỉnh sửa. Double-click để mở chi tiết nhanh."
+            )
 
     def update_permissions(self):
         """Kiểm tra quyền thực tế cho các bảng liên quan."""
@@ -159,6 +178,7 @@ class ProductWindow(QWidget):
         finally:
             if cursor is not None:
                 cursor.close()
+            self.update_selection_actions()
 
     def load_products(self):
         """Tải danh sách sản phẩm theo từ khóa tìm kiếm."""

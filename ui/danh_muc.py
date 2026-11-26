@@ -10,6 +10,7 @@ from PySide6.QtCore import Qt
 
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
+    create_table_action_panel,
     prepare_sortable_table,
     pause_table_sorting,
     resume_table_sorting
@@ -145,31 +146,12 @@ class CatalogPage(QWidget):
         self.clear_button = QPushButton("Xóa nội dung")
         self.clear_button.clicked.connect(self.clear_form)
 
-        self.edit_button = QPushButton("Chỉnh sửa mục đã chọn")
-        self.edit_button.setEnabled(False)
-        self.edit_button.clicked.connect(self.start_edit_selected_record)
-
-        self.delete_button = QPushButton("Xóa mục đã chọn")
-        self.delete_button.setEnabled(False)
-        self.delete_button.clicked.connect(self.delete_selected_record)
-        self.delete_button.setStyleSheet("""
-            QPushButton:enabled {
-                background-color: #A83232;
-                color: white;
-            }
-            QPushButton:disabled {
-                color: #888888;
-            }
-        """)
-
         self.refresh_button = QPushButton("Làm mới danh sách")
         self.refresh_button.clicked.connect(self.load_data)
 
         button_layout.addWidget(self.add_button)
         button_layout.addWidget(self.clear_button)
         button_layout.addStretch()
-        button_layout.addWidget(self.edit_button)
-        button_layout.addWidget(self.delete_button)
         button_layout.addWidget(self.refresh_button)
 
         layout.addLayout(form)
@@ -209,6 +191,9 @@ class CatalogPage(QWidget):
         self.table.itemSelectionChanged.connect(
             self.update_selection_button_state
         )
+        self.table.cellDoubleClicked.connect(
+            lambda *_: self.start_edit_selected_record()
+        )
 
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
@@ -221,6 +206,24 @@ class CatalogPage(QWidget):
 
         self.total_label = QLabel("Tổng số: 0")
         layout.addWidget(self.total_label)
+
+        self.edit_button = QPushButton("Chỉnh sửa mục đã chọn")
+        self.edit_button.setEnabled(False)
+        self.edit_button.clicked.connect(self.start_edit_selected_record)
+        self.delete_button = QPushButton("Xóa mục đã chọn")
+        self.delete_button.setEnabled(False)
+        self.delete_button.clicked.connect(self.delete_selected_record)
+        self.delete_button.setStyleSheet("""
+            QPushButton:enabled { background-color: #A83232; color: white; }
+            QPushButton:disabled { color: #888888; }
+        """)
+        self.action_panel, action_layout, self.action_hint = create_table_action_panel(
+            "Chọn một dòng để chỉnh sửa hoặc xóa mềm. Double-click để bắt đầu chỉnh sửa.",
+            self,
+        )
+        action_layout.addWidget(self.edit_button)
+        action_layout.addWidget(self.delete_button)
+        layout.addWidget(self.action_panel)
 
     def _next_code(self, cursor, lock_table=False):
         """Sinh mã kế tiếp; tính cả bản ghi đã xóa mềm.
@@ -553,6 +556,16 @@ class CatalogPage(QWidget):
         not_editing = self.editing_record_id is None
         self.edit_button.setEnabled(has_selection and not_editing)
         self.delete_button.setEnabled(has_selection and not_editing)
+        if has_selection:
+            item = self.table.item(self.table.currentRow(), 0)
+            self.action_hint.setText(
+                f"Đang chọn {item.text()}." if item else
+                "Chọn một dòng để chỉnh sửa hoặc xóa mềm."
+            )
+        else:
+            self.action_hint.setText(
+                "Chọn một dòng để chỉnh sửa hoặc xóa mềm. Double-click để bắt đầu chỉnh sửa."
+            )
 
     def delete_selected_record(self):
         """Xóa mềm bản ghi đang chọn bằng cách đặt IS_DELETED = 1."""

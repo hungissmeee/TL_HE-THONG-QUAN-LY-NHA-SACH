@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 )
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
+    create_table_action_panel,
     prepare_sortable_table,
     pause_table_sorting,
     resume_table_sorting,
@@ -148,13 +149,18 @@ class InvoiceWindow(QWidget):
         self.table.itemSelectionChanged.connect(self.update_action_buttons)
         root.addWidget(self.table, 1)
 
-        bottom = QHBoxLayout()
         self.total_label = QLabel("Tổng số hóa đơn: 0")
-        bottom.addWidget(self.total_label)
-        bottom.addStretch()
-        detail_button = QPushButton("Xem chi tiết / In hóa đơn")
-        detail_button.clicked.connect(self.open_selected_invoice)
-        bottom.addWidget(detail_button)
+        root.addWidget(self.total_label)
+
+        # Các thao tác theo hóa đơn được gom ngay dưới bảng.
+        self.action_panel, action_layout, self.action_hint = create_table_action_panel(
+            "Chọn một hóa đơn để xem chi tiết, in hoặc hủy hóa đơn.",
+            self,
+        )
+        self.detail_button = QPushButton("Xem chi tiết / In hóa đơn")
+        self.detail_button.setEnabled(False)
+        self.detail_button.clicked.connect(self.open_selected_invoice)
+        action_layout.addWidget(self.detail_button)
 
         self.cancel_button = QPushButton("Hủy hóa đơn")
         self.cancel_button.setVisible(self.can_cancel)
@@ -169,8 +175,8 @@ class InvoiceWindow(QWidget):
             }
         """)
         self.cancel_button.clicked.connect(self.cancel_selected_invoice)
-        bottom.addWidget(self.cancel_button)
-        root.addLayout(bottom)
+        action_layout.addWidget(self.cancel_button)
+        root.addWidget(self.action_panel)
 
     def clear_search(self):
         """Xóa từ khóa và đặt lại khoảng ngày mặc định như trang Phiếu nhập."""
@@ -288,7 +294,16 @@ class InvoiceWindow(QWidget):
             cursor.close()
 
     def update_action_buttons(self):
-        """Bật nút hủy theo vai trò, chủ hóa đơn và giới hạn 5 phút của Thu ngân."""
+        """Cập nhật nút theo hóa đơn đang chọn, vai trò và giới hạn hủy 5 phút."""
+        row = self.table.currentRow()
+        has_selection = row >= 0 and self.table.item(row, 0) is not None
+        self.detail_button.setEnabled(has_selection)
+        self.action_hint.setText(
+            f"Đang chọn hóa đơn {self.table.item(row, 0).text()}."
+            if has_selection else
+            "Chọn một hóa đơn để xem chi tiết, in hoặc hủy hóa đơn."
+        )
+
         if not self.can_cancel:
             self.cancel_button.setEnabled(False)
             return

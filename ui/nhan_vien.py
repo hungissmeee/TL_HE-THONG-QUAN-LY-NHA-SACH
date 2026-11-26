@@ -14,6 +14,7 @@ from PySide6.QtCore import Qt
 from ui.tai_khoan import EmployeePermissionDialog
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
+    create_table_action_panel,
     prepare_sortable_table,
     pause_table_sorting,
     resume_table_sorting,
@@ -133,9 +134,12 @@ class EmployeeWindow(QWidget):
             QAbstractItemView.SelectionMode.SingleSelection
         )
 
-        # Kết nối sự kiện nhấn vào ô; hàm xử lý bên dưới sẽ kiểm tra quyền Admin.
-        self.table.cellClicked.connect(
+        # Một lần nhấn chỉ chọn dòng; double-click mới mở hộp thoại quản lý quyền.
+        self.table.cellDoubleClicked.connect(
             self.open_employee_permissions
+        )
+        self.table.itemSelectionChanged.connect(
+            self.update_employee_action
         )
 
         self.table.setAlternatingRowColors(True)
@@ -154,8 +158,20 @@ class EmployeeWindow(QWidget):
 
         # Tổng số nhân viên
         self.total_label = QLabel("Tổng số nhân viên: 0")
-
         layout.addWidget(self.total_label)
+
+        self.permissions_button = QPushButton("Quản lý tài khoản")
+        self.permissions_button.setVisible(self.is_admin)
+        self.permissions_button.setEnabled(False)
+        self.permissions_button.clicked.connect(
+            lambda: self.open_employee_permissions()
+        )
+        self.action_panel, action_layout, self.action_hint = create_table_action_panel(
+            "Chọn nhân viên để quản lý tài khoản; double-click cũng mở cửa sổ quyền.",
+            page,
+        )
+        action_layout.addWidget(self.permissions_button)
+        layout.addWidget(self.action_panel)
 
         return page
 
@@ -513,10 +529,24 @@ class EmployeeWindow(QWidget):
         self.confirm_password.clear()
         self.refresh_employee_code()
 
-    def open_employee_permissions(self, row, column):
-        """Mở hộp thoại quản lý quyền của nhân viên đang được chọn, chỉ dành cho admin."""
+    def update_employee_action(self):
+        """Bật nút quản lý tài khoản khi admin chọn một nhân viên."""
+        row = self.table.currentRow()
+        selected = row >= 0 and self.table.item(row, 0) is not None
+        self.permissions_button.setEnabled(self.is_admin and selected)
+        self.action_hint.setText(
+            f"Đang chọn nhân viên {self.table.item(row, 0).text()}."
+            if selected else
+            "Chọn nhân viên để quản lý tài khoản; double-click cũng mở cửa sổ quyền."
+        )
 
-        print("Đã nhấn vào nhân viên!")
+    def open_employee_permissions(self, row=None, column=None):
+        """Mở hộp thoại quản lý quyền của nhân viên đang chọn; chỉ admin được phép."""
+
+        if row is None:
+            row = self.table.currentRow()
+        if row < 0:
+            return
 
         if not self.is_admin:
             QMessageBox.warning(
@@ -554,4 +584,3 @@ class EmployeeWindow(QWidget):
                 str(e)
             )
 
-            print("Lỗi:", e)

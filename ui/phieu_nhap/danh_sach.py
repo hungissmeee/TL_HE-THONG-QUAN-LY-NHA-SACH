@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 )
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
+    create_table_action_panel,
     prepare_sortable_table,
     pause_table_sorting,
     resume_table_sorting,
@@ -139,13 +140,19 @@ class ImportWindow(QWidget):
         self.table.itemSelectionChanged.connect(self.update_action_buttons)
         root.addWidget(self.table, 1)
 
-        bottom = QHBoxLayout()
         self.total_label = QLabel("Tổng số phiếu nhập: 0")
-        bottom.addWidget(self.total_label)
-        bottom.addStretch()
-        detail_button = QPushButton("Xem chi tiết / In phiếu")
-        detail_button.clicked.connect(self.open_selected_import)
-        bottom.addWidget(detail_button)
+        root.addWidget(self.total_label)
+
+        # Các thao tác theo phiếu được gom ngay dưới bảng.
+        self.action_panel, action_layout, self.action_hint = create_table_action_panel(
+            "Chọn một phiếu nhập để xem chi tiết, in hoặc hủy phiếu.",
+            self,
+        )
+        self.detail_button = QPushButton("Xem chi tiết / In phiếu")
+        self.detail_button.setEnabled(False)
+        self.detail_button.clicked.connect(self.open_selected_import)
+        action_layout.addWidget(self.detail_button)
+
         self.cancel_button = QPushButton("Hủy phiếu nhập")
         self.cancel_button.setVisible(self.can_cancel)
         self.cancel_button.setEnabled(False)
@@ -154,8 +161,8 @@ class ImportWindow(QWidget):
             QPushButton:disabled { color: #888888; }
         """)
         self.cancel_button.clicked.connect(self.cancel_selected_import)
-        bottom.addWidget(self.cancel_button)
-        root.addLayout(bottom)
+        action_layout.addWidget(self.cancel_button)
+        root.addWidget(self.action_panel)
 
     def clear_filters(self):
         """Xóa các điều kiện lọc và tải lại danh sách phiếu nhập."""
@@ -232,7 +239,16 @@ class ImportWindow(QWidget):
             cursor.close()
 
     def update_action_buttons(self):
-        """Điều chỉnh nút thao tác theo vai trò và trạng thái phiếu nhập."""
+        """Cập nhật thao tác theo dòng chọn, quyền và trạng thái phiếu nhập."""
+        row = self.table.currentRow()
+        has_selection = row >= 0 and self.table.item(row, 0) is not None
+        self.detail_button.setEnabled(has_selection)
+        self.action_hint.setText(
+            f"Đang chọn phiếu {self.table.item(row, 0).text()}."
+            if has_selection else
+            "Chọn một phiếu nhập để xem chi tiết, in hoặc hủy phiếu."
+        )
+
         if not self.can_cancel:
             self.cancel_button.setEnabled(False)
             return

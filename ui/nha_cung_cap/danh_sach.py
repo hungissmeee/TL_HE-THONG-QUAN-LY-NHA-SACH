@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 )
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
+    create_table_action_panel,
     prepare_sortable_table,
     pause_table_sorting,
     resume_table_sorting,
@@ -83,21 +84,21 @@ class SupplierWindow(QWidget):
         actions = QHBoxLayout()
         self.add_button = QPushButton("+ Thêm nhà cung cấp")
         self.add_button.clicked.connect(self.add_supplier)
+        actions.addWidget(self.add_button)
+        actions.addStretch()
+        root.addLayout(actions)
+
         self.edit_button = QPushButton("Chỉnh sửa")
         self.edit_button.clicked.connect(self.edit_supplier)
         self.detail_button = QPushButton("Xem chi tiết")
         self.detail_button.clicked.connect(self.view_supplier)
         self.deactivate_button = QPushButton("Ngừng hoạt động")
-        self.deactivate_button.setStyleSheet("QPushButton:enabled { background-color: #A83232; color: white; }")
+        self.deactivate_button.setStyleSheet(
+            "QPushButton:enabled { background-color: #A83232; color: white; }"
+        )
         self.deactivate_button.clicked.connect(self.deactivate_supplier)
         self.restore_button = QPushButton("Kích hoạt lại")
         self.restore_button.clicked.connect(self.restore_supplier)
-
-        for button in (self.add_button, self.edit_button, self.detail_button,
-                       self.deactivate_button, self.restore_button):
-            actions.addWidget(button)
-        actions.addStretch()
-        root.addLayout(actions)
 
         search = QHBoxLayout()
         self.search_input = QLineEdit()
@@ -139,6 +140,17 @@ class SupplierWindow(QWidget):
 
         self.total_label = QLabel("Tổng số: 0")
         root.addWidget(self.total_label)
+
+        self.action_panel, action_layout, self.action_hint = create_table_action_panel(
+            "Chọn nhà cung cấp để xem thông tin, chỉnh sửa hoặc thay đổi trạng thái.",
+            self,
+        )
+        for button in (
+            self.detail_button, self.edit_button,
+            self.deactivate_button, self.restore_button,
+        ):
+            action_layout.addWidget(button)
+        root.addWidget(self.action_panel)
 
         if not self.can_manage:
             for button in (self.add_button, self.edit_button,
@@ -223,6 +235,15 @@ class SupplierWindow(QWidget):
         selected = self._selected_supplier() is not None
         inactive = self._selected_is_inactive() if selected else False
         self.detail_button.setEnabled(selected)
+        if selected:
+            self.action_hint.setText(
+                f"Đang chọn nhà cung cấp {self._selected_supplier()} "
+                f"({'ngừng hoạt động' if inactive else 'đang hoạt động'})."
+            )
+        else:
+            self.action_hint.setText(
+                "Chọn nhà cung cấp để xem thông tin, chỉnh sửa hoặc thay đổi trạng thái."
+            )
         self.edit_button.setEnabled(selected and not inactive and self.can_manage)
         self.deactivate_button.setEnabled(selected and not inactive and self.can_manage)
         self.restore_button.setEnabled(selected and inactive and self.can_manage)

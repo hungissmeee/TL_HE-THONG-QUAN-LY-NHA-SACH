@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
 )
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
+    create_table_action_panel,
     prepare_sortable_table,
     pause_table_sorting,
     resume_table_sorting,
@@ -221,16 +222,35 @@ class ShiftWindow(QWidget):
 
         self.employee_shift_table = self._make_table(
             ["Mã ca", "Ca", "Ngày làm", "Giờ mở", "Giờ đóng",
-             "Số nhân viên", "Trạng thái ca", "Đăng ký", "Tiền cuối ca",
-             "Đăng ký ca", "Ghi tiền cuối ca"],
+             "Số nhân viên", "Trạng thái ca", "Đăng ký", "Tiền cuối ca"],
             stretch_column=6,
             default_sort_column=2,
             default_sort_order=Qt.SortOrder.DescendingOrder
+        )
+        self.employee_shift_table.itemSelectionChanged.connect(
+            self.update_employee_shift_actions
         )
         root.addWidget(self.employee_shift_table)
 
         self.employee_total_label = QLabel("Số ca: 0")
         root.addWidget(self.employee_total_label)
+
+        self.shift_action_panel, shift_action_layout, self.shift_action_hint = (
+            create_table_action_panel(
+                "Chọn một ca để đăng ký hoặc ghi tiền cuối ca nếu bạn có quyền.",
+                self,
+            )
+        )
+        self.register_shift_button = QPushButton("Đăng ký ca")
+        self.register_shift_button.setEnabled(False)
+        self.register_shift_button.clicked.connect(self.register_selected_shift)
+        shift_action_layout.addWidget(self.register_shift_button)
+
+        self.closing_cash_button = QPushButton("Ghi tiền cuối ca")
+        self.closing_cash_button.setEnabled(False)
+        self.closing_cash_button.clicked.connect(self.record_selected_closing_cash)
+        shift_action_layout.addWidget(self.closing_cash_button)
+        root.addWidget(self.shift_action_panel)
 
     def refresh_employee_view(self):
         """Làm mới danh sách ca có thể đăng ký của nhân viên."""
@@ -336,47 +356,12 @@ class ShiftWindow(QWidget):
                 for col, value in enumerate(values):
                     self._set_item(self.employee_shift_table, row_index, col, value)
 
-                # Chỉ ca đang diễn ra mới có thể đăng ký.
-                if is_ended:
-                    register_text = "Ca đã kết thúc"
-                    register_enabled = False
-                elif registered:
-                    register_text = "Đã đăng ký"
-                    register_enabled = False
-                elif closing_cash is not None:
-                    register_text = "Ca đã chốt"
-                    register_enabled = False
-                else:
-                    register_text = "Đăng ký ca hiện tại"
-                    register_enabled = True
-
-                register_button = QPushButton(register_text)
-                register_button.setEnabled(register_enabled)
-                register_button.clicked.connect(
-                    lambda checked=False, shift_id=maca: self._register_current_shift(shift_id)
-                )
-                self.employee_shift_table.setCellWidget(row_index, 9, register_button)
-
-                # Tiền cuối ca: chỉ kế toán, chỉ sau khi ca kết thúc, một lần duy nhất.
-                if closing_cash is not None:
-                    cash_text = "Đã ghi tiền cuối ca"
-                    cash_enabled = False
-                elif not self.is_accountant:
-                    cash_text = "Kế toán ghi tiền"
-                    cash_enabled = False
-                elif not is_ended:
-                    cash_text = "Chờ ca kết thúc"
-                    cash_enabled = False
-                else:
-                    cash_text = "Ghi tiền cuối ca"
-                    cash_enabled = True
-
-                cash_button = QPushButton(cash_text)
-                cash_button.setEnabled(cash_enabled)
-                cash_button.clicked.connect(
-                    lambda checked=False, shift_id=maca: self._record_closing_cash(shift_id)
-                )
-                self.employee_shift_table.setCellWidget(row_index, 10, cash_button)
+                # Lưu trạng thái theo dòng để thanh thao tác không cần truy vấn lại.
+                first_item = self.employee_shift_table.item(row_index, 0)
+                first_item.setData(Qt.ItemDataRole.UserRole, maca)
+                first_item.setData(Qt.ItemDataRole.UserRole + 1, registered)
+                first_item.setData(Qt.ItemDataRole.UserRole + 2, closing_cash is not None)
+                first_item.setData(Qt.ItemDataRole.UserRole + 3, is_ended)
 
             if rows:
                 if self.is_accountant:
@@ -399,6 +384,66 @@ class ShiftWindow(QWidget):
         finally:
             resume_table_sorting(self.employee_shift_table)
             cursor.close()
+
+    def update_employee_shift_actions(self):
+        """Cập nhật nút đăng ký và chốt tiền theo ca đang được chọn."""
+        row = self.employee_shift_table.currentRow()
+        item = self.employee_shift_table.item(row, 0) if row >= 0 else None
+        if item is None:
+            self.register_shift_button.setEnabled(False)
+            self.closing_cash_button.setEnabled(False)
+            self.shift_action_hint.setText(
+                "Chọn một ca để đăng ký hoặc ghi tiền cuối ca nếu bạn có quyền."
+            )
+            return
+
+        shift_id = int(item.data(Qt.ItemDataRole.UserRole))
+        is_registered = bool(item.data(Qt.ItemDataRole.UserRole + 1))
+        has_closing_cash = bool(item.data(Qt.ItemDataRole.UserRole + 2))
+        is_ended = bool(item.data(Qt.ItemDataRole.UserRole + 3))
+
+        if is_ended:
+            register_text = "Ca đã kết thúc"
+        elif is_registered:
+            register_text = "Đã đăng ký"
+        elif has_closing_cash:
+            register_text = "Ca đã chốt"
+        else:
+            register_text = "Đăng ký ca hiện tại"
+        self.register_shift_button.setText(register_text)
+        self.register_shift_button.setEnabled(
+            not is_ended and not is_registered and not has_closing_cash
+        )
+
+        if has_closing_cash:
+            cash_text = "Đã ghi tiền cuối ca"
+        elif not self.is_accountant:
+            cash_text = "Kế toán ghi tiền"
+        elif not is_ended:
+            cash_text = "Chờ ca kết thúc"
+        else:
+            cash_text = "Ghi tiền cuối ca"
+        self.closing_cash_button.setText(cash_text)
+        self.closing_cash_button.setEnabled(
+            self.is_accountant and is_ended and not has_closing_cash
+        )
+        self.shift_action_hint.setText(
+            f"Đang chọn ca {shift_id}. Các thao tác bên phải sẽ áp dụng cho ca này."
+        )
+
+    def register_selected_shift(self):
+        """Đăng ký ca đang chọn; điều kiện nghiệp vụ vẫn được kiểm tra ở SQL Server."""
+        row = self.employee_shift_table.currentRow()
+        item = self.employee_shift_table.item(row, 0) if row >= 0 else None
+        if item is not None:
+            self._register_current_shift(int(item.data(Qt.ItemDataRole.UserRole)))
+
+    def record_selected_closing_cash(self):
+        """Ghi tiền cuối ca cho ca đang chọn."""
+        row = self.employee_shift_table.currentRow()
+        item = self.employee_shift_table.item(row, 0) if row >= 0 else None
+        if item is not None:
+            self._record_closing_cash(int(item.data(Qt.ItemDataRole.UserRole)))
 
     def _register_current_shift(self, maca):
         """Đăng ký nhân viên vào ca đang diễn ra sau khi kiểm tra điều kiện."""
