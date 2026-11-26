@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 
 
 class SupplierFormDialog(QDialog):
+    """Thu thập và kiểm tra thông tin trước khi lưu nhà cung cấp."""
     """Form thêm mới hoặc chỉnh sửa nhà cung cấp."""
 
     def __init__(self, db, parent=None, supplier=None):

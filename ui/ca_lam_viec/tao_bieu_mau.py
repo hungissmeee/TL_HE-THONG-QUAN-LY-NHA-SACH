@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 
 
 class ShiftCreateDialog(QDialog):
+    """Thu thập ngày làm và khung giờ để tạo ca làm việc."""
     """Tạo một trong ba ca cố định mỗi ngày, trong khung 07:00–22:00."""
 
     SHIFT_SCHEDULE = {

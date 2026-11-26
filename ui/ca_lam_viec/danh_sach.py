@@ -33,6 +33,7 @@ from .create_dialog import ShiftCreateDialog
 
 
 class ShiftWindow(QWidget):
+    """Quản lý lịch ca, đăng ký nhân viên, theo dõi trạng thái và chốt tiền cuối ca."""
     """Trang ca làm việc dùng trực tiếp CA_LAM_VIEC, LAMCA, NHAN_VIEN.
 
     Nhân viên thông thường:
