@@ -34,3 +34,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# Keep this smoke test independent of database connectivity.
