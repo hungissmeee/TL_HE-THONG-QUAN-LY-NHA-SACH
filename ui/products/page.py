@@ -1,14 +1,17 @@
 """ProductWindow: thành phần giao diện quản lý sản phẩm."""
 
-from decimal import Decimal, InvalidOperation
-from PySide6.QtCore import Qt, QDate
-from PySide6.QtGui import QDoubleValidator, QIntValidator
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QWidget, QDialog, QLabel, QLineEdit, QPushButton, QComboBox,
-    QVBoxLayout, QHBoxLayout, QFormLayout, QTableWidget,
-    QHeaderView, QAbstractItemView, QMessageBox, QSpinBox, QStackedWidget,
-    QDoubleSpinBox, QGroupBox, QDateEdit, QCheckBox,
-    QListWidget, QListWidgetItem, QCompleter, QFrame,
+    QWidget,
+    QLabel,
+    QPushButton,
+    QLineEdit,
+    QVBoxLayout,
+    QHBoxLayout,
+    QTableWidget,
+    QHeaderView,
+    QMessageBox,
+    QAbstractItemView,
 )
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
@@ -423,5 +426,6 @@ class ProductWindow(QWidget):
             QMessageBox.critical(
                 self, "Lỗi mở chỉnh sửa sản phẩm", str(e)
             )
+
 
 
