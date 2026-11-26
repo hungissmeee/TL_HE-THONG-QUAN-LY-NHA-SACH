@@ -1,22 +1,16 @@
 """CreateSupplierDialog: thành phần giao diện nghiệp vụ phiếu nhập."""
 
-from PySide6.QtCore import Qt, QDate, QSizeF, QMarginsF, QTimer
-from PySide6.QtGui import QTextDocument, QPageSize, QPageLayout
-from PySide6.QtPrintSupport import QPrinter, QPrintDialog
 from PySide6.QtWidgets import (
-    QWidget, QDialog, QLabel, QPushButton, QLineEdit, QComboBox,
-    QVBoxLayout, QHBoxLayout, QFormLayout, QTableWidget, QHeaderView,
-    QAbstractItemView, QMessageBox, QSpinBox, QDoubleSpinBox,
-    QGroupBox, QDateEdit,
+    QDialog,
+    QLabel,
+    QPushButton,
+    QLineEdit,
+    QVBoxLayout,
+    QHBoxLayout,
+    QFormLayout,
+    QMessageBox,
+    QGroupBox,
 )
-from ui.table_sort import (
-    SortableTableWidgetItem as QTableWidgetItem,
-    prepare_sortable_table,
-    pause_table_sorting,
-    resume_table_sorting,
-)
-
-
 
 class CreateSupplierDialog(QDialog):
     """Thêm nhanh nhà cung cấp để có thể lập phiếu nhập."""
@@ -106,5 +100,6 @@ class CreateSupplierDialog(QDialog):
             QMessageBox.critical(self, "Không thể thêm nhà cung cấp", str(error))
         finally:
             cursor.close()
+
 
 
