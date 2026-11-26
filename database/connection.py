@@ -19,6 +19,7 @@ class Database:
 
     """Quản lý kết nối SQL Server và các thao tác tài khoản, vai trò nhân viên."""
     def __init__(self):
+        """Khởi tạo trạng thái kết nối và cấu hình SQL Server của ứng dụng."""
         self.conn = None
         self.username = None
 
@@ -27,6 +28,7 @@ class Database:
         self.driver = "ODBC Driver 18 for SQL Server"
 
     def _connection_string(self, username, password):
+        """Tạo chuỗi kết nối SQL Server từ tên tài khoản và mật khẩu đã nhập."""
 
         return (
             f"DRIVER={{{self.driver}}};"
@@ -39,6 +41,7 @@ class Database:
         )
 
     def connect(self, username, password):
+        """Mở kết nối SQL Server bằng thông tin đăng nhập của nhân viên."""
 
         self.close()
 
@@ -52,9 +55,11 @@ class Database:
         return self.conn
 
     def get_connection(self):
+        """Trả về kết nối hiện tại để các màn hình thực hiện truy vấn."""
         return self.conn
 
     def change_password(self, old_password, new_password):
+        """Xác thực mật khẩu cũ và yêu cầu SQL Server đổi sang mật khẩu mới."""
 
         if not self.username:
             raise Exception("Chưa xác định tài khoản đăng nhập!")
@@ -97,6 +102,7 @@ class Database:
     ROLE_DISPLAY_MAP = _ROLE_DISPLAY_MAP
 
     def _check_admin(self):
+        """Đảm bảo thao tác quản trị tài khoản chỉ được thực hiện bởi admin đang kết nối."""
 
         if (self.username or "").lower() != "admin":
             raise PermissionError(
@@ -107,6 +113,7 @@ class Database:
             raise Exception("Chưa kết nối database!")
 
     def _quote_login(self, manv):
+        """Thoát ký tự đặc biệt trong tên Login để tạo SQL identifier hợp lệ."""
 
         return "[" + manv.replace("]", "]]") + "]"
 
@@ -117,6 +124,7 @@ class Database:
     def create_account(
             self, manv, tennv, vaitro, sdt, password
     ):
+        """Tạo SQL Login, Database User, gán role và thêm hoặc cập nhật hồ sơ nhân viên trong cùng giao dịch."""
 
         self._check_admin()
 
@@ -216,6 +224,7 @@ class Database:
     # =====================================
 
     def get_employee_permissions(self, manv):
+        """Đọc hồ sơ nhân viên, kiểm tra tài khoản SQL và lấy role đang được gán."""
 
         self._check_admin()
 
@@ -290,6 +299,7 @@ class Database:
     # =====================================
 
     def update_employee_permissions(self, manv, vaitro):
+        """Gỡ các role cũ, gán role mới và cập nhật vai trò hiển thị trong hồ sơ nhân viên."""
 
         self._check_admin()
 
@@ -379,6 +389,7 @@ class Database:
     # =====================================
 
     def delete_employee_account(self, manv):
+        """Xóa Database User và SQL Login của nhân viên, không tự xóa hồ sơ nhân viên."""
 
         self._check_admin()
 
@@ -428,6 +439,7 @@ class Database:
             cursor.close()
 
     def close(self):
+        """Đóng kết nối SQL Server hiện tại và xóa trạng thái tài khoản khỏi đối tượng."""
 
         if self.conn is not None:
             self.conn.close()

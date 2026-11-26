@@ -1,5 +1,3 @@
-"""Workflow kiểm tra cú pháp, unit test và khả năng import giao diện."""
-
 name: Python syntax checks
 
 on:

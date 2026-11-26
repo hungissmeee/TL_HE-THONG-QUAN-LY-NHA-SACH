@@ -89,7 +89,6 @@ CATALOGS = {
 
 
 class CatalogPage(QWidget):
-    """Trang quản lý các danh mục như tác giả, thể loại, nhà xuất bản và nhãn hàng."""
     """Trang danh mục dùng chung cho Tác giả, Thể loại, Nhà xuất bản và Thương hiệu."""
 
     def __init__(self, db, catalog_type):
@@ -109,6 +108,7 @@ class CatalogPage(QWidget):
         self.refresh_code_preview()
 
     def setup_ui(self):
+        """Tạo form, bảng danh mục, bộ lọc tìm kiếm và các nút thao tác."""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(12)
@@ -354,12 +354,14 @@ class CatalogPage(QWidget):
         self.load_data()
 
     def submit_form(self):
+        """Chuyển dữ liệu biểu mẫu sang luồng thêm mới hoặc cập nhật bản ghi."""
         if self.editing_record_id is not None:
             self.update_record()
         else:
             self.add_record()
 
     def add_record(self):
+        """Kiểm tra dữ liệu, sinh mã có khóa chống trùng và thêm bản ghi mới."""
         values = []
         missing_fields = []
 

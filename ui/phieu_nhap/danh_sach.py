@@ -32,7 +32,6 @@ from .chi_tiet import ImportDetailDialog
 
 class ImportWindow(QWidget):
     """Trang danh sách phiếu nhập, tìm kiếm, lập mới, xem chi tiết và hủy phiếu theo quyền."""
-    """Danh sách, tìm kiếm, lập, xem/in và hủy phiếu nhập."""
 
     def __init__(self, db):
         super().__init__()
@@ -54,6 +53,7 @@ class ImportWindow(QWidget):
         self._cancel_permission_timer.start()
 
     def _get_employee_role(self):
+        """Lấy vai trò nhân viên để xác định quyền lập và hủy phiếu nhập."""
         if self.username.casefold() == "admin":
             return "Quản lý"
         conn = self.db.get_connection()
@@ -71,6 +71,7 @@ class ImportWindow(QWidget):
             cursor.close()
 
     def _build_ui(self):
+        """Tạo bộ lọc, bảng phiếu nhập và các nút thao tác."""
         root = QVBoxLayout(self)
         root.setContentsMargins(4, 4, 4, 4)
         root.setSpacing(10)
@@ -157,12 +158,14 @@ class ImportWindow(QWidget):
         root.addLayout(bottom)
 
     def clear_filters(self):
+        """Xóa các điều kiện lọc và tải lại danh sách phiếu nhập."""
         self.search_input.clear()
         self.from_date.setDate(QDate.currentDate().addDays(-30))
         self.to_date.setDate(QDate.currentDate())
         self.load_imports()
 
     def load_imports(self):
+        """Truy vấn phiếu nhập theo bộ lọc và cập nhật bảng dữ liệu."""
         conn = self.db.get_connection()
         if conn is None:
             QMessageBox.warning(self, "Thông báo", "Chưa có kết nối SQL Server.")
@@ -229,6 +232,7 @@ class ImportWindow(QWidget):
             cursor.close()
 
     def update_action_buttons(self):
+        """Điều chỉnh nút thao tác theo vai trò và trạng thái phiếu nhập."""
         if not self.can_cancel:
             self.cancel_button.setEnabled(False)
             return
@@ -272,6 +276,7 @@ class ImportWindow(QWidget):
         self.cancel_button.setEnabled(can_cancel)
 
     def cancel_selected_import(self):
+        """Kiểm tra quyền, trạng thái và thực hiện hủy phiếu nhập theo quy tắc tồn kho."""
         if not self.can_cancel:
             QMessageBox.warning(
                 self, "Không có quyền", "Tài khoản của bạn không có quyền hủy phiếu nhập."
@@ -394,6 +399,7 @@ class ImportWindow(QWidget):
             cursor.close()
 
     def open_selected_import(self):
+        """Mở phiếu nhập đang được chọn."""
         row = self.table.currentRow()
         if row < 0:
             QMessageBox.information(self, "Chưa chọn phiếu", "Vui lòng chọn phiếu nhập.")
@@ -403,6 +409,7 @@ class ImportWindow(QWidget):
             self.open_import_detail(row, 0)
 
     def open_import_detail(self, row, column):
+        """Hiển thị chi tiết phiếu nhập và nội dung in."""
         item = self.table.item(row, 0)
         if item is None:
             return
@@ -413,6 +420,7 @@ class ImportWindow(QWidget):
             QMessageBox.critical(self, "Lỗi xem phiếu nhập", str(error))
 
     def open_create_import(self):
+        """Mở hộp thoại lập phiếu nhập mới."""
         if not self.can_create:
             QMessageBox.warning(self, "Không có quyền", "Tài khoản không có quyền lập phiếu nhập.")
             return

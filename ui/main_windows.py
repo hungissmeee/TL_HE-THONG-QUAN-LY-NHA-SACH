@@ -29,7 +29,6 @@ from ui.nha_cung_cap import SupplierWindow
 
 class MainWindow(QMainWindow):
     """Cửa sổ chính quản lý điều hướng, nhóm menu và quyền hiển thị chức năng."""
-    """Cửa sổ chính, điều hướng các chức năng theo vai trò nhân viên."""
 
     ROLE_PAGE_ACCESS = {
         "Quản lý": (
@@ -53,6 +52,7 @@ class MainWindow(QMainWindow):
     }
 
     def __init__(self, db, login_window=None):
+        """Khởi tạo sidebar, các trang chức năng, thông tin nhân viên và cấu hình phân quyền."""
         super().__init__()
 
         self.employee_role = ""
@@ -310,6 +310,7 @@ class MainWindow(QMainWindow):
     # TẠO CÁC NHÓM SIDEBAR (NHÓM ĐƯỢC KHAI BÁO TRONG CODE)
     # ==================================================
     def _create_sidebar_groups(self):
+        """Tạo các nhóm menu theo cấu hình khai báo trong sidebar_group_config."""
         for group in self.sidebar_group_config:
             group_key = group["key"]
             expanded = bool(group.get("expanded", False))
@@ -354,6 +355,7 @@ class MainWindow(QMainWindow):
             )
 
     def toggle_nav_group(self, group_key, expanded):
+        """Mở hoặc thu gọn nội dung của một nhóm menu."""
         group = self.nav_group_widgets.get(group_key)
         if group is None:
             return
@@ -368,6 +370,7 @@ class MainWindow(QMainWindow):
         )
 
     def _refresh_sidebar_groups(self):
+        """Ẩn nhóm menu không còn trang nào được phép hiển thị."""
         for group_key, group in self.nav_group_widgets.items():
             # isHidden() kiểm tra trạng thái ẩn trực tiếp của từng nút,
             # không bị ảnh hưởng bởi việc nhóm cha đang thu gọn.
@@ -386,6 +389,7 @@ class MainWindow(QMainWindow):
     # THÊM TRANG VÀO HỆ THỐNG
     # ==================================================
     def add_page(self, key, title, page):
+        """Đăng ký trang vào QStackedWidget và tạo nút điều hướng tương ứng."""
         self.danh_sachs[key] = page
         self.danh_sach_titles[key] = title
         self.stack.addWidget(page)
@@ -411,6 +415,7 @@ class MainWindow(QMainWindow):
         self.nav_buttons[key] = button
 
     def _ensure_other_group(self):
+        """Tạo nhóm Khác khi một trang chưa được khai báo trong cấu hình menu."""
         group_key = "other"
         if group_key not in self.nav_group_widgets:
             group = {
@@ -461,6 +466,7 @@ class MainWindow(QMainWindow):
     # CHUYỂN TRANG
     # ==================================================
     def show_page(self, key):
+        """Chuyển sang trang được chọn, làm mới dữ liệu và cập nhật trạng thái nút điều hướng."""
         if key not in self.danh_sachs:
             return
 
@@ -491,6 +497,7 @@ class MainWindow(QMainWindow):
     # TRANG TỔNG QUAN
     # ==================================================
     def create_home_page(self):
+        """Tạo giao diện trang tổng quan mặc định."""
         page = QWidget()
         layout = QVBoxLayout(page)
 
@@ -512,6 +519,7 @@ class MainWindow(QMainWindow):
     # TRANG CHƯA PHÁT TRIỂN
     # ==================================================
     def create_placeholder_page(self, title):
+        """Tạo trang thông báo tạm cho chức năng chưa được triển khai."""
         page = QWidget()
         layout = QVBoxLayout(page)
 
@@ -527,6 +535,7 @@ class MainWindow(QMainWindow):
     # ĐỔI MẬT KHẨU
     # ==================================================
     def open_change_password(self):
+        """Mở hộp thoại đổi mật khẩu cho tài khoản hiện tại."""
         dialog = ChangePasswordDialog(self.db, self)
         dialog.exec()
 
@@ -534,6 +543,7 @@ class MainWindow(QMainWindow):
     # THÔNG TIN NHÂN VIÊN
     # ==================================================
     def load_employee_info(self):
+        """Tải họ tên, mã nhân viên, vai trò và số điện thoại để hiển thị trên sidebar."""
         conn = self.db.get_connection()
         username = self.db.username
 
@@ -583,6 +593,7 @@ class MainWindow(QMainWindow):
     # ĐĂNG XUẤT
     # ==================================================
     def logout(self):
+        """Đăng xuất, đóng phiên kết nối và trả người dùng về cửa sổ đăng nhập."""
         confirm = QMessageBox.question(
             self,
             "Xác nhận đăng xuất",
@@ -609,6 +620,7 @@ class MainWindow(QMainWindow):
     # PHÂN QUYỀN SIDEBAR THEO VAI TRÒ
     # ==================================================
     def apply_role_navigation(self):
+        """Áp dụng danh sách trang được phép dựa trên vai trò nhân viên hiện tại."""
         username = str(self.db.username or "").lower()
 
         if username == "admin":

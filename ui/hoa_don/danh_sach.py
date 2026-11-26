@@ -32,7 +32,6 @@ from .chi_tiet import InvoiceDetailDialog
 
 class InvoiceWindow(QWidget):
     """Trang danh sách hóa đơn, tìm kiếm, lập hóa đơn, xem chi tiết và xử lý hủy theo quyền."""
-    """Trang danh sách, lập, xem và in hóa đơn."""
 
     def __init__(self, db):
         super().__init__()
@@ -58,6 +57,7 @@ class InvoiceWindow(QWidget):
         self._cancel_permission_timer.start()
 
     def _get_employee_role(self):
+        """Lấy vai trò của nhân viên đang đăng nhập để xác định quyền thao tác."""
         conn = self.db.get_connection()
         cursor = conn.cursor()
         try:
@@ -71,6 +71,7 @@ class InvoiceWindow(QWidget):
             cursor.close()
 
     def _build_ui(self):
+        """Tạo bộ lọc, bảng hóa đơn và các nút thao tác theo quyền."""
         root = QVBoxLayout(self)
         root.setContentsMargins(4, 4, 4, 4)
         root.setSpacing(12)
@@ -179,6 +180,7 @@ class InvoiceWindow(QWidget):
         self.load_invoices()
 
     def load_invoices(self):
+        """Truy vấn hóa đơn theo bộ lọc và cập nhật dữ liệu trên bảng."""
         conn = self.db.get_connection()
         if conn is None:
             QMessageBox.warning(
@@ -523,6 +525,7 @@ class InvoiceWindow(QWidget):
             cursor.close()
 
     def open_selected_invoice(self):
+        """Mở hóa đơn đang được chọn trong danh sách."""
         row = self.table.currentRow()
         if row < 0:
             QMessageBox.information(
@@ -534,6 +537,7 @@ class InvoiceWindow(QWidget):
             self.open_invoice_detail(row, 0)
 
     def open_invoice_detail(self, row, column):
+        """Hiển thị cửa sổ chi tiết hóa đơn và nội dung in."""
         item = self.table.item(row, 0)
         if item is None:
             return
@@ -550,6 +554,7 @@ class InvoiceWindow(QWidget):
             )
 
     def open_create_invoice(self):
+        """Mở hộp thoại lập hóa đơn mới."""
         if not self.can_create:
             QMessageBox.warning(
                 self, "Từ chối truy cập",

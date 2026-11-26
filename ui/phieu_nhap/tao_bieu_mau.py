@@ -30,7 +30,6 @@ from .tao_nha_cung_cap import CreateSupplierDialog
 
 class CreateImportDialog(QDialog):
     """Hộp thoại lập phiếu nhập, quản lý nhà cung cấp, sản phẩm và số lượng nhập."""
-    """Lập phiếu nhập; đơn giá nhập được nhập theo giá đã gồm VAT."""
 
     def __init__(self, db, parent=None):
         super().__init__(parent)
@@ -53,6 +52,7 @@ class CreateImportDialog(QDialog):
         self.update_total()
 
     def _load_employee(self):
+        """Lấy thông tin nhân viên lập phiếu nhập từ tài khoản hiện tại."""
         conn = self.db.get_connection()
         if conn is None:
             raise RuntimeError("Chưa có kết nối SQL Server.")
@@ -77,6 +77,7 @@ class CreateImportDialog(QDialog):
             cursor.close()
 
     def _build_ui(self):
+        """Tạo biểu mẫu chọn nhà cung cấp, sản phẩm và số lượng nhập."""
         root = QVBoxLayout(self)
         root.setContentsMargins(16, 14, 16, 14)
         root.setSpacing(9)
@@ -213,6 +214,7 @@ class CreateImportDialog(QDialog):
             stretch_column=None,
             default_sort_column=0
     ):
+        """Cấu hình bảng sản phẩm và giỏ hàng trong phiếu nhập."""
         table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
@@ -234,11 +236,13 @@ class CreateImportDialog(QDialog):
 
     @staticmethod
     def _set_cell(table, row, column, value):
+        """Gán giá trị cho ô bảng với căn lề phù hợp."""
         table.setItem(row, column, QTableWidgetItem(
             "" if value is None else str(value)
         ))
 
     def load_suppliers(self, selected_code=None):
+        """Tải nhà cung cấp đang hoạt động để chọn cho phiếu nhập."""
         conn = self.db.get_connection()
         cursor = conn.cursor()
         try:
@@ -265,11 +269,13 @@ class CreateImportDialog(QDialog):
             cursor.close()
 
     def add_supplier(self):
+        """Mở hộp thoại thêm nhanh nhà cung cấp và cập nhật danh sách lựa chọn."""
         dialog = CreateSupplierDialog(self.db, self)
         if dialog.exec() == QDialog.DialogCode.Accepted and dialog.saved_supplier:
             self.load_suppliers(dialog.saved_supplier[0])
 
     def search_products(self, *_):
+        """Tìm sản phẩm có thể nhập kho theo từ khóa."""
         conn = self.db.get_connection()
         cursor = conn.cursor()
         keyword = self.product_search.text().strip()
@@ -311,6 +317,7 @@ class CreateImportDialog(QDialog):
             cursor.close()
 
     def select_product_row(self, row, column):
+        """Đưa sản phẩm được chọn vào khu vực nhập số lượng và đơn giá."""
         item = self.product_table.item(row, 0)
         if item is None:
             return
@@ -319,6 +326,7 @@ class CreateImportDialog(QDialog):
             self.price_input.setValue(float(product["price"]))
 
     def add_selected_product(self):
+        """Thêm sản phẩm được chọn vào danh sách chi tiết phiếu nhập."""
         row = self.product_table.currentRow()
         if row < 0:
             QMessageBox.information(self, "Chưa chọn sản phẩm", "Vui lòng chọn sản phẩm cần nhập.")
@@ -361,6 +369,7 @@ class CreateImportDialog(QDialog):
         self.update_total()
 
     def refresh_cart(self):
+        """Cập nhật bảng các sản phẩm dự kiến nhập."""
         pause_table_sorting(self.cart_table)
 
         try:
@@ -390,6 +399,7 @@ class CreateImportDialog(QDialog):
             resume_table_sorting(self.cart_table)
 
     def remove_selected_cart_item(self):
+        """Xóa sản phẩm đang chọn khỏi chi tiết phiếu nhập."""
         row = self.cart_table.currentRow()
         if row < 0:
             return
@@ -400,15 +410,18 @@ class CreateImportDialog(QDialog):
             self.update_total()
 
     def calculate_total(self):
+        """Tính tổng trị giá các dòng hàng trong phiếu nhập."""
         return sum(
             (item["price"] * item["quantity"] for item in self.cart.values()),
             Decimal("0.00")
         ).quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
 
     def update_total(self):
+        """Cập nhật tổng tiền phiếu nhập trên giao diện."""
         self.total_label.setText(money(self.calculate_total()))
 
     def _next_import_code(self, cursor):
+        """Sinh mã phiếu nhập tiếp theo theo quy tắc hiện có."""
         cursor.execute("""
             SELECT COALESCE(
                 MAX(TRY_CONVERT(BIGINT, SUBSTRING(MAPN, 3, 18))), 0
@@ -424,6 +437,7 @@ class CreateImportDialog(QDialog):
         return code
 
     def save_import(self):
+        """Kiểm tra dữ liệu và ghi phiếu nhập cùng chi tiết, bảo đảm cập nhật tồn kho trong giao dịch."""
         supplier_code = self.supplier_combo.currentData()
         if not supplier_code:
             QMessageBox.warning(

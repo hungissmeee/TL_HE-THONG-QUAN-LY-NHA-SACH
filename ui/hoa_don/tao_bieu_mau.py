@@ -28,7 +28,6 @@ from .dung_chung import MONEY_QUANT, Decimal, InvalidOperation, ROUND_HALF_UP, m
 
 class CreateInvoiceDialog(QDialog):
     """Hộp thoại lập hóa đơn, quản lý sản phẩm trong giỏ và tính số tiền khách phải trả."""
-    """Lập hóa đơn tiền mặt; đơn giá GIABAN đã bao gồm VAT."""
 
     def __init__(self, db, parent=None):
         super().__init__(parent)
@@ -52,6 +51,7 @@ class CreateInvoiceDialog(QDialog):
         self.update_totals()
 
     def _load_employee_and_active_shift(self):
+        """Lấy thông tin nhân viên đăng nhập và ca làm việc đang hoạt động."""
         conn = self.db.get_connection()
         if conn is None:
             raise RuntimeError("Chưa có kết nối SQL Server.")
@@ -94,6 +94,7 @@ class CreateInvoiceDialog(QDialog):
             cursor.close()
 
     def _build_ui(self):
+        """Tạo các trường nhập, bảng sản phẩm, giỏ hàng và khu vực thanh toán."""
         root = QVBoxLayout(self)
         root.setContentsMargins(16, 14, 16, 14)
         root.setSpacing(10)
@@ -214,6 +215,7 @@ class CreateInvoiceDialog(QDialog):
             stretch_column=None,
             default_sort_column=0
     ):
+        """Cấu hình cách hiển thị, chọn và sắp xếp bảng sản phẩm."""
         table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
@@ -235,12 +237,14 @@ class CreateInvoiceDialog(QDialog):
 
     @staticmethod
     def _set_cell(table, row, column, value, data=None):
+        """Gán nội dung cho ô bảng và áp dụng căn lề phù hợp."""
         item = QTableWidgetItem("" if value is None else str(value))
         if data is not None:
             item.setData(Qt.ItemDataRole.UserRole, data)
         table.setItem(row, column, item)
 
     def _load_promotions(self):
+        """Tải các chương trình khuyến mãi còn hiệu lực để áp dụng cho hóa đơn."""
         conn = self.db.get_connection()
         cursor = conn.cursor()
         try:
@@ -260,6 +264,7 @@ class CreateInvoiceDialog(QDialog):
             cursor.close()
 
     def search_products(self, *_):
+        """Tìm sản phẩm theo từ khóa và cập nhật danh sách kết quả."""
         conn = self.db.get_connection()
         cursor = conn.cursor()
         keyword = self.product_search.text().strip()
@@ -305,6 +310,7 @@ class CreateInvoiceDialog(QDialog):
             cursor.close()
 
     def add_selected_product(self):
+        """Thêm sản phẩm đang chọn vào giỏ hàng hoặc tăng số lượng nếu đã có."""
         row = self.product_table.currentRow()
         if row < 0:
             QMessageBox.information(
@@ -339,6 +345,7 @@ class CreateInvoiceDialog(QDialog):
         self.update_totals()
 
     def _refresh_cart(self):
+        """Cập nhật các dòng trong bảng giỏ hàng theo trạng thái hiện tại."""
         pause_table_sorting(self.cart_table)
 
         try:
@@ -370,6 +377,7 @@ class CreateInvoiceDialog(QDialog):
             resume_table_sorting(self.cart_table)
 
     def remove_selected_cart_item(self):
+        """Xóa sản phẩm đang chọn khỏi giỏ hàng."""
         row = self.cart_table.currentRow()
         if row < 0:
             return
@@ -402,6 +410,7 @@ class CreateInvoiceDialog(QDialog):
         return subtotal, discount, total
 
     def update_totals(self, *_):
+        """Hiển thị lại tổng tiền và số tiền khách cần thanh toán."""
         subtotal, discount, total = self._calculate_totals()
         self.subtotal_label.setText(money(subtotal))
         self.discount_label.setText(money(discount))
@@ -423,6 +432,7 @@ class CreateInvoiceDialog(QDialog):
 
     @staticmethod
     def _parse_cash(text):
+        """Chuyển chuỗi tiền khách nhập thành giá trị số hợp lệ."""
         normalized = text.strip().replace(",", "").replace(" ", "")
         if not normalized:
             raise ValueError("Vui lòng nhập số tiền khách đưa.")
@@ -435,6 +445,7 @@ class CreateInvoiceDialog(QDialog):
         return value.quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
 
     def save_invoice(self):
+        """Kiểm tra giỏ hàng, ca làm việc và thanh toán trước khi ghi hóa đơn cùng chi tiết vào SQL Server."""
         if not self.cart:
             QMessageBox.warning(
                 self, "Thông báo", "Hóa đơn chưa có sản phẩm."

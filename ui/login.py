@@ -41,6 +41,7 @@ class LoginWindow(QWidget):
         self.setLayout(layout)
 
     def login(self):
+        """Kiểm tra dữ liệu đăng nhập, xác thực với SQL Server rồi mở cửa sổ chính."""
 
         username = self.username.text().strip()
         password = self.password.text()

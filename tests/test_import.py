@@ -10,13 +10,14 @@ LOCAL_PACKAGES = {"ui", "database"}
 
 
 def _module_exists(path):
+    """Kiểm tra đường dẫn có trỏ tới một module Python hoặc package hợp lệ hay không."""
     return path.with_suffix(".py").is_file() or (path / "__init__.py").is_file()
 
 
 class LocalImportTests(unittest.TestCase):
     """Đảm bảo mọi import nội bộ trỏ tới tệp Python hoặc package tồn tại."""
-    """Kiểm tra các đường dẫn import nội bộ có trỏ tới module tồn tại."""
     def test_local_import_targets_exist(self):
+        """Phân tích import trong ui và kiểm tra tất cả module nội bộ được tham chiếu."""
         missing = []
 
         for source in (ROOT / "ui").rglob("*.py"):
