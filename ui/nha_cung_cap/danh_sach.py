@@ -172,7 +172,6 @@ class SupplierWindow(QWidget):
                         item.setTextAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
                     self.table.setItem(row_index, col_index, item)
             self.total_label.setText(f"Tổng số: {len(rows)} nhà cung cấp")
-            self._update_buttons()
         except Exception as error:
             QMessageBox.critical(self, "Lỗi tải dữ liệu", str(error))
         finally:
@@ -185,6 +184,19 @@ class SupplierWindow(QWidget):
         """Xóa từ khóa và tải lại danh sách nhà cung cấp."""
         self.search_input.clear()
         self.load_data()
+
+    def _selected_supplier(self):
+        """Lấy mã nhà cung cấp từ dòng đang chọn trong bảng."""
+        row = self.table.currentRow()
+        if row < 0:
+            return None
+
+        item = self.table.item(row, 0)
+        if item is None:
+            return None
+
+        code = item.data(Qt.ItemDataRole.UserRole)
+        return str(code if code is not None else item.text()).strip() or None
 
     def _get_supplier(self, code):
         """Lấy thông tin đầy đủ của một nhà cung cấp từ SQL Server."""
