@@ -17,8 +17,14 @@ ON dbo.CHUONG_TRINH_KM
 FROM rl_QuanLy;
 GO
 
--- Quan ly duoc doi ten, doi thoi gian va xoa mem; khong duoc sua TYLEGIAM.
-GRANT UPDATE (IS_DELETED, TENKM, NGAYBD, NGAYKT)
+-- Thu hoi rieng quyen cap do cot da cap trong phien ban migration truoc.
+REVOKE UPDATE (NGAYBD, NGAYKT)
+ON dbo.CHUONG_TRINH_KM
+FROM rl_QuanLy;
+GO
+
+-- Quan ly chi duoc doi ten va xoa mem; thoi gian va ty le da tao khong duoc sua.
+GRANT UPDATE (IS_DELETED, TENKM)
 ON dbo.CHUONG_TRINH_KM
 TO rl_QuanLy;
 GO
