@@ -375,16 +375,46 @@ class ProductWindow(QWidget):
                 raise Exception("Chưa có kết nối database!")
 
             cursor = conn.cursor()
+
+            # Khóa dòng sản phẩm trong transaction để không thể phát sinh
+            # giao dịch nhập/bán làm thay đổi tồn kho giữa lúc kiểm tra và xóa.
+            cursor.execute("""
+                SELECT TENSP, ISNULL(SLTON, 0)
+                FROM dbo.SAN_PHAM WITH (UPDLOCK, HOLDLOCK)
+                WHERE MASP = ?
+                  AND ISNULL(IS_DELETED, 0) = 0
+            """, masp)
+            product_row = cursor.fetchone()
+
+            if product_row is None:
+                raise RuntimeError(
+                    "Sản phẩm không tồn tại hoặc đã được xóa trước đó!"
+                )
+
+            stock_quantity = int(product_row[1] or 0)
+            if stock_quantity > 0:
+                conn.rollback()
+                QMessageBox.warning(
+                    self,
+                    "Không thể xóa sản phẩm",
+                    f"Sản phẩm {masp} - {product_row[0] or display_name} "
+                    f"vẫn còn {stock_quantity} sản phẩm trong kho. "
+                    "Vui lòng xử lý hết tồn kho trước khi xóa.",
+                )
+                return False
+
             cursor.execute("""
                 UPDATE dbo.SAN_PHAM
                 SET IS_DELETED = 1
                 OUTPUT inserted.MASP
-                WHERE MASP = ? AND ISNULL(IS_DELETED, 0) = 0
+                WHERE MASP = ?
+                  AND ISNULL(IS_DELETED, 0) = 0
+                  AND ISNULL(SLTON, 0) = 0
             """, masp)
 
             if cursor.fetchone() is None:
-                raise Exception(
-                    "Sản phẩm không tồn tại hoặc đã được xóa trước đó!"
+                raise RuntimeError(
+                    "Không thể xóa sản phẩm. Vui lòng tải lại dữ liệu và thử lại."
                 )
 
             conn.commit()
