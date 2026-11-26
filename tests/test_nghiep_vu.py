@@ -26,6 +26,7 @@ from ui.nhan_vien import EmployeeWindow
 from ui.phieu_nhap.tao_bieu_mau import CreateImportDialog
 from ui.phieu_nhap.danh_sach import can_view_imports
 from ui.hoa_don.tao_bieu_mau import CreateInvoiceDialog
+from ui.hoa_don.danh_sach import InvoiceWindow
 from ui.ca_lam_viec.tao_bieu_mau import ShiftCreateDialog
 from ui.main_windows import MainWindow
 from ui.permissions import is_admin_account, allowed_pages_for_user
@@ -472,6 +473,75 @@ class ShiftScheduleTests(unittest.TestCase):
                 values = dialog.get_values()
                 self.assertEqual((values["tgmo"], values["tgdong"]), times)
                 self.assertEqual(values["soca"], index + 1)
+
+
+
+class InvoiceSafetyTests(unittest.TestCase):
+    """Kiểm thử các quy tắc chống hoàn kho trùng và xác thực ca khi lưu."""
+
+    class ShiftCursor:
+        def __init__(self, result):
+            self.result = result
+            self.sql = None
+            self.params = None
+
+        def execute(self, sql, *params):
+            self.sql = sql
+            self.params = params
+            return self
+
+        def fetchone(self):
+            return self.result
+
+    def test_invoice_cancel_rejects_existing_return_voucher(self):
+        InvoiceWindow._assert_no_return_vouchers(False)
+        with self.assertRaises(RuntimeError):
+            InvoiceWindow._assert_no_return_vouchers(True)
+
+    def test_active_shift_validation_queries_current_database_state(self):
+        cursor = self.ShiftCursor((12,))
+        employee = {"manv": "NV01"}
+        shift = {"maca": 12}
+
+        CreateInvoiceDialog._assert_active_shift(cursor, employee, shift)
+
+        self.assertEqual(cursor.params, ("NV01", 12))
+        self.assertIn("SYSDATETIME()", cursor.sql)
+        self.assertIn("C.TMCUOICA IS NULL", cursor.sql)
+        self.assertIn("dbo.LAMCA", cursor.sql)
+
+    def test_active_shift_validation_rejects_expired_or_unregistered_shift(self):
+        cursor = self.ShiftCursor(None)
+        with self.assertRaises(RuntimeError):
+            CreateInvoiceDialog._assert_active_shift(
+                cursor, {"manv": "NV01"}, {"maca": 12}
+            )
+
+    def test_active_shift_validation_rejects_missing_cached_shift(self):
+        cursor = self.ShiftCursor((12,))
+        with self.assertRaises(RuntimeError):
+            CreateInvoiceDialog._assert_active_shift(
+                cursor, {"manv": "NV01"}, None
+            )
+        self.assertIsNone(cursor.sql)
+
+    def test_odbc_values_escape_closing_braces(self):
+        self.assertEqual(Database._odbc_value("pass}word"), "{pass}}word}")
+
+    def test_role_page_map_has_no_stale_statistics_page(self):
+        all_roles = [
+            page
+            for pages in MainWindow.ROLE_PAGE_ACCESS.values()
+            for page in pages
+        ]
+        self.assertNotIn("statistics", all_roles)
+        for page in (
+            "report_overview", "report_revenue", "report_invoice",
+            "report_import", "report_return", "report_inventory",
+            "report_product",
+        ):
+            self.assertIn(page, MainWindow.ROLE_PAGE_ACCESS["Quản lý"])
+            self.assertIn(page, MainWindow.ROLE_PAGE_ACCESS["Kế toán"])
 
 
 if __name__ == "__main__":
