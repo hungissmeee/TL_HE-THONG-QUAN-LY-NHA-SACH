@@ -1086,7 +1086,7 @@ class ShiftWindow(QWidget):
         answer = QMessageBox.question(
             self,
             "Xác nhận xóa ca",
-            f"Bạn có chắc muốn xóa ca làm việc mã {maca}?\\n\\n"
+            f"Bạn có chắc muốn xóa ca làm việc mã {maca}?\n\n"
             "Ca chỉ được xóa nếu chưa bắt đầu và chưa có hóa đơn liên kết. "
             "Các đăng ký nhân viên của ca này cũng sẽ bị xóa.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
