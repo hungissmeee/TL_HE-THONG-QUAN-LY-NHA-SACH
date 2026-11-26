@@ -196,4 +196,4 @@ MAIN_WINDOW_STYLESHEET = """
             QPushButton#logoutButton:hover {
                 background-color: #C94444;
             }
-        """
+"""
