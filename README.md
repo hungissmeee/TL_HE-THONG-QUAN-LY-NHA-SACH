@@ -73,3 +73,69 @@ Dự án xây dựng giải pháp quản lý tập trung cho mô hình kinh doan
 - Cho phép gộp các class phụ trợ nhỏ, `Enum`, `dataclass` hoặc các lớp ngoại lệ (`Exception`) có liên quan mật thiết trong cùng một module (`.py`) để tránh phân mảnh file không cần thiết.
 - Python không có từ khóa `interface` riêng biệt; các giao diện chuẩn được định nghĩa thông qua lớp cơ sở trừu tượng (`abc.ABC`) hoặc `typing.Protocol` và phải được khai báo trong các module riêng biệt (ví dụ: `base_repository.py` hoặc đặt trong package `interfaces/`).
 - Các thư mục chức năng (package) cần được tổ chức rõ ràng theo từng tầng (như `models/`, `repositories/`, `services/`, `ui/`) và có file `__init__.py` để quản lý việc import.
+
+---
+
+# 4. Cấu trúc mã nguồn hiện tại
+
+Giao diện được tổ chức theo nhóm chức năng. Mỗi package chứa các thành phần liên quan; `page.py` quản lý trang danh sách, `*_dialog.py` chứa hộp thoại tạo/sửa/chi tiết và `common.py` chứa phần dùng chung trong nhóm.
+
+```text
+.
+├── main.py
+├── database/
+│   ├── connection.py
+│   └── script.sql
+└── ui/
+    ├── main_window.py
+    ├── login.py
+    ├── account.py
+    ├── employee.py
+    ├── catalog.py
+    ├── change_password.py
+    ├── formatters.py
+    ├── table_sort.py
+    ├── invoices/
+    │   ├── create_dialog.py
+    │   ├── detail_dialog.py
+    │   ├── page.py
+    │   └── common.py
+    ├── imports/
+    │   ├── create_supplier_dialog.py
+    │   ├── create_dialog.py
+    │   ├── detail_dialog.py
+    │   ├── page.py
+    │   └── common.py
+    ├── products/
+    │   ├── selectors.py
+    │   ├── form_dialog.py
+    │   ├── detail_dialog.py
+    │   └── page.py
+    ├── shifts/
+    │   ├── create_dialog.py
+    │   └── page.py
+    ├── suppliers/
+    │   ├── form_dialog.py
+    │   ├── detail_dialog.py
+    │   └── page.py
+    └── reports/
+        ├── report_base.py
+        └── report_*.py
+```
+
+Các file cũ có tiền tố `f` (ví dụ `fHoaDon.py`, `fproduct.py`) được giữ làm module tương thích ngược và chỉ export lại class từ package mới. Code mới nên import từ các module/package có tên `snake_case`.
+
+## 4.1. Quy ước phân chia trách nhiệm
+
+- `main_window.py`: khởi tạo cửa sổ chính, sidebar, điều hướng và phân quyền hiển thị.
+- `connection.py`: kết nối SQL Server, quản lý tài khoản và quyền SQL.
+- `formatters.py`: định dạng tiền, ngày tháng và số liệu dùng chung.
+- `table_sort.py`: sắp xếp dữ liệu trong bảng.
+- Các package nghiệp vụ: tách trang danh sách, form và hộp thoại chi tiết.
+- `reports/`: các trang báo cáo dùng chung lớp nền `ReportBasePage`.
+
+## 4.2. Nguyên tắc refactor
+
+- Giữ nguyên câu SQL, tên bảng/cột, quy tắc tính tiền, cập nhật tồn kho và phân quyền khi chỉ thực hiện refactor cấu trúc.
+- Trước khi xóa hoặc đổi tên module cũ, phải kiểm tra và cập nhật toàn bộ import; trong giai đoạn chuyển đổi, giữ facade tương thích.
+- Mỗi thay đổi nghiệp vụ cần có kiểm thử riêng, không gộp chung với commit chỉ định dạng hoặc sắp xếp mã nguồn.
