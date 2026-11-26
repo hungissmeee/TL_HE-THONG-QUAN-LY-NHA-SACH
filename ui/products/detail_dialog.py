@@ -1,20 +1,16 @@
 """ProductDetailDialog: thành phần giao diện quản lý sản phẩm."""
 
-from decimal import Decimal, InvalidOperation
-from PySide6.QtCore import Qt, QDate
-from PySide6.QtGui import QDoubleValidator, QIntValidator
+from decimal import Decimal
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QWidget, QDialog, QLabel, QLineEdit, QPushButton, QComboBox,
-    QVBoxLayout, QHBoxLayout, QFormLayout, QTableWidget,
-    QHeaderView, QAbstractItemView, QMessageBox, QSpinBox, QStackedWidget,
-    QDoubleSpinBox, QGroupBox, QDateEdit, QCheckBox,
-    QListWidget, QListWidgetItem, QCompleter, QFrame,
-)
-from ui.table_sort import (
-    SortableTableWidgetItem as QTableWidgetItem,
-    prepare_sortable_table,
-    pause_table_sorting,
-    resume_table_sorting,
+    QDialog,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+    QHBoxLayout,
+    QFormLayout,
+    QMessageBox,
+    QGroupBox,
 )
 from .form_dialog import ProductFormDialog
 
@@ -194,5 +190,6 @@ class ProductDetailDialog(QDialog):
             QMessageBox.critical(
                 self, "Lỗi mở chỉnh sửa sản phẩm", str(e)
             )
+
 
 
