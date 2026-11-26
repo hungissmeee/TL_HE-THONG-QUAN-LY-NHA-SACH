@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QGroupBox,
 )
 
+
 class CreateSupplierDialog(QDialog):
     """Thêm nhanh nhà cung cấp để có thể lập phiếu nhập."""
 
@@ -100,6 +101,7 @@ class CreateSupplierDialog(QDialog):
             QMessageBox.critical(self, "Không thể thêm nhà cung cấp", str(error))
         finally:
             cursor.close()
+
 
 
 
