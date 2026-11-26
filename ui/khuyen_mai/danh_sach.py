@@ -3,11 +3,15 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QWidget,
+    QDialog,
     QLabel,
     QLineEdit,
     QPushButton,
     QVBoxLayout,
     QHBoxLayout,
+    QFormLayout,
+    QGroupBox,
+    QInputDialog,
     QTableWidget,
     QHeaderView,
     QMessageBox,
@@ -22,6 +26,69 @@ from ui.table_sort import (
     resume_table_sorting,
 )
 from .bieu_mau import PromotionFormDialog
+
+
+class PromotionDetailDialog(QDialog):
+    """Popup xem chi tiết khuyến mãi và thao tác đổi tên hoặc xóa mềm."""
+
+    def __init__(
+        self, values, can_manage=False, on_rename=None, on_delete=None,
+        parent=None
+    ):
+        super().__init__(parent)
+        self.on_rename = on_rename
+        self.on_delete = on_delete
+
+        self.setWindowTitle("Chi tiết chương trình khuyến mãi")
+        self.setMinimumWidth(460)
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(18, 16, 18, 16)
+        root.setSpacing(12)
+
+        title = QLabel("CHI TIẾT KHUYẾN MÃI")
+        title.setStyleSheet("font-size: 18px; font-weight: bold;")
+        root.addWidget(title)
+
+        group = QGroupBox("Thông tin chương trình")
+        form = QFormLayout(group)
+        for label, value in values:
+            value_label = QLabel("" if value is None else str(value))
+            value_label.setWordWrap(True)
+            form.addRow(label, value_label)
+        root.addWidget(group)
+
+        actions = QHBoxLayout()
+        if can_manage:
+            rename_button = QPushButton("Đổi tên")
+            rename_button.clicked.connect(self._rename)
+            actions.addWidget(rename_button)
+
+            delete_button = QPushButton("Xóa mềm")
+            delete_button.setStyleSheet(
+                "QPushButton { background-color: #A83232; color: white; }"
+            )
+            delete_button.clicked.connect(self._delete)
+            actions.addWidget(delete_button)
+
+        actions.addStretch()
+        close_button = QPushButton("Đóng")
+        close_button.clicked.connect(self.reject)
+        actions.addWidget(close_button)
+        root.addLayout(actions)
+
+    def _run_action(self, callback):
+        """Đóng popup chi tiết trước khi thực hiện thao tác trên bản ghi."""
+        if callback is None:
+            return
+        self.accept()
+        callback()
+
+    def _rename(self):
+        self._run_action(self.on_rename)
+
+    def _delete(self):
+        self._run_action(self.on_delete)
 
 
 class PromotionWindow(QWidget):
@@ -81,10 +148,6 @@ class PromotionWindow(QWidget):
         self.add_button = QPushButton("+ Thêm khuyến mãi")
         self.add_button.clicked.connect(self.add_promotion)
         header.addWidget(self.add_button)
-
-        self.delete_button = QPushButton("Xóa khuyến mãi")
-        self.delete_button.clicked.connect(self.delete_selected_promotion)
-        header.addWidget(self.delete_button)
 
         self.refresh_button = QPushButton("Làm mới")
         self.refresh_button.clicked.connect(self.load_promotions)
@@ -155,8 +218,8 @@ class PromotionWindow(QWidget):
         table_header.setSectionResizeMode(
             1, QHeaderView.ResizeMode.Stretch
         )
-        self.table.itemSelectionChanged.connect(
-            self.update_action_buttons
+        self.table.cellDoubleClicked.connect(
+            self.open_promotion_detail
         )
         root.addWidget(self.table, 1)
 
@@ -165,19 +228,15 @@ class PromotionWindow(QWidget):
 
         if not self.can_manage:
             self.add_button.hide()
-            self.delete_button.hide()
 
         if not self.can_view:
             self.add_button.hide()
-            self.delete_button.hide()
             self.show_deleted_check.hide()
             self.search_input.hide()
             self.table.hide()
             self.total_label.setText(
                 "Tài khoản hiện tại không có quyền xem khuyến mãi."
             )
-
-        self.update_action_buttons()
 
     @staticmethod
     def _format_datetime(value):
@@ -298,44 +357,118 @@ class PromotionWindow(QWidget):
         self.search_input.clear()
         self.load_promotions()
 
-    def _selected_code(self):
-        row = self.table.currentRow()
-        if row < 0:
-            return None
-        item = self.table.item(row, 0)
-        if item is None:
-            return None
-        value = item.data(Qt.ItemDataRole.UserRole)
-        return str(value if value is not None else item.text()).strip()
-
-    def update_action_buttons(self):
-        """Chỉ bật nút xóa khi đang chọn một chương trình chưa bị xóa."""
-        code = self._selected_code()
-        if not self.can_manage or not code:
-            self.delete_button.setEnabled(False)
+    def open_promotion_detail(self, row, column):
+        """Mở popup chi tiết khi nhấp đúp vào một chương trình khuyến mãi."""
+        code_item = self.table.item(row, 0)
+        if code_item is None:
             return
 
-        row = self.table.currentRow()
+        code = code_item.data(Qt.ItemDataRole.UserRole)
+        code = str(code if code is not None else code_item.text()).strip()
+        if not code:
+            return
+
+        labels = [
+            "Mã khuyến mãi:",
+            "Tên chương trình:",
+            "Tỷ lệ giảm:",
+            "Thời gian bắt đầu:",
+            "Thời gian kết thúc:",
+            "Trạng thái:",
+        ]
+        values = []
+        for index, label in enumerate(labels):
+            item = self.table.item(row, index)
+            values.append((label, item.text() if item else ""))
+
+        name_item = self.table.item(row, 1)
+        current_name = name_item.text() if name_item else ""
         status_item = self.table.item(row, 5)
         is_deleted = (
             status_item is not None and status_item.text() == "Đã xóa"
         )
-        self.delete_button.setEnabled(not is_deleted)
 
-    def add_promotion(self):
-        """Mở biểu mẫu tạo chương trình khuyến mãi."""
+        dialog = PromotionDetailDialog(
+            values,
+            can_manage=self.can_manage and not is_deleted,
+            on_rename=lambda: self.rename_promotion(code, current_name),
+            on_delete=lambda: self.delete_promotion(code, current_name),
+            parent=self,
+        )
+        dialog.exec()
+
+    def rename_promotion(self, code, current_name):
+        """Chỉ đổi tên chương trình; không thay đổi tỷ lệ hoặc thời hạn."""
         if not self.can_manage:
             QMessageBox.warning(
                 self, "Không có quyền",
-                "Chỉ Admin/Quản lý được thêm khuyến mãi.",
+                "Chỉ Admin/Quản lý được đổi tên khuyến mãi.",
             )
             return
 
-        dialog = PromotionFormDialog(self.db, self)
-        if dialog.exec():
-            self.load_promotions()
+        name, accepted = QInputDialog.getText(
+            self,
+            "Đổi tên khuyến mãi",
+            "Tên chương trình:",
+            QLineEdit.EchoMode.Normal,
+            current_name,
+        )
+        if not accepted:
+            return
 
-    def delete_selected_promotion(self):
+        name = name.strip()
+        if not name:
+            QMessageBox.warning(
+                self, "Tên không hợp lệ",
+                "Tên chương trình không được để trống.",
+            )
+            return
+        if len(name) > 100:
+            QMessageBox.warning(
+                self, "Tên quá dài",
+                "Tên chương trình không được vượt quá 100 ký tự.",
+            )
+            return
+
+        conn = self.db.get_connection()
+        if conn is None:
+            QMessageBox.warning(
+                self, "Thông báo", "Chưa có kết nối SQL Server."
+            )
+            return
+
+        cursor = None
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE dbo.CHUONG_TRINH_KM
+                SET TENKM = ?
+                OUTPUT inserted.MAKM
+                WHERE MAKM = ?
+                  AND ISNULL(IS_DELETED, 0) = 0
+            """, name, code)
+
+            if cursor.fetchone() is None:
+                raise RuntimeError(
+                    "Khuyến mãi không tồn tại hoặc đã bị xóa."
+                )
+
+            conn.commit()
+            QMessageBox.information(
+                self, "Thành công",
+                f"Đã đổi tên chương trình {code}.",
+            )
+            self.load_promotions()
+        except Exception as error:
+            conn.rollback()
+            QMessageBox.critical(
+                self, "Không thể đổi tên khuyến mãi", str(error)
+            )
+        finally:
+            if cursor is not None:
+                cursor.close()
+
+    def delete_promotion(self, code, name):
         """Xóa mềm chương trình; không tác động các hóa đơn đã dùng nó."""
         if not self.can_manage:
             QMessageBox.warning(
@@ -344,18 +477,11 @@ class PromotionWindow(QWidget):
             )
             return
 
-        code = self._selected_code()
-        if not code:
-            QMessageBox.information(
-                self, "Chưa chọn khuyến mãi",
-                "Vui lòng chọn chương trình cần xóa.",
-            )
-            return
-
         answer = QMessageBox.question(
             self,
             "Xác nhận xóa khuyến mãi",
-            f"Bạn có chắc muốn ngừng áp dụng chương trình {code}?\n\n"
+            f"Bạn có chắc muốn ngừng áp dụng chương trình {code}"
+            f"{' - ' + name if name else ''}?\\n\\n"
             "Chương trình sẽ được đánh dấu IS_DELETED = 1. "
             "Hóa đơn cũ và dữ liệu tính tiền hoàn vẫn được giữ nguyên.",
             QMessageBox.StandardButton.Yes
@@ -401,4 +527,6 @@ class PromotionWindow(QWidget):
             )
         finally:
             if cursor is not None:
+                cursor.close()
+
                 cursor.close()
