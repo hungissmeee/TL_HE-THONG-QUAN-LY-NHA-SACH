@@ -1,14 +1,35 @@
 """SearchableSingleSelect: thành phần giao diện quản lý sản phẩm."""
 
-from decimal import Decimal, InvalidOperation
-from PySide6.QtCore import Qt, QDate
-from PySide6.QtGui import QDoubleValidator, QIntValidator
+from decimal import (
+    Decimal,
+    InvalidOperation,
+)
+from PySide6.QtCore import (
+    Qt,
+    QDate,
+)
+from PySide6.QtGui import (
+    QDoubleValidator,
+    QIntValidator,
+)
 from PySide6.QtWidgets import (
-    QWidget, QDialog, QLabel, QLineEdit, QPushButton, QComboBox,
-    QVBoxLayout, QHBoxLayout, QFormLayout, QTableWidget,
-    QHeaderView, QAbstractItemView, QMessageBox, QSpinBox, QStackedWidget,
-    QDoubleSpinBox, QGroupBox, QDateEdit, QCheckBox,
-    QListWidget, QListWidgetItem, QCompleter, QFrame,
+    QWidget,
+    QDialog,
+    QLabel,
+    QPushButton,
+    QLineEdit,
+    QVBoxLayout,
+    QHBoxLayout,
+    QFormLayout,
+    QTableWidget,
+    QHeaderView,
+    QMessageBox,
+    QAbstractItemView,
+    QComboBox,
+    QListWidget,
+    QListWidgetItem,
+    QDateEdit,
+    QGroupBox,
 )
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
@@ -216,5 +237,6 @@ class SearchableMultiSelect(QWidget):
             code for code, _, _ in self.options
             if code in self.selected_codes
         ]
+
 
 
