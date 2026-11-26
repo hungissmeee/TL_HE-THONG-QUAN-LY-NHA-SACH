@@ -67,7 +67,7 @@ class MainWindow(QMainWindow):
         self.login_window = login_window
 
         self.setWindowTitle("Hệ thống quản lý nhà sách")
-        self.resize(1200, 750)
+        self.resize(1600, 750)
 
         self.danh_sachs = {}
         self.nav_buttons = {}
