@@ -3,6 +3,12 @@
 Không tạo QApplication, không mở cửa sổ và không kết nối SQL Server.
 """
 
+from pathlib import Path
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
 from database.connection import Database
 from ui.account import EmployeePermissionDialog
 from ui.catalog import CatalogPage
