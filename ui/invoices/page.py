@@ -1,12 +1,18 @@
 """InvoiceWindow: thành phần giao diện nghiệp vụ hóa đơn."""
 
-from PySide6.QtCore import Qt, QDate, QSizeF, QMarginsF, QTimer
-from PySide6.QtGui import QTextDocument, QPageSize, QPageLayout
-from PySide6.QtPrintSupport import QPrinter, QPrintDialog
 from PySide6.QtWidgets import (
-    QWidget, QDialog, QLabel, QPushButton, QLineEdit, QComboBox,
-    QVBoxLayout, QHBoxLayout, QFormLayout, QTableWidget, QHeaderView,
-    QAbstractItemView, QMessageBox, QSpinBox, QGroupBox, QDateEdit,
+    QWidget,
+    QDialog,
+    QLabel,
+    QPushButton,
+    QLineEdit,
+    QVBoxLayout,
+    QHBoxLayout,
+    QTableWidget,
+    QHeaderView,
+    QAbstractItemView,
+    QMessageBox,
+    QDateEdit,
 )
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
@@ -14,11 +20,9 @@ from ui.table_sort import (
     pause_table_sorting,
     resume_table_sorting,
 )
-
 from .common import money, date_text
 from .create_dialog import CreateInvoiceDialog
 from .detail_dialog import InvoiceDetailDialog
-
 
 class InvoiceWindow(QWidget):
     """Trang danh sách, lập, xem và in hóa đơn."""
@@ -574,4 +578,5 @@ class InvoiceWindow(QWidget):
             QMessageBox.critical(
                 self, "Không thể lập hóa đơn", str(error)
             )
+
 
