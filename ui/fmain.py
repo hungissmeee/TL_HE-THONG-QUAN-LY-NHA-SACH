@@ -5,12 +5,12 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
-from ui.fproduct import ProductWindow
-from ui.fChangePassword import ChangePasswordDialog
-from ui.fEmployee import EmployeeWindow
-from ui.fCatalog import CatalogPage
-from ui.fCaLamViec import ShiftWindow
-from ui.fHoaDon import InvoiceWindow
+from ui.products import ProductWindow
+from ui.change_password import ChangePasswordDialog
+from ui.employee import EmployeeWindow
+from ui.catalog import CatalogPage
+from ui.shifts import ShiftWindow
+from ui.invoices import InvoiceWindow
 from ui.reports import (
     OverviewReportPage,
     RevenueReportPage,
@@ -21,8 +21,8 @@ from ui.reports import (
     ProductReportPage,
 )
 from ui.reports.report_base import ReportBasePage
-from ui.fPhieuNhap import ImportWindow
-from ui.fNhaCungCap import SupplierWindow
+from ui.imports import ImportWindow
+from ui.suppliers import SupplierWindow
 
 class MainWindow(QMainWindow):
     """Cửa sổ chính, điều hướng các chức năng theo vai trò nhân viên."""
