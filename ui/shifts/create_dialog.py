@@ -1,20 +1,26 @@
 """ShiftCreateDialog: thành phần giao diện nghiệp vụ."""
 
-from decimal import Decimal, InvalidOperation
-
-from PySide6.QtCore import Qt, QTimer, QDate, QTime
+from decimal import (
+    Decimal,
+    InvalidOperation,
+)
+from PySide6.QtCore import (
+    QDate,
+    QTime,
+)
 from PySide6.QtWidgets import (
-    QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
-    QTableWidget, QHeaderView, QAbstractItemView, QMessageBox,
-    QComboBox, QGroupBox, QFormLayout, QDialog, QDateEdit,
-    QLineEdit, QInputDialog,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+    QHBoxLayout,
+    QMessageBox,
+    QComboBox,
+    QFormLayout,
+    QDialog,
+    QDateEdit,
+    QLineEdit,
 )
-from ui.table_sort import (
-    SortableTableWidgetItem as QTableWidgetItem,
-    prepare_sortable_table,
-    pause_table_sorting,
-    resume_table_sorting,
-)
+from .common import Decimal, InvalidOperation
 
 
 class ShiftCreateDialog(QDialog):
@@ -131,5 +137,6 @@ class ShiftCreateDialog(QDialog):
             "tmdauca": opening_cash,
             "tmcuoica": None,
         }
+
 
 
