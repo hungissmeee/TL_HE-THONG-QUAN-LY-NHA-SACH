@@ -28,6 +28,7 @@ from ui.permissions import allowed_pages_for_user
 from ui.phieu_nhap import ImportWindow
 from ui.nha_cung_cap import SupplierWindow
 from ui.doi_tra import ReturnWindow
+from ui.khuyen_mai import PromotionWindow
 
 class MainWindow(QMainWindow):
     """Cửa sổ chính quản lý điều hướng, nhóm menu và quyền hiển thị chức năng."""
@@ -37,7 +38,7 @@ class MainWindow(QMainWindow):
         # Quản lý tài khoản nhân viên vẫn dành riêng cho Admin.
         "Quản lý": (
             "home", "products", "suppliers", "imports", "invoices",
-            "returns", "authors", "genres", "publishers", "brands",
+            "returns", "promotions", "authors", "genres", "publishers", "brands",
             "shifts", "report_overview", "report_revenue",
             "report_invoice", "report_import", "report_return",
             "report_inventory", "report_product",
@@ -87,7 +88,7 @@ class MainWindow(QMainWindow):
             {
                 "key": "sales",
                 "title": "BÁN HÀNG",
-                "pages": ["invoices", "returns"],
+                "pages": ["invoices", "returns", "promotions"],
                 "expanded": True,
             },
             {
@@ -324,6 +325,9 @@ class MainWindow(QMainWindow):
         )
         add_allowed_page(
             "returns", "Đổi trả", lambda: ReturnWindow(self.db)
+        )
+        add_allowed_page(
+            "promotions", "Khuyến mãi", lambda: PromotionWindow(self.db)
         )
 
         # Ghép giao diện
