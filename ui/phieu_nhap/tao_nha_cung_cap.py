@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 
 
 class CreateSupplierDialog(QDialog):
+    """Hộp thoại tạo nhanh thông tin nhà cung cấp."""
     """Hộp thoại thêm nhanh nhà cung cấp trong quy trình lập phiếu nhập."""
     """Thêm nhanh nhà cung cấp để có thể lập phiếu nhập."""
 

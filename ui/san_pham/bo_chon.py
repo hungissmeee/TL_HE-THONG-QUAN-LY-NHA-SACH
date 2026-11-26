@@ -31,7 +31,7 @@ from PySide6.QtWidgets import (
     QDateEdit,
     QGroupBox,
 )
-from giao_dien.sap_xep_bang import (
+from ui.sap_xep_bang import (
     SortableTableWidgetItem as QTableWidgetItem,
     prepare_sortable_table,
     pause_table_sorting,
@@ -40,6 +40,7 @@ from giao_dien.sap_xep_bang import (
 
 
 class SearchableSingleSelect(QWidget):
+    """Widget tìm kiếm và chọn một mục từ danh sách dữ liệu."""
     """Ô chọn một giá trị từ danh mục có hỗ trợ tìm kiếm."""
     """Ô tìm kiếm để chọn một mục từ danh mục SQL Server."""
 
@@ -140,7 +141,7 @@ from PySide6.QtWidgets import (
     QDoubleSpinBox, QGroupBox, QDateEdit, QCheckBox,
     QListWidget, QListWidgetItem, QCompleter, QFrame,
 )
-from giao_dien.sap_xep_bang import (
+from ui.sap_xep_bang import (
     SortableTableWidgetItem as QTableWidgetItem,
     prepare_sortable_table,
     pause_table_sorting,
@@ -149,6 +150,7 @@ from giao_dien.sap_xep_bang import (
 
 
 class SearchableMultiSelect(QWidget):
+    """Widget tìm kiếm và chọn nhiều mục từ danh sách dữ liệu."""
     """Ô chọn nhiều giá trị từ danh mục có hỗ trợ tìm kiếm."""
     """Ô tìm kiếm để chọn nhiều mục; nhấn kết quả để thêm/bỏ chọn."""
 

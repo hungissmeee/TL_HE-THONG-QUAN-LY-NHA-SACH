@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QDateEdit,
 )
-from giao_dien.sap_xep_bang import (
+from ui.sap_xep_bang import (
     SortableTableWidgetItem as QTableWidgetItem,
     prepare_sortable_table,
     pause_table_sorting,
@@ -31,6 +31,7 @@ from .chi_tiet import ImportDetailDialog
 
 
 class ImportWindow(QWidget):
+    """Trang danh sách phiếu nhập, tìm kiếm, lập mới, xem chi tiết và hủy phiếu theo quyền."""
     """Trang tìm kiếm, lập, xem và quản lý phiếu nhập."""
     """Danh sách, tìm kiếm, lập, xem/in và hủy phiếu nhập."""
 
