@@ -355,6 +355,20 @@ class PromotionWindow(QWidget):
         self.search_input.clear()
         self.load_promotions()
 
+    def add_promotion(self):
+        """Mở biểu mẫu tạo chương trình khuyến mãi."""
+        if not self.can_manage:
+            QMessageBox.warning(
+                self,
+                "Không có quyền",
+                "Chỉ Admin/Quản lý được thêm khuyến mãi.",
+            )
+            return
+
+        dialog = PromotionFormDialog(self.db, self)
+        if dialog.exec():
+            self.load_promotions()
+
     def open_promotion_detail(self, row, column):
         """Mở popup chi tiết khi nhấp đúp vào một chương trình khuyến mãi."""
         code_item = self.table.item(row, 0)
