@@ -17,40 +17,12 @@ from ui.table_sort import (
     resume_table_sorting,
 )
 
-MONEY_QUANT = Decimal("0.01")
-
-
-def money(value):
-    """Định dạng số tiền theo cách hiển thị Việt Nam."""
-    try:
-        amount = Decimal(str(value or 0)).quantize(
-            MONEY_QUANT, rounding=ROUND_HALF_UP
-        )
-    except (InvalidOperation, ValueError, TypeError):
-        amount = Decimal("0.00")
-    return f"{amount:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
-
-def as_decimal(value):
-    return Decimal(str(value or 0)).quantize(
-        MONEY_QUANT, rounding=ROUND_HALF_UP
-    )
-
-
-def date_text(value):
-    if value is None:
-        return ""
-    if hasattr(value, "strftime"):
-        if hasattr(value, "hour"):
-            return value.strftime("%d/%m/%Y %H:%M:%S")
-        return value.strftime("%d/%m/%Y")
-    return str(value)
-
-
-def time_text(value):
-    if value is None:
-        return ""
-    return value.strftime("%H:%M") if hasattr(value, "strftime") else str(value)[:5]
+from ui.formatters import (
+    format_decimal_money as money,
+    to_invoice_decimal as as_decimal,
+    format_invoice_date as date_text,
+    format_time as time_text,
+)
 
 
 class CreateInvoiceDialog(QDialog):
