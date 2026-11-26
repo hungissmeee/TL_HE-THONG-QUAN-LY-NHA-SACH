@@ -25,12 +25,12 @@ from PySide6.QtWidgets import (
 )
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
-    create_table_action_panel,
     prepare_sortable_table,
     pause_table_sorting,
     resume_table_sorting,
 )
 from .tao_bieu_mau import ShiftCreateDialog
+from .chi_tiet import ShiftDetailDialog
 
 
 class ShiftWindow(QWidget):
@@ -227,30 +227,14 @@ class ShiftWindow(QWidget):
             default_sort_column=2,
             default_sort_order=Qt.SortOrder.DescendingOrder
         )
-        self.employee_shift_table.itemSelectionChanged.connect(
-            self.update_employee_shift_actions
+        # Double-click mở popup; các thao tác ca được đặt bên trong popup.
+        self.employee_shift_table.cellDoubleClicked.connect(
+            self.open_employee_shift_detail
         )
         root.addWidget(self.employee_shift_table)
 
         self.employee_total_label = QLabel("Số ca: 0")
         root.addWidget(self.employee_total_label)
-
-        self.shift_action_panel, shift_action_layout, self.shift_action_hint = (
-            create_table_action_panel(
-                "Chọn một ca để đăng ký hoặc ghi tiền cuối ca nếu bạn có quyền.",
-                self,
-            )
-        )
-        self.register_shift_button = QPushButton("Đăng ký ca")
-        self.register_shift_button.setEnabled(False)
-        self.register_shift_button.clicked.connect(self.register_selected_shift)
-        shift_action_layout.addWidget(self.register_shift_button)
-
-        self.closing_cash_button = QPushButton("Ghi tiền cuối ca")
-        self.closing_cash_button.setEnabled(False)
-        self.closing_cash_button.clicked.connect(self.record_selected_closing_cash)
-        shift_action_layout.addWidget(self.closing_cash_button)
-        root.addWidget(self.shift_action_panel)
 
     def refresh_employee_view(self):
         """Làm mới danh sách ca có thể đăng ký của nhân viên."""
@@ -385,65 +369,42 @@ class ShiftWindow(QWidget):
             resume_table_sorting(self.employee_shift_table)
             cursor.close()
 
-    def update_employee_shift_actions(self):
-        """Cập nhật nút đăng ký và chốt tiền theo ca đang được chọn."""
-        row = self.employee_shift_table.currentRow()
-        item = self.employee_shift_table.item(row, 0) if row >= 0 else None
+    def open_employee_shift_detail(self, row, column):
+        """Mở popup một ca cùng các thao tác phù hợp với vai trò hiện tại."""
+        item = self.employee_shift_table.item(row, 0)
         if item is None:
-            self.register_shift_button.setEnabled(False)
-            self.closing_cash_button.setEnabled(False)
-            self.shift_action_hint.setText(
-                "Chọn một ca để đăng ký hoặc ghi tiền cuối ca nếu bạn có quyền."
-            )
             return
 
         shift_id = int(item.data(Qt.ItemDataRole.UserRole))
-        is_registered = bool(item.data(Qt.ItemDataRole.UserRole + 1))
+        registered = bool(item.data(Qt.ItemDataRole.UserRole + 1))
         has_closing_cash = bool(item.data(Qt.ItemDataRole.UserRole + 2))
         is_ended = bool(item.data(Qt.ItemDataRole.UserRole + 3))
 
-        if is_ended:
-            register_text = "Ca đã kết thúc"
-        elif is_registered:
-            register_text = "Đã đăng ký"
-        elif has_closing_cash:
-            register_text = "Ca đã chốt"
-        else:
-            register_text = "Đăng ký ca hiện tại"
-        self.register_shift_button.setText(register_text)
-        self.register_shift_button.setEnabled(
-            not is_ended and not is_registered and not has_closing_cash
-        )
+        shift = {
+            "maca": shift_id,
+            "soca": self.employee_shift_table.item(row, 1).text(),
+            "ngaylam": self.employee_shift_table.item(row, 2).text(),
+            "tgmo": self.employee_shift_table.item(row, 3).text(),
+            "tgdong": self.employee_shift_table.item(row, 4).text(),
+            "so_nhan_vien": self.employee_shift_table.item(row, 5).text(),
+            "trang_thai": self.employee_shift_table.item(row, 6).text(),
+            "dang_ky": "Đã đăng ký" if registered else "Chưa đăng ký",
+            "tien_cuoi_ca": self.employee_shift_table.item(row, 8).text(),
+        }
 
-        if has_closing_cash:
-            cash_text = "Đã ghi tiền cuối ca"
-        elif not self.is_accountant:
-            cash_text = "Kế toán ghi tiền"
-        elif not is_ended:
-            cash_text = "Chờ ca kết thúc"
-        else:
-            cash_text = "Ghi tiền cuối ca"
-        self.closing_cash_button.setText(cash_text)
-        self.closing_cash_button.setEnabled(
-            self.is_accountant and is_ended and not has_closing_cash
+        can_register = not is_ended and not registered and not has_closing_cash
+        can_record_cash = self.is_accountant and is_ended and not has_closing_cash
+        dialog = ShiftDetailDialog(
+            shift,
+            parent=self,
+            on_register=(
+                lambda shift_id=shift_id: self._register_current_shift(shift_id)
+            ) if can_register else None,
+            on_closing_cash=(
+                lambda shift_id=shift_id: self._record_closing_cash(shift_id)
+            ) if can_record_cash else None,
         )
-        self.shift_action_hint.setText(
-            f"Đang chọn ca {shift_id}. Các thao tác bên phải sẽ áp dụng cho ca này."
-        )
-
-    def register_selected_shift(self):
-        """Đăng ký ca đang chọn; điều kiện nghiệp vụ vẫn được kiểm tra ở SQL Server."""
-        row = self.employee_shift_table.currentRow()
-        item = self.employee_shift_table.item(row, 0) if row >= 0 else None
-        if item is not None:
-            self._register_current_shift(int(item.data(Qt.ItemDataRole.UserRole)))
-
-    def record_selected_closing_cash(self):
-        """Ghi tiền cuối ca cho ca đang chọn."""
-        row = self.employee_shift_table.currentRow()
-        item = self.employee_shift_table.item(row, 0) if row >= 0 else None
-        if item is not None:
-            self._record_closing_cash(int(item.data(Qt.ItemDataRole.UserRole)))
+        dialog.exec()
 
     def _register_current_shift(self, maca):
         """Đăng ký nhân viên vào ca đang diễn ra sau khi kiểm tra điều kiện."""
@@ -748,10 +709,7 @@ class ShiftWindow(QWidget):
             default_sort_column=2
         )
         self.current_table.setMaximumHeight(190)
-        # Chọn một lần để đánh dấu; double-click mới tải danh sách nhân viên của ca.
-        self.current_table.itemSelectionChanged.connect(
-            lambda: self._clear_roster_for_table(self.current_table)
-        )
+        # Double-click mở popup chi tiết ca và danh sách nhân viên.
         self.current_table.cellDoubleClicked.connect(self._current_shift_selected)
         current_layout.addWidget(self.current_table)
         root.addWidget(current_group)
@@ -779,24 +737,9 @@ class ShiftWindow(QWidget):
             default_sort_order=Qt.SortOrder.DescendingOrder
         )
         self.history_table.setMaximumHeight(250)
-        self.history_table.itemSelectionChanged.connect(
-            lambda: self._clear_roster_for_table(self.history_table)
-        )
         self.history_table.cellDoubleClicked.connect(self._history_shift_selected)
         history_layout.addWidget(self.history_table)
         root.addWidget(history_group)
-
-        roster_group = QGroupBox("Nhân viên thuộc ca được chọn")
-        roster_layout = QVBoxLayout(roster_group)
-        self.selected_shift_label = QLabel("Chọn một ca để xem danh sách nhân viên.")
-        roster_layout.addWidget(self.selected_shift_label)
-        self.roster_table = self._make_table(
-            ["Mã nhân viên", "Họ tên", "Vai trò", "Số điện thoại"],
-            stretch_column=1
-        )
-        self.roster_table.setMaximumHeight(180)
-        roster_layout.addWidget(self.roster_table)
-        root.addWidget(roster_group)
 
     def add_shift(self):
         """Tạo ca mới theo một trong các khung giờ cố định trong ngày."""
@@ -986,12 +929,6 @@ class ShiftWindow(QWidget):
                         user_data=int(shift[0]) if col == 0 else None
                     )
 
-            if rows:
-                # Chỉ chọn sẵn ca đầu tiên; danh sách nhân viên chỉ mở khi double-click.
-                self.current_table.selectRow(0)
-            else:
-                self.roster_table.setRowCount(0)
-                self.selected_shift_label.setText("Hiện không có ca nào đang diễn ra.")
         except Exception as error:
             self._show_db_error("Không thể tải các ca đang diễn ra", error)
         finally:
@@ -1087,44 +1024,51 @@ class ShiftWindow(QWidget):
             resume_table_sorting(self.history_table)
             cursor.close()
 
-    def _clear_roster_for_table(self, table):
-        """Chỉ đánh dấu ca được chọn; đợi double-click mới tải danh sách nhân viên."""
-        row = table.currentRow()
-        item = table.item(row, 0) if row >= 0 else None
-        self.roster_table.setRowCount(0)
-
-        if item is None:
-            self.selected_shift_label.setText(
-                "Double-click vào một ca để xem danh sách nhân viên."
-            )
-            return
-
-        shift_id = item.data(Qt.ItemDataRole.UserRole)
-        shift_number = table.item(row, 2).text()
-        self.selected_shift_label.setText(
-            f"Đã chọn ca {shift_number} (mã {shift_id}). "
-            "Double-click để xem danh sách nhân viên."
-        )
-
     def _current_shift_selected(self, row, column):
-        """Lấy mã ca hiện đang được chọn trong bảng ca hiện tại."""
-        item = self.current_table.item(row, 0)
-        if item is not None:
-            maca = item.data(Qt.ItemDataRole.UserRole)
-            self.load_roster(int(maca), f"Ca {self.current_table.item(row, 2).text()}")
+        """Mở popup thông tin và danh sách nhân viên của ca đang diễn ra."""
+        self._open_manager_shift_detail(self.current_table, row)
 
     def _history_shift_selected(self, row, column):
-        """Lấy mã ca được chọn trong bảng lịch sử."""
-        item = self.history_table.item(row, 0)
-        if item is not None:
-            maca = item.data(Qt.ItemDataRole.UserRole)
-            self.load_roster(int(maca), f"Ca {self.history_table.item(row, 2).text()}")
+        """Mở popup thông tin và danh sách nhân viên của ca trong lịch sử."""
+        self._open_manager_shift_detail(self.history_table, row)
 
-    def load_roster(self, maca, shift_description=""):
-        """Tải danh sách nhân viên đã đăng ký vào ca được chọn."""
+    def _open_manager_shift_detail(self, table, row):
+        """Tải danh sách nhân viên và hiển thị mọi thông tin ca trong popup."""
+        item = table.item(row, 0)
+        if item is None:
+            return
+
+        shift_id = int(item.data(Qt.ItemDataRole.UserRole))
+        shift = {"maca": shift_id}
+        for column in range(table.columnCount()):
+            header = table.horizontalHeaderItem(column)
+            cell = table.item(row, column)
+            if header is not None and cell is not None:
+                shift[header.text()] = cell.text()
+
+        employees = self._get_shift_roster(shift_id)
+        if employees is None:
+            return
+
+        shift.update({
+            "soca": shift.get("Ca", ""),
+            "ngaylam": shift.get("Ngày làm", ""),
+            "tgmo": shift.get("Giờ mở", ""),
+            "tgdong": shift.get("Giờ đóng", ""),
+            "so_nhan_vien": shift.get("Số nhân viên", str(len(employees))),
+            "trang_thai": shift.get("Trạng thái ca", "Đang diễn ra"),
+            "tien_dau_ca": shift.get("Tiền đầu ca", ""),
+            "tien_cuoi_ca": shift.get("Tiền cuối ca", ""),
+        })
+        ShiftDetailDialog(shift, parent=self, employees=employees).exec()
+
+    def _get_shift_roster(self, maca):
+        """Lấy danh sách nhân viên của ca để hiển thị trong popup chi tiết."""
         conn = self.db.get_connection()
         if conn is None:
-            return
+            QMessageBox.warning(self, "Thông báo", "Chưa có kết nối database!")
+            return None
+
         cursor = conn.cursor()
         try:
             cursor.execute(
@@ -1137,20 +1081,11 @@ class ShiftWindow(QWidget):
                 """,
                 (int(maca),)
             )
-            rows = cursor.fetchall()
-            pause_table_sorting(self.roster_table)
-            self.roster_table.setRowCount(0)
-            for row_index, employee in enumerate(rows):
-                self.roster_table.insertRow(row_index)
-                for col, value in enumerate(employee):
-                    self._set_item(self.roster_table, row_index, col, value)
-            self.selected_shift_label.setText(
-                f"{shift_description} | Mã ca: {maca} | Số nhân viên: {len(rows)}"
-            )
+            return cursor.fetchall()
         except Exception as error:
             self._show_db_error("Không thể tải danh sách nhân viên trong ca", error)
+            return None
         finally:
-            resume_table_sorting(self.roster_table)
             cursor.close()
 
 
