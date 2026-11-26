@@ -111,6 +111,7 @@ class OverviewReportPage(ReportBasePage):
             FROM dbo.PHIEU_NHAP
             WHERE NGAYNHAP >= CONVERT(date, ?)
               AND NGAYNHAP < DATEADD(day, 1, CONVERT(date, ?))
+              AND ISNULL(TRANGTHAI, 1) = 1
         """
         import_row = self.fetch_one(import_sql, (start_date, end_date))
 
