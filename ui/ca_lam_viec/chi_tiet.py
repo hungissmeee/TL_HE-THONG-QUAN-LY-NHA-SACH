@@ -24,11 +24,13 @@ class ShiftDetailDialog(QDialog):
         parent=None,
         on_register=None,
         on_closing_cash=None,
+        on_delete=None,
         employees=None,
     ):
         super().__init__(parent)
         self.on_register = on_register
         self.on_closing_cash = on_closing_cash
+        self.on_delete = on_delete
         self.setWindowTitle(f"Chi tiết ca làm việc - {shift.get('maca', '')}")
         self.resize(650, 520)
         self.setMinimumSize(520, 420)
@@ -101,11 +103,27 @@ class ShiftDetailDialog(QDialog):
             cash_button.clicked.connect(self._record_closing_cash)
             actions.addWidget(cash_button)
 
+        if self.on_delete is not None:
+            delete_button = QPushButton("Xóa ca làm việc")
+            delete_button.setStyleSheet(
+                "QPushButton { background-color: #A83232; color: white; }"
+            )
+            delete_button.clicked.connect(self._delete_shift)
+            actions.addWidget(delete_button)
+
         actions.addStretch()
         close_button = QPushButton("Đóng")
         close_button.clicked.connect(self.reject)
         actions.addWidget(close_button)
         root.addLayout(actions)
+
+    def _delete_shift(self):
+        """Đóng popup và yêu cầu màn hình quản lý kiểm tra/xóa ca trong transaction."""
+        if self.on_delete is None:
+            return
+        callback = self.on_delete
+        self.accept()
+        callback()
 
     def _register(self):
         """Đóng popup rồi gọi quy trình đăng ký ca hiện có."""
