@@ -5,13 +5,12 @@ from PySide6.QtWidgets import (
     QPushButton, QVBoxLayout, QMessageBox
 )
 
-from ui.cua_so_chinh import MainWindow
+from ui.main_windows import MainWindow
 
 
 class LoginWindow(QWidget):
 
     """Cửa sổ đăng nhập, xác thực tài khoản và chuyển sang cửa sổ chính."""
-    """Cửa sổ đăng nhập và xác thực nhân viên."""
     def __init__(self, db):
         super().__init__()
 

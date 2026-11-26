@@ -10,7 +10,6 @@ from PySide6.QtCore import Qt
 
 class ChangePasswordDialog(QDialog):
 
-    """Thu thập và xác thực thông tin trước khi đổi mật khẩu."""
     """Hộp thoại kiểm tra và đổi mật khẩu SQL Server của tài khoản hiện tại."""
     def __init__(self, db, parent=None):
         super().__init__(parent)

@@ -4,8 +4,8 @@ import sys
 
 from PySide6.QtWidgets import QApplication
 
-from database.ket_noi import Database
-from ui.dang_nhap import LoginWindow
+from database.connection import Database
+from ui.login import LoginWindow
 
 
 app = QApplication(sys.argv)

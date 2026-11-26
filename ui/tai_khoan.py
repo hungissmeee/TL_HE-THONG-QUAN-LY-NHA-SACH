@@ -12,7 +12,6 @@ from PySide6.QtCore import Qt
 
 class EmployeePermissionDialog(QDialog):
 
-    """Hiển thị và cập nhật quyền SQL Server được gán cho nhân viên."""
     """Hộp thoại xem và cập nhật quyền truy cập SQL Server của nhân viên."""
     def __init__(self, db, manv, parent=None):
         super().__init__(parent)

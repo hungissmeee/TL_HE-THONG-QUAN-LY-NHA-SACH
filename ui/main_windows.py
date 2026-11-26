@@ -23,13 +23,12 @@ from ui.bao_cao import (
     ProductReportPage,
 )
 from ui.bao_cao.bao_cao_co_so import ReportBasePage
-from ui.dinh_dang_ui import MAIN_WINDOW_STYLESHEET
+from ui.styles import MAIN_WINDOW_STYLESHEET
 from ui.phieu_nhap import ImportWindow
 from ui.nha_cung_cap import SupplierWindow
 
 class MainWindow(QMainWindow):
     """Cửa sổ chính quản lý điều hướng, nhóm menu và quyền hiển thị chức năng."""
-    """Cửa sổ điều hướng chính, quản lý trang và phân quyền hiển thị."""
     """Cửa sổ chính, điều hướng các chức năng theo vai trò nhân viên."""
 
     ROLE_PAGE_ACCESS = {

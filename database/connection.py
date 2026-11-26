@@ -18,7 +18,6 @@ _ROLE_DISPLAY_MAP = {
 class Database:
 
     """Quản lý kết nối SQL Server và các thao tác tài khoản, vai trò nhân viên."""
-    """Quản lý kết nối SQL Server, tài khoản đăng nhập và phân quyền nhân viên."""
     def __init__(self):
         self.conn = None
         self.username = None

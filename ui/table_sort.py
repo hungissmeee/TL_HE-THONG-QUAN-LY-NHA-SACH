@@ -14,7 +14,6 @@ SORT_ROLE = Qt.ItemDataRole.UserRole + 100
 
 class SortableTableWidgetItem(QTableWidgetItem):
     """Thành phần này phụ trách chức năng SortableTableWidgetItem trong hệ thống."""
-    """QTableWidgetItem hỗ trợ sắp xếp số, ngày tháng và văn bản."""
 
     def _sort_key(self):
         explicit_value = self.data(SORT_ROLE)
