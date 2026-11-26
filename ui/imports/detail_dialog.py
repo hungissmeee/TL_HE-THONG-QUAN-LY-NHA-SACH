@@ -1,23 +1,23 @@
 """ImportDetailDialog: thành phần giao diện nghiệp vụ phiếu nhập."""
 
-from PySide6.QtCore import Qt, QDate, QSizeF, QMarginsF, QTimer
-from PySide6.QtGui import QTextDocument, QPageSize, QPageLayout
-from PySide6.QtPrintSupport import QPrinter, QPrintDialog
+from html import escape
 from PySide6.QtWidgets import (
-    QWidget, QDialog, QLabel, QPushButton, QLineEdit, QComboBox,
-    QVBoxLayout, QHBoxLayout, QFormLayout, QTableWidget, QHeaderView,
-    QAbstractItemView, QMessageBox, QSpinBox, QDoubleSpinBox,
-    QGroupBox, QDateEdit,
+    QDialog,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+    QHBoxLayout,
+    QFormLayout,
+    QTableWidget,
+    QHeaderView,
+    QAbstractItemView,
+    QGroupBox,
 )
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
     prepare_sortable_table,
-    pause_table_sorting,
-    resume_table_sorting,
 )
-
 from .common import Decimal, money, as_decimal, date_text
-
 
 class ImportDetailDialog(QDialog):
     """Chi tiết và in phiếu nhập khổ A4."""
@@ -214,5 +214,6 @@ class ImportDetailDialog(QDialog):
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
         document.print_(printer)
+
 
 
