@@ -1,8 +1,8 @@
 """Trang quản lý các danh mục dùng chung của sản phẩm."""
 
 from PySide6.QtWidgets import (
-    QWidget, QLabel, QLineEdit, QPushButton,
-    QVBoxLayout, QHBoxLayout, QFormLayout,
+    QWidget, QDialog, QLabel, QLineEdit, QPushButton,
+    QVBoxLayout, QHBoxLayout, QFormLayout, QGroupBox,
     QTableWidget, QHeaderView,
     QMessageBox, QAbstractItemView
 )
@@ -10,7 +10,6 @@ from PySide6.QtCore import Qt
 
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
-    create_table_action_panel,
     prepare_sortable_table,
     pause_table_sorting,
     resume_table_sorting
@@ -87,6 +86,58 @@ CATALOGS = {
         ],
     },
 }
+
+
+class CatalogDetailDialog(QDialog):
+    """Hộp thoại xem thông tin danh mục và thực hiện sửa hoặc xóa mềm."""
+
+    def __init__(self, title, values, on_edit, on_delete, parent=None):
+        super().__init__(parent)
+        self.on_edit = on_edit
+        self.on_delete = on_delete
+        self.setWindowTitle(f"Chi tiết - {title}")
+        self.setMinimumWidth(460)
+
+        root = QVBoxLayout(self)
+        heading = QLabel(title)
+        heading.setStyleSheet("font-size: 18px; font-weight: bold;")
+        root.addWidget(heading)
+
+        group = QGroupBox("Thông tin bản ghi")
+        form = QFormLayout(group)
+        for label, value in values:
+            value_label = QLabel("" if value is None else str(value))
+            value_label.setWordWrap(True)
+            form.addRow(label, value_label)
+        root.addWidget(group)
+
+        actions = QHBoxLayout()
+        edit_button = QPushButton("Chỉnh sửa")
+        edit_button.clicked.connect(self._edit)
+        actions.addWidget(edit_button)
+
+        delete_button = QPushButton("Xóa mềm")
+        delete_button.setStyleSheet(
+            "QPushButton { background-color: #A83232; color: white; }"
+        )
+        delete_button.clicked.connect(self._delete)
+        actions.addWidget(delete_button)
+
+        actions.addStretch()
+        close_button = QPushButton("Đóng")
+        close_button.clicked.connect(self.reject)
+        actions.addWidget(close_button)
+        root.addLayout(actions)
+
+    def _edit(self):
+        """Đóng hộp thoại chi tiết rồi chuyển bản ghi lên biểu mẫu chỉnh sửa."""
+        self.accept()
+        self.on_edit()
+
+    def _delete(self):
+        """Đóng hộp thoại chi tiết trước khi xác nhận xóa mềm bản ghi."""
+        self.accept()
+        self.on_delete()
 
 
 class CatalogPage(QWidget):
@@ -188,11 +239,9 @@ class CatalogPage(QWidget):
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.table.setAlternatingRowColors(True)
-        self.table.itemSelectionChanged.connect(
-            self.update_selection_button_state
-        )
+        # Mở hộp thoại chi tiết bằng double-click; thao tác sửa/xóa nằm trong popup.
         self.table.cellDoubleClicked.connect(
-            lambda *_: self.start_edit_selected_record()
+            lambda *_: self.open_selected_record_detail()
         )
 
         header = self.table.horizontalHeader()
@@ -206,24 +255,6 @@ class CatalogPage(QWidget):
 
         self.total_label = QLabel("Tổng số: 0")
         layout.addWidget(self.total_label)
-
-        self.edit_button = QPushButton("Chỉnh sửa mục đã chọn")
-        self.edit_button.setEnabled(False)
-        self.edit_button.clicked.connect(self.start_edit_selected_record)
-        self.delete_button = QPushButton("Xóa mục đã chọn")
-        self.delete_button.setEnabled(False)
-        self.delete_button.clicked.connect(self.delete_selected_record)
-        self.delete_button.setStyleSheet("""
-            QPushButton:enabled { background-color: #A83232; color: white; }
-            QPushButton:disabled { color: #888888; }
-        """)
-        self.action_panel, action_layout, self.action_hint = create_table_action_panel(
-            "Chọn một dòng để chỉnh sửa hoặc xóa mềm. Double-click để bắt đầu chỉnh sửa.",
-            self,
-        )
-        action_layout.addWidget(self.edit_button)
-        action_layout.addWidget(self.delete_button)
-        layout.addWidget(self.action_panel)
 
     def _next_code(self, cursor, lock_table=False):
         """Sinh mã kế tiếp; tính cả bản ghi đã xóa mềm.
@@ -338,7 +369,6 @@ class CatalogPage(QWidget):
 
             self.total_label.setText(f"Tổng số: {len(rows)}")
             self.loaded = True
-            self.update_selection_button_state()
 
         except Exception as e:
             QMessageBox.critical(
@@ -463,8 +493,6 @@ class CatalogPage(QWidget):
         self.search_input.setEnabled(False)
         self.search_button.setEnabled(False)
         self.clear_search_button.setEnabled(False)
-        self.edit_button.setEnabled(False)
-        self.delete_button.setEnabled(False)
 
         # Đưa con trỏ vào trường thông tin đầu tiên không phải mã.
         for column, *_rest in self.config["fields"]:
@@ -550,22 +578,25 @@ class CatalogPage(QWidget):
             if cursor is not None:
                 cursor.close()
 
-    def update_selection_button_state(self):
-        """Bật nút chỉnh sửa/xóa khi có dòng được chọn và không ở chế độ sửa."""
-        has_selection = self.table.currentRow() >= 0
-        not_editing = self.editing_record_id is None
-        self.edit_button.setEnabled(has_selection and not_editing)
-        self.delete_button.setEnabled(has_selection and not_editing)
-        if has_selection:
-            item = self.table.item(self.table.currentRow(), 0)
-            self.action_hint.setText(
-                f"Đang chọn {item.text()}." if item else
-                "Chọn một dòng để chỉnh sửa hoặc xóa mềm."
-            )
-        else:
-            self.action_hint.setText(
-                "Chọn một dòng để chỉnh sửa hoặc xóa mềm. Double-click để bắt đầu chỉnh sửa."
-            )
+    def open_selected_record_detail(self):
+        """Hiển thị dữ liệu của dòng được chọn cùng các thao tác sửa/xóa mềm."""
+        row = self.table.currentRow()
+        if row < 0:
+            return
+
+        values = []
+        for index, header in enumerate(self.config["headers"]):
+            item = self.table.item(row, index)
+            values.append((header, item.text() if item else ""))
+
+        dialog = CatalogDetailDialog(
+            self.config["title"],
+            values,
+            self.start_edit_selected_record,
+            self.delete_selected_record,
+            self,
+        )
+        dialog.exec()
 
     def delete_selected_record(self):
         """Xóa mềm bản ghi đang chọn bằng cách đặt IS_DELETED = 1."""
@@ -668,7 +699,6 @@ class CatalogPage(QWidget):
         self.search_button.setEnabled(True)
         self.clear_search_button.setEnabled(True)
         self.table.clearSelection()
-        self.update_selection_button_state()
 
         self.refresh_code_preview()
 
