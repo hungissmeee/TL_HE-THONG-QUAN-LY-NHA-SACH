@@ -82,7 +82,11 @@ class Database:
         "Quản lý": "rl_QuanLy",
         "Thu ngân": "rl_ThuNgan",
         "Nhân viên kho": "rl_NhanVienKho",
-        "Kế toán": "rl_KeToan"
+        "Kế toán": "rl_KeToan",
+    }
+    ROLE_DISPLAY_MAP = {
+        sql_role: display_role
+        for display_role, sql_role in ROLE_MAP.items()
     }
 
     def _check_admin(self):
@@ -256,16 +260,9 @@ class Database:
             }
 
             # Xác định vai trò
-            role_map = {
-                "rl_QuanLy": "Quản lý",
-                "rl_ThuNgan": "Thu ngân",
-                "rl_NhanVienKho": "Nhân viên kho",
-                "rl_KeToan": "Kế toán"
-            }
-
             current_role = employee[2]
 
-            for sql_role, display_role in role_map.items():
+            for sql_role, display_role in self.ROLE_DISPLAY_MAP.items():
                 if sql_role in roles:
                     current_role = display_role
                     break
