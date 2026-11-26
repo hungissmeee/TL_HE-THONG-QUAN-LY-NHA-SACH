@@ -468,6 +468,51 @@ class CreateInvoiceDialog(QDialog):
         return value.quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
 
     @staticmethod
+    def _assert_cart_prices_unchanged(
+        cursor, cart, promotion_code, expected_discount_rate
+    ):
+        """Chặn lưu hóa đơn với giá, VAT hoặc khuyến mãi đã thay đổi khi form đang mở."""
+        for product_code, item in cart.items():
+            cursor.execute("""
+                SELECT GIABAN, VAT
+                FROM dbo.SAN_PHAM WITH (UPDLOCK, HOLDLOCK)
+                WHERE MASP = ?
+                  AND ISNULL(IS_DELETED, 0) = 0
+            """, product_code)
+            current = cursor.fetchone()
+            if current is None:
+                raise RuntimeError(
+                    f"Sản phẩm {product_code} đã bị xóa hoặc ngừng kinh doanh."
+                )
+
+            if (
+                as_decimal(current[0]) != as_decimal(item["price"])
+                or as_decimal(current[1]) != as_decimal(item["vat"])
+            ):
+                raise RuntimeError(
+                    f"Giá bán hoặc VAT của sản phẩm {product_code} đã thay đổi "
+                    "trong lúc lập hóa đơn. Hãy đóng biểu mẫu và lập lại hóa đơn."
+                )
+
+        if promotion_code:
+            cursor.execute("""
+                SELECT TYLEGIAM
+                FROM dbo.CHUONG_TRINH_KM WITH (UPDLOCK, HOLDLOCK)
+                WHERE MAKM = ?
+                  AND NGAYBD <= SYSDATETIME()
+                  AND NGAYKT >= SYSDATETIME()
+            """, promotion_code)
+            promotion = cursor.fetchone()
+            if (
+                promotion is None
+                or as_decimal(promotion[0]) != as_decimal(expected_discount_rate)
+            ):
+                raise RuntimeError(
+                    "Chương trình khuyến mãi đã hết hạn hoặc thay đổi tỷ lệ giảm. "
+                    "Hãy tải lại biểu mẫu trước khi thanh toán."
+                )
+
+    @staticmethod
     def _assert_active_shift(cursor, employee, shift):
         """Xác thực lại nhân viên và ca ngay trong transaction lưu hóa đơn."""
         employee_code = (employee or {}).get("manv")
@@ -538,6 +583,15 @@ class CreateInvoiceDialog(QDialog):
                 self._assert_active_shift(
                     cursor, self.employee, self.active_shift
                 )
+
+            # Recheck giá, VAT và khuyến mãi để tránh áp dụng dữ liệu đã cũ.
+            promotion_code = self.promotion_combo.currentData()
+            expected_discount_rate = self.promotions.get(
+                promotion_code, Decimal("0")
+            )
+            self._assert_cart_prices_unchanged(
+                cursor, self.cart, promotion_code, expected_discount_rate
+            )
 
             # Khóa bảng trong transaction để hạn chế sinh trùng mã hóa đơn.
             cursor.execute("""
