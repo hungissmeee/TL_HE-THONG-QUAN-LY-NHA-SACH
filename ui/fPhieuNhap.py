@@ -1,4 +1,6 @@
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+
+MONEY_QUANT = Decimal("0.01")
 from html import escape
 
 from PySide6.QtCore import Qt, QDate, QSizeF, QMarginsF, QTimer
