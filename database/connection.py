@@ -231,23 +231,25 @@ class Database:
         cursor = self.conn.cursor()
 
         try:
-            # Lấy thông tin nhân viên và kiểm tra Database User
+            # Đọc trạng thái SQL Login trực tiếp từ SQL Server.
             cursor.execute("""
                            SELECT NV.MANV,
                                   NV.TENNV,
                                   NV.VAITRO,
                                   NV.SDT,
-
                                   CASE
-                                      WHEN EXISTS (SELECT 1
-                                                   FROM sys.database_principals DP
-                                                   WHERE LOWER(DP.name) = LOWER(NV.MANV)
-                                                     AND DP.type = 'S')
-                                          THEN 1
+                                      WHEN SP.principal_id IS NOT NULL THEN 1
                                       ELSE 0
-                                      END AS ACCOUNT_EXISTS
-
+                                  END AS ACCOUNT_EXISTS,
+                                  CASE
+                                      WHEN SP.principal_id IS NOT NULL
+                                           AND SP.is_disabled = 0 THEN 1
+                                      ELSE 0
+                                  END AS ACCOUNT_ENABLED
                            FROM dbo.NHAN_VIEN NV
+                           LEFT JOIN sys.server_principals SP
+                             ON LOWER(SP.name) = LOWER(NV.MANV)
+                            AND SP.type = 'S'
                            WHERE NV.MANV = ?
                            """, manv)
 
@@ -288,7 +290,8 @@ class Database:
                 "tennv": employee[1],
                 "vaitro": current_role,
                 "sdt": employee[3],
-                "account_exists": bool(employee[4])
+                "account_exists": bool(employee[4]),
+                "account_enabled": bool(employee[5])
             }
 
         finally:
@@ -375,6 +378,53 @@ class Database:
                            WHERE MANV = ?
                            """, vaitro, manv)
 
+            self.conn.commit()
+
+        except Exception:
+            self.conn.rollback()
+            raise
+
+        finally:
+            cursor.close()
+
+    # =====================================
+    # NGƯNG HOẠT ĐỘNG / KÍCH HOẠT TÀI KHOẢN
+    # =====================================
+
+    def set_employee_account_enabled(self, manv, enabled):
+        """Bật hoặc vô hiệu hóa SQL Login của nhân viên, không xóa hồ sơ hay quyền."""
+
+        self._check_admin()
+
+        if not manv or manv.strip().lower() == "admin":
+            raise PermissionError(
+                "Không thể ngưng hoạt động hoặc thay đổi tài khoản admin!"
+            )
+
+        if not isinstance(enabled, bool):
+            raise ValueError("Trạng thái tài khoản phải là True hoặc False!")
+
+        cursor = self.conn.cursor()
+        login = self._quote_login(manv)
+
+        try:
+            cursor.execute("""
+                           SELECT is_disabled
+                           FROM sys.server_principals
+                           WHERE name = ?
+                             AND type = 'S'
+                           """, manv)
+
+            account = cursor.fetchone()
+            if account is None:
+                raise Exception("Tài khoản SQL Server không tồn tại!")
+
+            currently_enabled = not bool(account[0])
+            if currently_enabled == enabled:
+                return
+
+            action = "ENABLE" if enabled else "DISABLE"
+            cursor.execute(f"ALTER LOGIN {login} {action}")
             self.conn.commit()
 
         except Exception:

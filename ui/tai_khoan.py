@@ -61,11 +61,14 @@ class EmployeePermissionDialog(QDialog):
         )
 
         # Trạng thái tài khoản
-        self.status_label = QLabel(
-            "Đã tạo tài khoản SQL Server"
-            if employee["account_exists"]
-            else "Chưa có tài khoản SQL Server"
-        )
+        if not employee["account_exists"]:
+            account_status = "Chưa có tài khoản SQL Server"
+        elif employee["account_enabled"]:
+            account_status = "Đang hoạt động"
+        else:
+            account_status = "Đã ngưng hoạt động"
+
+        self.status_label = QLabel(account_status)
 
         info_layout.addRow(
             "Trạng thái:",

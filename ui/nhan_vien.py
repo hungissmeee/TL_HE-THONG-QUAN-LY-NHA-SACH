@@ -20,13 +20,27 @@ from ui.table_sort import (
 )
 
 class EmployeeDetailDialog(QDialog):
-    """Hộp thoại xem thông tin nhân viên và mở quản lý tài khoản khi được phép."""
+    """Hộp thoại xem thông tin nhân viên và quản lý tài khoản khi được phép."""
 
-    def __init__(self, employee, can_manage=False, on_manage=None, parent=None):
+    def __init__(
+        self,
+        employee,
+        can_manage=False,
+        on_manage=None,
+        account_exists=False,
+        account_enabled=False,
+        on_toggle_account=None,
+        parent=None,
+    ):
         super().__init__(parent)
         self.on_manage = on_manage
+        self.on_toggle_account = on_toggle_account
+        self.manv = str(employee[0])
+        self.account_exists = bool(account_exists)
+        self.account_enabled = bool(account_enabled)
+
         self.setWindowTitle(f"Chi tiết nhân viên - {employee[0]}")
-        self.setMinimumWidth(440)
+        self.setMinimumWidth(480)
 
         root = QVBoxLayout(self)
         title = QLabel("CHI TIẾT NHÂN VIÊN")
@@ -42,18 +56,63 @@ class EmployeeDetailDialog(QDialog):
             value_label = QLabel("" if value is None else str(value))
             value_label.setWordWrap(True)
             form.addRow(label, value_label)
+
+        self.account_status_label = None
+        if can_manage:
+            self.account_status_label = QLabel(self._account_status_text(employee[0]))
+            form.addRow("Trạng thái tài khoản:", self.account_status_label)
+
         root.addWidget(group)
 
         actions = QHBoxLayout()
         if can_manage:
+            if self.account_exists and str(employee[0]).strip().lower() != "admin":
+                self.account_toggle_button = QPushButton(
+                    self._account_toggle_text()
+                )
+                self.account_toggle_button.clicked.connect(
+                    self._toggle_account_status
+                )
+                actions.addWidget(self.account_toggle_button)
+
             manage_button = QPushButton("Quản lý tài khoản")
             manage_button.clicked.connect(self._manage_account)
             actions.addWidget(manage_button)
+
         actions.addStretch()
         close_button = QPushButton("Đóng")
         close_button.clicked.connect(self.reject)
         actions.addWidget(close_button)
         root.addLayout(actions)
+
+    def _account_status_text(self, manv):
+        if str(manv).strip().lower() == "admin":
+            return "Tài khoản quản trị hệ thống"
+        if not self.account_exists:
+            return "Chưa có tài khoản SQL Server"
+        return "Đang hoạt động" if self.account_enabled else "Đã ngưng hoạt động"
+
+    def _account_toggle_text(self):
+        return (
+            "Ngưng hoạt động tài khoản"
+            if self.account_enabled
+            else "Kích hoạt lại tài khoản"
+        )
+
+    def _toggle_account_status(self):
+        """Gọi thao tác bật/tắt tài khoản và cập nhật trạng thái hiển thị."""
+        if self.on_toggle_account is None:
+            return
+
+        target_enabled = not self.account_enabled
+        if not self.on_toggle_account(target_enabled):
+            return
+
+        self.account_enabled = target_enabled
+        self.account_status_label.setText(
+            self._account_status_text(self.manv)
+        )
+        self.account_toggle_button.setText(self._account_toggle_text())
 
     def _manage_account(self):
         """Đóng chi tiết rồi mở hộp thoại phân quyền cho nhân viên này."""
@@ -564,13 +623,66 @@ class EmployeeWindow(QWidget):
         if not values or not values[0]:
             return
 
+        account_info = {}
+        if self.is_admin:
+            try:
+                account_info = self.db.get_employee_permissions(values[0])
+            except Exception as e:
+                QMessageBox.critical(
+                    self,
+                    "Lỗi tải trạng thái tài khoản",
+                    str(e)
+                )
+                return
+
         dialog = EmployeeDetailDialog(
             values,
             can_manage=self.is_admin,
             on_manage=lambda: self.open_employee_permissions(row),
+            account_exists=account_info.get("account_exists", False),
+            account_enabled=account_info.get("account_enabled", False),
+            on_toggle_account=lambda enabled: self.toggle_employee_account(
+                values[0], enabled
+            ),
             parent=self,
         )
         dialog.exec()
+
+    def toggle_employee_account(self, manv, enabled):
+        """Xác nhận và đổi trạng thái SQL Login; chỉ admin được thực hiện."""
+        if not self.is_admin:
+            QMessageBox.warning(
+                self,
+                "Từ chối",
+                "Chỉ Admin mới được thay đổi trạng thái tài khoản!"
+            )
+            return False
+
+        action = "kích hoạt lại" if enabled else "ngưng hoạt động"
+        confirm = QMessageBox.question(
+            self,
+            "Xác nhận",
+            f"Bạn có chắc muốn {action} tài khoản {manv}?"
+        )
+        if confirm != QMessageBox.StandardButton.Yes:
+            return False
+
+        try:
+            self.db.set_employee_account_enabled(manv, enabled)
+            message = (
+                "Đã kích hoạt lại tài khoản."
+                if enabled
+                else "Đã ngưng hoạt động tài khoản."
+            )
+            QMessageBox.information(self, "Thành công", message)
+            return True
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Không thể cập nhật tài khoản",
+                str(e)
+            )
+            return False
 
     def open_employee_permissions(self, row=None, column=None):
         """Mở hộp thoại quản lý quyền của nhân viên đang chọn; chỉ admin được phép."""
