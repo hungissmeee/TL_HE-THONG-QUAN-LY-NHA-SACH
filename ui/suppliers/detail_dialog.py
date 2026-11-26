@@ -2,15 +2,12 @@
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QWidget, QDialog, QLabel, QLineEdit, QPushButton, QVBoxLayout,
-    QHBoxLayout, QFormLayout, QTableWidget, QHeaderView,
-    QMessageBox, QAbstractItemView, QCheckBox, QGroupBox,
-)
-from ui.table_sort import (
-    SortableTableWidgetItem as QTableWidgetItem,
-    prepare_sortable_table,
-    pause_table_sorting,
-    resume_table_sorting,
+    QDialog,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+    QFormLayout,
+    QGroupBox,
 )
 
 
@@ -41,5 +38,6 @@ class SupplierDetailDialog(QDialog):
         close_button = QPushButton("Đóng")
         close_button.clicked.connect(self.accept)
         root.addWidget(close_button, alignment=Qt.AlignmentFlag.AlignRight)
+
 
 
