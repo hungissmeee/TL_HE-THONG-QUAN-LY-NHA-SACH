@@ -1,5 +1,6 @@
 """CreateInvoiceDialog: thành phần giao diện nghiệp vụ hóa đơn."""
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog,
     QLabel,
@@ -23,6 +24,7 @@ from ui.table_sort import (
     resume_table_sorting,
 )
 from .common import MONEY_QUANT, Decimal, InvalidOperation, ROUND_HALF_UP, money, as_decimal, date_text, time_text
+
 
 class CreateInvoiceDialog(QDialog):
     """Lập hóa đơn tiền mặt; đơn giá GIABAN đã bao gồm VAT."""
@@ -533,6 +535,7 @@ class CreateInvoiceDialog(QDialog):
             )
         finally:
             cursor.close()
+
 
 
 
