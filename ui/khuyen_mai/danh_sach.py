@@ -1,8 +1,6 @@
 """Trang danh sách và quản lý chương trình khuyến mãi."""
 
-from datetime import datetime
-
-from PySide6.QtCore import Qt, QDateTime
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QWidget,
     QDialog,
@@ -14,8 +12,6 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QGroupBox,
     QInputDialog,
-    QDateTimeEdit,
-    QDialogButtonBox,
     QTableWidget,
     QHeaderView,
     QMessageBox,
@@ -36,12 +32,11 @@ class PromotionDetailDialog(QDialog):
     """Popup xem chi tiết khuyến mãi và thao tác đổi tên hoặc xóa mềm."""
 
     def __init__(
-        self, values, can_manage=False, on_rename=None, on_edit_period=None,
-        on_delete=None, parent=None
+        self, values, can_manage=False, on_rename=None, on_delete=None,
+        parent=None
     ):
         super().__init__(parent)
         self.on_rename = on_rename
-        self.on_edit_period = on_edit_period
         self.on_delete = on_delete
 
         self.setWindowTitle("Chi tiết chương trình khuyến mãi")
@@ -69,10 +64,6 @@ class PromotionDetailDialog(QDialog):
             rename_button.clicked.connect(self._rename)
             actions.addWidget(rename_button)
 
-            time_button = QPushButton("Chỉnh thời gian")
-            time_button.clicked.connect(self._edit_period)
-            actions.addWidget(time_button)
-
             delete_button = QPushButton("Xóa mềm")
             delete_button.setStyleSheet(
                 "QPushButton { background-color: #A83232; color: white; }"
@@ -96,80 +87,12 @@ class PromotionDetailDialog(QDialog):
     def _rename(self):
         self._run_action(self.on_rename)
 
-    def _edit_period(self):
-        self._run_action(self.on_edit_period)
-
     def _delete(self):
         self._run_action(self.on_delete)
 
 
-class PromotionTimeDialog(QDialog):
-    """Hộp thoại chỉnh thời gian bắt đầu và kết thúc của khuyến mãi."""
-
-    def __init__(self, start_at, end_at, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Chỉnh thời gian khuyến mãi")
-        self.setMinimumWidth(420)
-
-        root = QVBoxLayout(self)
-        root.setContentsMargins(18, 16, 18, 16)
-        root.setSpacing(12)
-
-        title = QLabel("CHỈNH THỜI GIAN ÁP DỤNG")
-        title.setStyleSheet("font-size: 18px; font-weight: bold;")
-        root.addWidget(title)
-
-        form = QFormLayout()
-        form.setSpacing(10)
-
-        self.start_input = QDateTimeEdit(start_at)
-        self.start_input.setCalendarPopup(True)
-        self.start_input.setDisplayFormat("dd/MM/yyyy HH:mm")
-        form.addRow("Thời gian bắt đầu:", self.start_input)
-
-        self.end_input = QDateTimeEdit(end_at)
-        self.end_input.setCalendarPopup(True)
-        self.end_input.setDisplayFormat("dd/MM/yyyy HH:mm")
-        form.addRow("Thời gian kết thúc:", self.end_input)
-
-        root.addLayout(form)
-
-        note = QLabel(
-            "Tỷ lệ giảm không thay đổi. Chỉ thời gian áp dụng của "
-            "chương trình được cập nhật."
-        )
-        note.setWordWrap(True)
-        note.setStyleSheet("color: #AAB7C8; font-size: 11px;")
-        root.addWidget(note)
-
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Save
-            | QDialogButtonBox.StandardButton.Cancel
-        )
-        buttons.accepted.connect(self._validate_and_accept)
-        buttons.rejected.connect(self.reject)
-        root.addWidget(buttons)
-
-    def _validate_and_accept(self):
-        if self.start_input.dateTime() >= self.end_input.dateTime():
-            QMessageBox.warning(
-                self,
-                "Thời hạn không hợp lệ",
-                "Thời gian kết thúc phải sau thời gian bắt đầu.",
-            )
-            return
-        self.accept()
-
-    @staticmethod
-    def _to_python_datetime(value):
-        return datetime.strptime(
-            value.toString("yyyy-MM-dd HH:mm:ss"),
-            "%Y-%m-%d %H:%M:%S",
-        )
-
-
 class PromotionWindow(QWidget):
-    """Quản lý khuyến mãi; tỷ lệ giảm cố định, cho đổi tên và thời hạn."""
+    """Quản lý khuyến mãi; tỷ lệ và thời hạn cố định, chỉ cho đổi tên và xóa mềm."""
 
     def __init__(self, db):
         super().__init__()
@@ -232,9 +155,9 @@ class PromotionWindow(QWidget):
         root.addLayout(header)
 
         description = QLabel(
-            "Tỷ lệ giảm được giữ cố định để bảo toàn cách tính hóa đơn cũ. "
-            "Có thể đổi tên hoặc điều chỉnh thời gian áp dụng; xóa khuyến mãi "
-            "chỉ chuyển sang trạng thái ngừng áp dụng."
+            "Tỷ lệ giảm và thời gian áp dụng được giữ cố định sau khi tạo. "
+            "Có thể đổi tên; xóa khuyến mãi chỉ chuyển sang trạng thái "
+            "ngừng áp dụng để giữ nguyên lịch sử hóa đơn."
         )
         description.setWordWrap(True)
         description.setStyleSheet("color: #AAB7C8; font-size: 11px;")
@@ -481,84 +404,10 @@ class PromotionWindow(QWidget):
             values,
             can_manage=self.can_manage and not is_deleted,
             on_rename=lambda: self.rename_promotion(code, current_name),
-            on_edit_period=lambda: self.edit_promotion_period(
-                code,
-                QDateTime.fromString(
-                    self.table.item(row, 3).text(), "dd/MM/yyyy HH:mm"
-                ),
-                QDateTime.fromString(
-                    self.table.item(row, 4).text(), "dd/MM/yyyy HH:mm"
-                ),
-            ),
             on_delete=lambda: self.delete_promotion(code, current_name),
             parent=self,
         )
         dialog.exec()
-
-    def edit_promotion_period(self, code, start_at, end_at):
-        """Cập nhật thời gian bắt đầu/kết thúc, không thay đổi tỷ lệ giảm."""
-        if not self.can_manage:
-            QMessageBox.warning(
-                self, "Không có quyền",
-                "Chỉ Admin/Quản lý được chỉnh thời gian khuyến mãi.",
-            )
-            return
-
-        if not start_at.isValid() or not end_at.isValid():
-            QMessageBox.warning(
-                self, "Dữ liệu thời gian không hợp lệ",
-                "Không đọc được thời gian hiện tại của chương trình.",
-            )
-            return
-
-        dialog = PromotionTimeDialog(start_at, end_at, self)
-        if not dialog.exec():
-            return
-
-        new_start = PromotionTimeDialog._to_python_datetime(
-            dialog.start_input.dateTime()
-        )
-        new_end = PromotionTimeDialog._to_python_datetime(
-            dialog.end_input.dateTime()
-        )
-
-        conn = self.db.get_connection()
-        if conn is None:
-            QMessageBox.warning(
-                self, "Thông báo", "Chưa có kết nối SQL Server."
-            )
-            return
-
-        cursor = None
-        try:
-            cursor = conn.cursor()
-            cursor.execute("""
-                UPDATE dbo.CHUONG_TRINH_KM
-                SET NGAYBD = ?, NGAYKT = ?
-                OUTPUT inserted.MAKM
-                WHERE MAKM = ?
-                  AND ISNULL(IS_DELETED, 0) = 0
-            """, new_start, new_end, code)
-
-            if cursor.fetchone() is None:
-                raise RuntimeError(
-                    "Khuyến mãi không tồn tại hoặc đã bị xóa."
-                )
-
-            conn.commit()
-            QMessageBox.information(
-                self, "Thành công",
-                f"Đã cập nhật thời gian chương trình {code}.",
-            )
-            self.load_promotions()
-        except Exception as error:
-            conn.rollback()
-            QMessageBox.critical(
-                self, "Không thể chỉnh thời gian khuyến mãi", str(error)
-            )
-        finally:
-            if cursor is not None:
-                cursor.close()
 
     def rename_promotion(self, code, current_name):
         """Chỉ đổi tên chương trình, không thay đổi tỷ lệ giảm."""
