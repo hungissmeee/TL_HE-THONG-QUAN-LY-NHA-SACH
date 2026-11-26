@@ -87,6 +87,7 @@ class CreateInvoiceDialog(QDialog):
                   AND CAST(C.NGAYLAM AS date) = CAST(SYSDATETIME() AS date)
                   AND CAST(SYSDATETIME() AS time) >= C.TGMO
                   AND CAST(SYSDATETIME() AS time) < C.TGDONG
+                  AND C.TMCUOICA IS NULL
                 ORDER BY C.SOCA
             """, self.username)
             row = cursor.fetchone()
@@ -466,6 +467,37 @@ class CreateInvoiceDialog(QDialog):
             raise ValueError("Tiền khách đưa không hợp lệ.")
         return value.quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
 
+    @staticmethod
+    def _assert_active_shift(cursor, employee, shift):
+        """Xác thực lại nhân viên và ca ngay trong transaction lưu hóa đơn."""
+        employee_code = (employee or {}).get("manv")
+        shift_code = (shift or {}).get("maca")
+        if not employee_code or shift_code is None:
+            raise RuntimeError(
+                "Không xác định được nhân viên hoặc ca làm việc hiện tại."
+            )
+
+        cursor.execute("""
+            SELECT TOP (1) C.MACA
+            FROM dbo.NHAN_VIEN NV WITH (UPDLOCK, HOLDLOCK)
+            INNER JOIN dbo.LAMCA L WITH (UPDLOCK, HOLDLOCK)
+                ON L.MANV = NV.MANV
+            INNER JOIN dbo.CA_LAM_VIEC C WITH (UPDLOCK, HOLDLOCK)
+                ON C.MACA = L.MACA
+            WHERE NV.MANV = ?
+              AND C.MACA = ?
+              AND CAST(C.NGAYLAM AS date) = CAST(SYSDATETIME() AS date)
+              AND CAST(SYSDATETIME() AS time) >= C.TGMO
+              AND CAST(SYSDATETIME() AS time) < C.TGDONG
+              AND C.TMCUOICA IS NULL
+        """, employee_code, shift_code)
+
+        if cursor.fetchone() is None:
+            raise RuntimeError(
+                "Ca làm việc của bạn đã kết thúc, đã được chốt hoặc "
+                "không còn đăng ký hiệu lực. Hóa đơn chưa được lưu."
+            )
+
     def save_invoice(self):
         """Kiểm tra giỏ hàng, ca làm việc và thanh toán trước khi ghi hóa đơn cùng chi tiết vào SQL Server."""
         if not self.cart:
@@ -500,6 +532,13 @@ class CreateInvoiceDialog(QDialog):
         cursor = conn.cursor()
         invoice_code = None
         try:
+            # Admin được phép lập hóa đơn mà không cần đăng ký ca.
+            # Các tài khoản khác phải còn thuộc đúng ca tại thời điểm bấm Lưu.
+            if not self.is_admin:
+                self._assert_active_shift(
+                    cursor, self.employee, self.active_shift
+                )
+
             # Khóa bảng trong transaction để hạn chế sinh trùng mã hóa đơn.
             cursor.execute("""
                 SELECT COALESCE(
