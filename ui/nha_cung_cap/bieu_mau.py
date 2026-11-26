@@ -1,6 +1,5 @@
 """SupplierFormDialog: thành phần giao diện nghiệp vụ."""
 
-from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtWidgets import (
     QDialog,
     QLabel,
@@ -14,29 +13,6 @@ from PySide6.QtWidgets import (
 )
 
 
-from database.casso_idkit import CassoIdKitClient, CassoIdKitError
-
-
-class TaxLookupThread(QThread):
-    """Tra cứu MST ở luồng nền để không làm treo giao diện."""
-
-    result_ready = Signal(dict)
-    error_occurred = Signal(str)
-
-    def __init__(self, tax_code, parent=None):
-        super().__init__(parent)
-        self.tax_code = tax_code
-
-    def run(self):
-        try:
-            result = CassoIdKitClient().lookup(self.tax_code)
-            self.result_ready.emit(result)
-        except (CassoIdKitError, ValueError) as error:
-            self.error_occurred.emit(str(error))
-        except Exception as error:
-            self.error_occurred.emit(f"Không thể tra cứu MST: {error}")
-
-
 class SupplierFormDialog(QDialog):
     """Thu thập và kiểm tra thông tin trước khi lưu nhà cung cấp."""
 
@@ -47,7 +23,6 @@ class SupplierFormDialog(QDialog):
         self.supplier = supplier
         self.is_edit = supplier is not None
         self.saved_supplier = None
-        self.lookup_thread = None
 
         self.setWindowTitle("Chỉnh sửa nhà cung cấp" if self.is_edit else "Thêm nhà cung cấp")
         self.setMinimumWidth(500)
@@ -89,27 +64,13 @@ class SupplierFormDialog(QDialog):
 
         self.tax_input = QLineEdit()
         self.tax_input.setMaxLength(20)
-        self.tax_input.setPlaceholderText("Nhập mã số thuế để tra cứu")
-
-        self.lookup_button = QPushButton("Tra cứu MST")
-        self.lookup_button.setToolTip(
-            "Tự động điền tên và địa chỉ từ Casso IDKit."
-        )
-        self.lookup_button.clicked.connect(self.lookup_tax_code)
-        tax_row = QHBoxLayout()
-        tax_row.addWidget(self.tax_input, 1)
-        tax_row.addWidget(self.lookup_button)
-
-        self.lookup_status = QLabel("")
-        self.lookup_status.setWordWrap(True)
-        self.lookup_status.setStyleSheet("color: #9aa4b2;")
+        self.tax_input.setPlaceholderText("Mã số thuế (nếu có)")
 
         form.addRow("Mã nhà cung cấp:", self.code_input)
         form.addRow("Tên nhà cung cấp *:", self.name_input)
         form.addRow("Số điện thoại:", self.phone_input)
         form.addRow("Địa chỉ:", self.address_input)
-        form.addRow("Mã số thuế:", tax_row)
-        form.addRow("", self.lookup_status)
+        form.addRow("Mã số thuế:", self.tax_input)
         root.addWidget(group)
 
         buttons = QHBoxLayout()
@@ -121,58 +82,6 @@ class SupplierFormDialog(QDialog):
         buttons.addWidget(cancel)
         buttons.addWidget(self.save_button)
         root.addLayout(buttons)
-
-    def closeEvent(self, event):
-        """Chờ luồng tra cứu kết thúc trước khi đóng hộp thoại."""
-        if self.lookup_thread and self.lookup_thread.isRunning():
-            self.lookup_thread.wait()
-        super().closeEvent(event)
-
-    def lookup_tax_code(self):
-        """Gọi Casso IDKit ở luồng nền và điền thông tin tìm được."""
-        tax_code = self.tax_input.text().strip()
-        try:
-            CassoIdKitClient.validate_tax_code(tax_code)
-        except ValueError as error:
-            QMessageBox.warning(self, "Mã số thuế không hợp lệ", str(error))
-            self.tax_input.setFocus()
-            return
-
-        if self.lookup_thread and self.lookup_thread.isRunning():
-            return
-
-        self.lookup_button.setEnabled(False)
-        self.lookup_status.setText("Đang tra cứu thông tin mã số thuế...")
-        self.lookup_thread = TaxLookupThread(tax_code, self)
-        self.lookup_thread.result_ready.connect(self._apply_tax_lookup)
-        self.lookup_thread.error_occurred.connect(self._show_tax_lookup_error)
-        self.lookup_thread.finished.connect(self._finish_tax_lookup)
-        self.lookup_thread.start()
-
-    def _apply_tax_lookup(self, result):
-        """Điền tên, địa chỉ và MST từ kết quả Casso; không ghi đè số điện thoại."""
-        self.tax_input.setText(result.get("tax_code") or self.tax_input.text())
-        if result.get("name"):
-            self.name_input.setText(result["name"])
-        if result.get("address"):
-            self.address_input.setText(result["address"])
-
-        status = result.get("status") or "Không có thông tin trạng thái"
-        department = result.get("tax_department")
-        details = [f"Trạng thái: {status}"]
-        if department:
-            details.append(f"Cơ quan thuế: {department}")
-        self.lookup_status.setText(" | ".join(details))
-
-    def _show_tax_lookup_error(self, message):
-        """Hiển thị lỗi tra cứu mà không làm mất dữ liệu nhân viên đã nhập."""
-        self.lookup_status.setText(message)
-        QMessageBox.warning(self, "Không tra cứu được MST", message)
-
-    def _finish_tax_lookup(self):
-        """Khôi phục nút tra cứu sau khi luồng nền kết thúc."""
-        self.lookup_button.setEnabled(True)
-        self.lookup_thread = None
 
     def _populate(self):
         """Đưa dữ liệu nhà cung cấp hiện tại lên biểu mẫu chỉnh sửa."""
