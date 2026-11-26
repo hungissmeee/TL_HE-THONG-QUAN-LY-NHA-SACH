@@ -1,4 +1,4 @@
-"""Các trang báo cáo của BookHub."""
+"""Các trang báo cáo của Hệ thống quản lý nhà sách."""
 
 from ui.bao_cao.bao_cao_tong_quan import OverviewReportPage
 from ui.bao_cao.bao_cao_doanh_thu import RevenueReportPage

@@ -59,7 +59,7 @@ class MainWindow(QMainWindow):
         self.db = db
         self.login_window = login_window
 
-        self.setWindowTitle("BookHub - Quản lý nhà sách")
+        self.setWindowTitle("Hệ thống quản lý nhà sách")
         self.resize(1200, 750)
 
         self.danh_sachs = {}
@@ -141,7 +141,7 @@ class MainWindow(QMainWindow):
         sidebar_layout.setContentsMargins(12, 20, 12, 15)
         sidebar_layout.setSpacing(8)
 
-        logo = QLabel("BOOKHUB")
+        logo = QLabel("HỆ THỐNG")
         logo.setObjectName("logo")
 
         subtitle = QLabel("QUẢN LÝ NHÀ SÁCH")
@@ -502,7 +502,7 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(page)
 
         welcome = QLabel(
-            "Chào mừng đến với hệ thống quản lý nhà sách BookHub!"
+            "Chào mừng đến với Hệ thống quản lý nhà sách!"
         )
         welcome.setStyleSheet("font-size: 18px; font-weight: bold;")
 

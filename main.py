@@ -1,4 +1,4 @@
-"""Điểm khởi chạy ứng dụng BookHub, tạo QApplication và mở cửa sổ đăng nhập."""
+"""Điểm khởi chạy Hệ thống quản lý nhà sách, tạo QApplication và mở cửa sổ đăng nhập."""
 
 import sys
 
@@ -8,7 +8,11 @@ from database.connection import Database
 from ui.login import LoginWindow
 
 
+APP_NAME = "Hệ thống quản lý nhà sách"
+
 app = QApplication(sys.argv)
+app.setApplicationName(APP_NAME)
+app.setApplicationDisplayName(APP_NAME)
 
 # Khởi tạo một đối tượng kết nối dùng chung trong toàn bộ phiên làm việc.
 db = Database()

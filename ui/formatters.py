@@ -1,4 +1,4 @@
-"""Các hàm định dạng và chuyển đổi dữ liệu dùng chung trong giao diện BookHub."""
+"""Các hàm định dạng và chuyển đổi dữ liệu dùng chung trong Hệ thống quản lý nhà sách."""
 
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 

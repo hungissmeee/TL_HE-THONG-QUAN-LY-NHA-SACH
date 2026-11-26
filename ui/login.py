@@ -17,7 +17,7 @@ class LoginWindow(QWidget):
         self.db = db
         self.main_window = None
 
-        self.setWindowTitle("Đăng nhập")
+        self.setWindowTitle("Hệ thống quản lý nhà sách - Đăng nhập")
         self.setFixedSize(300, 200)
 
         self.title = QLabel("ĐĂNG NHẬP HỆ THỐNG")

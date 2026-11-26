@@ -1,1 +1,1 @@
-"""Giao diện người dùng của hệ thống quản lý nhà sách BookHub."""
+"""Giao diện người dùng của Hệ thống quản lý nhà sách."""

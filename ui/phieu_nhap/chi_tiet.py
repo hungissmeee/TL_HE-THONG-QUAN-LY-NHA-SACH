@@ -196,8 +196,7 @@ class ImportDetailDialog(QDialog):
           .total {{ text-align: right; font-weight: bold; font-size: 13pt; margin-top: 14px; }}
           .sign {{ margin-top: 55px; display: flex; justify-content: space-between; }}
         </style></head><body>
-          <h1>BOOKHUB</h1>
-          <div class='center'>HỆ THỐNG QUẢN LÝ NHÀ SÁCH</div>
+          <h1>HỆ THỐNG QUẢN LÝ NHÀ SÁCH</h1>
           <h2>PHIẾU NHẬP KHO</h2>
           <div class='meta'>
             <b>Mã phiếu:</b> {escape(str(h['mapn']))}<br>

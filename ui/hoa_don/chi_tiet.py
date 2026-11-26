@@ -297,8 +297,7 @@ class InvoiceDetailDialog(QDialog):
             .thanks {{ text-align: center; margin-top: 9px; font-weight: bold; }}
             .small {{ text-align: center; font-size: 7pt; margin-top: 3px; }}
         </style></head><body>
-            <h1>BOOKHUB</h1>
-            <div class='company'>HỆ THỐNG QUẢN LÝ NHÀ SÁCH</div>
+            <h1>HỆ THỐNG QUẢN LÝ NHÀ SÁCH</h1>
             <h2>HÓA ĐƠN BÁN HÀNG</h2>
             <div class='meta'>
                 <p><b>Mã hóa đơn:</b> {escape(str(h['mahd']))}</p>
@@ -352,7 +351,7 @@ class InvoiceDetailDialog(QDialog):
         page_size = QPageSize(
             QSizeF(paper_width_mm, paper_height_mm),
             QPageSize.Unit.Millimeter,
-            "BookHub Receipt 80mm",
+            "Hệ thống quản lý nhà sách - Hóa đơn 80mm",
             QPageSize.SizeMatchPolicy.ExactMatch
         )
         margins = QMarginsF(margin_mm, margin_mm, margin_mm, margin_mm)
