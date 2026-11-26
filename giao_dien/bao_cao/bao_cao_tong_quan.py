@@ -4,12 +4,13 @@ from PySide6.QtWidgets import QLabel, QVBoxLayout
 
 from decimal import Decimal
 
-from ui.reports.report_base import (
+from giao_dien.bao_cao.bao_cao_co_so import (
     ReportBasePage, money_text, number_text, date_text,
 )
 
 
 class OverviewReportPage(ReportBasePage):
+    """Báo cáo tổng quan tình hình hoạt động nhà sách."""
     def __init__(self, db, parent=None):
         super().__init__(
             db,

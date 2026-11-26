@@ -31,7 +31,7 @@ from PySide6.QtWidgets import (
     QDateEdit,
     QGroupBox,
 )
-from ui.table_sort import (
+from giao_dien.sap_xep_bang import (
     SortableTableWidgetItem as QTableWidgetItem,
     prepare_sortable_table,
     pause_table_sorting,
@@ -40,6 +40,7 @@ from ui.table_sort import (
 
 
 class SearchableSingleSelect(QWidget):
+    """Ô chọn một giá trị từ danh mục có hỗ trợ tìm kiếm."""
     """Ô tìm kiếm để chọn một mục từ danh mục SQL Server."""
 
     def __init__(self, placeholder="Tìm để chọn...", parent=None):
@@ -139,7 +140,7 @@ from PySide6.QtWidgets import (
     QDoubleSpinBox, QGroupBox, QDateEdit, QCheckBox,
     QListWidget, QListWidgetItem, QCompleter, QFrame,
 )
-from ui.table_sort import (
+from giao_dien.sap_xep_bang import (
     SortableTableWidgetItem as QTableWidgetItem,
     prepare_sortable_table,
     pause_table_sorting,
@@ -148,6 +149,7 @@ from ui.table_sort import (
 
 
 class SearchableMultiSelect(QWidget):
+    """Ô chọn nhiều giá trị từ danh mục có hỗ trợ tìm kiếm."""
     """Ô tìm kiếm để chọn nhiều mục; nhấn kết quả để thêm/bỏ chọn."""
 
     def __init__(self, placeholder="Tìm để chọn...", parent=None):

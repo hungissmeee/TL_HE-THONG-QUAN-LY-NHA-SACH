@@ -1,11 +1,12 @@
 """Báo cáo phiếu đổi trả và tiền hoàn lại."""
 
-from ui.reports.report_base import (
+from giao_dien.bao_cao.bao_cao_co_so import (
     ReportBasePage, money_text, number_text, date_text,
 )
 
 
 class ReturnReportPage(ReportBasePage):
+    """Báo cáo tình hình đổi trả hàng."""
     def __init__(self, db, parent=None):
         super().__init__(
             db,

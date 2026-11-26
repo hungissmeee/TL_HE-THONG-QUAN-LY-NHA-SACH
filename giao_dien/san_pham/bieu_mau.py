@@ -27,10 +27,11 @@ from PySide6.QtWidgets import (
     QDateEdit,
     QGroupBox,
 )
-from .selectors import SearchableSingleSelect, SearchableMultiSelect
+from .bo_chon import SearchableSingleSelect, SearchableMultiSelect
 
 
 class ProductFormDialog(QDialog):
+    """Biểu mẫu thêm mới hoặc cập nhật thông tin sản phẩm."""
     """Form thêm mới hoặc chỉnh sửa sản phẩm."""
 
     def __init__(self, db, parent=None, product_code=None):
