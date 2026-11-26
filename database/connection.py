@@ -346,37 +346,25 @@ class Database:
                     "Nhân viên chưa có tài khoản SQL Server!"
                 )
 
-            # Các role cũ và role tùy chỉnh cần loại bỏ
-            old_roles = list(self.ROLE_MAP.values()) + [
-                "db_datareader",
-                "db_datawriter",
-                "db_owner",
-                "db_ddladmin",
-                "db_securityadmin",
-                "db_accessadmin",
-                "db_backupoperator",
-                "db_denydatareader",
-                "db_denydatawriter"
-            ]
+            # Gỡ toàn bộ role hiện tại (kể cả role tùy chỉnh) để tránh
+            # quyền cũ còn sót lại sau khi đổi chức vụ.
+            cursor.execute("""
+                SELECT R.name
+                FROM sys.database_role_members DRM
+                INNER JOIN sys.database_principals R
+                    ON R.principal_id = DRM.role_principal_id
+                INNER JOIN sys.database_principals U
+                    ON U.principal_id = DRM.member_principal_id
+                WHERE U.name = ?
+                  AND R.name <> N'public'
+            """, manv)
+            old_roles = [row[0] for row in cursor.fetchall()]
 
             for role in old_roles:
-
-                cursor.execute("""
-                               SELECT 1
-                               FROM sys.database_role_members DRM
-                                        JOIN sys.database_principals R
-                                             ON R.principal_id = DRM.role_principal_id
-                                        JOIN sys.database_principals U
-                                             ON U.principal_id = DRM.member_principal_id
-                               WHERE U.name = ?
-                                 AND R.name = ?
-                               """, manv, role)
-
-                if cursor.fetchone():
-                    cursor.execute(
-                        f"ALTER ROLE [{role}] "
-                        f"DROP MEMBER {member}"
-                    )
+                quoted_role = self._quote_login(role)
+                cursor.execute(
+                    f"ALTER ROLE {quoted_role} DROP MEMBER {member}"
+                )
 
             # Gán role mới
             cursor.execute(f"""
