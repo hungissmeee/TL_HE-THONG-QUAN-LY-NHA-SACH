@@ -23,6 +23,7 @@ from ui.danh_muc import CatalogPage, CATALOGS
 from ui.nha_cung_cap.bieu_mau import SupplierFormDialog
 from ui.nhan_vien import EmployeeWindow
 from ui.phieu_nhap.tao_bieu_mau import CreateImportDialog
+from ui.phieu_nhap.danh_sach import can_view_imports
 from ui.hoa_don.tao_bieu_mau import CreateInvoiceDialog
 from ui.ca_lam_viec.tao_bieu_mau import ShiftCreateDialog
 from ui.main_windows import MainWindow
@@ -340,6 +341,21 @@ class InputValidationTests(unittest.TestCase):
         self.assertEqual(allowed, set(MainWindow.ROLE_PAGE_ACCESS["Thu ngân"]))
         self.assertNotIn("returns", allowed)
         self.assertNotIn("reports", allowed)
+
+
+class ImportPagePermissionTests(unittest.TestCase):
+    """Đảm bảo vai trò không có quyền nhập hàng không tải dữ liệu phiếu nhập."""
+
+    def test_cashier_cannot_view_import_page(self):
+        self.assertFalse(can_view_imports("NV02", "Thu ngân"))
+
+    def test_warehouse_manager_accounting_can_view_import_page(self):
+        for role in ("Nhân viên kho", "Quản lý", "Kế toán"):
+            with self.subTest(role=role):
+                self.assertTrue(can_view_imports("NV01", role))
+
+    def test_admin_can_view_import_page(self):
+        self.assertTrue(can_view_imports("admin", ""))
 
 
 class ReturnDialogInputTests(unittest.TestCase):

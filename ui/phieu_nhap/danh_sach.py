@@ -30,6 +30,16 @@ from .tao_bieu_mau import CreateImportDialog
 from .chi_tiet import ImportDetailDialog
 
 
+IMPORT_VIEW_ROLES = frozenset({"quản lý", "nhân viên kho", "kế toán"})
+
+
+def can_view_imports(username, employee_role):
+    """Xác định tài khoản có quyền xem trang phiếu nhập hay không."""
+    if (username or "").strip().casefold() == "admin":
+        return True
+    return (employee_role or "").strip().casefold() in IMPORT_VIEW_ROLES
+
+
 class ImportWindow(QWidget):
     """Trang danh sách phiếu nhập, tìm kiếm, lập mới, xem chi tiết và hủy phiếu theo quyền."""
 
@@ -41,10 +51,15 @@ class ImportWindow(QWidget):
         self.is_admin = self.username.casefold() == "admin"
         self.is_manager = self.employee_role.casefold() == "quản lý"
         self.is_warehouse = self.employee_role.casefold() == "nhân viên kho"
+        self.can_view = can_view_imports(self.username, self.employee_role)
         self.can_create = self.is_admin or self.is_manager or self.is_warehouse
         self.can_cancel = self.is_admin or self.is_manager or self.is_warehouse
         self._build_ui()
-        self.load_imports()
+        # Trang được khởi tạo cho mọi tài khoản trong MainWindow, kể cả tài khoản
+        # không có menu Phiếu nhập. Không được chạy truy vấn JOIN nhà cung cấp
+        # khi vai trò hiện tại không có quyền xem trang này.
+        if self.can_view:
+            self.load_imports()
 
         # Khóa nút hủy của Nhân viên kho sau khi hết giới hạn 5 phút.
         self._cancel_permission_timer = QTimer(self)
@@ -152,6 +167,9 @@ class ImportWindow(QWidget):
 
     def load_imports(self):
         """Truy vấn phiếu nhập theo bộ lọc và cập nhật bảng dữ liệu."""
+        if not self.can_view:
+            return
+
         conn = self.db.get_connection()
         if conn is None:
             QMessageBox.warning(self, "Thông báo", "Chưa có kết nối SQL Server.")
@@ -219,6 +237,10 @@ class ImportWindow(QWidget):
 
     def update_action_buttons(self):
         """Xác định quyền hủy phiếu nhập đang chọn để truyền vào popup chi tiết."""
+        if not self.can_view:
+            self._selected_can_cancel = False
+            return
+
         row = self.table.currentRow()
         self._selected_can_cancel = False
         if not self.can_cancel or row < 0:
@@ -382,6 +404,9 @@ class ImportWindow(QWidget):
 
     def open_selected_import(self):
         """Mở phiếu nhập đang được chọn."""
+        if not self.can_view:
+            return
+
         row = self.table.currentRow()
         if row < 0:
             QMessageBox.information(self, "Chưa chọn phiếu", "Vui lòng chọn phiếu nhập.")
@@ -392,6 +417,9 @@ class ImportWindow(QWidget):
 
     def open_import_detail(self, row, column):
         """Hiển thị chi tiết phiếu nhập và nội dung in."""
+        if not self.can_view:
+            return
+
         item = self.table.item(row, 0)
         if item is None:
             return
