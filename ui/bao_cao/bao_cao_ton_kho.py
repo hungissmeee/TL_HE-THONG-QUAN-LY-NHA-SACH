@@ -2,10 +2,11 @@
 
 from PySide6.QtWidgets import QLabel, QHBoxLayout, QComboBox, QSpinBox, QLineEdit
 
-from giao_dien.bao_cao.bao_cao_co_so import ReportBasePage, money_text, number_text
+from ui.bao_cao.bao_cao_co_so import ReportBasePage, money_text, number_text
 
 
 class InventoryReportPage(ReportBasePage):
+    """Thống kê số lượng và giá trị tồn kho."""
     """Báo cáo số lượng và giá trị hàng tồn kho."""
     def __init__(self, db, parent=None):
         super().__init__(

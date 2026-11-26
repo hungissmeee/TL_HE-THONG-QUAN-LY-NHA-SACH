@@ -1,3 +1,5 @@
+"""Tài liệu giới thiệu và hướng dẫn sử dụng, phát triển hệ thống quản lý nhà sách."""
+
 # Tổng quan
 - Môn học: Công Nghệ Phần Mềm
     - Tên dự án: Hệ thống quản lý nhà sách
@@ -80,57 +82,40 @@ Dự án xây dựng giải pháp quản lý tập trung cho mô hình kinh doan
 
 Giao diện được tổ chức theo nhóm chức năng. Mỗi package chứa các thành phần liên quan; `page.py` quản lý trang danh sách, `*_dialog.py` chứa hộp thoại tạo/sửa/chi tiết và `common.py` chứa phần dùng chung trong nhóm.
 
-```text
+\`\`\`text
 .
 ├── main.py
 ├── database/
 │   ├── connection.py
 │   └── script.sql
+├── tests/
+│   ├── test_dinh_dang.py
+│   ├── test_import.py
+│   └── test_giao_dien.py
 └── ui/
-    ├── __init__.py
-    ├── main_window.py
+    ├── main_windows.py
     ├── login.py
-    ├── account.py
-    ├── employee.py
-    ├── catalog.py
-    ├── change_password.py
+    ├── tai_khoan.py
+    ├── nhan_vien.py
+    ├── danh_muc.py
+    ├── doi_mat_khau.py
     ├── formatters.py
     ├── styles.py
     ├── table_sort.py
-    ├── invoices/
-    │   ├── create_dialog.py
-    │   ├── detail_dialog.py
-    │   ├── page.py
-    │   └── common.py
-    ├── imports/
-    │   ├── create_supplier_dialog.py
-    │   ├── create_dialog.py
-    │   ├── detail_dialog.py
-    │   ├── page.py
-    │   └── common.py
-    ├── products/
-    │   ├── selectors.py
-    │   ├── form_dialog.py
-    │   ├── detail_dialog.py
-    │   └── page.py
-    ├── shifts/
-    │   ├── create_dialog.py
-    │   └── page.py
-    ├── suppliers/
-    │   ├── form_dialog.py
-    │   ├── detail_dialog.py
-    │   └── page.py
-    └── reports/
-        ├── report_base.py
-        └── report_*.py
-```
+    ├── hoa_don/
+    ├── phieu_nhap/
+    ├── san_pham/
+    ├── nha_cung_cap/
+    ├── ca_lam_viec/
+    └── bao_cao/
+\`\`\`
 
 Các module legacy có tiền tố `f` đã được loại bỏ. Toàn bộ import nội bộ sử dụng trực tiếp module/package có tên `snake_case`; không duy trì facade hoặc alias cho tên file cũ.
 
 ## 4.1. Quy ước phân chia trách nhiệm
 
 - `main_window.py`: khởi tạo cửa sổ chính, sidebar, điều hướng và phân quyền hiển thị.
-- `connection.py`: kết nối SQL Server, quản lý tài khoản và quyền SQL.
+- `database/connection.py`: kết nối SQL Server, quản lý tài khoản và quyền SQL.
 - `formatters.py`: định dạng tiền, ngày tháng và số liệu dùng chung.
 - `styles.py`: stylesheet của cửa sổ chính, tách khỏi logic điều hướng.
 - `table_sort.py`: sắp xếp dữ liệu trong bảng.
@@ -148,5 +133,5 @@ Các module legacy có tiền tố `f` đã được loại bỏ. Toàn bộ imp
 
 - `tests/test_formatters.py`: kiểm thử định dạng tiền, ngày giờ và số liệu.
 - `tests/test_local_imports.py`: kiểm tra import nội bộ trỏ tới module/package có tồn tại.
-- `tests/ui_import_smoke.py`: kiểm tra import toàn bộ package UI hiện tại với PySide6.
+- `tests/test_giao_dien.py`: kiểm tra import toàn bộ package UI hiện tại với PySide6.
 - GitHub Actions chạy `compileall`, unit test và UI import smoke-test khi có push lên nhánh refactor hoặc mở Pull Request vào `main`.

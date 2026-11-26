@@ -1,11 +1,12 @@
 """Báo cáo phiếu nhập hàng."""
 
-from giao_dien.bao_cao.bao_cao_co_so import (
+from ui.bao_cao.bao_cao_co_so import (
     ReportBasePage, money_text, number_text, date_text,
 )
 
 
 class ImportReportPage(ReportBasePage):
+    """Hiển thị số liệu tổng hợp từ các phiếu nhập."""
     """Báo cáo tổng hợp hoạt động nhập hàng."""
     def __init__(self, db, parent=None):
         super().__init__(

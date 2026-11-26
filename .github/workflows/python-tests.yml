@@ -1,3 +1,5 @@
+"""Workflow kiểm tra cú pháp, unit test và khả năng import giao diện."""
+
 name: Python syntax checks
 
 on:
@@ -49,4 +51,4 @@ jobs:
       - name: Import UI modules
         env:
           QT_QPA_PLATFORM: offscreen
-        run: python tests/ui_import_smoke.py
+        run: python tests/test_giao_dien.py
