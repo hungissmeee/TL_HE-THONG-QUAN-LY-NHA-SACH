@@ -115,6 +115,7 @@ Tài liệu này là danh sách kiểm thử chức năng (manual/acceptance tes
 | DT-06 | P0 | Quản lý | Chọn hàng còn nguyên vẹn nhưng yêu cầu đổi sản phẩm; hoặc trả vượt số lượng còn được xử lý. | Bị từ chối; không tạo phiếu và không biến động tồn kho. |
 | DT-07 | P0 | Quản lý | Thử xử lý hóa đơn đã hủy hoặc hóa đơn không còn trong ngày; thực hiện hai thao tác đồng thời. | Bị từ chối khi không đủ điều kiện; không thể trả vượt lượng mua; lỗi giữa chừng phải rollback. |
 | DT-08 | P1 | Quản lý/Admin | Xem chi tiết phiếu đổi trả đã lập. | Hiển thị hóa đơn gốc, lý do, tình trạng hàng, hình thức xử lý, số lượng và tổng tiền hoàn. |
+| DT-09 | P0 | Quản lý/Admin | Chọn phiếu đổi trả và nhấn Xóa phiếu; thử xóa trường hợp tồn kho hàng nguyên vẹn đã bị bán đi. | Xóa thành công khi đảo tồn kho hợp lệ; nếu tồn kho không đủ để trừ lại số hàng đã hoàn thì từ chối và rollback toàn bộ; phiếu cùng chi tiết được xóa trong một transaction. |
 
 ## 9. Ca làm việc
 

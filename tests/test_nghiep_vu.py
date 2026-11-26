@@ -28,6 +28,7 @@ from ui.ca_lam_viec.tao_bieu_mau import ShiftCreateDialog
 from ui.main_windows import MainWindow
 from ui.permissions import is_admin_account, allowed_pages_for_user
 from ui.doi_tra.tao_bieu_mau import CreateReturnDialog
+from ui.doi_tra.danh_sach import ReturnWindow
 
 
 _APP = QApplication.instance() or QApplication([])
@@ -372,6 +373,52 @@ class ReturnDialogInputTests(unittest.TestCase):
             with self.subTest(value=value):
                 with self.assertRaises(ValueError):
                     CreateReturnDialog._parse_quantity_input(value)
+
+
+class ReturnVoucherDeletionTests(unittest.TestCase):
+    """Kiểm thử tính toán biến động tồn kho khi xóa phiếu đổi trả."""
+
+    def test_delete_refunded_intact_goods_reverses_stock_decrease(self):
+        actions = ReturnWindow._build_inventory_reversal_actions([
+            ("SP001", 2, 1, 0),
+        ])
+        self.assertEqual(actions, [("SP001", 2, "SUBTRACT")])
+
+    def test_delete_refunded_damaged_goods_does_not_change_stock(self):
+        actions = ReturnWindow._build_inventory_reversal_actions([
+            ("SP002", 3, 0, 0),
+        ])
+        self.assertEqual(actions, [])
+
+    def test_delete_exchanged_damaged_goods_restores_replacement_stock(self):
+        actions = ReturnWindow._build_inventory_reversal_actions([
+            ("SP003", 1, 0, 1),
+        ])
+        self.assertEqual(actions, [("SP003", 1, "ADD")])
+
+    def test_delete_multiple_return_lines_builds_all_reversals(self):
+        actions = ReturnWindow._build_inventory_reversal_actions([
+            ("SP001", 2, 1, 0),
+            ("SP002", 1, 0, 0),
+            ("SP003", 4, 0, 1),
+        ])
+        self.assertEqual(actions, [
+            ("SP001", 2, "SUBTRACT"),
+            ("SP003", 4, "ADD"),
+        ])
+
+    def test_delete_refuses_invalid_quantity_or_return_state(self):
+        invalid_details = [
+            ("SP001", 0, 1, 0),
+            ("SP001", -1, 0, 1),
+            ("SP001", 1, None, 0),
+            ("SP001", 1, 1, None),
+            ("SP001", 1, 1, 1),
+        ]
+        for detail in invalid_details:
+            with self.subTest(detail=detail):
+                with self.assertRaises(ValueError):
+                    ReturnWindow._build_inventory_reversal_actions([detail])
 
 
 class ShiftScheduleTests(unittest.TestCase):

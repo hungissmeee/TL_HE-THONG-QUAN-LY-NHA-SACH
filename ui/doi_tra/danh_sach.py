@@ -63,6 +63,16 @@ class ReturnWindow(QWidget):
         self.create_button.setVisible(self.can_manage)
         self.create_button.clicked.connect(self.open_create_dialog)
         top.addWidget(self.create_button)
+
+        self.delete_button = QPushButton("Xóa phiếu đã chọn")
+        self.delete_button.setVisible(self.can_manage)
+        self.delete_button.setEnabled(False)
+        self.delete_button.setToolTip(
+            "Xóa phiếu đổi trả đang chọn và đảo ngược biến động tồn kho của phiếu."
+        )
+        self.delete_button.clicked.connect(self.delete_selected_return)
+        top.addWidget(self.delete_button)
+
         refresh_button = QPushButton("Làm mới")
         refresh_button.clicked.connect(self.load_returns)
         top.addWidget(refresh_button)
@@ -122,10 +132,49 @@ class ReturnWindow(QWidget):
         header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
         self.table.cellDoubleClicked.connect(self.open_detail)
+        self.table.itemSelectionChanged.connect(self.update_delete_button)
         root.addWidget(self.table, 1)
 
         self.total_label = QLabel("Tổng số phiếu đổi trả: 0")
         root.addWidget(self.total_label)
+
+    @staticmethod
+    def _build_inventory_reversal_actions(details):
+        """Xác định biến động kho cần đảo khi xóa phiếu đổi trả.
+
+        Hoàn tiền hàng nguyên vẹn: trừ lại lượng đã nhập về kho.
+        Đổi hàng hỏng: cộng lại lượng hàng mới đã xuất để đổi.
+        Hoàn tiền hàng hỏng: không làm thay đổi tồn kho.
+        """
+        actions = []
+        for detail in details:
+            product_code = str(detail[0] or "").strip()
+            quantity = int(detail[1] or 0)
+            condition = detail[2]
+            action = detail[3]
+
+            if not product_code or quantity <= 0:
+                raise ValueError("Chi tiết đổi trả có mã sản phẩm hoặc số lượng không hợp lệ.")
+            if condition not in (0, 1) or action not in (0, 1):
+                raise ValueError(
+                    f"Chi tiết sản phẩm {product_code} thiếu tình trạng hàng hoặc hình thức xử lý hợp lệ."
+                )
+
+            if action == 1:
+                if condition != 0:
+                    raise ValueError(
+                        f"Sản phẩm {product_code}: dữ liệu đổi hàng không hợp lệ vì hàng trả không bị hỏng."
+                    )
+                actions.append((product_code, quantity, "ADD"))
+            elif condition == 1:
+                actions.append((product_code, quantity, "SUBTRACT"))
+
+        return actions
+
+    def update_delete_button(self):
+        """Chỉ bật nút xóa khi người có quyền đã chọn một phiếu."""
+        selected = self.can_manage and self.table.currentRow() >= 0
+        self.delete_button.setEnabled(bool(selected))
 
     def clear_filters(self):
         """Xóa từ khóa và đưa khoảng ngày về 30 ngày gần nhất."""
@@ -201,10 +250,143 @@ class ReturnWindow(QWidget):
                         cell.setData(Qt.ItemDataRole.UserRole, str(row[0]))
                     self.table.setItem(row_index, column, cell)
             self.total_label.setText(f"Tổng số phiếu đổi trả: {len(rows)}")
+            self.update_delete_button()
         except Exception as error:
             QMessageBox.critical(self, "Lỗi tải phiếu đổi trả", str(error))
         finally:
             resume_table_sorting(self.table)
+            cursor.close()
+
+    def delete_selected_return(self):
+        """Xóa phiếu đã chọn và đảo biến động tồn kho trong cùng transaction."""
+        if not self.can_manage:
+            QMessageBox.warning(
+                self, "Không có quyền",
+                "Chỉ Quản lý và Admin được xóa phiếu đổi trả."
+            )
+            return
+
+        row = self.table.currentRow()
+        if row < 0:
+            QMessageBox.information(
+                self, "Chưa chọn phiếu",
+                "Vui lòng chọn phiếu đổi trả cần xóa."
+            )
+            return
+
+        code_item = self.table.item(row, 0)
+        if code_item is None:
+            return
+        return_code = str(
+            code_item.data(Qt.ItemDataRole.UserRole) or code_item.text()
+        ).strip()
+        if not return_code:
+            return
+
+        answer = QMessageBox.question(
+            self,
+            "Xác nhận xóa phiếu đổi trả",
+            (
+                f"Bạn có chắc chắn muốn xóa phiếu {return_code}?\n\n"
+                "Hệ thống sẽ xóa phiếu và các dòng chi tiết, đồng thời đảo ngược "
+                "biến động tồn kho do phiếu này tạo ra.\n"
+                "Nếu việc đảo kho làm tồn kho âm, thao tác sẽ bị từ chối.\n\n"
+                "Lưu ý: thao tác này không tự thu hồi khoản tiền đã hoàn thực tế "
+                "cho khách hàng và không thể khôi phục phiếu đã xóa."
+            ),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+
+        conn = self.db.get_connection()
+        if conn is None:
+            QMessageBox.warning(
+                self, "Thông báo", "Chưa có kết nối SQL Server."
+            )
+            return
+
+        cursor = conn.cursor()
+        try:
+            # Khóa phiếu để không thể xóa đồng thời cùng một chứng từ.
+            cursor.execute("""
+                SELECT MAPDT
+                FROM dbo.PHIEU_DOI_TRA WITH (UPDLOCK, HOLDLOCK)
+                WHERE MAPDT = ?
+            """, return_code)
+            header = cursor.fetchone()
+            if header is None:
+                raise RuntimeError("Phiếu đổi trả không còn tồn tại.")
+
+            # Khóa chi tiết trong suốt quá trình tính và đảo tồn kho.
+            cursor.execute("""
+                SELECT MASP, SOLUONG, TINHTRANGHANG, HINH_THUC_XU_LY
+                FROM dbo.CHI_TIET_DOI_TRA WITH (UPDLOCK, HOLDLOCK)
+                WHERE MAPDT = ?
+                ORDER BY MASP
+            """, return_code)
+            details = cursor.fetchall()
+            if not details:
+                raise RuntimeError(
+                    "Phiếu đổi trả không có chi tiết; không thể xác định biến động tồn kho để đảo."
+                )
+
+            reversal_actions = self._build_inventory_reversal_actions(details)
+            for product_code, quantity, direction in reversal_actions:
+                if direction == "ADD":
+                    # Hủy việc xuất sản phẩm mới khi đổi hàng hỏng.
+                    cursor.execute("""
+                        UPDATE dbo.SAN_PHAM
+                        SET SLTON = ISNULL(SLTON, 0) + ?
+                        WHERE MASP = ?
+                    """, quantity, product_code)
+                else:
+                    # Hủy việc nhập lại hàng nguyên vẹn khi hoàn tiền.
+                    cursor.execute("""
+                        UPDATE dbo.SAN_PHAM
+                        SET SLTON = SLTON - ?
+                        WHERE MASP = ?
+                          AND ISNULL(SLTON, 0) >= ?
+                    """, quantity, product_code, quantity)
+
+                if cursor.rowcount != 1:
+                    if direction == "SUBTRACT":
+                        raise RuntimeError(
+                            f"Không thể xóa phiếu vì tồn kho {product_code} hiện không đủ "
+                            f"{quantity} sản phẩm để đảo lần nhập lại. "
+                            "Hãy kiểm tra các giao dịch bán hàng liên quan."
+                        )
+                    raise RuntimeError(
+                        f"Không tìm thấy sản phẩm {product_code}; không thể đảo tồn kho."
+                    )
+
+            # Xóa chi tiết trước, sau đó xóa đầu phiếu.
+            cursor.execute(
+                "DELETE FROM dbo.CHI_TIET_DOI_TRA WHERE MAPDT = ?",
+                return_code,
+            )
+            cursor.execute(
+                "DELETE FROM dbo.PHIEU_DOI_TRA WHERE MAPDT = ?",
+                return_code,
+            )
+            if cursor.rowcount != 1:
+                raise RuntimeError("Không thể xóa đầu phiếu đổi trả.")
+
+            conn.commit()
+            QMessageBox.information(
+                self, "Xóa phiếu thành công",
+                f"Đã xóa phiếu {return_code} và đảo biến động tồn kho."
+            )
+            self.load_returns()
+        except Exception as error:
+            conn.rollback()
+            QMessageBox.critical(
+                self, "Không thể xóa phiếu đổi trả",
+                f"{error}\n\nMọi thay đổi trong giao dịch đã được hoàn tác."
+            )
+            self.load_returns()
+        finally:
             cursor.close()
 
     def open_create_dialog(self):
