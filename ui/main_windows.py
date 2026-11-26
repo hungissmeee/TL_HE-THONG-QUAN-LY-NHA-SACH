@@ -26,6 +26,7 @@ from ui.bao_cao.bao_cao_co_so import ReportBasePage
 from ui.styles import MAIN_WINDOW_STYLESHEET
 from ui.phieu_nhap import ImportWindow
 from ui.nha_cung_cap import SupplierWindow
+from ui.doi_tra import ReturnWindow
 
 class MainWindow(QMainWindow):
     """Cửa sổ chính quản lý điều hướng, nhóm menu và quyền hiển thị chức năng."""
@@ -45,7 +46,7 @@ class MainWindow(QMainWindow):
         ),
         "Kế toán": (
             "home", "products", "suppliers", "imports", "invoices",
-            "returns", "statistics", "shifts", "report_product",
+            "statistics", "shifts", "report_product",
             "report_inventory", "report_return", "report_import",
             "report_invoice", "report_revenue", "report_overview",
         ),
@@ -282,15 +283,9 @@ class MainWindow(QMainWindow):
             "suppliers", "Nhà cung cấp", SupplierWindow(self.db)
         )
 
-        # Các trang đang phát triển sau
-        future_pages = [
-            ("returns", "Đổi trả")
-        ]
-
-        for key, title in future_pages:
-            self.add_page(
-                key, title, self.create_placeholder_page(title)
-            )
+        self.add_page(
+            "returns", "Đổi trả", ReturnWindow(self.db)
+        )
 
         # Ghép giao diện
         main_layout.addWidget(sidebar)
@@ -492,6 +487,8 @@ class MainWindow(QMainWindow):
             page.load_data()
         elif isinstance(page, ReportBasePage):
             page.refresh_data()
+        elif isinstance(page, ReturnWindow):
+            page.load_returns()
 
     # ==================================================
     # TRANG TỔNG QUAN
@@ -625,6 +622,8 @@ class MainWindow(QMainWindow):
 
         if username == "admin":
             allowed = set(self.nav_buttons.keys())
+            # Tài khoản admin không tham gia nghiệp vụ đổi trả.
+            allowed.discard("returns")
         else:
             allowed = set(self.ROLE_PAGE_ACCESS.get(self.employee_role, ("home",)))
 

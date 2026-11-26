@@ -18,8 +18,8 @@ class ReturnReportPage(ReportBasePage):
         self.add_stat_cards([
             ("count", "Số phiếu đổi trả", "0",
              "Số chứng từ đổi trả trong kỳ", "neutral"),
-            ("quantity", "Số lượng sản phẩm hoàn", "0",
-             "Tổng số lượng hàng được ghi nhận hoàn", "warning"),
+            ("quantity", "Số lượng sản phẩm đổi/trả", "0",
+             "Tổng số lượng hàng được ghi nhận đổi/trả", "warning"),
             ("amount", "Tổng tiền đã hoàn", "0 đ",
              "Tổng tiền hoàn trên các phiếu đổi trả", "primary"),
         ])
