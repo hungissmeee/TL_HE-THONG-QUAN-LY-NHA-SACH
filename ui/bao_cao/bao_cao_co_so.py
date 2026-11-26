@@ -27,6 +27,7 @@ class ReportBasePage(QWidget):
     """Lớp nền: bộ lọc ngày, truy vấn, bảng và xuất CSV dùng chung."""
 
     def __init__(self, db, title, description, use_date_filter=True, parent=None):
+        """Khởi tạo cấu hình bộ lọc, bảng dữ liệu và các thành phần dùng chung của báo cáo."""
         super().__init__(parent)
         self.db = db
         self.use_date_filter = use_date_filter
@@ -35,6 +36,7 @@ class ReportBasePage(QWidget):
         self._build_base_ui(title, description)
 
     def _build_base_ui(self, title, description):
+        """Tạo vùng bộ lọc ngày, thẻ thống kê, bảng dữ liệu và nút xuất báo cáo."""
         root = QVBoxLayout(self)
         root.setContentsMargins(5, 5, 5, 5)
         root.setSpacing(10)
@@ -98,6 +100,7 @@ class ReportBasePage(QWidget):
         root.addWidget(self.status_label)
 
     def date_parameters(self):
+        """Chuyển khoảng ngày được chọn thành tham số truy vấn SQL."""
         if not self.use_date_filter:
             return None, None
         start = self.date_from.date()
@@ -107,6 +110,7 @@ class ReportBasePage(QWidget):
         return start.toString("yyyy-MM-dd"), end.toString("yyyy-MM-dd")
 
     def fetch_all(self, sql, params=()):
+        """Thực thi truy vấn và trả về toàn bộ dòng dữ liệu."""
         connection = self.db.get_connection()
         if connection is None:
             raise RuntimeError("Chưa có kết nối SQL Server.")
@@ -119,10 +123,12 @@ class ReportBasePage(QWidget):
             cursor.close()
 
     def fetch_one(self, sql, params=()):
+        """Thực thi truy vấn và trả về một dòng dữ liệu đầu tiên."""
         rows = self.fetch_all(sql, params)
         return rows[0] if rows else None
 
     def make_table(self, headers, min_height=190):
+        """Tạo bảng báo cáo với tiêu đề và quy tắc sắp xếp."""
         table = QTableWidget(0, len(headers))
         table.setHorizontalHeaderLabels(headers)
         table.setAlternatingRowColors(True)
@@ -139,11 +145,13 @@ class ReportBasePage(QWidget):
         return table
 
     def register_export_table(self, label, table):
+        """Đăng ký bảng có thể xuất dữ liệu sang tệp báo cáo."""
         self.export_tables[label] = table
         self.export_selector.addItem(label, label)
         self.export_button.setEnabled(True)
 
     def fill_table(self, table, rows):
+        """Xóa dữ liệu cũ và điền các dòng kết quả mới vào bảng."""
         table.setSortingEnabled(False)
         table.setRowCount(0)
         for values in rows:
@@ -195,11 +203,13 @@ class ReportBasePage(QWidget):
         self.content_layout.addLayout(grid)
 
     def set_stat(self, key, value):
+        """Cập nhật nhãn và giá trị của một thẻ thống kê."""
         label = self.kpi_labels.get(key)
         if label is not None:
             label.setText(str(value))
 
     def refresh_data(self):
+        """Tải lại báo cáo sau khi người dùng thay đổi bộ lọc."""
         try:
             self.refresh_button.setEnabled(False)
             self.status_label.setText("Đang tải dữ liệu...")
@@ -217,9 +227,11 @@ class ReportBasePage(QWidget):
             self.refresh_button.setEnabled(True)
 
     def load_report(self):
+        """Phương thức được lớp báo cáo con ghi đè để tải số liệu riêng."""
         raise NotImplementedError("Trang báo cáo phải triển khai load_report().")
 
     def export_selected_table(self):
+        """Xuất bảng báo cáo đang chọn ra định dạng tệp được hỗ trợ."""
         label = self.export_selector.currentData()
         table = self.export_tables.get(label)
         if table is None:

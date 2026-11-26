@@ -27,6 +27,7 @@ class EmployeePermissionDialog(QDialog):
         self.setup_ui()
 
     def setup_ui(self):
+        """Tạo biểu mẫu hiển thị thông tin nhân viên và các quyền SQL Server."""
 
         employee = self.employee
 
@@ -159,6 +160,7 @@ class EmployeePermissionDialog(QDialog):
     # ==================================
 
     def save_role(self):
+        """Kiểm tra lựa chọn vai trò và lưu quyền mới cho tài khoản nhân viên."""
 
         role = self.role_combo.currentText()
 

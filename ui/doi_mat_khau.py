@@ -62,6 +62,7 @@ class ChangePasswordDialog(QDialog):
         self.setLayout(layout)
 
     def change_password(self):
+        """Kiểm tra mật khẩu hiện tại, mật khẩu mới và xác nhận trước khi yêu cầu SQL Server đổi mật khẩu."""
 
         old_password = self.old_password.text()
         new_password = self.new_password.text()

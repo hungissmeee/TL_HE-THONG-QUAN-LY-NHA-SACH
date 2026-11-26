@@ -23,6 +23,7 @@ class EmployeeWindow(QWidget):
 
     """Trang tìm kiếm, xem và quản lý hồ sơ nhân viên; chỉ admin được tạo tài khoản."""
     def __init__(self, db):
+        """Khởi tạo trang nhân viên và chỉ bật chức năng tạo nhân viên cho admin."""
         super().__init__()
 
         self.db = db
@@ -54,6 +55,7 @@ class EmployeeWindow(QWidget):
     # ======================================
 
     def create_list_page(self):
+        """Tạo bảng danh sách nhân viên, tìm kiếm và mở quản lý quyền."""
 
         page = QWidget()
         layout = QVBoxLayout(page)
@@ -162,6 +164,7 @@ class EmployeeWindow(QWidget):
     # ======================================
 
     def load_employees(self):
+        """Tải hồ sơ nhân viên theo từ khóa tìm kiếm."""
 
         conn = self.db.get_connection()
 
@@ -240,6 +243,7 @@ class EmployeeWindow(QWidget):
     # ======================================
 
     def create_add_page(self):
+        """Tạo biểu mẫu nhập thông tin và cấp tài khoản SQL Server cho nhân viên mới."""
 
         page = QWidget()
         layout = QVBoxLayout(page)
@@ -335,6 +339,7 @@ class EmployeeWindow(QWidget):
     # ======================================
 
     def create_employee(self):
+        """Kiểm tra thông tin, sinh mã và tạo tài khoản cùng hồ sơ nhân viên."""
 
         manv = self.manv.text().strip()
         tennv = self.tennv.text().strip()
@@ -427,6 +432,7 @@ class EmployeeWindow(QWidget):
     # ======================================
 
     def show_add_page(self):
+        """Chuyển sang biểu mẫu tạo nhân viên sau khi kiểm tra quyền."""
 
         if not self.is_admin:
             return
@@ -435,6 +441,7 @@ class EmployeeWindow(QWidget):
         self.stack.setCurrentIndex(1)
 
     def show_list_page(self):
+        """Quay lại trang danh sách nhân viên."""
 
         self.stack.setCurrentIndex(0)
 
@@ -497,6 +504,7 @@ class EmployeeWindow(QWidget):
                 cursor.close()
 
     def clear_form(self):
+        """Xóa các trường nhập và tạo lại mã nhân viên dự kiến."""
 
         self.tennv.clear()
         self.vaitro.setCurrentIndex(0)
@@ -506,6 +514,7 @@ class EmployeeWindow(QWidget):
         self.refresh_employee_code()
 
     def open_employee_permissions(self, row, column):
+        """Mở hộp thoại quản lý quyền của nhân viên đang được chọn, chỉ dành cho admin."""
 
         print("Đã nhấn vào nhân viên!")
 

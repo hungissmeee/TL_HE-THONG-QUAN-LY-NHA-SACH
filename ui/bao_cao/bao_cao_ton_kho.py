@@ -56,6 +56,7 @@ class InventoryReportPage(ReportBasePage):
         self.search_input.returnPressed.connect(self.refresh_data)
 
     def load_report(self):
+        """Truy vấn số lượng và giá trị tồn kho theo bộ lọc đang chọn."""
         threshold = self.threshold_spin.value()
         filter_key = self.status_combo.currentData()
         keyword = self.search_input.text().strip()

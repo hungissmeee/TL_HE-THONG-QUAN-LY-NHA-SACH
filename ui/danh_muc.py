@@ -92,6 +92,7 @@ class CatalogPage(QWidget):
     """Trang danh mục dùng chung cho Tác giả, Thể loại, Nhà xuất bản và Thương hiệu."""
 
     def __init__(self, db, catalog_type):
+        """Khởi tạo trang danh mục theo cấu hình loại danh mục được truyền vào."""
         super().__init__()
 
         if catalog_type not in CATALOGS:

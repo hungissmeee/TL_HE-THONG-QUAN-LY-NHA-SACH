@@ -49,6 +49,7 @@ class OverviewReportPage(ReportBasePage):
         self.register_export_table("Top sản phẩm bán chạy", self.top_products_table)
 
     def load_report(self):
+        """Tải các chỉ số tổng quan về doanh thu, hóa đơn, nhập hàng và sản phẩm."""
         start_date, end_date = self.date_parameters()
 
         summary_sql = """
