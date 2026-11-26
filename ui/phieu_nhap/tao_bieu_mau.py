@@ -1,6 +1,6 @@
 """CreateImportDialog: thành phần giao diện nghiệp vụ phiếu nhập."""
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QLocale
 from PySide6.QtWidgets import (
     QWidget,
     QDialog,
@@ -153,9 +153,10 @@ class CreateImportDialog(QDialog):
         self.quantity_input.setRange(1, 999999)
         self.quantity_input.setValue(1)
         self.price_input = QDoubleSpinBox()
+        self.price_input.setLocale(QLocale.c())
+        self.price_input.setGroupSeparatorShown(False)
         self.price_input.setDecimals(2)
         self.price_input.setRange(0, 999999999999.99)
-        self.price_input.setGroupSeparatorShown(True)
         self.price_input.setSuffix(" đ")
         self.price_input.setToolTip("Đơn giá nhập đã bao gồm VAT.")
         self.add_product_button = QPushButton("Thêm vào phiếu")
