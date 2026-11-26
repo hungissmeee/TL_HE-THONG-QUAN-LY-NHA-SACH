@@ -36,12 +36,18 @@ class RevenueReportPage(ReportBasePage):
         self.content_layout.addLayout(controls)
 
         self.add_stat_cards([
-            ("gross", "TIỀN HÀNG TRƯỚC KHUYẾN MÃI", "0 đ"),
-            ("discount", "TIỀN GIẢM KHUYẾN MÃI", "0 đ"),
-            ("revenue", "DOANH THU HỢP LỆ", "0 đ"),
-            ("refund", "TIỀN HOÀN TRẢ", "0 đ"),
-            ("net", "DOANH THU SAU HOÀN", "0 đ"),
-            ("count", "SỐ HÓA ĐƠN HỢP LỆ", "0"),
+            ("gross", "Tiền hàng trước khuyến mãi", "0 đ",
+             "Giá trị hàng hóa trước khi giảm", "neutral"),
+            ("discount", "Tiền giảm khuyến mãi", "0 đ",
+             "Số tiền được giảm từ chương trình khuyến mãi", "warning"),
+            ("revenue", "Doanh thu hợp lệ", "0 đ",
+             "Tiền hàng sau khuyến mãi, chưa trừ hoàn trả", "positive"),
+            ("refund", "Tiền hoàn trả", "0 đ",
+             "Tổng tiền hoàn theo phiếu đổi trả", "warning"),
+            ("net", "Doanh thu sau hoàn", "0 đ",
+             "Doanh thu hợp lệ trừ tiền hoàn", "primary"),
+            ("count", "Hóa đơn hợp lệ", "0",
+             "Số hóa đơn được ghi nhận doanh thu", "positive"),
         ])
         self.table = self.make_table([
             "Kỳ", "Số hóa đơn", "Tiền hàng", "Giảm khuyến mãi",

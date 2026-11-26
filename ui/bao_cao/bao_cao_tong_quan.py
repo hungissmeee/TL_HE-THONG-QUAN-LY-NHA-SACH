@@ -11,7 +11,6 @@ from ui.bao_cao.bao_cao_co_so import (
 
 class OverviewReportPage(ReportBasePage):
     """Tổng hợp các chỉ số quan trọng của hoạt động nhà sách."""
-    """Báo cáo tổng quan tình hình hoạt động nhà sách."""
     def __init__(self, db, parent=None):
         super().__init__(
             db,
@@ -21,16 +20,47 @@ class OverviewReportPage(ReportBasePage):
             parent=parent,
         )
 
-        self.add_stat_cards([
-            ("revenue", "DOANH THU BÁN HÀNG", "0 đ"),
-            ("refund", "TIỀN ĐÃ HOÀN", "0 đ"),
-            ("net", "DOANH THU SAU HOÀN", "0 đ"),
-            ("valid_invoices", "HÓA ĐƠN HỢP LỆ", "0"),
-            ("cancelled_invoices", "HÓA ĐƠN ĐÃ HỦY", "0"),
-            ("imports", "GIÁ TRỊ NHẬP HÀNG", "0 đ"),
-        ])
+        # Nhóm tài chính giúp phân biệt doanh thu, tiền hoàn và kết quả sau hoàn.
+        self.add_stat_cards(
+            [
+                (
+                    "revenue", "Doanh thu bán hàng", "0 đ",
+                    "Tổng tiền hóa đơn hợp lệ sau khuyến mãi", "positive",
+                ),
+                (
+                    "refund", "Tiền đã hoàn", "0 đ",
+                    "Tổng tiền ghi nhận trên phiếu đổi trả", "warning",
+                ),
+                (
+                    "net", "Doanh thu sau hoàn", "0 đ",
+                    "Doanh thu bán hàng trừ tiền đã hoàn", "primary",
+                ),
+            ],
+            section_title="Kết quả bán hàng",
+            section_description="Các khoản thu và hoàn trong khoảng thời gian đang chọn.",
+        )
 
-        trend_title = QLabel("DOANH THU THEO NGÀY")
+        # Nhóm chứng từ và nhập hàng được tách riêng để tránh trộn với doanh thu.
+        self.add_stat_cards(
+            [
+                (
+                    "valid_invoices", "Hóa đơn hợp lệ", "0",
+                    "Được ghi nhận vào doanh thu", "positive",
+                ),
+                (
+                    "cancelled_invoices", "Hóa đơn đã hủy", "0",
+                    "Không được tính vào doanh thu", "negative",
+                ),
+                (
+                    "imports", "Giá trị nhập hàng", "0 đ",
+                    "Tổng trị giá phiếu nhập trong kỳ", "violet",
+                ),
+            ],
+            section_title="Chứng từ và nhập hàng",
+            section_description="Số lượng hóa đơn theo trạng thái và giá trị hàng đã nhập.",
+        )
+
+        trend_title = QLabel("Doanh thu theo ngày")
         trend_title.setStyleSheet("font-weight: bold;")
         self.content_layout.addWidget(trend_title)
         self.trend_table = self.make_table([
@@ -39,7 +69,7 @@ class OverviewReportPage(ReportBasePage):
         self.content_layout.addWidget(self.trend_table)
         self.register_export_table("Doanh thu theo ngày", self.trend_table)
 
-        products_title = QLabel("TOP 10 SẢN PHẨM BÁN CHẠY")
+        products_title = QLabel("10 sản phẩm bán chạy")
         products_title.setStyleSheet("font-weight: bold;")
         self.content_layout.addWidget(products_title)
         self.top_products_table = self.make_table([

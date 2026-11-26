@@ -24,7 +24,6 @@ from ui.formatters import (
 
 class ReportBasePage(QWidget):
     """Lớp nền cung cấp bộ lọc, bảng dữ liệu và chức năng xuất báo cáo dùng chung."""
-    """Lớp nền: bộ lọc ngày, truy vấn, bảng và xuất CSV dùng chung."""
 
     def __init__(self, db, title, description, use_date_filter=True, parent=None):
         """Khởi tạo cấu hình bộ lọc, bảng dữ liệu và các thành phần dùng chung của báo cáo."""
@@ -174,32 +173,115 @@ class ReportBasePage(QWidget):
         if 0 <= column < table.columnCount():
             table.sortItems(column, header.sortIndicatorOrder())
 
-    def add_stat_cards(self, definitions, columns=3):
-        """definitions: [(key, title, initial_value), ...]"""
+    def add_stat_cards(
+        self,
+        definitions,
+        columns=3,
+        section_title=None,
+        section_description=None,
+    ):
+        """Tạo các thẻ chỉ số có nhãn, diễn giải và màu nhấn theo ý nghĩa dữ liệu.
+
+        Mỗi phần tử có dạng (key, title, value) hoặc
+        (key, title, value, description, tone). Màu nhấn chỉ hỗ trợ
+        phân loại nhanh, không thay thế nội dung giải thích của chỉ số.
+        """
+        if section_title:
+            section_label = QLabel(section_title)
+            section_label.setStyleSheet(
+                "color: #E2E8F0; font-size: 14px; font-weight: 700;"
+            )
+            self.content_layout.addWidget(section_label)
+
+        if section_description:
+            description_label = QLabel(section_description)
+            description_label.setWordWrap(True)
+            description_label.setStyleSheet(
+                "color: #94A3B8; font-size: 11px;"
+            )
+            self.content_layout.addWidget(description_label)
+
+        # Giữ các thẻ cùng chiều rộng và khoảng cách để dễ so sánh số liệu.
         grid = QGridLayout()
-        grid.setSpacing(8)
-        for index, (key, title, initial_value) in enumerate(definitions):
+        grid.setContentsMargins(0, 2, 0, 5)
+        grid.setHorizontalSpacing(10)
+        grid.setVerticalSpacing(10)
+
+        tone_colors = {
+            "primary": "#60A5FA",
+            "positive": "#34D399",
+            "warning": "#FBBF24",
+            "negative": "#F87171",
+            "violet": "#A78BFA",
+            "neutral": "#64748B",
+        }
+
+        for index, definition in enumerate(definitions):
+            key, title, initial_value = definition[:3]
+            description = definition[3] if len(definition) > 3 else ""
+            tone = definition[4] if len(definition) > 4 else "neutral"
+            accent_color = tone_colors.get(tone, tone_colors["neutral"])
+
             card = QFrame()
             card.setObjectName("reportStatCard")
+            card.setMinimumHeight(108)
             card.setStyleSheet(
-                "QFrame#reportStatCard { background-color: #202938; "
-                "border: 1px solid #39465A; border-radius: 8px; }"
+                "QFrame#reportStatCard {"
+                " background-color: #202B3B;"
+                " border: 1px solid #344256;"
+                " border-radius: 9px;"
+                "}"
             )
-            card_layout = QVBoxLayout(card)
-            card_layout.setContentsMargins(10, 9, 10, 9)
+
+            card_layout = QHBoxLayout(card)
+            card_layout.setContentsMargins(0, 0, 0, 0)
+            card_layout.setSpacing(0)
+
+            # Dải màu nhỏ giúp nhận biết nhóm chỉ số mà không tô toàn bộ thẻ.
+            accent = QFrame()
+            accent.setFixedWidth(4)
+            accent.setStyleSheet(
+                f"background-color: {accent_color};"
+                " border: none;"
+                " border-top-left-radius: 8px;"
+                " border-bottom-left-radius: 8px;"
+            )
+            card_layout.addWidget(accent)
+
+            content = QWidget()
+            content_layout = QVBoxLayout(content)
+            content_layout.setContentsMargins(13, 10, 12, 10)
+            content_layout.setSpacing(4)
+
             title_label = QLabel(title)
+            title_label.setWordWrap(True)
             title_label.setStyleSheet(
-                "color: #AAB7C8; font-size: 10px; font-weight: bold;"
+                "color: #C0CCDA; font-size: 11px; font-weight: 600;"
+                " background: transparent; border: none;"
             )
+            content_layout.addWidget(title_label)
+
+            if description:
+                detail_label = QLabel(description)
+                detail_label.setWordWrap(True)
+                detail_label.setStyleSheet(
+                    "color: #8999AD; font-size: 10px;"
+                    " background: transparent; border: none;"
+                )
+                content_layout.addWidget(detail_label)
+
             value_label = QLabel(str(initial_value))
             value_label.setWordWrap(True)
             value_label.setStyleSheet(
-                "color: #F3F4F6; font-size: 17px; font-weight: bold;"
+                "color: #F8FAFC; font-size: 21px; font-weight: 700;"
+                " background: transparent; border: none;"
             )
-            card_layout.addWidget(title_label)
-            card_layout.addWidget(value_label)
+            content_layout.addWidget(value_label)
+
+            card_layout.addWidget(content, 1)
             grid.addWidget(card, index // columns, index % columns)
             self.kpi_labels[key] = value_label
+
         self.content_layout.addLayout(grid)
 
     def set_stat(self, key, value):

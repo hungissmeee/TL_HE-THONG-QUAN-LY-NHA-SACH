@@ -16,9 +16,12 @@ class ImportReportPage(ReportBasePage):
             parent,
         )
         self.add_stat_cards([
-            ("count", "SỐ PHIẾU NHẬP", "0"),
-            ("quantity", "TỔNG SẢN PHẨM NHẬP", "0"),
-            ("amount", "TỔNG TRỊ GIÁ NHẬP", "0 đ"),
+            ("count", "Số phiếu nhập", "0",
+             "Số chứng từ nhập trong kỳ", "neutral"),
+            ("quantity", "Số lượng sản phẩm nhập", "0",
+             "Tổng số lượng ở các dòng chi tiết", "positive"),
+            ("amount", "Tổng trị giá nhập", "0 đ",
+             "Tổng giá trị ghi trên phiếu nhập", "violet"),
         ])
         self.table = self.make_table([
             "Mã phiếu nhập", "Ngày nhập", "Loại phiếu", "Nhà cung cấp",

@@ -16,9 +16,12 @@ class ReturnReportPage(ReportBasePage):
             parent,
         )
         self.add_stat_cards([
-            ("count", "SỐ PHIẾU ĐỔI TRẢ", "0"),
-            ("quantity", "SỐ LƯỢNG SẢN PHẨM HOÀN", "0"),
-            ("amount", "TỔNG TIỀN ĐÃ HOÀN", "0 đ"),
+            ("count", "Số phiếu đổi trả", "0",
+             "Số chứng từ đổi trả trong kỳ", "neutral"),
+            ("quantity", "Số lượng sản phẩm hoàn", "0",
+             "Tổng số lượng hàng được ghi nhận hoàn", "warning"),
+            ("amount", "Tổng tiền đã hoàn", "0 đ",
+             "Tổng tiền hoàn trên các phiếu đổi trả", "primary"),
         ])
         self.table = self.make_table([
             "Mã phiếu đổi trả", "Ngày đổi trả", "Mã hóa đơn",

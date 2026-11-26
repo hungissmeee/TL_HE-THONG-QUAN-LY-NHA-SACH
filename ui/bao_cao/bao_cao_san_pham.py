@@ -29,9 +29,12 @@ class ProductReportPage(ReportBasePage):
         self.content_layout.addLayout(controls)
 
         self.add_stat_cards([
-            ("sold", "TỔNG SỐ LƯỢNG ĐÃ BÁN", "0"),
-            ("revenue", "TỔNG DOANH THU SẢN PHẨM", "0 đ"),
-            ("active", "SẢN PHẨM CÓ PHÁT SINH BÁN", "0"),
+            ("sold", "Tổng số lượng đã bán", "0",
+             "Số lượng trên các hóa đơn hợp lệ", "neutral"),
+            ("revenue", "Doanh thu sản phẩm", "0 đ",
+             "Doanh thu sau khuyến mãi", "positive"),
+            ("active", "Sản phẩm có phát sinh bán", "0",
+             "Số mặt hàng có số lượng bán lớn hơn 0", "primary"),
         ])
 
         self.table = self.make_table([

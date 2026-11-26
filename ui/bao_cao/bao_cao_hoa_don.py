@@ -16,10 +16,14 @@ class InvoiceReportPage(ReportBasePage):
             parent,
         )
         self.add_stat_cards([
-            ("total", "TỔNG SỐ HÓA ĐƠN", "0"),
-            ("valid", "HÓA ĐƠN HỢP LỆ", "0"),
-            ("cancelled", "HÓA ĐƠN ĐÃ HỦY", "0"),
-            ("revenue", "DOANH THU ĐƯỢC GHI NHẬN", "0 đ"),
+            ("total", "Tổng số hóa đơn", "0",
+             "Tất cả hóa đơn trong khoảng thời gian lọc", "neutral"),
+            ("valid", "Hóa đơn hợp lệ", "0",
+             "Được ghi nhận vào doanh thu", "positive"),
+            ("cancelled", "Hóa đơn đã hủy", "0",
+             "Không được tính vào doanh thu", "negative"),
+            ("revenue", "Doanh thu được ghi nhận", "0 đ",
+             "Tổng thành tiền của hóa đơn hợp lệ", "primary"),
         ])
         self.table = self.make_table([
             "Mã hóa đơn", "Ngày lập", "Nhân viên", "Mã ca",

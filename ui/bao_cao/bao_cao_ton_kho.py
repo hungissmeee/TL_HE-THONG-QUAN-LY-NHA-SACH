@@ -38,10 +38,14 @@ class InventoryReportPage(ReportBasePage):
         self.content_layout.addLayout(controls)
 
         self.add_stat_cards([
-            ("products", "TỔNG SẢN PHẨM", "0"),
-            ("low", "SẢN PHẨM SẮP HẾT", "0"),
-            ("out", "SẢN PHẨM HẾT HÀNG", "0"),
-            ("value", "GIÁ TRỊ TỒN ƯỚC TÍNH", "0 đ"),
+            ("products", "Tổng số sản phẩm", "0",
+             "Số mặt hàng chưa bị xóa", "neutral"),
+            ("low", "Sản phẩm sắp hết", "0",
+             "Tồn kho lớn hơn 0 và không vượt ngưỡng", "warning"),
+            ("out", "Sản phẩm hết hàng", "0",
+             "Số mặt hàng có tồn kho bằng hoặc dưới 0", "negative"),
+            ("value", "Giá trị tồn ước tính", "0 đ",
+             "Tồn kho nhân với giá nhập hiện tại", "primary"),
         ])
 
         self.table = self.make_table([
