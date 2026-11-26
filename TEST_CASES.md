@@ -138,7 +138,7 @@ Tài liệu này là danh sách kiểm thử chức năng (manual/acceptance tes
 
 | ID | Ưu tiên | Vai trò | Bước kiểm thử | Kết quả mong đợi |
 |---|---|---|---|---|
-| BC-01 | P0 | Kế toán/Admin | Chọn kỳ báo cáo tổng quan có hóa đơn hợp lệ, hóa đơn hủy, phiếu đổi trả và phiếu nhập. | KPI và bảng xu hướng khớp chứng từ nguồn; hóa đơn hủy không tính vào doanh thu. |
+| BC-01 | P0 | Kế toán/Admin | Chọn kỳ báo cáo tổng quan có hóa đơn hợp lệ, hóa đơn hủy, phiếu đổi trả, phiếu nhập còn hiệu lực và phiếu nhập đã hủy. | KPI và bảng xu hướng khớp chứng từ nguồn; hóa đơn hủy không tính vào doanh thu và phiếu nhập đã hủy không tính vào giá trị nhập hàng. |
 | BC-02 | P0 | Kế toán/Admin | Đối chiếu báo cáo doanh thu theo ngày/tháng/năm. | Tiền hàng, tiền giảm, doanh thu hợp lệ, tiền hoàn và doanh thu sau hoàn khớp dữ liệu nguồn. |
 | BC-03 | P1 | Kế toán/Admin | Mở báo cáo hóa đơn có cả hóa đơn hợp lệ và đã hủy. | Hiển thị đủ chứng từ; hóa đơn hủy không được tính vào doanh thu được ghi nhận. |
 | BC-04 | P0 | Kế toán/Admin | Đối chiếu báo cáo nhập hàng với các phiếu nhập có hiệu lực và phiếu đã hủy. | Tổng lượng và trị giá phản ánh đúng trạng thái nghiệp vụ; phiếu hủy không được tính là nhập thực tế. |
