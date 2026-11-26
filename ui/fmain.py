@@ -668,6 +668,9 @@ class MainWindow(QMainWindow):
 
         self._refresh_page_data(self.pages[key])
 
+        for page_key, button in self.nav_buttons.items():
+            button.setChecked(page_key == key)
+
     @staticmethod
     def _refresh_page_data(page):
         """Tải dữ liệu cần thiết khi người dùng chuyển sang một trang."""
@@ -675,9 +678,6 @@ class MainWindow(QMainWindow):
             page.load_data()
         elif isinstance(page, ReportBasePage):
             page.refresh_data()
-
-        for page_key, button in self.nav_buttons.items():
-            button.setChecked(page_key == key)
 
     # ==================================================
     # TRANG TỔNG QUAN
