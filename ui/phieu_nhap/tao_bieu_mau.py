@@ -1,5 +1,6 @@
 """CreateImportDialog: thành phần giao diện nghiệp vụ phiếu nhập."""
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QWidget,
     QDialog,
@@ -7,6 +8,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QLineEdit,
     QComboBox,
+    QCompleter,
     QVBoxLayout,
     QHBoxLayout,
     QFormLayout,
@@ -96,6 +98,24 @@ class CreateImportDialog(QDialog):
         )
         self.supplier_combo = QComboBox()
         self.supplier_combo.setMinimumWidth(300)
+        self.supplier_combo.setEditable(True)
+        self.supplier_combo.setInsertPolicy(
+            QComboBox.InsertPolicy.NoInsert
+        )
+        self.supplier_combo.lineEdit().setPlaceholderText(
+            "Nhập mã hoặc tên nhà cung cấp để tìm..."
+        )
+        supplier_completer = self.supplier_combo.completer()
+        supplier_completer.setCompletionMode(
+            QCompleter.CompletionMode.PopupCompletion
+        )
+        supplier_completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        supplier_completer.setCaseSensitivity(
+            Qt.CaseSensitivity.CaseInsensitive
+        )
+        self.supplier_combo.setToolTip(
+            "Có thể gõ một phần mã hoặc tên nhà cung cấp rồi chọn kết quả."
+        )
         supplier_row = QHBoxLayout()
         supplier_row.addWidget(self.supplier_combo, 1)
         self.add_supplier_button = QPushButton("+ Nhà cung cấp")
@@ -243,6 +263,22 @@ class CreateImportDialog(QDialog):
         table.setItem(row, column, QTableWidgetItem(
             "" if value is None else str(value)
         ))
+
+    def _selected_supplier_code(self):
+        """Chỉ trả mã khi nội dung ô nhập khớp một nhà cung cấp trong danh sách."""
+        typed_text = self.supplier_combo.currentText().strip()
+        if not typed_text:
+            return None
+
+        index = self.supplier_combo.findText(
+            typed_text,
+            Qt.MatchFlag.MatchFixedString,
+        )
+        if index < 0:
+            return None
+
+        code = self.supplier_combo.itemData(index)
+        return str(code).strip() if code else None
 
     def load_suppliers(self, selected_code=None):
         """Tải nhà cung cấp đang hoạt động để chọn cho phiếu nhập."""
@@ -441,11 +477,12 @@ class CreateImportDialog(QDialog):
 
     def save_import(self):
         """Kiểm tra dữ liệu và ghi phiếu nhập cùng chi tiết, bảo đảm cập nhật tồn kho trong giao dịch."""
-        supplier_code = self.supplier_combo.currentData()
+        supplier_code = self._selected_supplier_code()
         if not supplier_code:
             QMessageBox.warning(
                 self, "Thiếu nhà cung cấp",
-                "Vui lòng thêm hoặc chọn nhà cung cấp trước khi lập phiếu nhập."
+                "Vui lòng nhập mã hoặc tên, sau đó chọn một nhà cung cấp "
+                "trong danh sách gợi ý."
             )
             return
         if not self.cart:
