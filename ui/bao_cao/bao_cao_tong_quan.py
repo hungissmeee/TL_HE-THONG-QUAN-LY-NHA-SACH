@@ -53,7 +53,7 @@ class OverviewReportPage(ReportBasePage):
                 ),
                 (
                     "imports", "Giá trị nhập hàng", "0 đ",
-                    "Tổng trị giá phiếu nhập trong kỳ", "violet",
+                    "Tổng trị giá phiếu nhập còn hiệu lực trong kỳ", "violet",
                 ),
             ],
             section_title="Chứng từ và nhập hàng",
