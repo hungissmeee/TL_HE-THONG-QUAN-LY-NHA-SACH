@@ -50,6 +50,8 @@ Tài liệu này là danh sách kiểm thử chức năng (manual/acceptance tes
 | SP-06 | P0 | Người có quyền xóa | Xóa mềm một sản phẩm đã có lịch sử hóa đơn/phiếu nhập. | IS_DELETED chuyển thành 1; sản phẩm không còn trong danh sách bán hàng nhưng lịch sử chứng từ và dòng chi tiết vẫn còn. |
 | SP-07 | P0 | Thu ngân | Thử thêm sản phẩm hết tồn hoặc đã xóa mềm vào hóa đơn. | Sản phẩm không được phép thêm vào giỏ/bán. |
 | SP-08 | P1 | Người có quyền sửa | Chỉnh sửa sản phẩm đang tham chiếu tới tác giả/thể loại/NXB/thương hiệu đã xóa mềm. | Giá trị cũ vẫn hiển thị để bảo toàn liên kết; không tự đổi sang danh mục khác. |
+| SP-09 | P0 | Người có quyền thêm/sửa sản phẩm | Mở biểu mẫu thêm mới hoặc chỉnh sửa sản phẩm. | Giá nhập và số lượng tồn chỉ đọc; sản phẩm mới khởi tạo hai giá trị bằng 0; lưu chỉnh sửa thông tin sản phẩm không làm thay đổi hai giá trị này. |
+| SP-10 | P0 | Quản lý/Nhân viên kho/Admin | Lập phiếu nhập rồi hủy phiếu nhập; tiếp tục bán hoặc đổi trả sản phẩm. | Phiếu nhập cập nhật tồn kho và giá nhập bình quân; hủy phiếu nhập hoàn tác đúng; hóa đơn/đổi trả chỉ thay đổi tồn kho; các thao tác nằm trong transaction. |
 
 ## 4. Danh mục: tác giả, thể loại, nhà xuất bản, thương hiệu
 
