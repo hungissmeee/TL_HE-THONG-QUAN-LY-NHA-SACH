@@ -142,7 +142,6 @@ class ProductWindow(QWidget):
         finally:
             if cursor is not None:
                 cursor.close()
-            self.update_selection_actions()
 
     def load_products(self):
         """Tải danh sách sản phẩm theo từ khóa tìm kiếm."""
