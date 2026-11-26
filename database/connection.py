@@ -1,6 +1,18 @@
 import pyodbc
 
 
+_ROLE_MAP = {
+    "Quản lý": "rl_QuanLy",
+    "Thu ngân": "rl_ThuNgan",
+    "Nhân viên kho": "rl_NhanVienKho",
+    "Kế toán": "rl_KeToan",
+}
+_ROLE_DISPLAY_MAP = {
+    sql_role: display_role
+    for display_role, sql_role in _ROLE_MAP.items()
+}
+
+
 class Database:
 
     def __init__(self):
@@ -78,18 +90,8 @@ class Database:
             if temp_conn is not None:
                 temp_conn.close()
 
-    ROLE_MAP = {
-        "Quản lý": "rl_QuanLy",
-        "Thu ngân": "rl_ThuNgan",
-        "Nhân viên kho": "rl_NhanVienKho",
-        "Kế toán": "rl_KeToan",
-    }
-    ROLE_DISPLAY_MAP = {
-        "rl_QuanLy": "Quản lý",
-        "rl_ThuNgan": "Thu ngân",
-        "rl_NhanVienKho": "Nhân viên kho",
-        "rl_KeToan": "Kế toán",
-    }
+    ROLE_MAP = _ROLE_MAP
+    ROLE_DISPLAY_MAP = _ROLE_DISPLAY_MAP
 
     def _check_admin(self):
 
