@@ -119,22 +119,22 @@ class ProductWindow(QWidget):
                         AND HAS_PERMS_BY_NAME('dbo.THUOC_TL', 'OBJECT', 'INSERT') = 1
                     THEN 1 ELSE 0 END,
                     CASE WHEN
-                        HAS_PERMS_BY_NAME('dbo.SAN_PHAM.TENSP', 'COLUMN', 'UPDATE') = 1
-                        AND HAS_PERMS_BY_NAME('dbo.SAN_PHAM.DVT', 'COLUMN', 'UPDATE') = 1
-                        AND HAS_PERMS_BY_NAME('dbo.SAN_PHAM.GIABAN', 'COLUMN', 'UPDATE') = 1
-                        AND HAS_PERMS_BY_NAME('dbo.SAN_PHAM.VAT', 'COLUMN', 'UPDATE') = 1
-                        AND HAS_PERMS_BY_NAME('dbo.SACH.ISBN', 'COLUMN', 'UPDATE') = 1
-                        AND HAS_PERMS_BY_NAME('dbo.SACH.NAMXB', 'COLUMN', 'UPDATE') = 1
-                        AND HAS_PERMS_BY_NAME('dbo.SACH.MANXB', 'COLUMN', 'UPDATE') = 1
-                        AND HAS_PERMS_BY_NAME('dbo.SAN_PHAM_KHAC.NGAYSX', 'COLUMN', 'UPDATE') = 1
-                        AND HAS_PERMS_BY_NAME('dbo.SAN_PHAM_KHAC.MATH', 'COLUMN', 'UPDATE') = 1
+                        HAS_PERMS_BY_NAME('dbo.SAN_PHAM', 'OBJECT', 'UPDATE', 'TENSP', 'COLUMN') = 1
+                        AND HAS_PERMS_BY_NAME('dbo.SAN_PHAM', 'OBJECT', 'UPDATE', 'DVT', 'COLUMN') = 1
+                        AND HAS_PERMS_BY_NAME('dbo.SAN_PHAM', 'OBJECT', 'UPDATE', 'GIABAN', 'COLUMN') = 1
+                        AND HAS_PERMS_BY_NAME('dbo.SAN_PHAM', 'OBJECT', 'UPDATE', 'VAT', 'COLUMN') = 1
+                        AND HAS_PERMS_BY_NAME('dbo.SACH', 'OBJECT', 'UPDATE', 'ISBN', 'COLUMN') = 1
+                        AND HAS_PERMS_BY_NAME('dbo.SACH', 'OBJECT', 'UPDATE', 'NAMXB', 'COLUMN') = 1
+                        AND HAS_PERMS_BY_NAME('dbo.SACH', 'OBJECT', 'UPDATE', 'MANXB', 'COLUMN') = 1
+                        AND HAS_PERMS_BY_NAME('dbo.SAN_PHAM_KHAC', 'OBJECT', 'UPDATE', 'NGAYSX', 'COLUMN') = 1
+                        AND HAS_PERMS_BY_NAME('dbo.SAN_PHAM_KHAC', 'OBJECT', 'UPDATE', 'MATH', 'COLUMN') = 1
                         AND HAS_PERMS_BY_NAME('dbo.THUOC_TG', 'OBJECT', 'DELETE') = 1
                         AND HAS_PERMS_BY_NAME('dbo.THUOC_TG', 'OBJECT', 'INSERT') = 1
                         AND HAS_PERMS_BY_NAME('dbo.THUOC_TL', 'OBJECT', 'DELETE') = 1
                         AND HAS_PERMS_BY_NAME('dbo.THUOC_TL', 'OBJECT', 'INSERT') = 1
                     THEN 1 ELSE 0 END,
                     CASE WHEN
-                        HAS_PERMS_BY_NAME('dbo.SAN_PHAM.IS_DELETED', 'COLUMN', 'UPDATE') = 1
+                        HAS_PERMS_BY_NAME('dbo.SAN_PHAM', 'OBJECT', 'UPDATE', 'IS_DELETED', 'COLUMN') = 1
                     THEN 1 ELSE 0 END
             """)
             row = cursor.fetchone()
