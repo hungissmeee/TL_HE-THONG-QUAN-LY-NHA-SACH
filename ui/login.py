@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (
     QPushButton, QVBoxLayout, QMessageBox
 )
 
-from ui.fmain import MainWindow
+from ui.main_window import MainWindow
 
 
 class LoginWindow(QWidget):
