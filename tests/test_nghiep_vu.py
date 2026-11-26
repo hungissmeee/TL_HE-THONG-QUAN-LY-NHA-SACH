@@ -26,6 +26,7 @@ from ui.phieu_nhap.tao_bieu_mau import CreateImportDialog
 from ui.hoa_don.tao_bieu_mau import CreateInvoiceDialog
 from ui.ca_lam_viec.tao_bieu_mau import ShiftCreateDialog
 from ui.main_windows import MainWindow
+from ui.permissions import is_admin_account, allowed_pages_for_user
 
 
 _APP = QApplication.instance() or QApplication([])
@@ -310,6 +311,33 @@ class InputValidationTests(unittest.TestCase):
         self.assertIn("imports", MainWindow.ROLE_PAGE_ACCESS["Nhân viên kho"])
         self.assertIn("returns", MainWindow.ROLE_PAGE_ACCESS["Quản lý"])
         self.assertIn("report_revenue", MainWindow.ROLE_PAGE_ACCESS["Kế toán"])
+
+    def test_admin_is_recognized_case_insensitively(self):
+        self.assertTrue(is_admin_account("admin"))
+        self.assertTrue(is_admin_account(" ADMIN "))
+        self.assertFalse(is_admin_account("NV01"))
+
+    def test_admin_can_access_every_registered_page(self):
+        all_pages = {
+            "home", "products", "employees", "suppliers", "imports",
+            "invoices", "returns", "shifts", "authors", "genres",
+            "publishers", "brands", "report_overview", "report_revenue",
+            "report_invoice", "report_import", "report_return",
+            "report_inventory", "report_product",
+        }
+        allowed = allowed_pages_for_user(
+            "admin", "", MainWindow.ROLE_PAGE_ACCESS, all_pages
+        )
+        self.assertEqual(allowed, all_pages)
+
+    def test_non_admin_keeps_role_based_page_restrictions(self):
+        all_pages = {"home", "products", "invoices", "returns", "reports"}
+        allowed = allowed_pages_for_user(
+            "NV01", "Thu ngân", MainWindow.ROLE_PAGE_ACCESS, all_pages
+        )
+        self.assertEqual(allowed, set(MainWindow.ROLE_PAGE_ACCESS["Thu ngân"]))
+        self.assertNotIn("returns", allowed)
+        self.assertNotIn("reports", allowed)
 
 
 class ShiftScheduleTests(unittest.TestCase):

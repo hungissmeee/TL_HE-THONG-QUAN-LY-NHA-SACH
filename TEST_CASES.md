@@ -86,6 +86,7 @@ Tài liệu này là danh sách kiểm thử chức năng (manual/acceptance tes
 | PN-06 | P0 | Nhân viên kho | Hủy phiếu do người khác lập hoặc đã quá 5 phút. | Bị từ chối; trạng thái phiếu, SLTON và GIANHAP không đổi. |
 | PN-07 | P0 | Quản lý/Admin | Hủy phiếu nhưng tồn kho hiện tại thấp hơn lượng cần hoàn tác. | Từ chối hủy; toàn bộ transaction rollback, không cập nhật dở dang. |
 | PN-08 | P1 | Người có quyền xem | Tìm phiếu theo mã, SHDNCC, NCC, nhân viên và khoảng ngày; mở chi tiết/in. | Bộ lọc đúng; chi tiết và bản in thể hiện đúng NCC, sản phẩm, VAT và tổng giá trị. |
+| PN-09 | P0 | Admin | Lập phiếu nhập khi tài khoản admin không có hồ sơ NHAN_VIEN. | Vẫn tạo được phiếu nhập; MANV để NULL nếu không có hồ sơ tương ứng; tồn kho và giá nhập bình quân cập nhật đúng. |
 
 ## 7. Hóa đơn
 
@@ -100,19 +101,20 @@ Tài liệu này là danh sách kiểm thử chức năng (manual/acceptance tes
 | HD-07 | P0 | Admin/Quản lý | Hủy hóa đơn còn hiệu lực, kể cả hóa đơn cũ. | Được hủy; trạng thái chuyển 0; toàn bộ sản phẩm được hoàn kho đúng một lần. |
 | HD-08 | P0 | Thu ngân | Hủy hóa đơn của chính mình trong 5 phút đầu, sau đó thử hủy hóa đơn người khác/quá 5 phút. | Chỉ lần hủy hợp lệ được chấp nhận; các lần còn lại bị từ chối. |
 | HD-09 | P0 | Tất cả vai trò có quyền hủy | Hủy lại hóa đơn đã hủy hoặc kiểm tra khi transaction lỗi. | Không hoàn kho lần hai; lỗi phải rollback cả cập nhật tồn kho và trạng thái. |
+| HD-10 | P0 | Admin | Lập hóa đơn khi admin không có đăng ký ca hoặc không có hồ sơ NHAN_VIEN. | Admin vẫn lập được hóa đơn; MACA và/hoặc MANV được để NULL nếu không có dữ liệu liên kết phù hợp; tồn kho và thanh toán vẫn được kiểm tra. |
 
 ## 8. Đổi trả
 
 | ID | Ưu tiên | Vai trò | Bước kiểm thử | Kết quả mong đợi |
 |---|---|---|---|---|
 | DT-01 | P0 | Quản lý | Mở đổi trả và chọn hóa đơn còn hiệu lực được lập trong ngày. | Hóa đơn đủ điều kiện hiển thị; chỉ sản phẩm thuộc hóa đơn được chọn để xử lý. |
-| DT-02 | P1 | Admin | Thử truy cập chức năng đổi trả. | Admin không được truy cập trang đổi trả, xem lịch sử/chi tiết hoặc lập và xử lý phiếu. |
+| DT-02 | P0 | Admin | Mở trang Đổi trả, tìm kiếm, xem chi tiết, lập và xử lý một phiếu hợp lệ. | Admin xem được toàn bộ lịch sử và thực hiện được thao tác như Quản lý; các giới hạn số lượng, ngày đổi trả và tồn kho vẫn được kiểm tra. |
 | DT-03 | P0 | Quản lý | Chọn hàng còn nguyên vẹn và hình thức hoàn tiền. | Tính tiền hoàn theo đơn giá sau khuyến mãi; số lượng hàng nguyên vẹn được cộng lại kho. |
 | DT-04 | P0 | Quản lý | Chọn hàng đã hỏng và hình thức hoàn tiền. | Tính tiền hoàn đúng; hàng hỏng không được cộng lại tồn kho bán được. |
 | DT-05 | P0 | Quản lý | Chọn hàng đã hỏng và đổi sản phẩm cùng mã. | Không hoàn tiền; SLTON giảm theo số lượng hàng mới xuất để đổi. |
 | DT-06 | P0 | Quản lý | Chọn hàng còn nguyên vẹn nhưng yêu cầu đổi sản phẩm; hoặc trả vượt số lượng còn được xử lý. | Bị từ chối; không tạo phiếu và không biến động tồn kho. |
 | DT-07 | P0 | Quản lý | Thử xử lý hóa đơn đã hủy hoặc hóa đơn không còn trong ngày; thực hiện hai thao tác đồng thời. | Bị từ chối khi không đủ điều kiện; không thể trả vượt lượng mua; lỗi giữa chừng phải rollback. |
-| DT-08 | P1 | Quản lý | Xem chi tiết phiếu đổi trả đã lập. | Hiển thị hóa đơn gốc, lý do, tình trạng hàng, hình thức xử lý, số lượng và tổng tiền hoàn. |
+| DT-08 | P1 | Quản lý/Admin | Xem chi tiết phiếu đổi trả đã lập. | Hiển thị hóa đơn gốc, lý do, tình trạng hàng, hình thức xử lý, số lượng và tổng tiền hoàn. |
 
 ## 9. Ca làm việc
 
@@ -124,8 +126,9 @@ Tài liệu này là danh sách kiểm thử chức năng (manual/acceptance tes
 | CA-04 | P0 | Nhân viên | Đăng ký hai ca có thời gian trùng nhau. | SQL Server từ chối; không tạo đăng ký chồng lấn. |
 | CA-05 | P1 | Quản lý/Admin | Xem ca hiện tại, lịch sử và danh sách nhân viên thuộc từng ca. | Số lượng và danh sách nhân viên đúng; bộ lọc ngày/tuần/tháng hoạt động đúng. |
 | CA-06 | P0 | Kế toán | Ghi tiền cuối ca trước khi ca kết thúc, sau khi ca kết thúc và ghi lần thứ hai. | Chỉ cho ghi sau khi ca kết thúc; mỗi ca chỉ ghi một lần. |
-| CA-07 | P0 | Tài khoản không phải Kế toán | Thử ghi tiền cuối ca. | Bị từ chối cả ở giao diện và kiểm tra SQL. |
+| CA-07 | P0 | Nhân viên không phải Kế toán và không phải Admin | Thử ghi tiền cuối ca. | Bị từ chối cả ở giao diện và kiểm tra SQL. Admin vẫn được phép ghi sau khi ca kết thúc. |
 | CA-08 | P0 | Quản lý/Admin | Xóa ca chưa bắt đầu và ca đã có hóa đơn/đã bắt đầu. | Chỉ ca chưa bắt đầu, chưa có hóa đơn liên kết mới được xóa; lịch sử có chứng từ được bảo toàn. |
+| CA-09 | P0 | Admin | Mở ca đã kết thúc chưa có tiền cuối ca và thực hiện ghi tiền; thử ghi lại lần hai. | Admin được xem các ca và ghi tiền cuối ca; chỉ ghi thành công một lần cho mỗi ca. |
 
 ## 10. Báo cáo và xuất dữ liệu
 

@@ -26,6 +26,7 @@ from ui.table_sort import (
 )
 from .dung_chung import MONEY_QUANT, Decimal, ROUND_HALF_UP, money, as_decimal
 from .tao_nha_cung_cap import CreateSupplierDialog
+from ui.permissions import is_admin_account
 
 
 class CreateImportDialog(QDialog):
@@ -35,6 +36,7 @@ class CreateImportDialog(QDialog):
         super().__init__(parent)
         self.db = db
         self.username = (getattr(db, "username", "") or "").strip()
+        self.is_admin = is_admin_account(self.username)
         self.employee = None
         self.suppliers = {}
         self.products = {}
@@ -64,14 +66,14 @@ class CreateImportDialog(QDialog):
                 WHERE MANV = ?
             """, self.username)
             row = cursor.fetchone()
-            if row is None:
+            if row is None and not self.is_admin:
                 raise RuntimeError(
                     "Tài khoản đăng nhập chưa có hồ sơ tương ứng trong NHAN_VIEN."
                 )
             self.employee = {
-                "manv": row[0],
-                "tennv": row[1] or row[0],
-                "vaitro": row[2] or "",
+                "manv": row[0] if row else None,
+                "tennv": (row[1] or row[0]) if row else "Admin",
+                "vaitro": (row[2] or "") if row else "Quản lý",
             }
         finally:
             cursor.close()
@@ -88,8 +90,9 @@ class CreateImportDialog(QDialog):
 
         info_box = QGroupBox("Thông tin phiếu nhập")
         info_form = QFormLayout(info_box)
+        employee_code = self.employee["manv"] or "Tài khoản hệ thống"
         self.employee_label = QLabel(
-            f"{self.employee['tennv']} ({self.employee['manv']})"
+            f"{self.employee['tennv']} ({employee_code})"
         )
         self.supplier_combo = QComboBox()
         self.supplier_combo.setMinimumWidth(300)
@@ -97,7 +100,7 @@ class CreateImportDialog(QDialog):
         supplier_row.addWidget(self.supplier_combo, 1)
         self.add_supplier_button = QPushButton("+ Nhà cung cấp")
         can_add_supplier = (
-            self.username.casefold() == "admin"
+            self.is_admin
             or self.employee["vaitro"].casefold() == "quản lý"
         )
         self.add_supplier_button.setVisible(can_add_supplier)
@@ -495,7 +498,7 @@ class CreateImportDialog(QDialog):
                 self.import_type_combo.currentText(),
                 supplier_invoice,
                 total,
-                self.username,
+                self.employee["manv"],
                 supplier_code,
             ))
 

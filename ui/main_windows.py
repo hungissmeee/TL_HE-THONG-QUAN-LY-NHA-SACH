@@ -24,6 +24,7 @@ from ui.bao_cao import (
 )
 from ui.bao_cao.bao_cao_co_so import ReportBasePage
 from ui.styles import MAIN_WINDOW_STYLESHEET
+from ui.permissions import allowed_pages_for_user
 from ui.phieu_nhap import ImportWindow
 from ui.nha_cung_cap import SupplierWindow
 from ui.doi_tra import ReturnWindow
@@ -618,14 +619,12 @@ class MainWindow(QMainWindow):
     # ==================================================
     def apply_role_navigation(self):
         """Áp dụng danh sách trang được phép dựa trên vai trò nhân viên hiện tại."""
-        username = str(self.db.username or "").lower()
-
-        if username == "admin":
-            allowed = set(self.nav_buttons.keys())
-            # Tài khoản admin không tham gia nghiệp vụ đổi trả.
-            allowed.discard("returns")
-        else:
-            allowed = set(self.ROLE_PAGE_ACCESS.get(self.employee_role, ("home",)))
+        allowed = allowed_pages_for_user(
+            self.db.username,
+            self.employee_role,
+            self.ROLE_PAGE_ACCESS,
+            self.nav_buttons.keys(),
+        )
 
         for key, button in self.nav_buttons.items():
             button.setVisible(key in allowed)

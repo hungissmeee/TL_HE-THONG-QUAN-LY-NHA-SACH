@@ -24,6 +24,7 @@ from ui.table_sort import (
     resume_table_sorting,
 )
 from .dung_chung import MONEY_QUANT, Decimal, InvalidOperation, ROUND_HALF_UP, money, as_decimal, date_text, time_text
+from ui.permissions import is_admin_account
 
 
 class CreateInvoiceDialog(QDialog):
@@ -33,6 +34,7 @@ class CreateInvoiceDialog(QDialog):
         super().__init__(parent)
         self.db = db
         self.username = (getattr(db, "username", "") or "").strip()
+        self.is_admin = is_admin_account(self.username)
         self.employee = None
         self.active_shift = None
         self.products = {}
@@ -58,6 +60,22 @@ class CreateInvoiceDialog(QDialog):
 
         cursor = conn.cursor()
         try:
+            if self.is_admin:
+                cursor.execute("""
+                    SELECT MANV, TENNV, VAITRO
+                    FROM dbo.NHAN_VIEN
+                    WHERE MANV = ?
+                """, self.username)
+                row = cursor.fetchone()
+                self.employee = {
+                    "manv": row[0] if row else None,
+                    "tennv": (row[1] or row[0]) if row else "Admin",
+                    "vaitro": row[2] if row else "Quản trị hệ thống",
+                }
+                # Admin không bị ràng buộc bởi đăng ký ca; MACA có thể để NULL.
+                self.active_shift = None
+                return
+
             cursor.execute("""
                 SELECT TOP 1
                     NV.MANV, NV.TENNV, NV.VAITRO,
@@ -106,13 +124,17 @@ class CreateInvoiceDialog(QDialog):
         info = QGroupBox("Thông tin hóa đơn")
         info_form = QFormLayout(info)
         shift = self.active_shift
-        shift_text = (
-            f"Ca {shift['soca']} | Mã ca: {shift['maca']} | "
-            f"{date_text(shift['ngaylam'])} | "
-            f"{time_text(shift['tgmo'])} - {time_text(shift['tgdong'])}"
-        )
+        if shift is None:
+            shift_text = "Tài khoản Admin – không giới hạn ca làm việc"
+        else:
+            shift_text = (
+                f"Ca {shift['soca']} | Mã ca: {shift['maca']} | "
+                f"{date_text(shift['ngaylam'])} | "
+                f"{time_text(shift['tgmo'])} - {time_text(shift['tgdong'])}"
+            )
+        employee_code = self.employee["manv"] or "Tài khoản hệ thống"
         self.employee_label = QLabel(
-            f"{self.employee['tennv']} ({self.employee['manv']})"
+            f"{self.employee['tennv']} ({employee_code})"
         )
         self.shift_label = QLabel(shift_text)
         self.promotion_combo = QComboBox()
@@ -499,8 +521,8 @@ class CreateInvoiceDialog(QDialog):
                      TRANGTHAI, MANV, MAKM, MACA)
                 VALUES (?, SYSDATETIME(), ?, 1, ?, ?, ?)
             """, (
-                invoice_code, cash, self.username,
-                promotion_code, shift["maca"]
+                invoice_code, cash, self.employee["manv"],
+                promotion_code, shift["maca"] if shift else None
             ))
 
             for masp, item in self.cart.items():

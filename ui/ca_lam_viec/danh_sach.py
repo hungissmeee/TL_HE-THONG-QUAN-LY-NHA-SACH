@@ -32,6 +32,7 @@ from ui.table_sort import (
 )
 from .tao_bieu_mau import ShiftCreateDialog
 from .chi_tiet import ShiftDetailDialog
+from ui.permissions import is_admin_account
 
 
 class ShiftWindow(QWidget):
@@ -58,12 +59,15 @@ class ShiftWindow(QWidget):
         super().__init__()
         self.db = db
         self.username = (getattr(db, "username", "") or "").strip()
+        self.is_admin = is_admin_account(self.username)
         self.employee_role = ""
-        self.is_manager = self.username.casefold() == "admin"
-        self.is_accountant = False
+        self.is_manager = self.is_admin
+        self.is_accountant = self.is_admin
 
         self._load_current_user_role()
-        self.is_accountant = self.employee_role.strip().casefold() == "kế toán"
+        self.is_accountant = (
+            self.is_admin or self.employee_role.strip().casefold() == "kế toán"
+        )
 
         if self.is_manager:
             self._build_manager_ui()
@@ -85,6 +89,12 @@ class ShiftWindow(QWidget):
     # ---------------------------------------------------------
     def _load_current_user_role(self):
         """Lấy vai trò của nhân viên đang đăng nhập để phân biệt quyền đăng ký, xem và chốt ca."""
+        if self.is_admin:
+            # Tài khoản admin không bắt buộc phải có hồ sơ trong NHAN_VIEN.
+            self.employee_role = "Quản trị hệ thống"
+            self.is_manager = True
+            return
+
         conn = self.db.get_connection()
         if conn is None:
             raise RuntimeError("Chưa có kết nối database!")
@@ -609,10 +619,12 @@ class ShiftWindow(QWidget):
                 DECLARE @EndAt DATETIME2;
                 DECLARE @ExistingCash DECIMAL(15,2);
 
-                IF LOWER(ORIGINAL_LOGIN()) <> LOWER(@Manv)
+                IF LOWER(@Manv) <> N'admin'
+                   AND LOWER(ORIGINAL_LOGIN()) <> LOWER(@Manv)
                     THROW 51200, N'Tài khoản SQL Server không khớp với nhân viên kế toán.', 1;
 
-                IF NOT EXISTS (
+                IF LOWER(@Manv) <> N'admin'
+                   AND NOT EXISTS (
                     SELECT 1
                     FROM dbo.NHAN_VIEN
                     WHERE MANV = @Manv
@@ -1093,10 +1105,19 @@ class ShiftWindow(QWidget):
             shift.get("Trạng thái ca") == "Sắp bắt đầu"
             and self.is_manager
         )
+        closing_cash_text = str(shift.get("Tiền cuối ca", "")).strip()
+        can_record_cash = (
+            self.is_admin
+            and shift.get("Trạng thái ca") == "Đã kết thúc"
+            and closing_cash_text in ("", "Chưa ghi")
+        )
         ShiftDetailDialog(
             shift,
             parent=self,
             employees=employees,
+            on_closing_cash=(
+                lambda shift_id=shift_id: self._record_closing_cash(shift_id)
+            ) if can_record_cash else None,
             on_delete=(
                 lambda shift_id=shift_id: self.delete_shift(shift_id)
             ) if can_delete else None,

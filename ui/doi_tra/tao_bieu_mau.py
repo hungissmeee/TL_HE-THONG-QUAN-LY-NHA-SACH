@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
 )
 
 from .dung_chung import MONEY_QUANT, as_decimal, date_text, money
+from ui.permissions import is_admin_account
 
 
 class CreateReturnDialog(QDialog):
@@ -19,6 +20,8 @@ class CreateReturnDialog(QDialog):
         super().__init__(parent)
         self.db = db
         self.username = (getattr(db, "username", "") or "").strip()
+        self.is_admin = is_admin_account(self.username)
+        self.employee_code = None if self.is_admin else self.username
         self.row_controls = {}
         self.invoice_discount = Decimal("0.00")
 
@@ -30,13 +33,23 @@ class CreateReturnDialog(QDialog):
         self._load_eligible_invoices()
 
     def _ensure_manager(self, cursor=None):
-        """Kiểm tra cả SQL role và hồ sơ nhân viên, không cho admin xử lý thay."""
+        """Cho phép admin hoặc kiểm tra cả SQL role và hồ sơ của Quản lý."""
         own_cursor = cursor is None
         conn = self.db.get_connection()
         if conn is None:
             raise RuntimeError("Chưa có kết nối SQL Server.")
         cursor = cursor or conn.cursor()
         try:
+            if self.is_admin:
+                # Tài khoản hệ thống có thể không có hồ sơ NHAN_VIEN.
+                cursor.execute(
+                    "SELECT MANV FROM dbo.NHAN_VIEN WHERE MANV = ?",
+                    self.username,
+                )
+                employee = cursor.fetchone()
+                self.employee_code = employee[0] if employee else None
+                return
+
             cursor.execute("""
                 SELECT CASE
                     WHEN IS_ROLEMEMBER(N'rl_QuanLy') = 1
@@ -429,7 +442,7 @@ class CreateReturnDialog(QDialog):
                 INSERT INTO dbo.PHIEU_DOI_TRA
                     (MAPDT, NGAY_DOI_TRA, LY_DO, TONG_TIEN_HOAN, MAHD, MANV)
                 VALUES (?, SYSDATETIME(), ?, ?, ?, ?)
-            """, return_code, reason, total_refund, invoice_code, self.username)
+            """, return_code, reason, total_refund, invoice_code, self.employee_code)
 
             for line in verified_lines:
                 cursor.execute("""

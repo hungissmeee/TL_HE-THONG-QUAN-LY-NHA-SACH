@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QTableWidget, QHeaderView,
     QAbstractItemView, QMessageBox, QDateEdit,
 )
+from ui.permissions import is_admin_account
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
     prepare_sortable_table, pause_table_sorting, resume_table_sorting,
@@ -22,16 +23,17 @@ class ReturnWindow(QWidget):
         super().__init__()
         self.db = db
         self.username = (getattr(db, "username", "") or "").strip()
+        self.is_admin = is_admin_account(self.username)
         self.employee_role = self._get_employee_role()
         self.can_manage = (
-            self.username.casefold() != "admin"
-            and self.employee_role.casefold() == "quản lý"
+            self.is_admin
+            or self.employee_role.casefold() == "quản lý"
         )
         self._build_ui()
         self.load_returns()
 
     def _get_employee_role(self):
-        """Đọc vai trò nhân viên; tài khoản admin không được tính là Quản lý."""
+        """Đọc vai trò nhân viên; quyền admin được xử lý độc lập với vai trò nhân viên."""
         conn = self.db.get_connection()
         if conn is None or self.username.casefold() == "admin":
             return ""
