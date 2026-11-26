@@ -180,12 +180,11 @@ class ReportBasePage(QWidget):
         section_title=None,
         section_description=None,
     ):
-        """Tạo thẻ KPI với cấp độ nhấn mạnh riêng cho số liệu chính và số liệu phụ.
+        """Tạo các thẻ chỉ số có nhãn, diễn giải và màu nhấn theo ý nghĩa dữ liệu.
 
-        Phần tử có dạng:
-        (key, title, value, description, tone, emphasis).
-        emphasis nhận "highlight" cho kết quả chính, "support" cho số liệu
-        thành phần; bỏ qua emphasis để giữ kiểu thẻ tiêu chuẩn ở báo cáo khác.
+        Mỗi phần tử có dạng (key, title, value) hoặc
+        (key, title, value, description, tone). Màu nhấn chỉ hỗ trợ
+        phân loại nhanh, không thay thế nội dung giải thích của chỉ số.
         """
         if section_title:
             section_label = QLabel(section_title)
@@ -202,10 +201,11 @@ class ReportBasePage(QWidget):
             )
             self.content_layout.addWidget(description_label)
 
+        # Giữ các thẻ cùng chiều rộng và khoảng cách để dễ so sánh số liệu.
         grid = QGridLayout()
         grid.setContentsMargins(0, 2, 0, 5)
         grid.setHorizontalSpacing(10)
-        grid.setVerticalSpacing(8)
+        grid.setVerticalSpacing(10)
 
         tone_colors = {
             "primary": "#60A5FA",
@@ -216,40 +216,19 @@ class ReportBasePage(QWidget):
             "neutral": "#64748B",
         }
 
-        # Bố trí theo tổng số cột để thẻ kết quả chính có diện tích lớn hơn.
-        for column in range(columns):
-            grid.setColumnStretch(column, 1)
-
-        grid_row = 0
-        grid_column = 0
-
-        for definition in definitions:
+        for index, definition in enumerate(definitions):
             key, title, initial_value = definition[:3]
             description = definition[3] if len(definition) > 3 else ""
             tone = definition[4] if len(definition) > 4 else "neutral"
-            emphasis = definition[5] if len(definition) > 5 else "normal"
-            is_highlight = emphasis == "highlight"
-            is_support = emphasis == "support"
             accent_color = tone_colors.get(tone, tone_colors["neutral"])
 
-            # Thẻ kết quả chính chiếm hai phần chiều rộng; thẻ thành phần chiếm một.
-            column_span = 2 if is_highlight and columns >= 4 else 1
-            if grid_column + column_span > columns:
-                grid_row += 1
-                grid_column = 0
-
             card = QFrame()
-            card.setObjectName(
-                "reportStatCardHighlight" if is_highlight else "reportStatCard"
-            )
-            card.setFixedHeight(116 if is_highlight else 92 if is_support else 108)
-
-            background = "#24364B" if is_highlight else "#202B3B"
-            border_color = "#42658A" if is_highlight else "#344256"
+            card.setObjectName("reportStatCard")
+            card.setMinimumHeight(108)
             card.setStyleSheet(
-                f"QFrame#{card.objectName()} {{"
-                f" background-color: {background};"
-                f" border: 1px solid {border_color};"
+                "QFrame#reportStatCard {"
+                " background-color: #202B3B;"
+                " border: 1px solid #344256;"
                 " border-radius: 9px;"
                 "}"
             )
@@ -258,8 +237,9 @@ class ReportBasePage(QWidget):
             card_layout.setContentsMargins(0, 0, 0, 0)
             card_layout.setSpacing(0)
 
+            # Dải màu nhỏ giúp nhận biết nhóm chỉ số mà không tô toàn bộ thẻ.
             accent = QFrame()
-            accent.setFixedWidth(5 if is_highlight else 4)
+            accent.setFixedWidth(4)
             accent.setStyleSheet(
                 f"background-color: {accent_color};"
                 " border: none;"
@@ -270,20 +250,13 @@ class ReportBasePage(QWidget):
 
             content = QWidget()
             content_layout = QVBoxLayout(content)
-            content_layout.setContentsMargins(
-                15 if is_highlight else 12,
-                10,
-                15 if is_highlight else 12,
-                10,
-            )
-            content_layout.setSpacing(3 if is_support else 4)
+            content_layout.setContentsMargins(13, 10, 12, 10)
+            content_layout.setSpacing(4)
 
             title_label = QLabel(title)
             title_label.setWordWrap(True)
             title_label.setStyleSheet(
-                f"color: {'#F1F5F9' if is_highlight else '#C0CCDA'};"
-                f" font-size: {'12px' if is_highlight else '10px' if is_support else '11px'};"
-                " font-weight: 700;"
+                "color: #C0CCDA; font-size: 11px; font-weight: 600;"
                 " background: transparent; border: none;"
             )
             content_layout.addWidget(title_label)
@@ -292,41 +265,21 @@ class ReportBasePage(QWidget):
                 detail_label = QLabel(description)
                 detail_label.setWordWrap(True)
                 detail_label.setStyleSheet(
-                    f"color: {'#AFC2D8' if is_highlight else '#8999AD'};"
-                    f" font-size: {'10px' if not is_support else '9px'};"
+                    "color: #8999AD; font-size: 10px;"
                     " background: transparent; border: none;"
                 )
                 content_layout.addWidget(detail_label)
 
-            content_layout.addStretch(1)
-
             value_label = QLabel(str(initial_value))
-            value_label.setObjectName(
-                "reportStatValueHighlight" if is_highlight else "reportStatValueSupport" if is_support else "reportStatValue"
-            )
             value_label.setWordWrap(True)
             value_label.setStyleSheet(
-                f"color: {'#FFFFFF' if is_highlight else '#DCE6F2' if is_support else '#F8FAFC'};"
-                f" font-size: {'30px' if is_highlight else '16px' if is_support else '21px'};"
-                f" font-weight: {'800' if is_highlight else '600' if is_support else '700'};"
+                "color: #F8FAFC; font-size: 21px; font-weight: 700;"
                 " background: transparent; border: none;"
             )
             content_layout.addWidget(value_label)
 
             card_layout.addWidget(content, 1)
-            grid.addWidget(
-                card,
-                grid_row,
-                grid_column,
-                1,
-                column_span,
-                Qt.AlignmentFlag.AlignVCenter,
-            )
-            grid_column += column_span
-            if grid_column >= columns:
-                grid_row += 1
-                grid_column = 0
-
+            grid.addWidget(card, index // columns, index % columns)
             self.kpi_labels[key] = value_label
 
         self.content_layout.addLayout(grid)
