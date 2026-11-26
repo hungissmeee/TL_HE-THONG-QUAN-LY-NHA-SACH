@@ -36,8 +36,9 @@ class ProductWindow(QWidget):
         self.can_delete_products = False
         self.setObjectName("productPage")
         self.setup_ui()
-        self.load_products()
+        # Xác định quyền thao tác trước khi tải dữ liệu trang.
         self.update_permissions()
+        self.load_products()
 
     @staticmethod
     def format_number(value):
