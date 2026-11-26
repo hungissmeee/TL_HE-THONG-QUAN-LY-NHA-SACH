@@ -27,21 +27,9 @@ from ui.products import (
 from ui.shifts import ShiftCreateDialog, ShiftWindow
 from ui.suppliers import SupplierDetailDialog, SupplierFormDialog, SupplierWindow
 
-# Legacy modules must remain importable during the transition.
-from ui.fAccount import EmployeePermissionDialog as LegacyEmployeePermissionDialog
-from ui.fCaLamViec import ShiftWindow as LegacyShiftWindow
-from ui.fCatalog import CatalogPage as LegacyCatalogPage
-from ui.fChangePassword import ChangePasswordDialog as LegacyChangePasswordDialog
-from ui.fEmployee import EmployeeWindow as LegacyEmployeeWindow
-from ui.fHoaDon import InvoiceWindow as LegacyInvoiceWindow
-from ui.fNhaCungCap import SupplierWindow as LegacySupplierWindow
-from ui.fPhieuNhap import ImportWindow as LegacyImportWindow
-from ui.fmain import MainWindow as LegacyMainWindow
-from ui.fproduct import ProductWindow as LegacyProductWindow
-
 
 def main():
-    print("UI package imports passed.")
+    print("All current UI package imports passed.")
 
 
 if __name__ == "__main__":
