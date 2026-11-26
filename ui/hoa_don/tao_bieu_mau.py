@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
     QSpinBox,
     QGroupBox,
 )
-from ui.sap_xep_bang import (
+from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
     prepare_sortable_table,
     pause_table_sorting,
@@ -28,7 +28,6 @@ from .dung_chung import MONEY_QUANT, Decimal, InvalidOperation, ROUND_HALF_UP, m
 
 class CreateInvoiceDialog(QDialog):
     """Hộp thoại lập hóa đơn, quản lý sản phẩm trong giỏ và tính số tiền khách phải trả."""
-    """Hộp thoại lập hóa đơn và tính tiền giỏ hàng."""
     """Lập hóa đơn tiền mặt; đơn giá GIABAN đã bao gồm VAT."""
 
     def __init__(self, db, parent=None):

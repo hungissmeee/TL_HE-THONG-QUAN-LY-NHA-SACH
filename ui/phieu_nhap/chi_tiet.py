@@ -26,7 +26,7 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QGroupBox,
 )
-from ui.sap_xep_bang import (
+from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
     prepare_sortable_table,
 )
@@ -35,7 +35,6 @@ from .dung_chung import Decimal, money, as_decimal, date_text
 
 class ImportDetailDialog(QDialog):
     """Hiển thị thông tin chung, hàng hóa và nội dung in của phiếu nhập."""
-    """Hộp thoại xem và in chi tiết phiếu nhập."""
     """Chi tiết và in phiếu nhập khổ A4."""
 
     def __init__(self, db, import_code, parent=None):

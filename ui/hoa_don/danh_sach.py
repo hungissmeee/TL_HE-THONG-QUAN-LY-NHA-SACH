@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QDateEdit,
 )
-from ui.sap_xep_bang import (
+from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
     prepare_sortable_table,
     pause_table_sorting,
@@ -32,7 +32,6 @@ from .chi_tiet import InvoiceDetailDialog
 
 class InvoiceWindow(QWidget):
     """Trang danh sách hóa đơn, tìm kiếm, lập hóa đơn, xem chi tiết và xử lý hủy theo quyền."""
-    """Trang tìm kiếm, lập, xem và quản lý hóa đơn."""
     """Trang danh sách, lập, xem và in hóa đơn."""
 
     def __init__(self, db):
