@@ -94,6 +94,7 @@ Giao diện được tổ chức theo nhóm chức năng. Mỗi package chứa c
     ├── catalog.py
     ├── change_password.py
     ├── formatters.py
+    ├── styles.py
     ├── table_sort.py
     ├── invoices/
     │   ├── create_dialog.py
@@ -130,6 +131,7 @@ Các file cũ có tiền tố `f` (ví dụ `fHoaDon.py`, `fproduct.py`) đượ
 - `main_window.py`: khởi tạo cửa sổ chính, sidebar, điều hướng và phân quyền hiển thị.
 - `connection.py`: kết nối SQL Server, quản lý tài khoản và quyền SQL.
 - `formatters.py`: định dạng tiền, ngày tháng và số liệu dùng chung.
+- `styles.py`: stylesheet của cửa sổ chính, tách khỏi logic điều hướng.
 - `table_sort.py`: sắp xếp dữ liệu trong bảng.
 - Các package nghiệp vụ: tách trang danh sách, form và hộp thoại chi tiết.
 - `reports/`: các trang báo cáo dùng chung lớp nền `ReportBasePage`.
@@ -139,3 +141,11 @@ Các file cũ có tiền tố `f` (ví dụ `fHoaDon.py`, `fproduct.py`) đượ
 - Giữ nguyên câu SQL, tên bảng/cột, quy tắc tính tiền, cập nhật tồn kho và phân quyền khi chỉ thực hiện refactor cấu trúc.
 - Trước khi xóa hoặc đổi tên module cũ, phải kiểm tra và cập nhật toàn bộ import; trong giai đoạn chuyển đổi, giữ facade tương thích.
 - Mỗi thay đổi nghiệp vụ cần có kiểm thử riêng, không gộp chung với commit chỉ định dạng hoặc sắp xếp mã nguồn.
+
+
+## 4.3. Kiểm thử tự động
+
+- `tests/test_formatters.py`: kiểm thử định dạng tiền, ngày giờ và số liệu.
+- `tests/test_local_imports.py`: kiểm tra import nội bộ trỏ tới module/package có tồn tại.
+- `tests/ui_import_smoke.py`: kiểm tra import package UI mới và các module tương thích cũ với PySide6.
+- GitHub Actions chạy `compileall`, unit test và UI import smoke-test khi có push lên nhánh refactor hoặc mở Pull Request vào `main`.
