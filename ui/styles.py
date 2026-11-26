@@ -96,14 +96,46 @@ MAIN_WINDOW_STYLESHEET = """
                 font-weight: bold;
             }
 
+            /* Bảng dùng một nền liền mạch; từng ô không còn viền bo góc như ô nhập liệu. */
             QTableWidget {
                 background-color: #202938;
                 alternate-background-color: #263448;
                 color: #E5E7EB;
-                gridline-color: #39465A;
+                gridline-color: #344256;
                 border: 1px solid #39465A;
                 selection-background-color: #3B526E;
                 selection-color: white;
+                outline: none;
+            }
+
+            QTableWidget::item {
+                border: none;
+                padding: 6px 9px;
+            }
+
+            QTableWidget::item:selected {
+                background-color: #3B526E;
+                color: #FFFFFF;
+                border: none;
+            }
+
+            QTableWidget::item:focus {
+                border: none;
+                outline: none;
+            }
+
+            /* Vùng thao tác luôn nằm ngay dưới bảng và có cùng phong cách với giao diện. */
+            QFrame#tableActionPanel {
+                background-color: #202938;
+                border: 1px solid #39465A;
+                border-radius: 8px;
+            }
+
+            QLabel#tableActionHint {
+                color: #AAB7C8;
+                font-size: 11px;
+                background: transparent;
+                border: none;
             }
 
             QHeaderView {
