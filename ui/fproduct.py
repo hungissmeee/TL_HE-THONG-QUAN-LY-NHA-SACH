@@ -8,6 +8,8 @@ from PySide6.QtWidgets import (
     QAbstractItemView, QComboBox, QStackedWidget,
     QListWidget, QListWidgetItem, QDateEdit, QGroupBox
 )
+from ui.formatters import format_product_number
+
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
     prepare_sortable_table,
@@ -930,12 +932,7 @@ class ProductWindow(QWidget):
 
     @staticmethod
     def format_number(value):
-        if value is None:
-            return ""
-        try:
-            return f"{Decimal(str(value)):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-        except Exception:
-            return str(value)
+        return format_product_number(value)
 
     def setup_ui(self):
         root = QVBoxLayout(self)
