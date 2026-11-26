@@ -33,10 +33,14 @@ class MainWindow(QMainWindow):
     """Cửa sổ chính quản lý điều hướng, nhóm menu và quyền hiển thị chức năng."""
 
     ROLE_PAGE_ACCESS = {
+        # Quản lý giám sát nghiệp vụ và xem đầy đủ báo cáo.
+        # Quản lý tài khoản nhân viên vẫn dành riêng cho Admin.
         "Quản lý": (
-            "home", "products", "suppliers", "employees", "imports",
-            "invoices", "returns", "statistics", "authors", "genres",
-            "publishers", "brands", "shifts",
+            "home", "products", "suppliers", "imports", "invoices",
+            "returns", "authors", "genres", "publishers", "brands",
+            "shifts", "report_overview", "report_revenue",
+            "report_invoice", "report_import", "report_return",
+            "report_inventory", "report_product",
         ),
         "Thu ngân": (
             "home", "products", "invoices", "shifts",
@@ -47,9 +51,9 @@ class MainWindow(QMainWindow):
         ),
         "Kế toán": (
             "home", "products", "suppliers", "imports", "invoices",
-            "statistics", "shifts", "report_product",
-            "report_inventory", "report_return", "report_import",
-            "report_invoice", "report_revenue", "report_overview",
+            "shifts", "report_overview", "report_revenue",
+            "report_invoice", "report_import", "report_return",
+            "report_inventory", "report_product",
         ),
     }
 
@@ -236,56 +240,90 @@ class MainWindow(QMainWindow):
         content_layout.addWidget(self.stack)
 
         # ==================================================
-        # ĐĂNG KÝ CÁC TRANG
+        # XÁC ĐỊNH QUYỀN TRƯỚC KHI KHỞI TẠO TRANG
         # ==================================================
-        self.add_page(
-            "home", "Tổng quan", self.create_home_page()
+        # Lấy vai trò trước để các trang không được phép không chạy truy vấn
+        # dữ liệu trong constructor.
+        self.load_employee_info()
+        all_page_keys = [
+            key
+            for group in self.sidebar_group_config
+            for key in group["pages"]
+        ]
+        self.allowed_pages = allowed_pages_for_user(
+            self.db.username,
+            self.employee_role,
+            self.ROLE_PAGE_ACCESS,
+            all_page_keys,
         )
 
-        self.add_page(
-            "products", "Sản phẩm", ProductWindow(self.db)
-        )
+        def add_allowed_page(key, title, factory):
+            if key in self.allowed_pages:
+                self.add_page(key, title, factory())
 
-        # Nhân viên chỉ được đăng ký trang này theo điều kiện hiện tại
-        if str(self.db.username or "").lower() == "admin":
-            self.add_page(
-                "employees", "Nhân viên", EmployeeWindow(self.db)
+        add_allowed_page("home", "Tổng quan", self.create_home_page)
+        add_allowed_page("products", "Sản phẩm", lambda: ProductWindow(self.db))
+        # Trang nhân viên và quản lý tài khoản chỉ dành cho Admin.
+        if str(self.db.username or "").strip().casefold() == "admin":
+            add_allowed_page(
+                "employees", "Nhân viên", lambda: EmployeeWindow(self.db)
             )
 
-        self.add_page(
-            "authors", "Tác giả", CatalogPage(self.db, "authors")
+        add_allowed_page(
+            "authors", "Tác giả", lambda: CatalogPage(self.db, "authors")
         )
-        self.add_page(
-            "genres", "Thể loại", CatalogPage(self.db, "genres")
+        add_allowed_page(
+            "genres", "Thể loại", lambda: CatalogPage(self.db, "genres")
         )
-        self.add_page(
-            "publishers", "Nhà xuất bản", CatalogPage(self.db, "publishers")
+        add_allowed_page(
+            "publishers", "Nhà xuất bản",
+            lambda: CatalogPage(self.db, "publishers")
         )
-        self.add_page(
-            "brands", "Thương hiệu", CatalogPage(self.db, "brands")
+        add_allowed_page(
+            "brands", "Thương hiệu", lambda: CatalogPage(self.db, "brands")
         )
-        self.add_page(
-            "shifts", "Ca làm việc", ShiftWindow(self.db)
+        add_allowed_page(
+            "shifts", "Ca làm việc", lambda: ShiftWindow(self.db)
         )
-        self.add_page(
-            "invoices", "Hóa đơn", InvoiceWindow(self.db)
+        add_allowed_page(
+            "invoices", "Hóa đơn", lambda: InvoiceWindow(self.db)
         )
-        self.add_page("report_overview", "Tổng quan", OverviewReportPage(self.db))
-        self.add_page("report_revenue", "Doanh thu", RevenueReportPage(self.db))
-        self.add_page("report_invoice", "Báo cáo hóa đơn", InvoiceReportPage(self.db))
-        self.add_page("report_import", "Báo cáo nhập hàng", ImportReportPage(self.db))
-        self.add_page("report_return", "Báo cáo đổi trả", ReturnReportPage(self.db))
-        self.add_page("report_inventory", "Báo cáo tồn kho", InventoryReportPage(self.db))
-        self.add_page("report_product", "Báo cáo sản phẩm", ProductReportPage(self.db))
-        self.add_page(
-            "imports", "Phiếu nhập", ImportWindow(self.db)
+        add_allowed_page(
+            "report_overview", "Tổng quan",
+            lambda: OverviewReportPage(self.db)
         )
-        self.add_page(
-            "suppliers", "Nhà cung cấp", SupplierWindow(self.db)
+        add_allowed_page(
+            "report_revenue", "Doanh thu",
+            lambda: RevenueReportPage(self.db)
         )
-
-        self.add_page(
-            "returns", "Đổi trả", ReturnWindow(self.db)
+        add_allowed_page(
+            "report_invoice", "Báo cáo hóa đơn",
+            lambda: InvoiceReportPage(self.db)
+        )
+        add_allowed_page(
+            "report_import", "Báo cáo nhập hàng",
+            lambda: ImportReportPage(self.db)
+        )
+        add_allowed_page(
+            "report_return", "Báo cáo đổi trả",
+            lambda: ReturnReportPage(self.db)
+        )
+        add_allowed_page(
+            "report_inventory", "Báo cáo tồn kho",
+            lambda: InventoryReportPage(self.db)
+        )
+        add_allowed_page(
+            "report_product", "Báo cáo sản phẩm",
+            lambda: ProductReportPage(self.db)
+        )
+        add_allowed_page(
+            "imports", "Phiếu nhập", lambda: ImportWindow(self.db)
+        )
+        add_allowed_page(
+            "suppliers", "Nhà cung cấp", lambda: SupplierWindow(self.db)
+        )
+        add_allowed_page(
+            "returns", "Đổi trả", lambda: ReturnWindow(self.db)
         )
 
         # Ghép giao diện
@@ -293,7 +331,6 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(content)
 
         # Giao diện mặc định và phân quyền
-        self.load_employee_info()
         self.apply_role_navigation()
         self.show_page("home")
 
@@ -483,13 +520,24 @@ class MainWindow(QMainWindow):
 
     @staticmethod
     def _refresh_page_data(page):
-        """Tải dữ liệu cần thiết khi người dùng chuyển sang một trang."""
+        """Tải lại dữ liệu khi người dùng quay lại trang chức năng."""
         if isinstance(page, (CatalogPage, SupplierWindow)):
             page.load_data()
-        elif isinstance(page, ReportBasePage):
-            page.refresh_data()
+        elif isinstance(page, ProductWindow):
+            page.load_products()
+        elif isinstance(page, InvoiceWindow):
+            page.load_invoices()
+        elif isinstance(page, ImportWindow):
+            page.load_imports()
         elif isinstance(page, ReturnWindow):
             page.load_returns()
+        elif isinstance(page, ShiftWindow):
+            if page.is_manager:
+                page.refresh_manager_view()
+            else:
+                page.refresh_employee_view()
+        elif isinstance(page, ReportBasePage):
+            page.refresh_data()
 
     # ==================================================
     # TRANG TỔNG QUAN
