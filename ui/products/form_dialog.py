@@ -1,20 +1,31 @@
 """ProductFormDialog: thành phần giao diện quản lý sản phẩm."""
 
-from decimal import Decimal, InvalidOperation
-from PySide6.QtCore import Qt, QDate
-from PySide6.QtGui import QDoubleValidator, QIntValidator
-from PySide6.QtWidgets import (
-    QWidget, QDialog, QLabel, QLineEdit, QPushButton, QComboBox,
-    QVBoxLayout, QHBoxLayout, QFormLayout, QTableWidget,
-    QHeaderView, QAbstractItemView, QMessageBox, QSpinBox, QStackedWidget,
-    QDoubleSpinBox, QGroupBox, QDateEdit, QCheckBox,
-    QListWidget, QListWidgetItem, QCompleter, QFrame,
+from decimal import (
+    Decimal,
+    InvalidOperation,
 )
-from ui.table_sort import (
-    SortableTableWidgetItem as QTableWidgetItem,
-    prepare_sortable_table,
-    pause_table_sorting,
-    resume_table_sorting,
+from PySide6.QtCore import (
+    Qt,
+    QDate,
+)
+from PySide6.QtGui import (
+    QDoubleValidator,
+    QIntValidator,
+)
+from PySide6.QtWidgets import (
+    QWidget,
+    QDialog,
+    QLabel,
+    QPushButton,
+    QLineEdit,
+    QVBoxLayout,
+    QHBoxLayout,
+    QFormLayout,
+    QMessageBox,
+    QComboBox,
+    QStackedWidget,
+    QDateEdit,
+    QGroupBox,
 )
 from .selectors import SearchableSingleSelect, SearchableMultiSelect
 
@@ -561,5 +572,6 @@ class ProductFormDialog(QDialog):
             )
         finally:
             cursor.close()
+
 
 
