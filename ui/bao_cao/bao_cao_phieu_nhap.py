@@ -52,6 +52,7 @@ class ImportReportPage(ReportBasePage):
             ) CT
             WHERE PN.NGAYNHAP >= CONVERT(date, ?)
               AND PN.NGAYNHAP < DATEADD(day, 1, CONVERT(date, ?))
+              AND PN.TRANGTHAI = 1
             ORDER BY PN.NGAYNHAP DESC, PN.MAPN DESC
         """
         rows = self.fetch_all(sql, (start_date, end_date))
