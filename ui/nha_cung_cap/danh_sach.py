@@ -26,7 +26,6 @@ from .detail_dialog import SupplierDetailDialog
 
 
 class SupplierWindow(QWidget):
-    """Quản lý danh sách nhà cung cấp và trạng thái hoạt động."""
     """Quản lý nhà cung cấp; dùng xóa mềm để giữ liên kết với phiếu nhập."""
 
     def __init__(self, db):

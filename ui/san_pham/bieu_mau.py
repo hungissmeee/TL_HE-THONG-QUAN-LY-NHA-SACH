@@ -32,7 +32,6 @@ from .bo_chon import SearchableSingleSelect, SearchableMultiSelect
 
 class ProductFormDialog(QDialog):
     """Biểu mẫu nhập và kiểm tra thông tin khi thêm mới hoặc chỉnh sửa sản phẩm."""
-    """Biểu mẫu thêm mới hoặc cập nhật thông tin sản phẩm."""
     """Form thêm mới hoặc chỉnh sửa sản phẩm."""
 
     def __init__(self, db, parent=None, product_code=None):

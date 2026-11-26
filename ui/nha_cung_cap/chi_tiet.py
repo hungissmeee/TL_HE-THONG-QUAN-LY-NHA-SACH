@@ -13,7 +13,6 @@ from PySide6.QtWidgets import (
 
 class SupplierDetailDialog(QDialog):
     """Hiển thị thông tin liên hệ và trạng thái của nhà cung cấp."""
-    """Hiển thị thông tin chi tiết nhà cung cấp."""
 
     def __init__(self, supplier, parent=None):
         super().__init__(parent)

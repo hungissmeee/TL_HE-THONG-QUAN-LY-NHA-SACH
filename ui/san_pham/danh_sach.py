@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QAbstractItemView,
 )
-from ui.sap_xep_bang import (
+from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
     prepare_sortable_table,
     pause_table_sorting,
@@ -21,12 +21,11 @@ from ui.sap_xep_bang import (
 )
 from .chi_tiet import ProductDetailDialog
 from .bieu_mau import ProductFormDialog
-from ui.dinh_dang import format_product_number
+from ui.formatters import format_product_number
 
 
 class ProductWindow(QWidget):
     """Trang tra cứu, thêm mới, xem và chỉnh sửa sản phẩm."""
-    """Trang danh sách, tìm kiếm và thao tác với sản phẩm."""
     """Trang danh sách sản phẩm, xem chi tiết, thêm và chỉnh sửa sản phẩm."""
 
     def __init__(self, db):

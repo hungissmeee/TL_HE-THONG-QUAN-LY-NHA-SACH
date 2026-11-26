@@ -17,7 +17,6 @@ from .bieu_mau import ProductFormDialog
 
 class ProductDetailDialog(QDialog):
     """Hiển thị thông tin chi tiết sản phẩm và các thao tác chỉnh sửa được cấp quyền."""
-    """Hộp thoại hiển thị thông tin chi tiết của một sản phẩm."""
     """Hiển thị chi tiết sản phẩm theo loại sách hoặc sản phẩm khác."""
 
     def __init__(self, db, product, parent=None, can_edit=False, can_delete=False):
