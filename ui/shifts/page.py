@@ -29,7 +29,6 @@ from ui.table_sort import (
     pause_table_sorting,
     resume_table_sorting,
 )
-from .common import Decimal, InvalidOperation
 from .create_dialog import ShiftCreateDialog
 
 
