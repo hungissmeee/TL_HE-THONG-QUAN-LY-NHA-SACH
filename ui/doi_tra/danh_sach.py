@@ -23,12 +23,10 @@ class ReturnWindow(QWidget):
         self.db = db
         self.username = (getattr(db, "username", "") or "").strip()
         self.employee_role = self._get_employee_role()
-        self.is_admin = self.username.casefold() == "admin"
         self.can_manage = (
-            not self.is_admin
+            self.username.casefold() != "admin"
             and self.employee_role.casefold() == "quản lý"
         )
-        self.can_view = self.is_admin or self.can_manage
         self._build_ui()
         self.load_returns()
 
@@ -68,15 +66,7 @@ class ReturnWindow(QWidget):
         top.addWidget(refresh_button)
         root.addLayout(top)
 
-        if self.is_admin:
-            notice = QLabel(
-                "Tài khoản admin được xem lịch sử và chi tiết phiếu đổi trả, "
-                "nhưng không được lập hoặc xử lý phiếu."
-            )
-            notice.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            notice.setStyleSheet("font-size: 14px; color: #64748B;")
-            root.addWidget(notice)
-        elif not self.can_manage:
+        if not self.can_manage:
             notice = QLabel(
                 "Chức năng đổi trả chỉ dành cho tài khoản có vai trò Quản lý."
             )
@@ -144,7 +134,7 @@ class ReturnWindow(QWidget):
 
     def load_returns(self):
         """Tải lịch sử đổi trả theo ngày và từ khóa."""
-        if not self.can_view:
+        if not self.can_manage:
             self.table.setRowCount(0)
             self.total_label.setText("Không có quyền truy cập chức năng đổi trả.")
             return
@@ -229,7 +219,7 @@ class ReturnWindow(QWidget):
 
     def open_detail(self, row, _column=0):
         """Mở hộp thoại chi tiết phiếu đang chọn."""
-        if not self.can_view or row < 0:
+        if not self.can_manage or row < 0:
             return
         cell = self.table.item(row, 0)
         if cell is None:

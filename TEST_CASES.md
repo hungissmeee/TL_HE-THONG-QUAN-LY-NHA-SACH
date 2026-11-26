@@ -106,13 +106,13 @@ Tài liệu này là danh sách kiểm thử chức năng (manual/acceptance tes
 | ID | Ưu tiên | Vai trò | Bước kiểm thử | Kết quả mong đợi |
 |---|---|---|---|---|
 | DT-01 | P0 | Quản lý | Mở đổi trả và chọn hóa đơn còn hiệu lực được lập trong ngày. | Hóa đơn đủ điều kiện hiển thị; chỉ sản phẩm thuộc hóa đơn được chọn để xử lý. |
-| DT-02 | P1 | Admin | Mở chức năng đổi trả. | Admin chỉ xem lịch sử/chi tiết; không được lập hoặc xử lý đổi trả. |
+| DT-02 | P1 | Admin | Thử truy cập chức năng đổi trả. | Admin không được truy cập trang đổi trả, xem lịch sử/chi tiết hoặc lập và xử lý phiếu. |
 | DT-03 | P0 | Quản lý | Chọn hàng còn nguyên vẹn và hình thức hoàn tiền. | Tính tiền hoàn theo đơn giá sau khuyến mãi; số lượng hàng nguyên vẹn được cộng lại kho. |
 | DT-04 | P0 | Quản lý | Chọn hàng đã hỏng và hình thức hoàn tiền. | Tính tiền hoàn đúng; hàng hỏng không được cộng lại tồn kho bán được. |
 | DT-05 | P0 | Quản lý | Chọn hàng đã hỏng và đổi sản phẩm cùng mã. | Không hoàn tiền; SLTON giảm theo số lượng hàng mới xuất để đổi. |
 | DT-06 | P0 | Quản lý | Chọn hàng còn nguyên vẹn nhưng yêu cầu đổi sản phẩm; hoặc trả vượt số lượng còn được xử lý. | Bị từ chối; không tạo phiếu và không biến động tồn kho. |
 | DT-07 | P0 | Quản lý | Thử xử lý hóa đơn đã hủy hoặc hóa đơn không còn trong ngày; thực hiện hai thao tác đồng thời. | Bị từ chối khi không đủ điều kiện; không thể trả vượt lượng mua; lỗi giữa chừng phải rollback. |
-| DT-08 | P1 | Quản lý/Admin | Xem chi tiết phiếu đổi trả đã lập. | Hiển thị hóa đơn gốc, lý do, tình trạng hàng, hình thức xử lý, số lượng và tổng tiền hoàn. |
+| DT-08 | P1 | Quản lý | Xem chi tiết phiếu đổi trả đã lập. | Hiển thị hóa đơn gốc, lý do, tình trạng hàng, hình thức xử lý, số lượng và tổng tiền hoàn. |
 
 ## 9. Ca làm việc
 

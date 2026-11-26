@@ -622,6 +622,8 @@ class MainWindow(QMainWindow):
 
         if username == "admin":
             allowed = set(self.nav_buttons.keys())
+            # Tài khoản admin không tham gia nghiệp vụ đổi trả.
+            allowed.discard("returns")
         else:
             allowed = set(self.ROLE_PAGE_ACCESS.get(self.employee_role, ("home",)))
 
