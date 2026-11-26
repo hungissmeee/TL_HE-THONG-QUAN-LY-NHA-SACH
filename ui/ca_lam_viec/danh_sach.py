@@ -1060,7 +1060,126 @@ class ShiftWindow(QWidget):
             "tien_dau_ca": shift.get("Tiền đầu ca", ""),
             "tien_cuoi_ca": shift.get("Tiền cuối ca", ""),
         })
-        ShiftDetailDialog(shift, parent=self, employees=employees).exec()
+        # Chỉ ca sắp bắt đầu mới được hiển thị nút xóa; điều kiện thời gian
+        # và các liên kết chứng từ vẫn được kiểm tra lại trong transaction.
+        can_delete = (
+            shift.get("Trạng thái ca") == "Sắp bắt đầu"
+            and self.is_manager
+        )
+        ShiftDetailDialog(
+            shift,
+            parent=self,
+            employees=employees,
+            on_delete=(
+                lambda shift_id=shift_id: self.delete_shift(shift_id)
+            ) if can_delete else None,
+        ).exec()
+
+    def delete_shift(self, maca):
+        """Xóa ca chưa bắt đầu; giữ nguyên mọi ca đã diễn ra hoặc có hóa đơn liên kết."""
+        if not self.is_manager:
+            QMessageBox.warning(
+                self, "Không có quyền", "Chỉ Quản lý/Admin mới được xóa ca làm việc."
+            )
+            return
+
+        answer = QMessageBox.question(
+            self,
+            "Xác nhận xóa ca",
+            f"Bạn có chắc muốn xóa ca làm việc mã {maca}?\\n\\n"
+            "Ca chỉ được xóa nếu chưa bắt đầu và chưa có hóa đơn liên kết. "
+            "Các đăng ký nhân viên của ca này cũng sẽ bị xóa.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+
+        conn = self.db.get_connection()
+        if conn is None:
+            QMessageBox.warning(self, "Thông báo", "Chưa có kết nối database!")
+            return
+
+        cursor = None
+        try:
+            cursor = conn.cursor()
+
+            # Khóa bản ghi ca để không thể bắt đầu hoặc nhận liên kết mới giữa
+            # bước kiểm tra và xóa. Thời gian được lấy trực tiếp từ SQL Server.
+            cursor.execute(
+                """
+                SELECT
+                    CASE
+                        WHEN TGMO IS NOT NULL
+                         AND DATEADD(
+                                SECOND,
+                                DATEDIFF(SECOND, CAST('00:00:00' AS TIME), TGMO),
+                                CAST(CAST(NGAYLAM AS DATE) AS DATETIME2)
+                             ) > SYSDATETIME()
+                         AND TMCUOICA IS NULL
+                        THEN 1 ELSE 0
+                    END AS IsNotStarted
+                FROM dbo.CA_LAM_VIEC WITH (UPDLOCK, HOLDLOCK)
+                WHERE MACA = ?
+                """,
+                (int(maca),),
+            )
+            shift_row = cursor.fetchone()
+            if shift_row is None:
+                raise ValueError("Ca làm việc không còn tồn tại.")
+            if not bool(shift_row[0]):
+                raise ValueError(
+                    "Chỉ được xóa ca chưa bắt đầu và chưa chốt tiền cuối ca."
+                )
+
+            # Không xóa ca đã phát sinh hóa đơn để bảo toàn lịch sử bán hàng.
+            cursor.execute(
+                """
+                SELECT TOP 1 MAHD
+                FROM dbo.HOA_DON WITH (UPDLOCK, HOLDLOCK)
+                WHERE MACA = ?
+                """,
+                (int(maca),),
+            )
+            if cursor.fetchone() is not None:
+                raise ValueError(
+                    "Không thể xóa ca vì đã có hóa đơn liên kết với ca này."
+                )
+
+            # LAMCA chỉ lưu đăng ký nhân viên cho ca. Xóa các đăng ký tương ứng
+            # trong cùng transaction trước khi xóa bản ghi ca cha.
+            cursor.execute(
+                "DELETE FROM dbo.LAMCA WHERE MACA = ?",
+                (int(maca),),
+            )
+            cursor.execute(
+                "DELETE FROM dbo.CA_LAM_VIEC WHERE MACA = ?",
+                (int(maca),),
+            )
+            if cursor.rowcount != 1:
+                raise RuntimeError("Không thể xóa ca làm việc đã chọn.")
+
+            conn.commit()
+            QMessageBox.information(
+                self, "Thành công", f"Đã xóa ca làm việc mã {maca}."
+            )
+            self.refresh_manager_view()
+
+        except ValueError as error:
+            conn.rollback()
+            QMessageBox.warning(self, "Không thể xóa ca", str(error))
+        except Exception as error:
+            conn.rollback()
+            message = str(error)
+            if "permission" in message.lower() or "denied" in message.lower():
+                message += (
+                    "\\n\\nTài khoản hiện tại cần quyền DELETE trên "
+                    "dbo.CA_LAM_VIEC và dbo.LAMCA."
+                )
+            self._show_db_error("Không thể xóa ca làm việc", message)
+        finally:
+            if cursor is not None:
+                cursor.close()
 
     def _get_shift_roster(self, maca):
         """Lấy danh sách nhân viên của ca để hiển thị trong popup chi tiết."""
