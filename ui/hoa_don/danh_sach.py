@@ -33,6 +33,15 @@ from .chi_tiet import InvoiceDetailDialog
 class InvoiceWindow(QWidget):
     """Trang danh sách hóa đơn, tìm kiếm, lập hóa đơn, xem chi tiết và xử lý hủy theo quyền."""
 
+    @staticmethod
+    def _assert_no_return_vouchers(has_return_vouchers):
+        """Không cho hủy hóa đơn đã phát sinh đổi trả để tránh hoàn kho hai lần."""
+        if has_return_vouchers:
+            raise RuntimeError(
+                "Không thể hủy hóa đơn đã phát sinh phiếu đổi trả. "
+                "Hãy xử lý chứng từ đổi trả trước."
+            )
+
     def __init__(self, db):
         super().__init__()
         self.db = db
@@ -413,6 +422,15 @@ class InvoiceWindow(QWidget):
                 raise RuntimeError(
                     "Hóa đơn đã bị hủy hoặc không còn ở trạng thái có hiệu lực."
                 )
+
+            # Phiếu đổi trả cũng thay đổi tồn kho. Khóa hóa đơn ở trên khiến
+            # thao tác tạo phiếu đổi trả và hủy hóa đơn được tuần tự hóa.
+            cursor.execute("""
+                SELECT TOP (1) MAPDT
+                FROM dbo.PHIEU_DOI_TRA WITH (UPDLOCK, HOLDLOCK)
+                WHERE MAHD = ?
+            """, invoice_code)
+            self._assert_no_return_vouchers(cursor.fetchone() is not None)
 
             # Kiểm tra lại chủ sở hữu từ SQL Server trong transaction, không chỉ dựa vào giao diện.
             if (
