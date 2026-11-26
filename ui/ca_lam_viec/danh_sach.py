@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QDialog,
     QInputDialog,
+    QSizePolicy,
 )
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
@@ -163,6 +164,19 @@ class ShiftWindow(QWidget):
         )
 
         return table
+
+    @staticmethod
+    def _fit_table_height(table, maximum_height):
+        """Co chiều cao bảng theo header và số dòng, không để khoảng trống thừa."""
+        header_height = max(36, table.horizontalHeader().sizeHint().height())
+        rows_height = sum(
+            table.rowHeight(row) for row in range(table.rowCount())
+        )
+        frame_height = table.frameWidth() * 2
+        content_height = header_height + rows_height + frame_height + 4
+
+        # Khi chưa có dữ liệu, chỉ giữ đủ chỗ cho hàng tiêu đề.
+        table.setFixedHeight(min(maximum_height, content_height))
 
     @staticmethod
     def _set_item(table, row, column, value, user_data=None):
@@ -702,19 +716,27 @@ class ShiftWindow(QWidget):
         root.addLayout(stats)
 
         current_group = QGroupBox("Các ca đang diễn ra ngay lúc này")
+        current_group.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Maximum,
+        )
         current_layout = QVBoxLayout(current_group)
         self.current_table = self._make_table(
             ["Mã ca", "Ngày làm", "Ca", "Giờ mở", "Giờ đóng", "Số nhân viên", "Tiền cuối ca"],
             stretch_column=2,
             default_sort_column=2
         )
-        self.current_table.setMaximumHeight(190)
+        self._fit_table_height(self.current_table, 190)
         # Double-click mở popup chi tiết ca và danh sách nhân viên.
         self.current_table.cellDoubleClicked.connect(self._current_shift_selected)
         current_layout.addWidget(self.current_table)
         root.addWidget(current_group)
 
         history_group = QGroupBox("Lịch làm việc và lịch sử ca")
+        history_group.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Maximum,
+        )
         history_layout = QVBoxLayout(history_group)
 
         filter_layout = QHBoxLayout()
@@ -736,10 +758,13 @@ class ShiftWindow(QWidget):
             default_sort_column=1,
             default_sort_order=Qt.SortOrder.DescendingOrder
         )
-        self.history_table.setMaximumHeight(250)
+        self._fit_table_height(self.history_table, 250)
         self.history_table.cellDoubleClicked.connect(self._history_shift_selected)
         history_layout.addWidget(self.history_table)
         root.addWidget(history_group)
+
+        # Phần chiều cao dư được dồn xuống cuối trang thay vì làm giãn hai khung bảng.
+        root.addStretch(1)
 
     def add_shift(self):
         """Tạo ca mới theo một trong các khung giờ cố định trong ngày."""
@@ -932,6 +957,7 @@ class ShiftWindow(QWidget):
         except Exception as error:
             self._show_db_error("Không thể tải các ca đang diễn ra", error)
         finally:
+            self._fit_table_height(self.current_table, 190)
             cursor.close()
 
     def load_shift_history(self, *_):
@@ -1022,6 +1048,7 @@ class ShiftWindow(QWidget):
             self._show_db_error("Không thể tải lịch sử ca", error)
         finally:
             resume_table_sorting(self.history_table)
+            self._fit_table_height(self.history_table, 250)
             cursor.close()
 
     def _current_shift_selected(self, row, column):
