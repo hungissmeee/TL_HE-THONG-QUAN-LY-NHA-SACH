@@ -498,6 +498,67 @@ class InvoiceSafetyTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             InvoiceWindow._assert_no_return_vouchers(True)
 
+    def test_cart_price_and_vat_are_revalidated_before_invoice_save(self):
+        class SequentialCursor:
+            def __init__(self, rows):
+                self.rows = iter(rows)
+                self.sql = []
+
+            def execute(self, sql, *params):
+                self.sql.append((sql, params))
+                return self
+
+            def fetchone(self):
+                return next(self.rows)
+
+        cursor = SequentialCursor([
+            ("100.00", "8.00"),
+            ("15.00",),
+        ])
+        cart = {
+            "SP001": {"price": Decimal("100.00"), "vat": Decimal("8.00")}
+        }
+
+        CreateInvoiceDialog._assert_cart_prices_unchanged(
+            cursor, cart, "KM01", Decimal("15.00")
+        )
+        self.assertEqual(len(cursor.sql), 2)
+        self.assertIn("ISNULL(IS_DELETED, 0) = 0", cursor.sql[0][0])
+        self.assertIn("SYSDATETIME()", cursor.sql[1][0])
+
+    def test_cart_price_change_rejects_invoice_save(self):
+        class SequentialCursor:
+            def execute(self, sql, *params):
+                return self
+
+            def fetchone(self):
+                return ("125.00", "8.00")
+
+        cart = {
+            "SP001": {"price": Decimal("100.00"), "vat": Decimal("8.00")}
+        }
+        with self.assertRaises(RuntimeError):
+            CreateInvoiceDialog._assert_cart_prices_unchanged(
+                SequentialCursor(), cart, None, Decimal("0")
+            )
+
+    def test_expired_promotion_rejects_invoice_save(self):
+        class SequentialCursor:
+            def __init__(self):
+                self.calls = 0
+
+            def execute(self, sql, *params):
+                self.calls += 1
+                return self
+
+            def fetchone(self):
+                return None
+
+        with self.assertRaises(RuntimeError):
+            CreateInvoiceDialog._assert_cart_prices_unchanged(
+                SequentialCursor(), {}, "KM01", Decimal("10.00")
+            )
+
     def test_active_shift_validation_queries_current_database_state(self):
         cursor = self.ShiftCursor((12,))
         employee = {"manv": "NV01"}
