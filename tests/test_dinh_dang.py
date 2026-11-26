@@ -4,7 +4,7 @@ import unittest
 from datetime import date, datetime, time
 from decimal import Decimal, InvalidOperation
 
-from ui.dinh_dang import (
+from ui.formatters import (
     format_decimal_money,
     to_invoice_decimal,
     to_import_decimal,

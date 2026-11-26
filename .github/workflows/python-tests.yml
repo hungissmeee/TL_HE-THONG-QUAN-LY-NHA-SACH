@@ -25,7 +25,10 @@ jobs:
         run: python -m compileall -q main.py database ui tests
 
       - name: Run formatter tests
-        run: python -m unittest discover -s tests -v
+        run: python -m unittest discover -s tests -p 'test_dinh_dang.py' -v
+
+      - name: Run import path tests
+        run: python -m unittest discover -s tests -p 'test_import.py' -v
 
   ui-import-smoke:
     runs-on: ubuntu-latest
