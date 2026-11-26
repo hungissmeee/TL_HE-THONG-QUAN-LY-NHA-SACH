@@ -1,7 +1,7 @@
 """Trang quản lý các danh mục dùng chung của sản phẩm."""
 
 from PySide6.QtWidgets import (
-    QWidget, QLabel, QLineEdit, QPushButton,
+    QWidget, QDialog, QLabel, QLineEdit, QPushButton,
     QVBoxLayout, QHBoxLayout, QFormLayout, QGroupBox,
     QTableWidget, QHeaderView,
     QMessageBox, QAbstractItemView
@@ -88,6 +88,133 @@ CATALOGS = {
 }
 
 
+class CatalogEditDialog(QDialog):
+    """Biểu mẫu popup dùng để chỉnh sửa một bản ghi danh mục."""
+
+    def __init__(self, config, values, parent=None):
+        super().__init__(parent)
+        self.config = config
+        self.inputs = {}
+        self.setWindowTitle("Chỉnh sửa danh mục")
+        self.setMinimumWidth(460)
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(18, 16, 18, 16)
+        root.setSpacing(12)
+
+        heading = QLabel("CHỈNH SỬA THÔNG TIN")
+        heading.setStyleSheet("font-size: 18px; font-weight: bold;")
+        root.addWidget(heading)
+
+        group = QGroupBox("Thông tin danh mục")
+        form = QFormLayout(group)
+        form.setSpacing(10)
+
+        for column, label_text, placeholder, max_length, required in config["fields"]:
+            edit = QLineEdit()
+            edit.setMaxLength(max_length)
+            edit.setPlaceholderText(placeholder)
+            edit.setText(str(values.get(column) or ""))
+            if column == config["id_column"]:
+                edit.setReadOnly(True)
+            self.inputs[column] = edit
+            form.addRow(label_text, edit)
+
+        root.addWidget(group)
+        actions = QHBoxLayout()
+        actions.addStretch()
+
+        cancel_button = QPushButton("Hủy")
+        cancel_button.clicked.connect(self.reject)
+        save_button = QPushButton("Lưu thay đổi")
+        save_button.clicked.connect(self._save)
+
+        actions.addWidget(cancel_button)
+        actions.addWidget(save_button)
+        root.addLayout(actions)
+
+    def get_update_values(self):
+        """Trả về các giá trị theo đúng thứ tự update_sql đang sử dụng."""
+        values = []
+        missing_fields = []
+        for column, label_text, _placeholder, _max_length, required in self.config["fields"]:
+            if column == self.config["id_column"]:
+                continue
+            value = self.inputs[column].text().strip()
+            if required and not value:
+                missing_fields.append(label_text.replace(":", ""))
+            values.append(value if value else None)
+
+        if missing_fields:
+            QMessageBox.warning(
+                self,
+                "Thiếu thông tin",
+                "Vui lòng nhập: " + ", ".join(missing_fields),
+            )
+            return None
+        return values
+
+    def _save(self):
+        """Chỉ đóng popup khi các trường bắt buộc đã hợp lệ."""
+        if self.get_update_values() is not None:
+            self.accept()
+
+
+class CatalogDetailDialog(QDialog):
+    """Popup chi tiết chứa toàn bộ thao tác sửa và xóa mềm danh mục."""
+
+    def __init__(self, title, values, on_edit, on_delete, parent=None):
+        super().__init__(parent)
+        self.on_edit = on_edit
+        self.on_delete = on_delete
+        self.setWindowTitle(f"Chi tiết - {title}")
+        self.setMinimumWidth(460)
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(18, 16, 18, 16)
+        root.setSpacing(12)
+
+        heading = QLabel(title)
+        heading.setStyleSheet("font-size: 18px; font-weight: bold;")
+        root.addWidget(heading)
+
+        group = QGroupBox("Thông tin bản ghi")
+        form = QFormLayout(group)
+        for label, value in values:
+            value_label = QLabel("" if value is None else str(value))
+            value_label.setWordWrap(True)
+            form.addRow(label, value_label)
+        root.addWidget(group)
+
+        actions = QHBoxLayout()
+        edit_button = QPushButton("Chỉnh sửa")
+        edit_button.clicked.connect(self._edit)
+        actions.addWidget(edit_button)
+
+        delete_button = QPushButton("Xóa mềm")
+        delete_button.setStyleSheet(
+            "QPushButton { background-color: #A83232; color: white; }"
+        )
+        delete_button.clicked.connect(self._delete)
+        actions.addWidget(delete_button)
+
+        actions.addStretch()
+        close_button = QPushButton("Đóng")
+        close_button.clicked.connect(self.reject)
+        actions.addWidget(close_button)
+        root.addLayout(actions)
+
+    def _edit(self):
+        """Đóng popup chi tiết rồi mở popup chỉnh sửa."""
+        self.accept()
+        self.on_edit()
+
+    def _delete(self):
+        """Đóng popup chi tiết rồi xác nhận xóa mềm."""
+        self.accept()
+        self.on_delete()
+
+
 class CatalogPage(QWidget):
     """Trang danh mục dùng chung cho Tác giả, Thể loại, Nhà xuất bản và Thương hiệu."""
 
@@ -103,7 +230,6 @@ class CatalogPage(QWidget):
         self.config = CATALOGS[catalog_type]
         self.inputs = {}
         self.loaded = False
-        self.editing_record_id = None
 
         self.setup_ui()
         self.refresh_code_preview()
@@ -119,7 +245,7 @@ class CatalogPage(QWidget):
         layout.addWidget(title)
 
         description = QLabel(
-            "Nhấp đúp vào dòng hoặc chọn dòng rồi nhấn Chỉnh sửa để cập nhật nhanh."
+            "Nhấp đúp vào một dòng để xem chi tiết và thực hiện chỉnh sửa hoặc xóa."
         )
         description.setStyleSheet("color: #AAB7C8; font-size: 11px;")
         layout.addWidget(description)
@@ -177,23 +303,6 @@ class CatalogPage(QWidget):
 
         layout.addLayout(search_layout)
 
-        # Thao tác nhanh trên dòng đang chọn, không cần mở popup trung gian.
-        record_actions = QHBoxLayout()
-        self.edit_selected_button = QPushButton("Chỉnh sửa mục chọn")
-        self.edit_selected_button.setEnabled(False)
-        self.edit_selected_button.clicked.connect(
-            self.start_edit_selected_record
-        )
-        self.delete_selected_button = QPushButton("Xóa mềm mục chọn")
-        self.delete_selected_button.setEnabled(False)
-        self.delete_selected_button.clicked.connect(
-            self.delete_selected_record
-        )
-        record_actions.addWidget(self.edit_selected_button)
-        record_actions.addWidget(self.delete_selected_button)
-        record_actions.addStretch()
-        layout.addLayout(record_actions)
-
         self.table = QTableWidget()
         self.table.setColumnCount(len(self.config["headers"]))
         self.table.setHorizontalHeaderLabels(self.config["headers"])
@@ -204,12 +313,9 @@ class CatalogPage(QWidget):
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.table.setAlternatingRowColors(True)
-        # Nhấp đúp để nạp ngay dữ liệu vào form chỉnh sửa.
+        # Nhấp đúp để mở popup chi tiết; thao tác sửa/xóa nằm trong popup.
         self.table.cellDoubleClicked.connect(
-            lambda *_: self.start_edit_selected_record()
-        )
-        self.table.itemSelectionChanged.connect(
-            self.update_selection_actions
+            self.open_selected_record_detail
         )
 
         header = self.table.horizontalHeader()
@@ -350,26 +456,14 @@ class CatalogPage(QWidget):
             if cursor is not None:
                 cursor.close()
 
-    def update_selection_actions(self):
-        """Chỉ bật sửa/xóa khi có một dòng được chọn và không ở chế độ sửa."""
-        has_selection = (
-            self.table.currentRow() >= 0
-            and self.editing_record_id is None
-        )
-        self.edit_selected_button.setEnabled(has_selection)
-        self.delete_selected_button.setEnabled(has_selection)
-
     def clear_search(self):
         """Xóa từ khóa và hiển thị lại toàn bộ danh sách chưa xóa mềm."""
         self.search_input.clear()
         self.load_data()
 
     def submit_form(self):
-        """Chuyển dữ liệu biểu mẫu sang luồng thêm mới hoặc cập nhật bản ghi."""
-        if self.editing_record_id is not None:
-            self.update_record()
-        else:
-            self.add_record()
+        """Thêm mới danh mục từ biểu mẫu trên trang."""
+        self.add_record()
 
     def add_record(self):
         """Kiểm tra dữ liệu, sinh mã có khóa chống trùng và thêm bản ghi mới."""
@@ -432,73 +526,47 @@ class CatalogPage(QWidget):
             if cursor is not None:
                 cursor.close()
 
-    def start_edit_selected_record(self):
-        """Đưa dữ liệu của dòng đang chọn lên form để chỉnh sửa."""
-        row = self.table.currentRow()
+    def open_selected_record_detail(self, row, column):
+        """Mở popup chi tiết của dòng được nhấp đúp."""
         if row < 0:
-            QMessageBox.warning(
-                self,
-                "Chưa chọn dữ liệu",
-                "Vui lòng chọn một dòng cần chỉnh sửa."
-            )
             return
 
-        values = {}
-        for column_index, (column, *_rest) in enumerate(self.config["fields"]):
-            item = self.table.item(row, column_index)
-            values[column] = item.text() if item is not None else ""
+        record_values = {}
+        display_values = []
+        for index, (column_name, _label, *_rest) in enumerate(self.config["fields"]):
+            item = self.table.item(row, index)
+            value = item.text() if item is not None else ""
+            record_values[column_name] = value
+            display_values.append((self.config["headers"][index], value))
 
-        record_id = values.get(self.config["id_column"], "").strip()
+        record_id = str(record_values.get(self.config["id_column"], "")).strip()
         if not record_id:
             QMessageBox.warning(
-                self,
-                "Thiếu mã dữ liệu",
-                "Không thể xác định mã của dòng được chọn."
+                self, "Thiếu mã dữ liệu",
+                "Không thể xác định mã của dòng được chọn.",
             )
             return
 
-        self.editing_record_id = record_id
+        name_column = self.config["fields"][1][0]
+        record_name = str(record_values.get(name_column) or "")
 
-        for column, value in values.items():
-            self.inputs[column].setText(value)
+        dialog = CatalogDetailDialog(
+            self.config["title"],
+            display_values,
+            on_edit=lambda: self.edit_record(record_id, record_values),
+            on_delete=lambda: self.delete_record_by_id(record_id, record_name),
+            parent=self,
+        )
+        dialog.exec()
 
-        # Không cho sửa khóa chính trong chế độ chỉnh sửa.
-        self.inputs[self.config["id_column"]].setReadOnly(True)
-        self.add_button.setText("Lưu chỉnh sửa")
-        self.clear_button.setText("Hủy chỉnh sửa")
-        self.table.setEnabled(False)
-        self.edit_selected_button.setEnabled(False)
-        self.delete_selected_button.setEnabled(False)
-        self.search_input.setEnabled(False)
-        self.search_button.setEnabled(False)
-        self.clear_search_button.setEnabled(False)
+    def edit_record(self, record_id, current_values):
+        """Mở popup chỉnh sửa và cập nhật bản ghi nếu người dùng lưu."""
+        dialog = CatalogEditDialog(self.config, current_values, self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
 
-        # Đưa con trỏ vào trường thông tin đầu tiên không phải mã.
-        for column, *_rest in self.config["fields"]:
-            if column != self.config["id_column"]:
-                self.inputs[column].setFocus()
-                break
-
-    def update_record(self):
-        """Cập nhật nội dung bản ghi, giữ nguyên mã và trạng thái IS_DELETED."""
-        values = []
-        missing_fields = []
-
-        for column, label_text, placeholder, max_length, required in self.config["fields"]:
-            if column == self.config["id_column"]:
-                continue
-
-            value = self.inputs[column].text().strip()
-            if required and not value:
-                missing_fields.append(label_text.replace(":", ""))
-            values.append(value if value else None)
-
-        if missing_fields:
-            QMessageBox.warning(
-                self,
-                "Thiếu thông tin",
-                "Vui lòng nhập: " + ", ".join(missing_fields)
-            )
+        values = dialog.get_update_values()
+        if values is None:
             return
 
         conn = self.db.get_connection()
@@ -509,91 +577,56 @@ class CatalogPage(QWidget):
         cursor = None
         try:
             cursor = conn.cursor()
-            cursor.execute(
-                self.config["update_sql"],
-                *values,
-                self.editing_record_id
-            )
+            cursor.execute(self.config["update_sql"], *values, record_id)
 
             if cursor.rowcount == 0:
                 conn.rollback()
                 QMessageBox.warning(
                     self,
                     "Không có thay đổi",
-                    "Bản ghi không tồn tại hoặc đã bị xóa."
+                    "Bản ghi không tồn tại hoặc đã bị xóa.",
                 )
-                self.clear_form()
                 self.load_data()
                 return
 
             conn.commit()
             QMessageBox.information(
-                self,
-                "Thành công",
-                f"Đã cập nhật thông tin {self.editing_record_id}!"
+                self, "Thành công", f"Đã cập nhật thông tin {record_id}!"
             )
-
-            self.clear_form()
             self.load_data()
 
-        except Exception as e:
+        except Exception as error:
             conn.rollback()
             QMessageBox.critical(
                 self,
                 "Không thể chỉnh sửa dữ liệu",
-                f"Cập nhật thất bại!\n{e}"
+                f"Cập nhật thất bại!\\n{error}",
             )
         finally:
             if cursor is not None:
                 cursor.close()
 
-    def delete_selected_record(self):
-        """Xóa mềm bản ghi đang chọn bằng cách đặt IS_DELETED = 1."""
-        row = self.table.currentRow()
-        if row < 0:
-            QMessageBox.warning(
-                self,
-                "Chưa chọn dữ liệu",
-                "Vui lòng chọn một dòng cần xóa."
-            )
-            return
-
-        id_item = self.table.item(row, 0)
-        name_item = self.table.item(row, 1)
-        if id_item is None:
-            QMessageBox.warning(
-                self,
-                "Thiếu mã dữ liệu",
-                "Không thể xác định mã của dòng được chọn."
-            )
-            return
-
-        record_id = id_item.text().strip()
-        record_name = name_item.text().strip() if name_item else ""
-
+    def delete_record_by_id(self, record_id, record_name=""):
+        """Xóa mềm bản ghi được chọn trong popup chi tiết."""
+        message = (
+            f"Bạn có chắc muốn xóa {record_id}"
+            + (f" - {record_name}" if record_name else "")
+            + "?\\n\\nBản ghi sẽ được đánh dấu đã xóa (IS_DELETED = 1), "
+              "không bị xóa vĩnh viễn khỏi cơ sở dữ liệu."
+        )
         answer = QMessageBox.question(
             self,
             "Xác nhận xóa",
-            (
-                f"Bạn có chắc muốn xóa {record_id}"
-                + (f" - {record_name}" if record_name else "")
-                + "?\n\nBản ghi sẽ được đánh dấu đã xóa (IS_DELETED = 1), "
-                  "không bị xóa vĩnh viễn khỏi cơ sở dữ liệu."
-            ),
+            message,
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.No,
         )
-
         if answer != QMessageBox.StandardButton.Yes:
             return
 
         conn = self.db.get_connection()
         if conn is None:
-            QMessageBox.warning(
-                self,
-                "Thông báo",
-                "Chưa có kết nối database!"
-            )
+            QMessageBox.warning(self, "Thông báo", "Chưa có kết nối database!")
             return
 
         cursor = None
@@ -606,7 +639,7 @@ class CatalogPage(QWidget):
                 QMessageBox.information(
                     self,
                     "Không có thay đổi",
-                    "Bản ghi không tồn tại hoặc đã được xóa trước đó."
+                    "Bản ghi không tồn tại hoặc đã được xóa trước đó.",
                 )
                 self.load_data()
                 return
@@ -615,17 +648,17 @@ class CatalogPage(QWidget):
             QMessageBox.information(
                 self,
                 "Thành công",
-                f"Đã đánh dấu xóa {record_id}.\n"
-                "Dữ liệu vẫn được giữ trong SQL Server."
+                f"Đã đánh dấu xóa {record_id}.\\n"
+                "Dữ liệu vẫn được giữ trong SQL Server.",
             )
             self.load_data()
 
-        except Exception as e:
+        except Exception as error:
             conn.rollback()
             QMessageBox.critical(
                 self,
                 "Không thể xóa dữ liệu",
-                f"Cập nhật IS_DELETED thất bại!\n{e}"
+                f"Cập nhật IS_DELETED thất bại!\\n{error}",
             )
         finally:
             if cursor is not None:
@@ -640,7 +673,6 @@ class CatalogPage(QWidget):
         id_input = self.inputs[self.config["id_column"]]
         id_input.setReadOnly(True)
 
-        self.editing_record_id = None
         self.add_button.setText("Thêm mới")
         self.clear_button.setText("Xóa nội dung")
         self.table.setEnabled(True)
@@ -648,8 +680,6 @@ class CatalogPage(QWidget):
         self.search_button.setEnabled(True)
         self.clear_search_button.setEnabled(True)
         self.table.clearSelection()
-        self.update_selection_actions()
-
         self.refresh_code_preview()
 
         for column, *_rest in self.config["fields"]:
