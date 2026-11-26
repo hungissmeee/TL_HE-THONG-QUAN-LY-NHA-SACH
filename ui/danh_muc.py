@@ -600,7 +600,7 @@ class CatalogPage(QWidget):
             QMessageBox.critical(
                 self,
                 "Không thể chỉnh sửa dữ liệu",
-                f"Cập nhật thất bại!\\n{error}",
+                f"Cập nhật thất bại!\n{error}",
             )
         finally:
             if cursor is not None:
@@ -611,7 +611,7 @@ class CatalogPage(QWidget):
         message = (
             f"Bạn có chắc muốn xóa {record_id}"
             + (f" - {record_name}" if record_name else "")
-            + "?\\n\\nBản ghi sẽ được đánh dấu đã xóa (IS_DELETED = 1), "
+            + "?\n\nBản ghi sẽ được đánh dấu đã xóa (IS_DELETED = 1), "
               "không bị xóa vĩnh viễn khỏi cơ sở dữ liệu."
         )
         answer = QMessageBox.question(
@@ -648,7 +648,7 @@ class CatalogPage(QWidget):
             QMessageBox.information(
                 self,
                 "Thành công",
-                f"Đã đánh dấu xóa {record_id}.\\n"
+                f"Đã đánh dấu xóa {record_id}.\n"
                 "Dữ liệu vẫn được giữ trong SQL Server.",
             )
             self.load_data()
@@ -658,7 +658,7 @@ class CatalogPage(QWidget):
             QMessageBox.critical(
                 self,
                 "Không thể xóa dữ liệu",
-                f"Cập nhật IS_DELETED thất bại!\\n{error}",
+                f"Cập nhật IS_DELETED thất bại!\n{error}",
             )
         finally:
             if cursor is not None:
