@@ -142,3 +142,52 @@ Các module legacy có tiền tố `f` đã được loại bỏ. Các tên kỹ
 - Các hàm có xử lý nghiệp vụ, truy vấn dữ liệu, kiểm tra quyền, tính tiền, cập nhật tồn kho hoặc xử lý giao dịch cần có docstring hoặc comment giải thích rõ mục đích và lý do xử lý.
 - Comment tập trung giải thích những quyết định không hiển nhiên, không lặp lại nguyên văn từng câu lệnh.
 - Nội dung comment và docstring dùng tiếng Việt; tên kỹ thuật, tên thư viện, API và thuật ngữ SQL/Python giữ nguyên khi cần thiết.
+
+
+---
+
+# 5. Cài đặt và cấu hình môi trường
+
+## 5.1. Cài thư viện Python
+
+Yêu cầu Python 3.11 trở lên và Microsoft ODBC Driver for SQL Server tương thích với máy triển khai.
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+## 5.2. Cấu hình SQL Server
+
+Sao chép `.env.example` để tham khảo các biến môi trường. Ứng dụng đọc trực tiếp biến môi trường của hệ điều hành, không tự nạp tệp `.env`.
+
+PowerShell:
+
+```powershell
+$env:BOOKHUB_SQL_SERVER = "localhost"
+$env:BOOKHUB_SQL_DATABASE = "CSDLQLNHASACH"
+$env:BOOKHUB_SQL_DRIVER = "ODBC Driver 18 for SQL Server"
+$env:BOOKHUB_SQL_ENCRYPT = "yes"
+$env:BOOKHUB_TRUST_SERVER_CERTIFICATE = "yes"
+python main.py
+```
+
+Linux/macOS:
+
+```bash
+export BOOKHUB_SQL_SERVER="localhost"
+export BOOKHUB_SQL_DATABASE="CSDLQLNHASACH"
+export BOOKHUB_SQL_DRIVER="ODBC Driver 18 for SQL Server"
+export BOOKHUB_SQL_ENCRYPT="yes"
+export BOOKHUB_TRUST_SERVER_CERTIFICATE="yes"
+python main.py
+```
+
+Đổi `BOOKHUB_SQL_SERVER` theo SQL Server instance của máy chạy ứng dụng. Trong môi trường production, nên dùng chứng chỉ máy chủ được hệ điều hành tin cậy và đặt `BOOKHUB_TRUST_SERVER_CERTIFICATE=no`; giá trị `yes` chỉ nhằm tương thích với chứng chỉ tự ký ở môi trường phát triển.
+
+## 5.3. Cập nhật ràng buộc dữ liệu
+
+Sau khi database đã được tạo bằng quy trình cài đặt hiện tại, sao lưu database rồi chạy:
+
+`database/migrations/001_data_integrity_constraints.sql`
+
+Migration bổ sung các CHECK constraint cho giá, tồn kho, số lượng, VAT, tiền và thời gian ca. Migration kiểm tra cả dữ liệu hiện có; cần xử lý các dòng dữ liệu không hợp lệ trước khi chạy. Các cột nullable được giữ nguyên để không tự ý thay đổi dữ liệu lịch sử và quy tắc nghiệp vụ.
