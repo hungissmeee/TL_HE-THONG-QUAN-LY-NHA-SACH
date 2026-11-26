@@ -17,7 +17,7 @@ ON dbo.CHUONG_TRINH_KM
 FROM rl_QuanLy;
 GO
 
--- Quan ly chi duoc xoa mem; khong the sua TYLEGIAM/NGAYBD/NGAYKT.
+-- Quan ly duoc doi ten, doi thoi gian va xoa mem; khong duoc sua TYLEGIAM.
 GRANT UPDATE (IS_DELETED, TENKM, NGAYBD, NGAYKT)
 ON dbo.CHUONG_TRINH_KM
 TO rl_QuanLy;
