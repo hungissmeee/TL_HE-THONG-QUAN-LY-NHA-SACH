@@ -748,7 +748,11 @@ class ShiftWindow(QWidget):
             default_sort_column=2
         )
         self.current_table.setMaximumHeight(190)
-        self.current_table.cellClicked.connect(self._current_shift_selected)
+        # Chọn một lần để đánh dấu; double-click mới tải danh sách nhân viên của ca.
+        self.current_table.itemSelectionChanged.connect(
+            lambda: self._clear_roster_for_table(self.current_table)
+        )
+        self.current_table.cellDoubleClicked.connect(self._current_shift_selected)
         current_layout.addWidget(self.current_table)
         root.addWidget(current_group)
 
@@ -775,7 +779,10 @@ class ShiftWindow(QWidget):
             default_sort_order=Qt.SortOrder.DescendingOrder
         )
         self.history_table.setMaximumHeight(250)
-        self.history_table.cellClicked.connect(self._history_shift_selected)
+        self.history_table.itemSelectionChanged.connect(
+            lambda: self._clear_roster_for_table(self.history_table)
+        )
+        self.history_table.cellDoubleClicked.connect(self._history_shift_selected)
         history_layout.addWidget(self.history_table)
         root.addWidget(history_group)
 
@@ -980,8 +987,8 @@ class ShiftWindow(QWidget):
                     )
 
             if rows:
+                # Chỉ chọn sẵn ca đầu tiên; danh sách nhân viên chỉ mở khi double-click.
                 self.current_table.selectRow(0)
-                self.load_roster(int(rows[0][0]), f"Ca {rows[0][2]}")
             else:
                 self.roster_table.setRowCount(0)
                 self.selected_shift_label.setText("Hiện không có ca nào đang diễn ra.")
@@ -1079,6 +1086,25 @@ class ShiftWindow(QWidget):
         finally:
             resume_table_sorting(self.history_table)
             cursor.close()
+
+    def _clear_roster_for_table(self, table):
+        """Chỉ đánh dấu ca được chọn; đợi double-click mới tải danh sách nhân viên."""
+        row = table.currentRow()
+        item = table.item(row, 0) if row >= 0 else None
+        self.roster_table.setRowCount(0)
+
+        if item is None:
+            self.selected_shift_label.setText(
+                "Double-click vào một ca để xem danh sách nhân viên."
+            )
+            return
+
+        shift_id = item.data(Qt.ItemDataRole.UserRole)
+        shift_number = table.item(row, 2).text()
+        self.selected_shift_label.setText(
+            f"Đã chọn ca {shift_number} (mã {shift_id}). "
+            "Double-click để xem danh sách nhân viên."
+        )
 
     def _current_shift_selected(self, row, column):
         """Lấy mã ca hiện đang được chọn trong bảng ca hiện tại."""
