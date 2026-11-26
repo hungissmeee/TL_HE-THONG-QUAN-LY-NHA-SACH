@@ -16,6 +16,7 @@ _ROLE_DISPLAY_MAP = {
     for display_role, sql_role in _ROLE_MAP.items()
 }
 
+DB_NAME = "CSDLTEST"
 
 class Database:
 
@@ -26,8 +27,8 @@ class Database:
         self.username = None
 
         # Cấu hình có thể thay đổi theo máy triển khai mà không sửa mã nguồn.
-        self.server = os.getenv("BOOKHUB_SQL_SERVER", r"localhost")
-        self.database = os.getenv("BOOKHUB_SQL_DATABASE", "CSDLQLNHASACH")
+        self.server = os.getenv("BOOKHUB_SQL_SERVER", r"localhost\MSSQLSERVER01")
+        self.database = os.getenv("BOOKHUB_SQL_DATABASE", DB_NAME)
         self.driver = os.getenv(
             "BOOKHUB_SQL_DRIVER", "ODBC Driver 18 for SQL Server"
         )
@@ -190,7 +191,7 @@ class Database:
                 WITH PASSWORD = N'{safe_password}',
                 CHECK_POLICY = ON,
                 CHECK_EXPIRATION = OFF,
-                DEFAULT_DATABASE = [CSDLQLNHASACH];
+                DEFAULT_DATABASE = {DB_NAME};
             """)
 
             # Tạo Database User
