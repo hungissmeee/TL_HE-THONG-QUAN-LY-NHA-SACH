@@ -4,7 +4,7 @@ import unittest
 from datetime import date, datetime, time
 from decimal import Decimal, InvalidOperation
 
-from ui.formatters import (
+from giao_dien.dinh_dang import (
     format_decimal_money,
     to_invoice_decimal,
     to_import_decimal,
@@ -19,6 +19,7 @@ from ui.formatters import (
 
 
 class FormatterTests(unittest.TestCase):
+    """Kiểm thử định dạng tiền, ngày giờ và số liệu."""
     def test_money_uses_vietnamese_separators(self):
         self.assertEqual(format_decimal_money("1234567.5"), "1.234.567,50")
 

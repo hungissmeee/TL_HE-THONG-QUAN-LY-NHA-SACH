@@ -1,3 +1,5 @@
+"""Trang quản lý các danh mục dùng chung của sản phẩm."""
+
 from PySide6.QtWidgets import (
     QWidget, QLabel, QLineEdit, QPushButton,
     QVBoxLayout, QHBoxLayout, QFormLayout,
@@ -6,7 +8,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
-from ui.table_sort import (
+from giao_dien.sap_xep_bang import (
     SortableTableWidgetItem as QTableWidgetItem,
     prepare_sortable_table,
     pause_table_sorting,
@@ -87,6 +89,7 @@ CATALOGS = {
 
 
 class CatalogPage(QWidget):
+    """Trang quản lý các danh mục như tác giả, thể loại, nhà xuất bản và nhãn hàng."""
     """Trang danh mục dùng chung cho Tác giả, Thể loại, Nhà xuất bản và Thương hiệu."""
 
     def __init__(self, db, catalog_type):

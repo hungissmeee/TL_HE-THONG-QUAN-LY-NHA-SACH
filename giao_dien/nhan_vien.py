@@ -1,3 +1,5 @@
+"""Trang quản lý hồ sơ và tài khoản nhân viên."""
+
 
 import re
 
@@ -9,8 +11,8 @@ from PySide6.QtWidgets import (
 )
 
 from PySide6.QtCore import Qt
-from ui.account import EmployeePermissionDialog
-from ui.table_sort import (
+from giao_dien.tai_khoan import EmployeePermissionDialog
+from giao_dien.sap_xep_bang import (
     SortableTableWidgetItem as QTableWidgetItem,
     prepare_sortable_table,
     pause_table_sorting,
@@ -19,6 +21,7 @@ from ui.table_sort import (
 
 class EmployeeWindow(QWidget):
 
+    """Trang hiển thị, tìm kiếm và quản lý hồ sơ nhân viên."""
     def __init__(self, db):
         super().__init__()
 

@@ -1,3 +1,5 @@
+"""Các thành phần kết nối và cấu hình cơ sở dữ liệu SQL Server."""
+
 import pyodbc
 
 
@@ -15,6 +17,7 @@ _ROLE_DISPLAY_MAP = {
 
 class Database:
 
+    """Quản lý kết nối SQL Server, tài khoản đăng nhập và phân quyền nhân viên."""
     def __init__(self):
         self.conn = None
         self.username = None

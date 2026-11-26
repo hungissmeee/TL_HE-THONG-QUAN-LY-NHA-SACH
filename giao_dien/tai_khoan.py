@@ -1,3 +1,5 @@
+"""Hộp thoại quản lý tài khoản và quyền SQL Server của nhân viên."""
+
 from PySide6.QtWidgets import (
     QDialog, QLabel, QPushButton,
     QVBoxLayout, QHBoxLayout,
@@ -10,6 +12,7 @@ from PySide6.QtCore import Qt
 
 class EmployeePermissionDialog(QDialog):
 
+    """Hộp thoại xem và cập nhật quyền truy cập SQL Server của nhân viên."""
     def __init__(self, db, manv, parent=None):
         super().__init__(parent)
 

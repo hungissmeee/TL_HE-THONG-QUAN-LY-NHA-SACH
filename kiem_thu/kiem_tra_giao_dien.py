@@ -9,23 +9,23 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from database.connection import Database
-from ui.account import EmployeePermissionDialog
-from ui.catalog import CatalogPage
-from ui.change_password import ChangePasswordDialog
-from ui.employee import EmployeeWindow
-from ui.imports import CreateImportDialog, CreateSupplierDialog, ImportDetailDialog, ImportWindow
-from ui.invoices import CreateInvoiceDialog, InvoiceDetailDialog, InvoiceWindow
-from ui.main_window import MainWindow
-from ui.products import (
+from co_so_du_lieu.ket_noi import Database
+from giao_dien.tai_khoan import EmployeePermissionDialog
+from giao_dien.danh_muc import CatalogPage
+from giao_dien.doi_mat_khau import ChangePasswordDialog
+from giao_dien.nhan_vien import EmployeeWindow
+from giao_dien.phieu_nhap import CreateImportDialog, CreateSupplierDialog, ImportDetailDialog, ImportWindow
+from giao_dien.hoa_don import CreateInvoiceDialog, InvoiceDetailDialog, InvoiceWindow
+from giao_dien.cua_so_chinh import MainWindow
+from giao_dien.san_pham import (
     ProductDetailDialog,
     ProductFormDialog,
     ProductWindow,
     SearchableMultiSelect,
     SearchableSingleSelect,
 )
-from ui.shifts import ShiftCreateDialog, ShiftWindow
-from ui.suppliers import SupplierDetailDialog, SupplierFormDialog, SupplierWindow
+from giao_dien.ca_lam_viec import ShiftCreateDialog, ShiftWindow
+from giao_dien.nha_cung_cap import SupplierDetailDialog, SupplierFormDialog, SupplierWindow
 
 
 def main():
