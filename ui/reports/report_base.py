@@ -1,7 +1,7 @@
 """Thành phần dùng chung cho các trang báo cáo BookHub."""
 
 import csv
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import Decimal
 
 from PySide6.QtCore import Qt, QDate
 from PySide6.QtWidgets import (
