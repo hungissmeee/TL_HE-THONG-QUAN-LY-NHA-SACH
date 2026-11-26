@@ -85,8 +85,10 @@ class Database:
         "Kế toán": "rl_KeToan",
     }
     ROLE_DISPLAY_MAP = {
-        sql_role: display_role
-        for display_role, sql_role in ROLE_MAP.items()
+        "rl_QuanLy": "Quản lý",
+        "rl_ThuNgan": "Thu ngân",
+        "rl_NhanVienKho": "Nhân viên kho",
+        "rl_KeToan": "Kế toán",
     }
 
     def _check_admin(self):
