@@ -66,8 +66,12 @@ class InvoiceWindow(QWidget):
         self._cancel_permission_timer.start()
 
     def _get_employee_role(self):
-        """Lấy vai trò của nhân viên đang đăng nhập để xác định quyền thao tác."""
+        """Lấy vai trò của nhân viên; Admin không cần hồ sơ trong NHAN_VIEN."""
+        if self.username.casefold() == "admin":
+            return ""
         conn = self.db.get_connection()
+        if conn is None:
+            return ""
         cursor = conn.cursor()
         try:
             cursor.execute(
