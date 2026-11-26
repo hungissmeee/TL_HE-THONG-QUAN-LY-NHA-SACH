@@ -1,9 +1,25 @@
+"""Các thành phần kết nối và cấu hình cơ sở dữ liệu SQL Server."""
+
 import pyodbc
+
+
+_ROLE_MAP = {
+    "Quản lý": "rl_QuanLy",
+    "Thu ngân": "rl_ThuNgan",
+    "Nhân viên kho": "rl_NhanVienKho",
+    "Kế toán": "rl_KeToan",
+}
+_ROLE_DISPLAY_MAP = {
+    sql_role: display_role
+    for display_role, sql_role in _ROLE_MAP.items()
+}
 
 
 class Database:
 
+    """Quản lý kết nối SQL Server và các thao tác tài khoản, vai trò nhân viên."""
     def __init__(self):
+        """Khởi tạo trạng thái kết nối và cấu hình SQL Server của ứng dụng."""
         self.conn = None
         self.username = None
 
@@ -12,6 +28,7 @@ class Database:
         self.driver = "ODBC Driver 18 for SQL Server"
 
     def _connection_string(self, username, password):
+        """Tạo chuỗi kết nối SQL Server từ tên tài khoản và mật khẩu đã nhập."""
 
         return (
             f"DRIVER={{{self.driver}}};"
@@ -24,6 +41,7 @@ class Database:
         )
 
     def connect(self, username, password):
+        """Mở kết nối SQL Server bằng thông tin đăng nhập của nhân viên."""
 
         self.close()
 
@@ -37,9 +55,11 @@ class Database:
         return self.conn
 
     def get_connection(self):
+        """Trả về kết nối hiện tại để các màn hình thực hiện truy vấn."""
         return self.conn
 
     def change_password(self, old_password, new_password):
+        """Xác thực mật khẩu cũ và yêu cầu SQL Server đổi sang mật khẩu mới."""
 
         if not self.username:
             raise Exception("Chưa xác định tài khoản đăng nhập!")
@@ -78,14 +98,11 @@ class Database:
             if temp_conn is not None:
                 temp_conn.close()
 
-    ROLE_MAP = {
-        "Quản lý": "rl_QuanLy",
-        "Thu ngân": "rl_ThuNgan",
-        "Nhân viên kho": "rl_NhanVienKho",
-        "Kế toán": "rl_KeToan"
-    }
+    ROLE_MAP = _ROLE_MAP
+    ROLE_DISPLAY_MAP = _ROLE_DISPLAY_MAP
 
     def _check_admin(self):
+        """Đảm bảo thao tác quản trị tài khoản chỉ được thực hiện bởi admin đang kết nối."""
 
         if (self.username or "").lower() != "admin":
             raise PermissionError(
@@ -96,6 +113,7 @@ class Database:
             raise Exception("Chưa kết nối database!")
 
     def _quote_login(self, manv):
+        """Thoát ký tự đặc biệt trong tên Login để tạo SQL identifier hợp lệ."""
 
         return "[" + manv.replace("]", "]]") + "]"
 
@@ -106,6 +124,7 @@ class Database:
     def create_account(
             self, manv, tennv, vaitro, sdt, password
     ):
+        """Tạo SQL Login, Database User, gán role và thêm hoặc cập nhật hồ sơ nhân viên trong cùng giao dịch."""
 
         self._check_admin()
 
@@ -205,29 +224,32 @@ class Database:
     # =====================================
 
     def get_employee_permissions(self, manv):
+        """Đọc hồ sơ nhân viên, kiểm tra tài khoản SQL và lấy role đang được gán."""
 
         self._check_admin()
 
         cursor = self.conn.cursor()
 
         try:
-            # Lấy thông tin nhân viên và kiểm tra Database User
+            # Đọc trạng thái SQL Login trực tiếp từ SQL Server.
             cursor.execute("""
                            SELECT NV.MANV,
                                   NV.TENNV,
                                   NV.VAITRO,
                                   NV.SDT,
-
                                   CASE
-                                      WHEN EXISTS (SELECT 1
-                                                   FROM sys.database_principals DP
-                                                   WHERE LOWER(DP.name) = LOWER(NV.MANV)
-                                                     AND DP.type = 'S')
-                                          THEN 1
+                                      WHEN SP.principal_id IS NOT NULL THEN 1
                                       ELSE 0
-                                      END AS ACCOUNT_EXISTS
-
+                                  END AS ACCOUNT_EXISTS,
+                                  CASE
+                                      WHEN SP.principal_id IS NOT NULL
+                                           AND SP.is_disabled = 0 THEN 1
+                                      ELSE 0
+                                  END AS ACCOUNT_ENABLED
                            FROM dbo.NHAN_VIEN NV
+                           LEFT JOIN sys.server_principals SP
+                             ON LOWER(SP.name) = LOWER(NV.MANV)
+                            AND SP.type = 'S'
                            WHERE NV.MANV = ?
                            """, manv)
 
@@ -256,16 +278,9 @@ class Database:
             }
 
             # Xác định vai trò
-            role_map = {
-                "rl_QuanLy": "Quản lý",
-                "rl_ThuNgan": "Thu ngân",
-                "rl_NhanVienKho": "Nhân viên kho",
-                "rl_KeToan": "Kế toán"
-            }
-
             current_role = employee[2]
 
-            for sql_role, display_role in role_map.items():
+            for sql_role, display_role in self.ROLE_DISPLAY_MAP.items():
                 if sql_role in roles:
                     current_role = display_role
                     break
@@ -275,7 +290,8 @@ class Database:
                 "tennv": employee[1],
                 "vaitro": current_role,
                 "sdt": employee[3],
-                "account_exists": bool(employee[4])
+                "account_exists": bool(employee[4]),
+                "account_enabled": bool(employee[5])
             }
 
         finally:
@@ -286,6 +302,7 @@ class Database:
     # =====================================
 
     def update_employee_permissions(self, manv, vaitro):
+        """Gỡ các role cũ, gán role mới và cập nhật vai trò hiển thị trong hồ sơ nhân viên."""
 
         self._check_admin()
 
@@ -371,10 +388,58 @@ class Database:
             cursor.close()
 
     # =====================================
+    # NGƯNG HOẠT ĐỘNG / KÍCH HOẠT TÀI KHOẢN
+    # =====================================
+
+    def set_employee_account_enabled(self, manv, enabled):
+        """Bật hoặc vô hiệu hóa SQL Login của nhân viên, không xóa hồ sơ hay quyền."""
+
+        self._check_admin()
+
+        if not manv or manv.strip().lower() == "admin":
+            raise PermissionError(
+                "Không thể ngưng hoạt động hoặc thay đổi tài khoản admin!"
+            )
+
+        if not isinstance(enabled, bool):
+            raise ValueError("Trạng thái tài khoản phải là True hoặc False!")
+
+        cursor = self.conn.cursor()
+        login = self._quote_login(manv)
+
+        try:
+            cursor.execute("""
+                           SELECT is_disabled
+                           FROM sys.server_principals
+                           WHERE name = ?
+                             AND type = 'S'
+                           """, manv)
+
+            account = cursor.fetchone()
+            if account is None:
+                raise Exception("Tài khoản SQL Server không tồn tại!")
+
+            currently_enabled = not bool(account[0])
+            if currently_enabled == enabled:
+                return
+
+            action = "ENABLE" if enabled else "DISABLE"
+            cursor.execute(f"ALTER LOGIN {login} {action}")
+            self.conn.commit()
+
+        except Exception:
+            self.conn.rollback()
+            raise
+
+        finally:
+            cursor.close()
+
+    # =====================================
     # XÓA TÀI KHOẢN NHÂN VIÊN
     # =====================================
 
     def delete_employee_account(self, manv):
+        """Xóa Database User và SQL Login của nhân viên, không tự xóa hồ sơ nhân viên."""
 
         self._check_admin()
 
@@ -424,6 +489,7 @@ class Database:
             cursor.close()
 
     def close(self):
+        """Đóng kết nối SQL Server hiện tại và xóa trạng thái tài khoản khỏi đối tượng."""
 
         if self.conn is not None:
             self.conn.close()

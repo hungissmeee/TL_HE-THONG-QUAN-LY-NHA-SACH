@@ -1,20 +1,23 @@
+"""Cửa sổ xác thực tài khoản nhân viên trước khi mở phần mềm."""
+
 from PySide6.QtWidgets import (
     QWidget, QLabel, QLineEdit,
     QPushButton, QVBoxLayout, QMessageBox
 )
 
-from ui.fmain import MainWindow
+from ui.main_windows import MainWindow
 
 
 class LoginWindow(QWidget):
 
+    """Cửa sổ đăng nhập, xác thực tài khoản và chuyển sang cửa sổ chính."""
     def __init__(self, db):
         super().__init__()
 
         self.db = db
         self.main_window = None
 
-        self.setWindowTitle("Đăng nhập")
+        self.setWindowTitle("Hệ thống quản lý nhà sách - Đăng nhập")
         self.setFixedSize(300, 200)
 
         self.title = QLabel("ĐĂNG NHẬP HỆ THỐNG")
@@ -38,6 +41,7 @@ class LoginWindow(QWidget):
         self.setLayout(layout)
 
     def login(self):
+        """Kiểm tra dữ liệu đăng nhập, xác thực với SQL Server rồi mở cửa sổ chính."""
 
         username = self.username.text().strip()
         password = self.password.text()
