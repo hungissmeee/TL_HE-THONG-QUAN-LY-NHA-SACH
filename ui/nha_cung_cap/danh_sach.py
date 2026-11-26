@@ -21,8 +21,8 @@ from ui.table_sort import (
     pause_table_sorting,
     resume_table_sorting,
 )
-from .form_dialog import SupplierFormDialog
-from .detail_dialog import SupplierDetailDialog
+from .bieu_mau import SupplierFormDialog
+from .chi_tiet import SupplierDetailDialog
 
 
 class SupplierWindow(QWidget):

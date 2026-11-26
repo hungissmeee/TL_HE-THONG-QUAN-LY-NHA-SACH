@@ -29,7 +29,7 @@ from ui.table_sort import (
     pause_table_sorting,
     resume_table_sorting,
 )
-from .create_dialog import ShiftCreateDialog
+from .tao_bieu_mau import ShiftCreateDialog
 
 
 class ShiftWindow(QWidget):
