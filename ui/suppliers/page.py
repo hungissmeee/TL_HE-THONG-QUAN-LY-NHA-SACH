@@ -2,9 +2,18 @@
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QWidget, QDialog, QLabel, QLineEdit, QPushButton, QVBoxLayout,
-    QHBoxLayout, QFormLayout, QTableWidget, QHeaderView,
-    QMessageBox, QAbstractItemView, QCheckBox, QGroupBox,
+    QWidget,
+    QDialog,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QVBoxLayout,
+    QHBoxLayout,
+    QTableWidget,
+    QHeaderView,
+    QMessageBox,
+    QAbstractItemView,
+    QCheckBox,
 )
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
@@ -12,9 +21,9 @@ from ui.table_sort import (
     pause_table_sorting,
     resume_table_sorting,
 )
-
 from .form_dialog import SupplierFormDialog
 from .detail_dialog import SupplierDetailDialog
+
 
 class SupplierWindow(QWidget):
     """Quản lý nhà cung cấp; dùng xóa mềm để giữ liên kết với phiếu nhập."""
@@ -303,4 +312,5 @@ class SupplierWindow(QWidget):
 
     def restore_supplier(self):
         self._set_supplier_status(False)
+
 
