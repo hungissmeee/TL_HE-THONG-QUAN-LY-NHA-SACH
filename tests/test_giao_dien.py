@@ -9,14 +9,14 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from database.ket_noi import Database
+from database.connection import Database
 from ui.tai_khoan import EmployeePermissionDialog
 from ui.danh_muc import CatalogPage
 from ui.doi_mat_khau import ChangePasswordDialog
 from ui.nhan_vien import EmployeeWindow
 from ui.phieu_nhap import CreateImportDialog, CreateSupplierDialog, ImportDetailDialog, ImportWindow
 from ui.hoa_don import CreateInvoiceDialog, InvoiceDetailDialog, InvoiceWindow
-from ui.cua_so_chinh import MainWindow
+from ui.main_windows import MainWindow
 from ui.san_pham import (
     ProductDetailDialog,
     ProductFormDialog,

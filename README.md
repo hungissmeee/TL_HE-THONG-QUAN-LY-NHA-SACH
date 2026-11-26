@@ -1,5 +1,3 @@
-"""Tài liệu giới thiệu và hướng dẫn sử dụng, phát triển hệ thống quản lý nhà sách."""
-
 # Tổng quan
 - Môn học: Công Nghệ Phần Mềm
     - Tên dự án: Hệ thống quản lý nhà sách
@@ -80,9 +78,9 @@ Dự án xây dựng giải pháp quản lý tập trung cho mô hình kinh doan
 
 # 4. Cấu trúc mã nguồn hiện tại
 
-Giao diện được tổ chức theo nhóm chức năng. Mỗi package chứa các thành phần liên quan; `page.py` quản lý trang danh sách, `*_dialog.py` chứa hộp thoại tạo/sửa/chi tiết và `common.py` chứa phần dùng chung trong nhóm.
+Giao diện được tổ chức theo nhóm chức năng. Mỗi package chứa các thành phần liên quan; `danh_sach.py` quản lý trang danh sách, các tệp `tao_bieu_mau.py`, `chi_tiet.py` chứa hộp thoại nghiệp vụ và `dung_chung.py` chứa phần dùng chung trong nhóm.
 
-\`\`\`text
+```text
 .
 ├── main.py
 ├── database/
@@ -108,30 +106,39 @@ Giao diện được tổ chức theo nhóm chức năng. Mỗi package chứa c
     ├── nha_cung_cap/
     ├── ca_lam_viec/
     └── bao_cao/
-\`\`\`
+```
 
-Các module legacy có tiền tố `f` đã được loại bỏ. Toàn bộ import nội bộ sử dụng trực tiếp module/package có tên `snake_case`; không duy trì facade hoặc alias cho tên file cũ.
+Các module legacy có tiền tố `f` đã được loại bỏ. Các tên kỹ thuật quen thuộc `ui/`, `tests/`, `database/`, `connection.py`, `main.py` và `main_windows.py` được giữ nguyên. Tên package và module theo nghiệp vụ nhà sách dùng tiếng Việt không dấu, viết theo `snake_case`.
 
 ## 4.1. Quy ước phân chia trách nhiệm
 
-- `main_window.py`: khởi tạo cửa sổ chính, sidebar, điều hướng và phân quyền hiển thị.
+- `ui/main_windows.py`: khởi tạo cửa sổ chính, sidebar, điều hướng và phân quyền hiển thị.
 - `database/connection.py`: kết nối SQL Server, quản lý tài khoản và quyền SQL.
-- `formatters.py`: định dạng tiền, ngày tháng và số liệu dùng chung.
-- `styles.py`: stylesheet của cửa sổ chính, tách khỏi logic điều hướng.
-- `table_sort.py`: sắp xếp dữ liệu trong bảng.
+- `ui/formatters.py`: định dạng tiền, ngày tháng và số liệu dùng chung.
+- `ui/styles.py`: stylesheet của cửa sổ chính, tách khỏi logic điều hướng.
+- `ui/table_sort.py`: sắp xếp dữ liệu trong bảng.
 - Các package nghiệp vụ: tách trang danh sách, form và hộp thoại chi tiết.
-- `reports/`: các trang báo cáo dùng chung lớp nền `ReportBasePage`.
+- `ui/bao_cao/`: các trang báo cáo dùng chung lớp nền `ReportBasePage`.
 
 ## 4.2. Nguyên tắc refactor
 
 - Giữ nguyên câu SQL, tên bảng/cột, quy tắc tính tiền, cập nhật tồn kho và phân quyền khi chỉ thực hiện refactor cấu trúc.
-- Khi thêm hoặc đổi tên module, phải cập nhật toàn bộ import và chạy `tests/test_local_imports.py` cùng UI import smoke-test; không tạo facade legacy nếu không có yêu cầu tương thích bên ngoài.
+- Khi thêm hoặc đổi tên module, phải cập nhật toàn bộ import và chạy `tests/test_import.py` cùng UI import smoke-test; không tạo facade legacy nếu không có yêu cầu tương thích bên ngoài.
 - Mỗi thay đổi nghiệp vụ cần có kiểm thử riêng, không gộp chung với commit chỉ định dạng hoặc sắp xếp mã nguồn.
 
 
 ## 4.3. Kiểm thử tự động
 
-- `tests/test_formatters.py`: kiểm thử định dạng tiền, ngày giờ và số liệu.
-- `tests/test_local_imports.py`: kiểm tra import nội bộ trỏ tới module/package có tồn tại.
-- `tests/test_giao_dien.py`: kiểm tra import toàn bộ package UI hiện tại với PySide6.
+- `tests/test_dinh_dang.py`: kiểm thử định dạng tiền, ngày giờ và số liệu.
+- `tests/test_import.py`: kiểm tra import nội bộ trỏ tới module/package có tồn tại.
+- `tests/test_giao_dien.py`: kiểm tra import toàn bộ package `ui` hiện tại với PySide6.
 - GitHub Actions chạy `compileall`, unit test và UI import smoke-test khi có push lên nhánh refactor hoặc mở Pull Request vào `main`.
+
+
+## 4.4. Quy ước chú thích trong code
+
+- Mỗi module có docstring đầu tệp nêu mục đích và phạm vi trách nhiệm.
+- Mỗi class giao diện hoặc lớp xử lý chính có docstring mô tả vai trò.
+- Các hàm có xử lý nghiệp vụ, truy vấn dữ liệu, kiểm tra quyền, tính tiền, cập nhật tồn kho hoặc xử lý giao dịch cần có docstring hoặc comment giải thích rõ mục đích và lý do xử lý.
+- Comment tập trung giải thích những quyết định không hiển nhiên, không lặp lại nguyên văn từng câu lệnh.
+- Nội dung comment và docstring dùng tiếng Việt; tên kỹ thuật, tên thư viện, API và thuật ngữ SQL/Python giữ nguyên khi cần thiết.
