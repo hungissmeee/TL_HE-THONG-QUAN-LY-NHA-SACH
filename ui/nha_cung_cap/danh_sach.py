@@ -17,7 +17,6 @@ from PySide6.QtWidgets import (
 )
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
-    create_table_action_panel,
     prepare_sortable_table,
     pause_table_sorting,
     resume_table_sorting,
@@ -88,18 +87,6 @@ class SupplierWindow(QWidget):
         actions.addStretch()
         root.addLayout(actions)
 
-        self.edit_button = QPushButton("Chỉnh sửa")
-        self.edit_button.clicked.connect(self.edit_supplier)
-        self.detail_button = QPushButton("Xem chi tiết")
-        self.detail_button.clicked.connect(self.view_supplier)
-        self.deactivate_button = QPushButton("Ngừng hoạt động")
-        self.deactivate_button.setStyleSheet(
-            "QPushButton:enabled { background-color: #A83232; color: white; }"
-        )
-        self.deactivate_button.clicked.connect(self.deactivate_supplier)
-        self.restore_button = QPushButton("Kích hoạt lại")
-        self.restore_button.clicked.connect(self.restore_supplier)
-
         search = QHBoxLayout()
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Tìm theo mã, tên, số điện thoại, địa chỉ hoặc mã số thuế...")
@@ -130,7 +117,6 @@ class SupplierWindow(QWidget):
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.table.setAlternatingRowColors(True)
-        self.table.itemSelectionChanged.connect(self._update_buttons)
         self.table.cellDoubleClicked.connect(lambda *_: self.view_supplier())
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
@@ -141,20 +127,8 @@ class SupplierWindow(QWidget):
         self.total_label = QLabel("Tổng số: 0")
         root.addWidget(self.total_label)
 
-        self.action_panel, action_layout, self.action_hint = create_table_action_panel(
-            "Chọn nhà cung cấp để xem thông tin, chỉnh sửa hoặc thay đổi trạng thái.",
-            self,
-        )
-        for button in (
-            self.detail_button, self.edit_button,
-            self.deactivate_button, self.restore_button,
-        ):
-            action_layout.addWidget(button)
-        root.addWidget(self.action_panel)
-
         if not self.can_manage:
-            for button in (self.add_button, self.edit_button,
-                           self.deactivate_button, self.restore_button):
+            for button in (self.add_button,):
                 button.hide()
 
     def load_data(self, *_):
@@ -212,42 +186,6 @@ class SupplierWindow(QWidget):
         self.search_input.clear()
         self.load_data()
 
-    def _selected_supplier(self):
-        """Lấy mã nhà cung cấp của dòng đang được chọn."""
-        row = self.table.currentRow()
-        if row < 0:
-            return None
-        code_item = self.table.item(row, 0)
-        if code_item is None:
-            return None
-        return code_item.data(Qt.ItemDataRole.UserRole)
-
-    def _selected_is_inactive(self):
-        """Kiểm tra nhà cung cấp đang chọn có ở trạng thái ngừng hoạt động hay không."""
-        row = self.table.currentRow()
-        if row < 0:
-            return False
-        status_item = self.table.item(row, 5)
-        return bool(status_item and status_item.text() == "Ngừng hoạt động")
-
-    def _update_buttons(self):
-        """Bật hoặc khóa các nút sửa, xem, ngừng hoạt động và khôi phục theo lựa chọn hiện tại."""
-        selected = self._selected_supplier() is not None
-        inactive = self._selected_is_inactive() if selected else False
-        self.detail_button.setEnabled(selected)
-        if selected:
-            self.action_hint.setText(
-                f"Đang chọn nhà cung cấp {self._selected_supplier()} "
-                f"({'ngừng hoạt động' if inactive else 'đang hoạt động'})."
-            )
-        else:
-            self.action_hint.setText(
-                "Chọn nhà cung cấp để xem thông tin, chỉnh sửa hoặc thay đổi trạng thái."
-            )
-        self.edit_button.setEnabled(selected and not inactive and self.can_manage)
-        self.deactivate_button.setEnabled(selected and not inactive and self.can_manage)
-        self.restore_button.setEnabled(selected and inactive and self.can_manage)
-
     def _get_supplier(self, code):
         """Lấy thông tin đầy đủ của một nhà cung cấp từ SQL Server."""
         conn = self.db.get_connection()
@@ -298,7 +236,16 @@ class SupplierWindow(QWidget):
             QMessageBox.warning(self, "Không tìm thấy", "Nhà cung cấp không còn tồn tại.")
             self.load_data()
             return
-        SupplierDetailDialog(supplier, self).exec()
+        dialog = SupplierDetailDialog(
+            supplier,
+            self,
+            can_manage=self.can_manage,
+            on_edit=self.edit_supplier,
+            on_deactivate=self.deactivate_supplier,
+            on_restore=self.restore_supplier,
+        )
+        dialog.exec()
+        self.load_data()
 
     def _set_supplier_status(self, inactive):
         """Cập nhật trạng thái hoạt động của nhà cung cấp mà không xóa dữ liệu."""

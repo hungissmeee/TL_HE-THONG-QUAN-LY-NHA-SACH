@@ -21,7 +21,6 @@ from PySide6.QtWidgets import (
 )
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
-    create_table_action_panel,
     prepare_sortable_table,
     pause_table_sorting,
     resume_table_sorting,
@@ -143,26 +142,6 @@ class ImportWindow(QWidget):
         self.total_label = QLabel("Tổng số phiếu nhập: 0")
         root.addWidget(self.total_label)
 
-        # Các thao tác theo phiếu được gom ngay dưới bảng.
-        self.action_panel, action_layout, self.action_hint = create_table_action_panel(
-            "Chọn một phiếu nhập để xem chi tiết, in hoặc hủy phiếu.",
-            self,
-        )
-        self.detail_button = QPushButton("Xem chi tiết / In phiếu")
-        self.detail_button.setEnabled(False)
-        self.detail_button.clicked.connect(self.open_selected_import)
-        action_layout.addWidget(self.detail_button)
-
-        self.cancel_button = QPushButton("Hủy phiếu nhập")
-        self.cancel_button.setVisible(self.can_cancel)
-        self.cancel_button.setEnabled(False)
-        self.cancel_button.setStyleSheet("""
-            QPushButton:enabled { background-color: #A83232; color: white; }
-            QPushButton:disabled { color: #888888; }
-        """)
-        self.cancel_button.clicked.connect(self.cancel_selected_import)
-        action_layout.addWidget(self.cancel_button)
-        root.addWidget(self.action_panel)
 
     def clear_filters(self):
         """Xóa các điều kiện lọc và tải lại danh sách phiếu nhập."""
@@ -239,39 +218,27 @@ class ImportWindow(QWidget):
             cursor.close()
 
     def update_action_buttons(self):
-        """Cập nhật thao tác theo dòng chọn, quyền và trạng thái phiếu nhập."""
+        """Xác định quyền hủy phiếu nhập đang chọn để truyền vào popup chi tiết."""
         row = self.table.currentRow()
-        has_selection = row >= 0 and self.table.item(row, 0) is not None
-        self.detail_button.setEnabled(has_selection)
-        self.action_hint.setText(
-            f"Đang chọn phiếu {self.table.item(row, 0).text()}."
-            if has_selection else
-            "Chọn một phiếu nhập để xem chi tiết, in hoặc hủy phiếu."
-        )
-
-        if not self.can_cancel:
-            self.cancel_button.setEnabled(False)
-            return
-        row = self.table.currentRow()
-        if row < 0:
-            self.cancel_button.setEnabled(False)
+        self._selected_can_cancel = False
+        if not self.can_cancel or row < 0:
             return
         code_item = self.table.item(row, 0)
         if code_item is None:
-            self.cancel_button.setEnabled(False)
             return
         status = int(code_item.data(Qt.ItemDataRole.UserRole + 1) or 0)
         if status != 1:
-            self.cancel_button.setEnabled(False)
             return
         if self.is_admin or self.is_manager:
-            self.cancel_button.setEnabled(True)
+            self._selected_can_cancel = True
             return
 
         owner = str(code_item.data(Qt.ItemDataRole.UserRole) or "")
         can_cancel = self.is_warehouse and owner.casefold() == self.username.casefold()
         if can_cancel:
             conn = self.db.get_connection()
+            if conn is None:
+                return
             cursor = None
             try:
                 cursor = conn.cursor()
@@ -281,15 +248,14 @@ class ImportWindow(QWidget):
                                 THEN 1 ELSE 0 END
                     FROM dbo.PHIEU_NHAP WHERE MAPN = ? AND MANV = ?
                       AND ISNULL(TRANGTHAI, 1) = 1
-                """, self.table.item(row, 0).text(), self.username)
+                """, code_item.text(), self.username)
                 result = cursor.fetchone()
-                can_cancel = bool(result and result[0] == 1)
+                self._selected_can_cancel = bool(result and result[0] == 1)
             except Exception:
-                can_cancel = False
+                self._selected_can_cancel = False
             finally:
                 if cursor is not None:
                     cursor.close()
-        self.cancel_button.setEnabled(can_cancel)
 
     def cancel_selected_import(self):
         """Kiểm tra quyền, trạng thái và thực hiện hủy phiếu nhập theo quy tắc tồn kho."""
@@ -430,8 +396,15 @@ class ImportWindow(QWidget):
         if item is None:
             return
         try:
-            dialog = ImportDetailDialog(self.db, item.text(), self)
+            self.update_action_buttons()
+            dialog = ImportDetailDialog(
+                self.db,
+                item.text(),
+                self,
+                on_cancel=self.cancel_selected_import if self._selected_can_cancel else None,
+            )
             dialog.exec()
+            self.load_imports()
         except Exception as error:
             QMessageBox.critical(self, "Lỗi xem phiếu nhập", str(error))
 

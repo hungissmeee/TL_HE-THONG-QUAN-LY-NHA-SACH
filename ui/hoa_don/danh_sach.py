@@ -21,7 +21,6 @@ from PySide6.QtWidgets import (
 )
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
-    create_table_action_panel,
     prepare_sortable_table,
     pause_table_sorting,
     resume_table_sorting,
@@ -152,31 +151,6 @@ class InvoiceWindow(QWidget):
         self.total_label = QLabel("Tổng số hóa đơn: 0")
         root.addWidget(self.total_label)
 
-        # Các thao tác theo hóa đơn được gom ngay dưới bảng.
-        self.action_panel, action_layout, self.action_hint = create_table_action_panel(
-            "Chọn một hóa đơn để xem chi tiết, in hoặc hủy hóa đơn.",
-            self,
-        )
-        self.detail_button = QPushButton("Xem chi tiết / In hóa đơn")
-        self.detail_button.setEnabled(False)
-        self.detail_button.clicked.connect(self.open_selected_invoice)
-        action_layout.addWidget(self.detail_button)
-
-        self.cancel_button = QPushButton("Hủy hóa đơn")
-        self.cancel_button.setVisible(self.can_cancel)
-        self.cancel_button.setEnabled(False)
-        self.cancel_button.setStyleSheet("""
-            QPushButton:enabled {
-                background-color: #A83232;
-                color: white;
-            }
-            QPushButton:disabled {
-                color: #888888;
-            }
-        """)
-        self.cancel_button.clicked.connect(self.cancel_selected_invoice)
-        action_layout.addWidget(self.cancel_button)
-        root.addWidget(self.action_panel)
 
     def clear_search(self):
         """Xóa từ khóa và đặt lại khoảng ngày mặc định như trang Phiếu nhập."""
@@ -294,23 +268,10 @@ class InvoiceWindow(QWidget):
             cursor.close()
 
     def update_action_buttons(self):
-        """Cập nhật nút theo hóa đơn đang chọn, vai trò và giới hạn hủy 5 phút."""
+        """Xác định quyền hủy hóa đơn đang chọn để truyền vào popup chi tiết."""
         row = self.table.currentRow()
-        has_selection = row >= 0 and self.table.item(row, 0) is not None
-        self.detail_button.setEnabled(has_selection)
-        self.action_hint.setText(
-            f"Đang chọn hóa đơn {self.table.item(row, 0).text()}."
-            if has_selection else
-            "Chọn một hóa đơn để xem chi tiết, in hoặc hủy hóa đơn."
-        )
-
-        if not self.can_cancel:
-            self.cancel_button.setEnabled(False)
-            return
-
-        row = self.table.currentRow()
-        if row < 0:
-            self.cancel_button.setEnabled(False)
+        self._selected_can_cancel = False
+        if not self.can_cancel or row < 0:
             return
 
         status_item = self.table.item(row, 7)
@@ -324,47 +285,40 @@ class InvoiceWindow(QWidget):
             str(invoice_item.data(Qt.ItemDataRole.UserRole) or "").strip()
             if invoice_item is not None else ""
         )
-
-        # Admin/Quản lý được hủy mọi hóa đơn theo quyền hiện tại.
-        if self.is_admin or self.is_manager:
-            self.cancel_button.setEnabled(is_active)
+        if not is_active or not invoice_code:
             return
 
-        # Thu ngân chỉ được hủy hóa đơn của mình và chưa quá 5 phút.
-        can_cashier_cancel = (
-            self.is_cashier
-            and is_active
-            and bool(invoice_code)
-            and owner_code.casefold() == self.username.casefold()
-        )
-        if can_cashier_cancel:
+        # Admin/Quản lý được hủy mọi hóa đơn còn hiệu lực.
+        if self.is_admin or self.is_manager:
+            self._selected_can_cancel = True
+            return
+
+        # Thu ngân chỉ được hủy hóa đơn của mình trong 5 phút đầu.
+        if self.is_cashier and owner_code.casefold() == self.username.casefold():
             conn = self.db.get_connection()
             if conn is None:
-                can_cashier_cancel = False
-            else:
-                cursor = conn.cursor()
-                try:
-                    cursor.execute("""
-                        SELECT CASE
-                            WHEN TRANGTHAI = 1
-                             AND MANV = ?
-                             AND NGAYLAP >= DATEADD(MINUTE, -5, SYSDATETIME())
-                             AND NGAYLAP <= SYSDATETIME()
-                            THEN 1 ELSE 0
-                        END
-                        FROM dbo.HOA_DON
-                        WHERE MAHD = ?
-                    """, self.username, invoice_code)
-                    permission_row = cursor.fetchone()
-                    can_cashier_cancel = bool(
-                        permission_row and permission_row[0] == 1
-                    )
-                except Exception:
-                    can_cashier_cancel = False
-                finally:
-                    cursor.close()
-
-        self.cancel_button.setEnabled(can_cashier_cancel)
+                return
+            cursor = conn.cursor()
+            try:
+                cursor.execute("""
+                    SELECT CASE
+                        WHEN TRANGTHAI = 1
+                         AND MANV = ?
+                         AND NGAYLAP >= DATEADD(MINUTE, -5, SYSDATETIME())
+                         AND NGAYLAP <= SYSDATETIME()
+                        THEN 1 ELSE 0
+                    END
+                    FROM dbo.HOA_DON
+                    WHERE MAHD = ?
+                """, self.username, invoice_code)
+                permission_row = cursor.fetchone()
+                self._selected_can_cancel = bool(
+                    permission_row and permission_row[0] == 1
+                )
+            except Exception:
+                self._selected_can_cancel = False
+            finally:
+                cursor.close()
 
     def cancel_selected_invoice(self):
         """Hủy hóa đơn, hoàn kho và cập nhật trạng thái trong cùng transaction."""
@@ -559,10 +513,15 @@ class InvoiceWindow(QWidget):
 
         invoice_code = item.text()
         try:
+            self.update_action_buttons()
             dialog = InvoiceDetailDialog(
-                self.db, invoice_code, self
+                self.db,
+                invoice_code,
+                self,
+                on_cancel=self.cancel_selected_invoice if self._selected_can_cancel else None,
             )
             dialog.exec()
+            self.load_invoices()
         except Exception as error:
             QMessageBox.critical(
                 self, "Lỗi xem hóa đơn", str(error)

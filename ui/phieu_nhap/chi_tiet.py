@@ -37,10 +37,11 @@ class ImportDetailDialog(QDialog):
     """Hiển thị thông tin chung, hàng hóa và nội dung in của phiếu nhập."""
     """Chi tiết và in phiếu nhập khổ A4."""
 
-    def __init__(self, db, import_code, parent=None):
+    def __init__(self, db, import_code, parent=None, on_cancel=None):
         super().__init__(parent)
         self.db = db
         self.import_code = import_code
+        self.on_cancel = on_cancel
         self.header = None
         self.items = []
         self._load_import()
@@ -155,13 +156,29 @@ class ImportDetailDialog(QDialog):
 
         buttons = QHBoxLayout()
         buttons.addStretch()
+        if self.on_cancel is not None and self.header["status"] == 1:
+            cancel_button = QPushButton("Hủy phiếu nhập")
+            cancel_button.setStyleSheet(
+                "QPushButton { background-color: #A83232; color: white; }"
+            )
+            cancel_button.clicked.connect(self.cancel_import)
+            buttons.addWidget(cancel_button)
+
         print_button = QPushButton("In phiếu nhập")
         print_button.clicked.connect(self.print_import)
         close_button = QPushButton("Đóng")
-        close_button.clicked.connect(self.accept)
+        close_button.clicked.connect(self.reject)
         buttons.addWidget(print_button)
         buttons.addWidget(close_button)
         root.addLayout(buttons)
+
+    def cancel_import(self):
+        """Gọi quy trình hủy phiếu nhập có kiểm tra quyền và cập nhật tồn kho."""
+        if self.on_cancel is None:
+            return
+        callback = self.on_cancel
+        self.accept()
+        callback()
 
     def _build_print_html(self):
         h = self.header
