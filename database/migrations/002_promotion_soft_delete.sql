@@ -3,7 +3,7 @@
 USE CSDLTEST;
 GO
 
--- Migration nay them cot (neu chua co) va chi cho rl_QuanLy cap nhat co IS_DELETED.
+-- Migration nay them cot (neu chua co) va chi cho rl_QuanLy cap nhat TENKM, IS_DELETED.
 IF COL_LENGTH(N'dbo.CHUONG_TRINH_KM', N'IS_DELETED') IS NULL
 BEGIN
     ALTER TABLE dbo.CHUONG_TRINH_KM
