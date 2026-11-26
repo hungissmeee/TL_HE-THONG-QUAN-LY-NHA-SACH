@@ -7,6 +7,7 @@ from decimal import (
 from PySide6.QtCore import (
     Qt,
     QDate,
+    QLocale,
 )
 from PySide6.QtGui import (
     QDoubleValidator,
@@ -199,9 +200,24 @@ class ProductFormDialog(QDialog):
             "Giá nhập được hệ thống tính tự động từ các phiếu nhập."
         )
 
+        # Các ô tiền dùng dấu chấm làm dấu thập phân, không diễn giải
+        # dấu chấm thành dấu phân tách hàng nghìn theo locale Windows.
+        number_locale = QLocale.c()
+        number_locale.setNumberOptions(
+            number_locale.numberOptions()
+            | QLocale.NumberOption.RejectGroupSeparator
+        )
+
         self.giaban = QLineEdit()
         self.giaban.setPlaceholderText("0.00")
-        self.giaban.setValidator(QDoubleValidator(0, 9999999999999.99, 2, self))
+        price_validator = QDoubleValidator(
+            0, 9999999999999.99, 2, self
+        )
+        price_validator.setLocale(number_locale)
+        price_validator.setNotation(
+            QDoubleValidator.Notation.StandardNotation
+        )
+        self.giaban.setValidator(price_validator)
 
         self.slton = QLineEdit("0")
         self.slton.setReadOnly(True)
@@ -210,7 +226,12 @@ class ProductFormDialog(QDialog):
         )
 
         self.vat = QLineEdit("0")
-        self.vat.setValidator(QDoubleValidator(0, 999.99, 2, self))
+        vat_validator = QDoubleValidator(0, 100, 2, self)
+        vat_validator.setLocale(number_locale)
+        vat_validator.setNotation(
+            QDoubleValidator.Notation.StandardNotation
+        )
+        self.vat.setValidator(vat_validator)
 
         common_form.addRow("Mã sản phẩm:", self.masp)
         common_form.addRow("Tên sản phẩm:", self.tensp)
