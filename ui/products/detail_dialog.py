@@ -6,7 +6,7 @@ from PySide6.QtGui import QDoubleValidator, QIntValidator
 from PySide6.QtWidgets import (
     QWidget, QDialog, QLabel, QLineEdit, QPushButton, QComboBox,
     QVBoxLayout, QHBoxLayout, QFormLayout, QTableWidget,
-    QHeaderView, QAbstractItemView, QMessageBox, QSpinBox,
+    QHeaderView, QAbstractItemView, QMessageBox, QSpinBox, QStackedWidget,
     QDoubleSpinBox, QGroupBox, QDateEdit, QCheckBox,
     QListWidget, QListWidgetItem, QCompleter, QFrame,
 )
