@@ -360,3 +360,4 @@ class InvoiceDetailDialog(QDialog):
 
 
 
+
