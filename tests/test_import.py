@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-LOCAL_PACKAGES = {"giao_dien", "co_so_du_lieu"}
+LOCAL_PACKAGES = {"ui", "database"}
 
 
 def _module_exists(path):
@@ -14,11 +14,12 @@ def _module_exists(path):
 
 
 class LocalImportTests(unittest.TestCase):
+    """Đảm bảo mọi import nội bộ trỏ tới tệp Python hoặc package tồn tại."""
     """Kiểm tra các đường dẫn import nội bộ có trỏ tới module tồn tại."""
     def test_local_import_targets_exist(self):
         missing = []
 
-        for source in (ROOT / "giao_dien").rglob("*.py"):
+        for source in (ROOT / "ui").rglob("*.py"):
             tree = ast.parse(source.read_text(encoding="utf-8"), filename=str(source))
 
             for node in ast.walk(tree):
