@@ -1,6 +1,19 @@
 """InvoiceDetailDialog: thành phần giao diện nghiệp vụ hóa đơn."""
 
 from html import escape
+from PySide6.QtCore import (
+    QSizeF,
+    QMarginsF,
+)
+from PySide6.QtGui import (
+    QTextDocument,
+    QPageSize,
+    QPageLayout,
+)
+from PySide6.QtPrintSupport import (
+    QPrinter,
+    QPrintDialog,
+)
 from PySide6.QtWidgets import (
     QDialog,
     QLabel,
@@ -18,6 +31,7 @@ from ui.table_sort import (
     prepare_sortable_table,
 )
 from .common import MONEY_QUANT, Decimal, ROUND_HALF_UP, money, as_decimal, date_text, time_text
+
 
 class InvoiceDetailDialog(QDialog):
     def __init__(self, db, invoice_code, parent=None):
@@ -357,6 +371,7 @@ class InvoiceDetailDialog(QDialog):
         printer.setPageSize(page_size)
         printer.setPageMargins(margins, QPageLayout.Unit.Millimeter)
         document.print_(printer)
+
 
 
 
