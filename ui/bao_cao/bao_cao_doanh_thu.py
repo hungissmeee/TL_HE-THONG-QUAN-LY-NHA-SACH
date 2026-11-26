@@ -7,7 +7,6 @@ from ui.bao_cao.bao_cao_co_so import ReportBasePage, money_text, number_text, da
 
 class RevenueReportPage(ReportBasePage):
     """Hiển thị doanh thu theo bộ lọc thời gian được chọn."""
-    """Báo cáo doanh thu theo bộ lọc thời gian."""
     PERIODS = {
         "Ngày": "CAST(HD.NGAYLAP AS date)",
         "Tháng": "DATEFROMPARTS(YEAR(HD.NGAYLAP), MONTH(HD.NGAYLAP), 1)",

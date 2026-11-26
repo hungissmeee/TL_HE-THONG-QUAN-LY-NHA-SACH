@@ -7,7 +7,6 @@ from ui.bao_cao.bao_cao_co_so import ReportBasePage, money_text, number_text
 
 class ProductReportPage(ReportBasePage):
     """Thống kê sản phẩm theo các tiêu chí báo cáo."""
-    """Báo cáo thống kê sản phẩm."""
     def __init__(self, db, parent=None):
         super().__init__(
             db,

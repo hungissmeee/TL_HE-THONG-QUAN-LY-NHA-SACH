@@ -7,7 +7,6 @@ from ui.bao_cao.bao_cao_co_so import (
 
 class InvoiceReportPage(ReportBasePage):
     """Hiển thị số liệu tổng hợp từ hóa đơn bán hàng."""
-    """Báo cáo dữ liệu hóa đơn bán hàng."""
     def __init__(self, db, parent=None):
         super().__init__(
             db,

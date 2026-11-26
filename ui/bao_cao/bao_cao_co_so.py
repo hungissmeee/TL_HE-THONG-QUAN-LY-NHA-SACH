@@ -10,12 +10,12 @@ from PySide6.QtWidgets import (
     QAbstractItemView, QMessageBox, QFileDialog, QComboBox,
 )
 
-from ui.sap_xep_bang import (
+from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
     prepare_sortable_table,
 )
 
-from ui.dinh_dang import (
+from ui.formatters import (
     format_report_money as money_text,
     format_number as number_text,
     format_report_date as date_text,
@@ -23,7 +23,6 @@ from ui.dinh_dang import (
 
 
 class ReportBasePage(QWidget):
-    """Lớp cơ sở dùng chung bố cục, bộ lọc, tải dữ liệu và xuất báo cáo."""
     """Lớp nền cung cấp bộ lọc, bảng dữ liệu và chức năng xuất báo cáo dùng chung."""
     """Lớp nền: bộ lọc ngày, truy vấn, bảng và xuất CSV dùng chung."""
 

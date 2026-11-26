@@ -7,7 +7,6 @@ from ui.bao_cao.bao_cao_co_so import (
 
 class ImportReportPage(ReportBasePage):
     """Hiển thị số liệu tổng hợp từ các phiếu nhập."""
-    """Báo cáo tổng hợp hoạt động nhập hàng."""
     def __init__(self, db, parent=None):
         super().__init__(
             db,

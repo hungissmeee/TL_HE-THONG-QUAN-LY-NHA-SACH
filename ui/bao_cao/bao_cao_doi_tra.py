@@ -7,7 +7,6 @@ from ui.bao_cao.bao_cao_co_so import (
 
 class ReturnReportPage(ReportBasePage):
     """Hiển thị dữ liệu đổi trả để theo dõi số lượng và giá trị giao dịch."""
-    """Báo cáo tình hình đổi trả hàng."""
     def __init__(self, db, parent=None):
         super().__init__(
             db,
