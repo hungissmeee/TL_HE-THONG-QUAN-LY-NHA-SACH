@@ -25,19 +25,20 @@ class OverviewReportPage(ReportBasePage):
             [
                 (
                     "revenue", "Doanh thu bán hàng", "0 đ",
-                    "Tổng tiền hóa đơn hợp lệ sau khuyến mãi", "positive",
+                    "Tổng tiền hóa đơn hợp lệ sau khuyến mãi", "positive", "support",
                 ),
                 (
                     "refund", "Tiền đã hoàn", "0 đ",
-                    "Tổng tiền ghi nhận trên phiếu đổi trả", "warning",
+                    "Tổng tiền ghi nhận trên phiếu đổi trả", "warning", "support",
                 ),
                 (
                     "net", "Doanh thu sau hoàn", "0 đ",
-                    "Doanh thu bán hàng trừ tiền đã hoàn", "primary",
+                    "Doanh thu bán hàng − tiền đã hoàn", "primary", "highlight",
                 ),
             ],
+            columns=4,
             section_title="Kết quả bán hàng",
-            section_description="Các khoản thu và hoàn trong khoảng thời gian đang chọn.",
+            section_description="Hai khoản thành phần được hiển thị nhỏ hơn; doanh thu sau hoàn là kết quả chính.",
         )
 
         # Nhóm chứng từ và nhập hàng được tách riêng để tránh trộn với doanh thu.
@@ -45,19 +46,20 @@ class OverviewReportPage(ReportBasePage):
             [
                 (
                     "valid_invoices", "Hóa đơn hợp lệ", "0",
-                    "Được ghi nhận vào doanh thu", "positive",
+                    "Được ghi nhận vào doanh thu", "positive", "support",
                 ),
                 (
                     "cancelled_invoices", "Hóa đơn đã hủy", "0",
-                    "Không được tính vào doanh thu", "negative",
+                    "Không được tính vào doanh thu", "negative", "support",
                 ),
                 (
                     "imports", "Giá trị nhập hàng", "0 đ",
-                    "Tổng trị giá phiếu nhập trong kỳ", "violet",
+                    "Tổng trị giá phiếu nhập trong kỳ", "violet", "highlight",
                 ),
             ],
+            columns=4,
             section_title="Chứng từ và nhập hàng",
-            section_description="Số lượng hóa đơn theo trạng thái và giá trị hàng đã nhập.",
+            section_description="Số hóa đơn là thông tin phụ; tổng giá trị nhập được làm nổi bật riêng.",
         )
 
         trend_title = QLabel("Doanh thu theo ngày")
