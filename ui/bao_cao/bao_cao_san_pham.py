@@ -53,96 +53,9 @@ class ProductReportPage(ReportBasePage):
 
     def load_report(self):
         start_date, end_date = self.date_parameters()
+        sort_key = self.sort_combo.currentData()
         search = self.search_input.text().strip()
-        filter_sql = ""
-        order_options = {
-            "quantity_desc": (
-                "COALESCE(S.SL_BAN, 0) DESC, "
-                "(COALESCE(S.DOANH_THU, 0) - COALESCE(R.TIEN_HOAN, 0)) DESC, "
-                "SP.TENSP ASC"
-            ),
-            "quantity_asc": (
-                "COALESCE(S.SL_BAN, 0) ASC, "
-                "(COALESCE(S.DOANH_THU, 0) - COALESCE(R.TIEN_HOAN, 0)) ASC, "
-                "SP.TENSP ASC"
-            ),
-            "revenue_desc": (
-                "(COALESCE(S.DOANH_THU, 0) - COALESCE(R.TIEN_HOAN, 0)) DESC, "
-                "COALESCE(S.SL_BAN, 0) DESC, SP.TENSP ASC"
-            ),
-        }
-        order_sql = order_options.get(
-            self.sort_combo.currentData(),
-            order_options["quantity_desc"],
-        )
-
-        sales_params = [start_date, end_date]
-        return_params = [start_date, end_date]
-        if search:
-            filter_sql = " AND (SP.MASP LIKE ? OR SP.TENSP LIKE ?)"
-            search_params = [f"%{search}%", f"%{search}%"]
-        else:
-            search_params = []
-
-        sql = f"""
-            WITH Sales AS (
-                SELECT
-                    CT.MASP,
-                    COUNT(DISTINCT HD.MAHD) AS SO_HD,
-                    SUM(COALESCE(CT.SOLUONG, 0)) AS SL_BAN,
-                    SUM(COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0)) AS TIEN_HANG,
-                    SUM(COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0)
-                        * COALESCE(KM.TYLEGIAM, 0) / 100.0) AS TIEN_GIAM,
-                    SUM(COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0)
-                        * (1 - COALESCE(KM.TYLEGIAM, 0) / 100.0)) AS DOANH_THU
-                FROM dbo.HOA_DON HD
-                INNER JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
-                LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
-                WHERE HD.TRANGTHAI = 1
-                  AND HD.NGAYLAP >= CONVERT(date, ?)
-                  AND HD.NGAYLAP < DATEADD(day, 1, CONVERT(date, ?))
-                GROUP BY CT.MASP
-            ),
-            Returns AS (
-                SELECT
-                    CTDT.MASP,
-                    SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 0
-                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_HOAN_TIEN,
-                    SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 1
-                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_DOI_HANG,
-                    SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 0
-                        THEN COALESCE(CTDT.DONGIAHOAN, 0)
-                           * COALESCE(CTDT.SOLUONG, 0)
-                        ELSE 0 END) AS TIEN_HOAN
-                FROM dbo.PHIEU_DOI_TRA PDT
-                INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT
-                WHERE PDT.NGAY_DOI_TRA >= CONVERT(date, ?)
-                  AND PDT.NGAY_DOI_TRA < DATEADD(day, 1, CONVERT(date, ?))
-                GROUP BY CTDT.MASP
-            )
-            SELECT
-                ROW_NUMBER() OVER (ORDER BY {order_sql}) AS XEP_HANG,
-                SP.MASP,
-                COALESCE(SP.TENSP, N''),
-                COALESCE(S.SO_HD, 0),
-                COALESCE(S.SL_BAN, 0),
-                COALESCE(R.SL_HOAN_TIEN, 0),
-                COALESCE(R.SL_DOI_HANG, 0),
-                COALESCE(S.TIEN_HANG, 0),
-                COALESCE(S.TIEN_GIAM, 0),
-                COALESCE(S.DOANH_THU, 0),
-                COALESCE(R.TIEN_HOAN, 0),
-                COALESCE(S.DOANH_THU, 0) - COALESCE(R.TIEN_HOAN, 0),
-                COALESCE(SP.SLTON, 0)
-            FROM dbo.SAN_PHAM SP
-            LEFT JOIN Sales S ON S.MASP = SP.MASP
-            LEFT JOIN Returns R ON R.MASP = SP.MASP
-            WHERE COALESCE(SP.IS_DELETED, 0) = 0
-            {filter_sql}
-            ORDER BY {order_sql}
-        """
-        params = [*sales_params, *return_params, *search_params]
-        rows = self.fetch_all(sql, tuple(params))
+        rows = self.service.product_report(start_date, end_date, sort_key, search)
 
         total_sold = sum(int(row[4] or 0) for row in rows)
         total_refund = sum((row[10] or 0) for row in rows)
