@@ -1,6 +1,6 @@
-# BookHub Web Frontend
+# Hệ thống quản lý nhà sách - Web
 
-Frontend React + TypeScript + Vite, dùng Ant Design và theme tối đồng bộ với ứng dụng Desktop.
+Frontend React + TypeScript + Vite của Hệ thống quản lý nhà sách, dùng Ant Design và theme tối đồng bộ với ứng dụng Desktop.
 
 ## Chạy toàn bộ Web
 
