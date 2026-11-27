@@ -21,7 +21,7 @@ def find_matching_product_codes(products, keyword):
 
     exact_matches = [
         code for code, fields in searchable_fields.items()
-        if normalized in fields and fields[fields.index(normalized)]
+        if any(normalized == field for field in fields if field)
     ]
     if exact_matches:
         return exact_matches
