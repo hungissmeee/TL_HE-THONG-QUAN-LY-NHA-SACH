@@ -100,41 +100,11 @@ class OverviewReportPage(ReportBasePage):
         self.register_export_table("Top sản phẩm bán chạy", self.top_products_table)
 
     def load_report(self):
-        """Tải các chỉ số tổng quan về doanh thu, hóa đơn, nhập hàng và sản phẩm."""
+        """Tải các chỉ số tổng quan thông qua report service."""
         start_date, end_date = self.date_parameters()
-
-        summary_sql = """
-            SELECT
-                COUNT(DISTINCT CASE WHEN HD.TRANGTHAI = 1 THEN HD.MAHD END),
-                COUNT(DISTINCT CASE WHEN HD.TRANGTHAI = 0 THEN HD.MAHD END),
-                COALESCE(SUM(CASE WHEN HD.TRANGTHAI = 1 THEN
-                    COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0)
-                    * (1 - COALESCE(KM.TYLEGIAM, 0) / 100.0)
-                    ELSE 0 END), 0)
-            FROM dbo.HOA_DON HD
-            LEFT JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
-            LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
-            WHERE HD.NGAYLAP >= CONVERT(date, ?)
-              AND HD.NGAYLAP < DATEADD(day, 1, CONVERT(date, ?))
-        """
-        summary = self.fetch_one(summary_sql, (start_date, end_date))
-
-        refund_sql = """
-            SELECT COALESCE(SUM(TONG_TIEN_HOAN), 0)
-            FROM dbo.PHIEU_DOI_TRA
-            WHERE NGAY_DOI_TRA >= CONVERT(date, ?)
-              AND NGAY_DOI_TRA < DATEADD(day, 1, CONVERT(date, ?))
-        """
-        refund_row = self.fetch_one(refund_sql, (start_date, end_date))
-
-        import_sql = """
-            SELECT COALESCE(SUM(TONGTRIGIA), 0)
-            FROM dbo.PHIEU_NHAP
-            WHERE NGAYNHAP >= CONVERT(date, ?)
-              AND NGAYNHAP < DATEADD(day, 1, CONVERT(date, ?))
-              AND ISNULL(TRANGTHAI, 1) = 1
-        """
-        import_row = self.fetch_one(import_sql, (start_date, end_date))
+        summary = self.service.overview_summary(start_date, end_date)
+        refund_row = self.service.overview_refunds(start_date, end_date)
+        import_row = self.service.overview_imports(start_date, end_date)
 
         revenue = summary[2] or 0
         refund = refund_row[0] if refund_row else 0
@@ -147,47 +117,7 @@ class OverviewReportPage(ReportBasePage):
         self.set_stat("cancelled_invoices", number_text(summary[1]))
         self.set_stat("imports", money_text(import_row[0] if import_row else 0))
 
-        trend_sql = """
-            WITH SalesByDay AS (
-                SELECT
-                    CAST(HD.NGAYLAP AS date) AS NGAY,
-                    COUNT(DISTINCT HD.MAHD) AS SO_HD,
-                    COALESCE(SUM(CT.SOLUONG), 0) AS SO_LUONG,
-                    COALESCE(SUM(COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0)
-                        * (1 - COALESCE(KM.TYLEGIAM, 0) / 100.0)), 0) AS DOANH_THU
-                FROM dbo.HOA_DON HD
-                INNER JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
-                LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
-                WHERE HD.TRANGTHAI = 1
-                  AND HD.NGAYLAP >= CONVERT(date, ?)
-                  AND HD.NGAYLAP < DATEADD(day, 1, CONVERT(date, ?))
-                GROUP BY CAST(HD.NGAYLAP AS date)
-            ),
-            RefundByDay AS (
-                SELECT
-                    CAST(PDT.NGAY_DOI_TRA AS date) AS NGAY,
-                    COALESCE(SUM(PDT.TONG_TIEN_HOAN), 0) AS TIEN_HOAN
-                FROM dbo.PHIEU_DOI_TRA PDT
-                WHERE PDT.NGAY_DOI_TRA >= CONVERT(date, ?)
-                  AND PDT.NGAY_DOI_TRA < DATEADD(day, 1, CONVERT(date, ?))
-                GROUP BY CAST(PDT.NGAY_DOI_TRA AS date)
-            )
-            SELECT
-                COALESCE(S.NGAY, R.NGAY) AS NGAY,
-                COALESCE(S.SO_HD, 0) AS SO_HD,
-                COALESCE(S.SO_LUONG, 0) AS SO_LUONG,
-                COALESCE(S.DOANH_THU, 0) AS DOANH_THU,
-                COALESCE(R.TIEN_HOAN, 0) AS TIEN_HOAN,
-                COALESCE(S.DOANH_THU, 0) - COALESCE(R.TIEN_HOAN, 0)
-                    AS DOANH_THU_SAU_HOAN
-            FROM SalesByDay S
-            FULL OUTER JOIN RefundByDay R ON R.NGAY = S.NGAY
-            ORDER BY NGAY
-        """
-        trend_rows = self.fetch_all(
-            trend_sql, (start_date, end_date, start_date, end_date)
-        )
-
+        trend_rows = self.service.overview_trend(start_date, end_date)
         self.trend_chart.set_data([
             (
                 date_text(row[0], include_time=False),
@@ -208,24 +138,7 @@ class OverviewReportPage(ReportBasePage):
             for row in trend_rows
         ])
 
-        top_sql = """
-            SELECT TOP 10
-                SP.MASP,
-                COALESCE(SP.TENSP, N''),
-                SUM(COALESCE(CT.SOLUONG, 0)) AS SO_LUONG,
-                SUM(COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0)
-                    * (1 - COALESCE(KM.TYLEGIAM, 0) / 100.0)) AS DOANH_THU
-            FROM dbo.HOA_DON HD
-            INNER JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
-            INNER JOIN dbo.SAN_PHAM SP ON SP.MASP = CT.MASP
-            LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
-            WHERE HD.TRANGTHAI = 1
-              AND HD.NGAYLAP >= CONVERT(date, ?)
-              AND HD.NGAYLAP < DATEADD(day, 1, CONVERT(date, ?))
-            GROUP BY SP.MASP, SP.TENSP
-            ORDER BY SUM(COALESCE(CT.SOLUONG, 0)) DESC, DOANH_THU DESC
-        """
-        top_rows = self.fetch_all(top_sql, (start_date, end_date))
+        top_rows = self.service.overview_top_products(start_date, end_date)
         self.fill_table(self.top_products_table, [
             (row[0], row[1], number_text(row[2]), money_text(row[3]))
             for row in top_rows
