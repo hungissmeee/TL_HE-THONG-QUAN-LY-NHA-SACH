@@ -3,11 +3,10 @@
 from decimal import Decimal, ROUND_HALF_UP
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIntValidator
 from PySide6.QtWidgets import (
     QDialog, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
     QFormLayout, QGroupBox, QComboBox, QCompleter, QLineEdit, QTableWidget,
-    QTableWidgetItem, QHeaderView, QAbstractItemView, QMessageBox,
+    QTableWidgetItem, QHeaderView, QAbstractItemView, QMessageBox, QSpinBox,
 )
 
 from .dung_chung import MONEY_QUANT, as_decimal, date_text, money
@@ -314,11 +313,13 @@ class CreateReturnDialog(QDialog):
                 for column, value in enumerate(values):
                     self.table.setItem(row, column, QTableWidgetItem(str(value)))
 
-                quantity = QLineEdit("0")
-                quantity.setValidator(QIntValidator(0, remaining, quantity))
+                quantity = QSpinBox(self.table)
+                quantity.setRange(0, remaining)
+                quantity.setValue(0)
                 quantity.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                quantity.setMinimumHeight(34)
                 quantity.setToolTip(
-                    f"Chỉ nhập số nguyên từ 0 đến {remaining}. "
+                    f"Chỉ chọn số nguyên từ 0 đến {remaining}. "
                     f"Đơn vị tính: {data[2] or 'Không xác định'}"
                 )
 
@@ -341,7 +342,7 @@ class CreateReturnDialog(QDialog):
                     "action": action,
                     "net_price": net_price,
                 }
-                quantity.textChanged.connect(self.update_totals)
+                quantity.valueChanged.connect(self.update_totals)
                 condition.currentIndexChanged.connect(self.update_totals)
                 action.currentIndexChanged.connect(self.update_totals)
 
@@ -355,7 +356,7 @@ class CreateReturnDialog(QDialog):
         total = Decimal("0.00")
         for controls in self.row_controls.values():
             quantity = self._parse_quantity_input(
-                controls["quantity"].text()
+                str(controls["quantity"].value())
             )
             condition = controls["condition"].currentData()
             action = controls["action"].currentData()
@@ -387,7 +388,7 @@ class CreateReturnDialog(QDialog):
         for masp, controls in self.row_controls.items():
             try:
                 quantity = self._parse_quantity_input(
-                    controls["quantity"].text()
+                    str(controls["quantity"].value())
                 )
             except ValueError as error:
                 QMessageBox.warning(self, "Số lượng không hợp lệ", str(error))

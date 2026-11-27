@@ -132,6 +132,20 @@ class ReturnDialogWidgetTests(unittest.TestCase):
         )
         combo.close()
 
+    def test_return_quantity_editor_is_native_spinbox_with_bounded_range(self):
+        from PySide6.QtWidgets import QSpinBox
+
+        quantity = QSpinBox()
+        quantity.setRange(0, 5)
+        quantity.setValue(3)
+        quantity.setMinimumHeight(34)
+
+        self.assertEqual(quantity.value(), 3)
+        self.assertEqual(quantity.minimum(), 0)
+        self.assertEqual(quantity.maximum(), 5)
+        self.assertGreaterEqual(quantity.minimumHeight(), 34)
+        quantity.close()
+
 
 class DatabaseUtilityTests(unittest.TestCase):
     """Kiểm thử cấu hình kết nối, vai trò và kiểm tra quyền quản trị."""
