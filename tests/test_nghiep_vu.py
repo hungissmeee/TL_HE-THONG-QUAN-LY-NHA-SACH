@@ -787,9 +787,10 @@ class InputValidationTests(unittest.TestCase):
         self.assertIn("invoices", MainWindow.ROLE_PAGE_ACCESS["Thu ngân"])
         self.assertIn("imports", MainWindow.ROLE_PAGE_ACCESS["Nhân viên kho"])
         self.assertIn("returns", MainWindow.ROLE_PAGE_ACCESS["Quản lý"])
-        self.assertIn("report_revenue", MainWindow.ROLE_PAGE_ACCESS["Kế toán"])
-        self.assertIn("report_shifts", MainWindow.ROLE_PAGE_ACCESS["Quản lý"])
-        self.assertIn("report_shifts", MainWindow.ROLE_PAGE_ACCESS["Kế toán"])
+        self.assertIn("report_center", MainWindow.ROLE_PAGE_ACCESS["Quản lý"])
+        self.assertIn("report_center", MainWindow.ROLE_PAGE_ACCESS["Kế toán"])
+        self.assertNotIn("report_center", MainWindow.ROLE_PAGE_ACCESS["Thu ngân"])
+        self.assertNotIn("report_center", MainWindow.ROLE_PAGE_ACCESS["Nhân viên kho"])
 
     def test_admin_is_recognized_case_insensitively(self):
         self.assertTrue(is_admin_account("admin"))
@@ -800,9 +801,7 @@ class InputValidationTests(unittest.TestCase):
         all_pages = {
             "home", "products", "employees", "suppliers", "imports",
             "invoices", "returns", "shifts", "authors", "genres",
-            "publishers", "brands", "report_overview", "report_revenue",
-            "report_invoice", "report_import", "report_return",
-            "report_inventory", "report_product", "report_shifts",
+            "publishers", "brands", "report_center",
         }
         allowed = allowed_pages_for_user(
             "admin", "", MainWindow.ROLE_PAGE_ACCESS, all_pages
@@ -1099,20 +1098,19 @@ class InvoiceSafetyTests(unittest.TestCase):
     def test_odbc_values_escape_closing_braces(self):
         self.assertEqual(Database._odbc_value("pass}word"), "{pass}}word}")
 
-    def test_role_page_map_has_no_stale_statistics_page(self):
+    def test_report_navigation_has_only_one_report_center(self):
         all_roles = [
             page
             for pages in MainWindow.ROLE_PAGE_ACCESS.values()
             for page in pages
         ]
-        self.assertNotIn("statistics", all_roles)
-        for page in (
+        self.assertEqual(all_roles.count("report_center"), 2)
+        for old_page in (
             "report_overview", "report_revenue", "report_invoice",
             "report_import", "report_return", "report_inventory",
-            "report_product",
+            "report_product", "report_shifts",
         ):
-            self.assertIn(page, MainWindow.ROLE_PAGE_ACCESS["Quản lý"])
-            self.assertIn(page, MainWindow.ROLE_PAGE_ACCESS["Kế toán"])
+            self.assertNotIn(old_page, all_roles)
 
 
 class ShiftDateFormatterTests(unittest.TestCase):
@@ -1128,31 +1126,30 @@ class ShiftDateFormatterTests(unittest.TestCase):
 
 
 
-class ReportServiceSeparationTests(unittest.TestCase):
-    """Đảm bảo trang báo cáo chỉ gọi Service, không nhúng SQL trong UI."""
+class ReportCenterTests(unittest.TestCase):
+    """Kiểm tra trung tâm báo cáo thống nhất và danh mục POS."""
 
-    def test_report_pages_delegate_loading_to_service(self):
+    def test_report_center_uses_one_report_page_and_xlsx_export(self):
         import inspect
-        from ui.bao_cao.bao_cao_tong_quan import OverviewReportPage
-        from ui.bao_cao.bao_cao_doanh_thu import RevenueReportPage
-        from ui.bao_cao.bao_cao_hoa_don import InvoiceReportPage
-        from ui.bao_cao.bao_cao_phieu_nhap import ImportReportPage
-        from ui.bao_cao.bao_cao_doi_tra import ReturnReportPage
-        from ui.bao_cao.bao_cao_ton_kho import InventoryReportPage
-        from ui.bao_cao.bao_cao_san_pham import ProductReportPage
-        from ui.bao_cao.bao_cao_ca_lam_viec import ShiftReportPage
+        from ui.bao_cao.trung_tam_bao_cao import ReportCenterPage, REPORTS
 
-        pages = (
-            OverviewReportPage, RevenueReportPage, InvoiceReportPage,
-            ImportReportPage, ReturnReportPage, InventoryReportPage,
-            ProductReportPage, ShiftReportPage,
-        )
-        for page in pages:
-            source = inspect.getsource(page.load_report)
-            with self.subTest(page=page.__name__):
-                self.assertIn("self.service.", source)
-                self.assertNotIn("cursor.execute", source)
-                self.assertNotIn("SELECT ", source)
+        self.assertTrue(callable(ReportCenterPage.refresh_data))
+        self.assertTrue(callable(ReportCenterPage.export_xlsx))
+        self.assertIn("stock_movement", REPORTS)
+        self.assertIn("stock_card", REPORTS)
+        self.assertIn("daily_sales", REPORTS)
+        self.assertIn("sales_time", REPORTS)
+        source = inspect.getsource(ReportCenterPage.export_xlsx)
+        self.assertIn(".xlsx", source)
+        self.assertNotIn(".csv", source)
+
+    def test_report_center_does_not_use_legacy_kpi_cards(self):
+        import inspect
+        from ui.bao_cao.trung_tam_bao_cao import ReportCenterPage
+
+        source = inspect.getsource(ReportCenterPage)
+        self.assertNotIn("add_stat_cards", source)
+        self.assertNotIn("reportPrimaryKpi", source)
 
 
 if __name__ == "__main__":
