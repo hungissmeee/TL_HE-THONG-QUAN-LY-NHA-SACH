@@ -17,6 +17,7 @@ from backend.database import (
 from backend.dependencies import get_db_connection
 from backend.main import create_app
 from database.connection import Database
+from run_backend import load_server_options
 
 
 def make_settings(**overrides):
@@ -315,6 +316,60 @@ class BackendHealthTests(unittest.TestCase):
         self.assertIn("/api/v1/health/live", paths)
         self.assertIsNone(app.docs_url)
         self.assertIsNone(app.redoc_url)
+
+
+class BackendLauncherTests(unittest.TestCase):
+    def setUp(self):
+        patcher = patch("backend.config.ENV_FILE", Path(".missing-launcher-test-env"))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_launcher_has_development_defaults(self):
+        with patch.dict(os.environ, {}, clear=True):
+            options = load_server_options()
+        self.assertEqual(options.host, "127.0.0.1")
+        self.assertEqual(options.port, 8000)
+        self.assertTrue(options.reload)
+        self.assertEqual(options.log_level, "info")
+
+    def test_launcher_reads_host_port_reload_and_log_level(self):
+        env = {
+            "BOOKHUB_WEB_HOST": "0.0.0.0",
+            "BOOKHUB_WEB_PORT": "9000",
+            "BOOKHUB_WEB_RELOAD": "false",
+            "BOOKHUB_WEB_LOG_LEVEL": "warning",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            options = load_server_options()
+        self.assertEqual(options.host, "0.0.0.0")
+        self.assertEqual(options.port, 9000)
+        self.assertFalse(options.reload)
+        self.assertEqual(options.log_level, "warning")
+
+    def test_launcher_rejects_invalid_port(self):
+        with patch.dict(os.environ, {"BOOKHUB_WEB_PORT": "70000"}, clear=True):
+            with self.assertRaisesRegex(ConfigurationError, "1–65535"):
+                load_server_options()
+
+    def test_launcher_rejects_empty_host(self):
+        with patch.dict(os.environ, {"BOOKHUB_WEB_HOST": " "}, clear=True):
+            with self.assertRaisesRegex(ConfigurationError, "không được để trống"):
+                load_server_options()
+
+    def test_launcher_rejects_reload_in_production(self):
+        env = {
+            "BOOKHUB_WEB_ENV": "production",
+            "BOOKHUB_WEB_RELOAD": "true",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            with self.assertRaisesRegex(ConfigurationError, "production"):
+                load_server_options()
+
+    def test_launcher_rejects_invalid_log_level(self):
+        with patch.dict(os.environ, {"BOOKHUB_WEB_LOG_LEVEL": "verbose"}, clear=True):
+            with self.assertRaisesRegex(ConfigurationError, "LOG_LEVEL"):
+                load_server_options()
+
 
 
 if __name__ == "__main__":
