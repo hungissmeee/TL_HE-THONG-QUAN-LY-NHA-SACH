@@ -56,6 +56,7 @@ class ProductWindow(QWidget):
         top.addStretch()
 
         self.add_button = QPushButton("+ Thêm sản phẩm")
+        self.add_button.setProperty("buttonRole", "primary")
         self.add_button.clicked.connect(self.open_add_dialog)
         top.addWidget(self.add_button)
 
