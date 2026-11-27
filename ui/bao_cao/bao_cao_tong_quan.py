@@ -5,7 +5,7 @@ from PySide6.QtWidgets import QLabel, QVBoxLayout
 from decimal import Decimal
 
 from ui.bao_cao.bao_cao_co_so import (
-    ReportBasePage, money_text, number_text, date_text,
+    ReportBasePage, ReportLineChart, money_text, number_text, date_text,
 )
 
 
@@ -61,11 +61,31 @@ class OverviewReportPage(ReportBasePage):
             section_description="Số lượng hóa đơn theo trạng thái và giá trị hàng đã nhập.",
         )
 
-        trend_title = QLabel("Doanh thu theo ngày")
-        trend_title.setStyleSheet("font-weight: bold;")
+        trend_title = QLabel("Xu hướng bán hàng và hoàn trả")
+        trend_title.setStyleSheet("font-size: 14px; font-weight: bold;")
         self.content_layout.addWidget(trend_title)
+
+        self.trend_chart = ReportLineChart(
+            "Doanh thu theo ngày phát sinh",
+            [
+                ("Doanh thu bán hàng", 0, "#60A5FA"),
+                ("Doanh thu sau hoàn theo ngày", 1, "#34D399"),
+            ],
+        )
+        self.content_layout.addWidget(self.trend_chart)
+
+        trend_note = QLabel(
+            "Doanh thu bán hàng theo ngày lập hóa đơn; tiền hoàn theo ngày "
+            "lập phiếu đổi trả. Số âm thể hiện ngày có tiền hoàn lớn hơn "
+            "doanh thu bán hàng phát sinh trong ngày."
+        )
+        trend_note.setWordWrap(True)
+        trend_note.setStyleSheet("color: #8291A5; font-size: 10px;")
+        self.content_layout.addWidget(trend_note)
+
         self.trend_table = self.make_table([
-            "Ngày", "Số hóa đơn", "Số lượng bán", "Doanh thu"
+            "Ngày", "Số hóa đơn", "Số lượng bán",
+            "Doanh thu bán hàng", "Tiền hoàn", "Doanh thu sau hoàn"
         ])
         self.content_layout.addWidget(self.trend_table)
         self.register_export_table("Doanh thu theo ngày", self.trend_table)
@@ -128,28 +148,62 @@ class OverviewReportPage(ReportBasePage):
         self.set_stat("imports", money_text(import_row[0] if import_row else 0))
 
         trend_sql = """
+            WITH SalesByDay AS (
+                SELECT
+                    CAST(HD.NGAYLAP AS date) AS NGAY,
+                    COUNT(DISTINCT HD.MAHD) AS SO_HD,
+                    COALESCE(SUM(CT.SOLUONG), 0) AS SO_LUONG,
+                    COALESCE(SUM(COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0)
+                        * (1 - COALESCE(KM.TYLEGIAM, 0) / 100.0)), 0) AS DOANH_THU
+                FROM dbo.HOA_DON HD
+                INNER JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
+                LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
+                WHERE HD.TRANGTHAI = 1
+                  AND HD.NGAYLAP >= CONVERT(date, ?)
+                  AND HD.NGAYLAP < DATEADD(day, 1, CONVERT(date, ?))
+                GROUP BY CAST(HD.NGAYLAP AS date)
+            ),
+            RefundByDay AS (
+                SELECT
+                    CAST(PDT.NGAY_DOI_TRA AS date) AS NGAY,
+                    COALESCE(SUM(PDT.TONG_TIEN_HOAN), 0) AS TIEN_HOAN
+                FROM dbo.PHIEU_DOI_TRA PDT
+                WHERE PDT.NGAY_DOI_TRA >= CONVERT(date, ?)
+                  AND PDT.NGAY_DOI_TRA < DATEADD(day, 1, CONVERT(date, ?))
+                GROUP BY CAST(PDT.NGAY_DOI_TRA AS date)
+            )
             SELECT
-                CAST(HD.NGAYLAP AS date) AS NGAY,
-                COUNT(DISTINCT HD.MAHD) AS SO_HD,
-                COALESCE(SUM(CT.SOLUONG), 0) AS SO_LUONG,
-                COALESCE(SUM(COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0)
-                    * (1 - COALESCE(KM.TYLEGIAM, 0) / 100.0)), 0) AS DOANH_THU
-            FROM dbo.HOA_DON HD
-            INNER JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
-            LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
-            WHERE HD.TRANGTHAI = 1
-              AND HD.NGAYLAP >= CONVERT(date, ?)
-              AND HD.NGAYLAP < DATEADD(day, 1, CONVERT(date, ?))
-            GROUP BY CAST(HD.NGAYLAP AS date)
-            ORDER BY NGAY DESC
+                COALESCE(S.NGAY, R.NGAY) AS NGAY,
+                COALESCE(S.SO_HD, 0) AS SO_HD,
+                COALESCE(S.SO_LUONG, 0) AS SO_LUONG,
+                COALESCE(S.DOANH_THU, 0) AS DOANH_THU,
+                COALESCE(R.TIEN_HOAN, 0) AS TIEN_HOAN,
+                COALESCE(S.DOANH_THU, 0) - COALESCE(R.TIEN_HOAN, 0)
+                    AS DOANH_THU_SAU_HOAN
+            FROM SalesByDay S
+            FULL OUTER JOIN RefundByDay R ON R.NGAY = S.NGAY
+            ORDER BY NGAY
         """
-        trend_rows = self.fetch_all(trend_sql, (start_date, end_date))
+        trend_rows = self.fetch_all(
+            trend_sql, (start_date, end_date, start_date, end_date)
+        )
+
+        self.trend_chart.set_data([
+            (
+                date_text(row[0], include_time=False),
+                row[3] or 0,
+                row[5] or 0,
+            )
+            for row in trend_rows
+        ])
         self.fill_table(self.trend_table, [
             (
                 date_text(row[0], include_time=False),
                 number_text(row[1]),
                 number_text(row[2]),
                 money_text(row[3]),
+                money_text(row[4]),
+                money_text(row[5]),
             )
             for row in trend_rows
         ])
