@@ -1174,8 +1174,8 @@ class ReportCenterTests(unittest.TestCase):
 
         source = inspect.getsource(ReportCenterPage)
         self.assertIn("_sync_horizontal_scroll_range", source)
-        self.assertIn("self.footer.horizontalScrollBar().setValue(value)", source)
-        self.assertIn("self.group_header.horizontalScrollBar().setValue(value)", source)
+        self.assertIn("for target in (self.footer, self.group_header)", source)
+        self.assertIn("scrollbar.setValue(value)", source)
 
 
 if __name__ == "__main__":
