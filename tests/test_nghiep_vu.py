@@ -331,6 +331,8 @@ class InputValidationTests(unittest.TestCase):
         self.assertIn("imports", MainWindow.ROLE_PAGE_ACCESS["Nhân viên kho"])
         self.assertIn("returns", MainWindow.ROLE_PAGE_ACCESS["Quản lý"])
         self.assertIn("report_revenue", MainWindow.ROLE_PAGE_ACCESS["Kế toán"])
+        self.assertIn("report_shifts", MainWindow.ROLE_PAGE_ACCESS["Quản lý"])
+        self.assertIn("report_shifts", MainWindow.ROLE_PAGE_ACCESS["Kế toán"])
 
     def test_admin_is_recognized_case_insensitively(self):
         self.assertTrue(is_admin_account("admin"))
@@ -343,7 +345,7 @@ class InputValidationTests(unittest.TestCase):
             "invoices", "returns", "shifts", "authors", "genres",
             "publishers", "brands", "report_overview", "report_revenue",
             "report_invoice", "report_import", "report_return",
-            "report_inventory", "report_product",
+            "report_inventory", "report_product", "report_shifts",
         }
         allowed = allowed_pages_for_user(
             "admin", "", MainWindow.ROLE_PAGE_ACCESS, all_pages
