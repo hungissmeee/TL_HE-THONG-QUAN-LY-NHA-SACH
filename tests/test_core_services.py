@@ -450,12 +450,93 @@ class ReturnServiceTests(unittest.TestCase):
         self.assertTrue(self.service.delete_return(" PDT000001 ", "NV001"))
         self.assertEqual(self.repository.deleted, ("PDT000001", "NV001", False))
 
-    def test_refund_total_ignores_exchange_lines(self):
-        total = self.service.calculate_refund([
-            {"net_price": "90", "quantity": 2, "action": 0},
-            {"net_price": "50", "quantity": 1, "action": 1},
-        ])
-        self.assertEqual(total, Decimal("180.00"))
+    def test_refund_is_difference_between_original_and_hypothetical_invoice(self):
+        items = [{
+            "product_code": "SP001",
+            "purchased": 3,
+            "processed": 0,
+            "refunded": 0,
+            "original_price": Decimal("5555.00"),
+        }]
+        first = self.service.calculate_invoice_refund(
+            items,
+            [{"product_code": "SP001", "quantity": 1, "condition": 1, "action": 0}],
+            Decimal("10.00"),
+        )
+        self.assertEqual(first["before_total"], Decimal("14998.50"))
+        self.assertEqual(first["after_total"], Decimal("9999.00"))
+        self.assertEqual(first["total_refund"], Decimal("4999.50"))
+
+        # Lần trả sau phải lấy hóa đơn còn lại làm số dư trước khi trả.
+        items[0]["processed"] = 1
+        items[0]["refunded"] = 1
+        second = self.service.calculate_invoice_refund(
+            items,
+            [{"product_code": "SP001", "quantity": 1, "condition": 1, "action": 0}],
+            Decimal("10.00"),
+        )
+        self.assertEqual(second["before_total"], Decimal("9999.00"))
+        self.assertEqual(second["after_total"], Decimal("4999.50"))
+        self.assertEqual(second["total_refund"], Decimal("4999.50"))
+
+        # Trả sản phẩm cuối cùng: hoàn đúng phần còn lại.
+        items[0]["processed"] = 2
+        items[0]["refunded"] = 2
+        last = self.service.calculate_invoice_refund(
+            items,
+            [{"product_code": "SP001", "quantity": 1, "condition": 1, "action": 0}],
+            Decimal("10.00"),
+        )
+        self.assertEqual(last["before_total"], Decimal("4999.50"))
+        self.assertEqual(last["after_total"], Decimal("0.00"))
+        self.assertEqual(last["total_refund"], Decimal("4999.50"))
+        self.assertEqual(
+            first["total_refund"] + second["total_refund"] + last["total_refund"],
+            Decimal("14998.50"),
+        )
+
+    def test_full_return_refunds_exact_original_discounted_total(self):
+        result = self.service.calculate_invoice_refund(
+            [
+                {
+                    "product_code": "SP001",
+                    "purchased": 2,
+                    "processed": 0,
+                    "refunded": 0,
+                    "original_price": Decimal("0.05"),
+                },
+                {
+                    "product_code": "SP002",
+                    "purchased": 1,
+                    "processed": 0,
+                    "refunded": 0,
+                    "original_price": Decimal("5.555"),
+                },
+            ],
+            [
+                {"product_code": "SP001", "quantity": 2, "condition": 1, "action": 0},
+                {"product_code": "SP002", "quantity": 1, "condition": 1, "action": 0},
+            ],
+            Decimal("10.00"),
+        )
+        self.assertEqual(result["after_total"], Decimal("0.00"))
+        self.assertEqual(result["total_refund"], result["before_total"])
+
+    def test_exchange_does_not_reduce_hypothetical_invoice_total(self):
+        result = self.service.calculate_invoice_refund(
+            [{
+                "product_code": "SP001",
+                "purchased": 2,
+                "processed": 0,
+                "refunded": 0,
+                "original_price": Decimal("100.00"),
+            }],
+            [{"product_code": "SP001", "quantity": 1, "condition": 0, "action": 1}],
+            Decimal("10.00"),
+        )
+        self.assertEqual(result["before_total"], Decimal("180.00"))
+        self.assertEqual(result["after_total"], Decimal("180.00"))
+        self.assertEqual(result["total_refund"], Decimal("0.00"))
 
 
 
