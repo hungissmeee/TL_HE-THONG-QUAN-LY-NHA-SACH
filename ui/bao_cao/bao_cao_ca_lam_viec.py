@@ -24,8 +24,8 @@ class ShiftReportPage(ReportBasePage):
              "Tổng lượt đăng ký ca, không phải số nhân viên duy nhất", "neutral"),
             ("ended", "Ca đã kết thúc", "0",
              "Đã qua giờ đóng ca", "positive"),
-            ("unclosed", "Ca chưa chốt tiền", "0",
-             "Ca chưa ghi nhận tiền cuối ca", "warning"),
+            ("unclosed", "Ca kết thúc chưa chốt", "0",
+             "Đã qua giờ đóng ca nhưng chưa ghi tiền cuối ca", "warning"),
             ("cash", "Tổng tiền cuối ca đã ghi nhận", "0 đ",
              "Tổng số tiền kiểm kê của các ca đã chốt", "primary"),
         ], primary_key="cash")
@@ -60,12 +60,19 @@ class ShiftReportPage(ReportBasePage):
                 C.TMDAUCA,
                 C.TMCUOICA,
                 CASE
+                    WHEN C.TGMO IS NULL OR C.TGDONG IS NULL THEN N'Chưa cấu hình giờ'
                     WHEN SYSDATETIME() >= T.END_AT THEN N'Đã kết thúc'
-                    ELSE N'Chưa kết thúc'
+                    WHEN SYSDATETIME() >= T.START_AT THEN N'Đang diễn ra'
+                    ELSE N'Chưa bắt đầu'
                 END AS TRANG_THAI_CA
             FROM dbo.CA_LAM_VIEC C
             CROSS APPLY (
                 SELECT
+                    DATEADD(
+                        SECOND,
+                        DATEDIFF(SECOND, CAST('00:00:00' AS TIME), C.TGMO),
+                        CAST(CAST(C.NGAYLAM AS DATE) AS DATETIME2)
+                    ) AS START_AT,
                     DATEADD(
                         SECOND,
                         DATEDIFF(SECOND, CAST('00:00:00' AS TIME), C.TGDONG),
@@ -90,7 +97,10 @@ class ShiftReportPage(ReportBasePage):
         employee_registrations = sum(int(row[5] or 0) for row in rows)
         ended_shifts = sum(1 for row in rows if row[8] == "Đã kết thúc")
         closed_rows = [row for row in rows if row[7] is not None]
-        unclosed_shifts = total_shifts - len(closed_rows)
+        unclosed_shifts = sum(
+            1 for row in rows
+            if row[8] == "Đã kết thúc" and row[7] is None
+        )
         closing_cash_total = sum((row[7] or 0) for row in closed_rows)
 
         self.set_stat("total", number_text(total_shifts))
