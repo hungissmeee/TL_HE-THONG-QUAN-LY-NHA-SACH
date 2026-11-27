@@ -120,6 +120,7 @@ class EmployeePermissionDialog(QDialog):
         # Nút lưu
         self.save_button = QPushButton("Lưu thay đổi")
         self.save_button.setProperty("buttonRole", "primary")
+        self.save_button.setObjectName("primaryButton")
         self.save_button.clicked.connect(self.save_role)
 
 
