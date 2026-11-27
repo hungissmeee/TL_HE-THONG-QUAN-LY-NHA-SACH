@@ -385,8 +385,8 @@ class DatabaseUtilityTests(unittest.TestCase):
         db.username = "admin"
         db.conn = None
 
-        with self.assertRaises(Exception):
-            db._check_admin()
+        with self.assertRaisesRegex(RuntimeError, "Chưa có kết nối SQL Server"):
+            NhanVienRepository(db)._require_admin()
 
     def test_role_map_contains_all_supported_roles(self):
         self.assertEqual(
@@ -818,19 +818,19 @@ class ReturnVoucherDeletionTests(unittest.TestCase):
         self.assertEqual(actions, [("SP001", 2, "SUBTRACT")])
 
     def test_delete_refunded_damaged_goods_does_not_change_stock(self):
-        actions = ReturnWindow._build_inventory_reversal_actions([
+        actions = ReturnRepository.build_inventory_reversal_actions([
             ("SP002", 3, 0, 0),
         ])
         self.assertEqual(actions, [])
 
     def test_delete_exchanged_damaged_goods_restores_replacement_stock(self):
-        actions = ReturnWindow._build_inventory_reversal_actions([
+        actions = ReturnRepository.build_inventory_reversal_actions([
             ("SP003", 1, 0, 1),
         ])
         self.assertEqual(actions, [("SP003", 1, "ADD")])
 
     def test_delete_multiple_return_lines_builds_all_reversals(self):
-        actions = ReturnWindow._build_inventory_reversal_actions([
+        actions = ReturnRepository.build_inventory_reversal_actions([
             ("SP001", 2, 1, 0),
             ("SP002", 1, 0, 0),
             ("SP003", 4, 0, 1),
@@ -851,7 +851,7 @@ class ReturnVoucherDeletionTests(unittest.TestCase):
         for detail in invalid_details:
             with self.subTest(detail=detail):
                 with self.assertRaises(ValueError):
-                    ReturnWindow._build_inventory_reversal_actions([detail])
+                    ReturnRepository.build_inventory_reversal_actions([detail])
 
 
 class ShiftScheduleTests(unittest.TestCase):

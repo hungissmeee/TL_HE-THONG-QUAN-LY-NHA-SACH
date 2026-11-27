@@ -40,7 +40,7 @@ class BaoCaoRepository:
         """, (start_date, end_date))
 
     def overview_refunds(self, start_date, end_date):
-        return self.fetch_one("""
+        return self._fetch_one("""
             SELECT COALESCE(SUM(TONG_TIEN_HOAN), 0)
             FROM dbo.PHIEU_DOI_TRA
             WHERE NGAY_DOI_TRA >= CONVERT(date, ?)
@@ -48,7 +48,7 @@ class BaoCaoRepository:
         """, (start_date, end_date))
 
     def overview_imports(self, start_date, end_date):
-        return self.fetch_one("""
+        return self._fetch_one("""
             SELECT COALESCE(SUM(TONGTRIGIA), 0)
             FROM dbo.PHIEU_NHAP
             WHERE NGAYNHAP >= CONVERT(date, ?)
@@ -57,7 +57,7 @@ class BaoCaoRepository:
         """, (start_date, end_date))
 
     def overview_trend(self, start_date, end_date):
-        return self.fetch_all("""
+        return self._fetch_all("""
             WITH SalesByDay AS (
                 SELECT
                     CAST(HD.NGAYLAP AS date) AS NGAY,
@@ -96,7 +96,7 @@ class BaoCaoRepository:
         """, (start_date, end_date, start_date, end_date))
 
     def overview_top_products(self, start_date, end_date):
-        return self.fetch_all("""
+        return self._fetch_all("""
             SELECT TOP 10
                 SP.MASP,
                 COALESCE(SP.TENSP, N''),
@@ -167,10 +167,10 @@ class BaoCaoRepository:
             FULL OUTER JOIN Refunds R ON R.KY = S.KY
             ORDER BY KY DESC
         """
-        return self.fetch_all(sql, (start_date, end_date, start_date, end_date))
+        return self._fetch_all(sql, (start_date, end_date, start_date, end_date))
 
     def promotion_effectiveness(self, start_date, end_date):
-        return self.fetch_all("""
+        return self._fetch_all("""
             WITH PromotionSales AS (
                 SELECT
                     HD.MAKM,
@@ -212,7 +212,7 @@ class BaoCaoRepository:
         """, (start_date, end_date, start_date, end_date))
 
     def invoice_report(self, start_date, end_date):
-        return self.fetch_all("""
+        return self._fetch_all("""
             SELECT
                 HD.MAHD, HD.NGAYLAP,
                 COALESCE(NV.TENNV, HD.MANV, N''),
@@ -264,7 +264,7 @@ class BaoCaoRepository:
         """, (start_date, end_date))
 
     def import_report(self, start_date, end_date):
-        rows = self.fetch_all("""
+        rows = self._fetch_all("""
             SELECT PN.MAPN, PN.NGAYNHAP,
                 COALESCE(PN.LOAIPHIEUNHAP, N''),
                 COALESCE(NCC.TENNCC, PN.MANCC, N''),
@@ -284,7 +284,7 @@ class BaoCaoRepository:
               AND ISNULL(PN.TRANGTHAI, 1) = 1
             ORDER BY PN.NGAYNHAP DESC, PN.MAPN DESC
         """, (start_date, end_date))
-        suppliers = self.fetch_all("""
+        suppliers = self._fetch_all("""
             SELECT
                 PN.MANCC,
                 COALESCE(NCC.TENNCC, PN.MANCC, N'Không xác định'),
@@ -307,7 +307,7 @@ class BaoCaoRepository:
         return {"imports": rows, "suppliers": suppliers}
 
     def return_report(self, start_date, end_date):
-        return self.fetch_all("""
+        return self._fetch_all("""
             SELECT
                 PDT.MAPDT, PDT.NGAY_DOI_TRA,
                 COALESCE(PDT.MAHD, N''),
@@ -352,7 +352,7 @@ class BaoCaoRepository:
             where_extra += " AND (SP.MASP LIKE ? OR SP.TENSP LIKE ?)"
             filter_params.extend([f"%{keyword}%", f"%{keyword}%"])
 
-        summary = self.fetch_one(f"""
+        summary = self._fetch_one(f"""
             SELECT
                 COUNT(*),
                 SUM(CASE WHEN COALESCE(SP.SLTON, 0) > 0
@@ -363,7 +363,7 @@ class BaoCaoRepository:
             WHERE COALESCE(SP.IS_DELETED, 0) = 0
             {where_extra}
         """, (threshold, *filter_params))
-        rows = self.fetch_all(f"""
+        rows = self._fetch_all(f"""
             SELECT
                 SP.MASP, COALESCE(SP.TENSP, N''), COALESCE(SP.DVT, N''),
                 COALESCE(SP.SLTON, 0), COALESCE(SP.GIANHAP, 0),
@@ -451,12 +451,12 @@ class BaoCaoRepository:
             {filter_sql}
             ORDER BY {order_sql}
         """
-        return self.fetch_all(sql, (
+        return self._fetch_all(sql, (
             start_date, end_date, start_date, end_date, *search_params
         ))
 
     def shift_report(self, start_date, end_date):
-        return self.fetch_all("""
+        return self._fetch_all("""
             SELECT
                 C.MACA, CAST(C.NGAYLAM AS date), C.SOCA, C.TGMO, C.TGDONG,
                 COUNT(DISTINCT L.MANV), C.TMDAUCA, C.TMCUOICA,
