@@ -76,6 +76,7 @@ class ShiftCreateDialog(QDialog):
         form.addRow("Tiền đầu ca:", self.opening_cash)
 
         self.save_button = QPushButton("Tạo ca")
+        self.save_button.setProperty("buttonRole", "primary")
         self.save_button.clicked.connect(self._validate_and_accept)
         self.cancel_button = QPushButton("Hủy")
         self.cancel_button.clicked.connect(self.reject)
