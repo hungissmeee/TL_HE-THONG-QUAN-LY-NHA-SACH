@@ -24,11 +24,12 @@ class CurrentUser(BaseModel):
 
 def _get_token_secret() -> tuple[str, int]:
     settings = load_settings()
-    if len(settings.jwt_secret) < 32:
+    secret = settings.jwt_secret.strip()
+    if len(secret) < 32:
         raise ConfigurationError(
             "BOOKHUB_WEB_JWT_SECRET chưa được cấu hình đủ mạnh (tối thiểu 32 ký tự)."
         )
-    return settings.jwt_secret, settings.access_token_minutes
+    return secret, settings.access_token_minutes
 
 
 def create_access_token(user: CurrentUser) -> tuple[str, int]:
@@ -91,6 +92,7 @@ def get_current_user(
             detail="Phiên đăng nhập không hợp lệ hoặc đã hết hạn.",
             headers={"WWW-Authenticate": "Bearer"},
         ) from None
+
 
 def require_roles(*allowed_role_codes: str):
     """Tạo dependency bảo vệ route theo role code; admin có toàn quyền."""
