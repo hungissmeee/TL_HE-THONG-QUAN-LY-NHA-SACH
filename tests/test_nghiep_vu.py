@@ -1158,7 +1158,7 @@ class ReportCenterTests(unittest.TestCase):
         self.assertNotIn("add_stat_cards", source)
         self.assertNotIn("reportPrimaryKpi", source)
 
-    def test_report_center_uses_dark_theme_and_invoice_style_combos(self):
+    def test_report_center_uses_shared_native_combo_style(self):
         import inspect
         from ui.bao_cao.trung_tam_bao_cao import ReportCenterPage
 
@@ -1168,9 +1168,22 @@ class ReportCenterTests(unittest.TestCase):
         self.assertIn("QComboBox", source)
         self.assertNotIn("QToolButton", source)
         self.assertNotIn("QMenu", source)
+        self.assertNotIn("QComboBox#", source)
+        self.assertNotIn("QComboBox, QDateEdit", source)
         self.assertNotIn("background: #FFFFFF", source)
         self.assertNotIn("QTreeWidget", source)
         self.assertIn("ScrollBarAsNeeded", source)
+
+    def test_report_center_does_not_fix_table_or_filter_widths(self):
+        import inspect
+        from ui.bao_cao.trung_tam_bao_cao import ReportCenterPage
+
+        source = inspect.getsource(ReportCenterPage)
+        self.assertNotIn("setFixedWidth(", source)
+        self.assertNotIn("table_width", source)
+        self.assertIn("QSizePolicy.Policy.Ignored", source)
+        self.assertIn("self.report_table_frame.setMinimumSize(0, 0)", source)
+        self.assertIn("self.table.setMinimumSize(0, 0)", source)
 
     def test_report_total_is_joined_to_table_in_one_zero_spacing_frame(self):
         import inspect
