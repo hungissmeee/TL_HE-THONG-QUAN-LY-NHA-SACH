@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from backend.main import create_app
 from backend.security import CurrentUser, get_current_user
 from backend.api.routes.products import get_product_service
+from core.repositories.san_pham_repository import SanPhamRepository
 
 
 class FakeProductService:
@@ -142,6 +143,55 @@ class ProductApiAuthorizationTests(unittest.TestCase):
             app.dependency_overrides.clear()
         self.assertEqual(response.status_code, 403)
         self.assertIsNone(service.saved)
+
+
+class ProductRepositoryPaginationTests(unittest.TestCase):
+    """Kiểm tra SQL phân trang không lặp cột trong ORDER BY."""
+
+    class FakeCursor:
+        def __init__(self):
+            self.statements = []
+            self.closed = False
+
+        def execute(self, sql, *params):
+            self.statements.append(sql)
+            return self
+
+        def fetchone(self):
+            return (0,)
+
+        def fetchall(self):
+            return []
+
+        def close(self):
+            self.closed = True
+
+    class FakeConnection:
+        def __init__(self):
+            self.fake_cursor = ProductRepositoryPaginationTests.FakeCursor()
+
+        def cursor(self):
+            return self.fake_cursor
+
+    def _run_query(self, sort_by):
+        connection = self.FakeConnection()
+        result = SanPhamRepository(connection).list_products_page(sort_by=sort_by)
+        self.assertEqual(result, {"items": [], "total": 0})
+        self.assertTrue(connection.fake_cursor.closed)
+        return connection.fake_cursor.statements[-1]
+
+    def test_default_masp_sort_does_not_repeat_column(self):
+        sql = self._run_query("masp")
+        self.assertIn("ORDER BY SP.MASP ASC OFFSET", sql)
+        self.assertNotIn("SP.MASP ASC, SP.MASP ASC", sql)
+
+    def test_other_sort_columns_keep_masp_as_tiebreaker(self):
+        sql = self._run_query("tensp")
+        self.assertIn("ORDER BY SP.TENSP ASC, SP.MASP ASC OFFSET", sql)
+
+    def test_descending_sort_keeps_masp_tiebreaker(self):
+        sql = self._run_query("giaban")
+        self.assertIn("ORDER BY SP.GIABAN DESC, SP.MASP ASC OFFSET", sql)
 
 
 if __name__ == "__main__":
