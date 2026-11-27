@@ -574,7 +574,6 @@ function InvoicesPage() {
         </Card>
       </>}
     </Modal>
-  </div>;    </Modal>
   </div>;
 }
 
