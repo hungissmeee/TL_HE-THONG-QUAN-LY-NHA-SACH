@@ -365,6 +365,7 @@ class MainWindow(SidebarNavigationMixin, QMainWindow):
 
 
 
+    @staticmethod
     def _refresh_page_data(page):
         """Tải lại dữ liệu khi người dùng quay lại trang chức năng."""
         if isinstance(page, (CatalogPage, SupplierWindow)):

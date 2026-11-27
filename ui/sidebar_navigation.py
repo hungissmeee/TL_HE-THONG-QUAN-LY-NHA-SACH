@@ -187,8 +187,6 @@ class SidebarNavigationMixin:
         for page_key, button in self.nav_buttons.items():
             button.setChecked(page_key == key)
 
-    @staticmethod
-
     def apply_role_navigation(self):
         """Áp dụng danh sách trang được phép dựa trên vai trò nhân viên hiện tại."""
         allowed = allowed_pages_for_user(

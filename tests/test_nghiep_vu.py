@@ -42,6 +42,7 @@ from ui.hoa_don.danh_sach import InvoiceWindow
 from ui.ca_lam_viec.tao_bieu_mau import ShiftCreateDialog
 from ui.ca_lam_viec.danh_sach import ShiftWindow
 from ui.main_windows import MainWindow
+from ui.sidebar_navigation import SidebarNavigationMixin
 from ui.permissions import is_admin_account, allowed_pages_for_user
 from ui.doi_tra.tao_bieu_mau import CreateReturnDialog
 from ui.doi_tra.danh_sach import ReturnWindow
@@ -349,6 +350,20 @@ class ReturnDialogWidgetTests(unittest.TestCase):
         self.assertEqual(table.rowHeight(0), 44)
         self.assertGreaterEqual(table.rowHeight(0), quantity.minimumHeight())
         table.close()
+
+
+
+
+class NavigationMethodBindingTests(unittest.TestCase):
+    """Bảo đảm các phương thức điều hướng được bind đúng theo vai trò."""
+
+    def test_apply_role_navigation_is_an_instance_method(self):
+        method = SidebarNavigationMixin.__dict__["apply_role_navigation"]
+        self.assertFalse(isinstance(method, staticmethod))
+
+    def test_refresh_page_data_is_a_static_helper(self):
+        method = MainWindow.__dict__["_refresh_page_data"]
+        self.assertTrue(isinstance(method, staticmethod))
 
 
 class DatabaseUtilityTests(unittest.TestCase):
