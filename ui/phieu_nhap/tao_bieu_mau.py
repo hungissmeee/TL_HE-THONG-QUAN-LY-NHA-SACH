@@ -161,7 +161,16 @@ class CreateImportDialog(QDialog):
         self.product_completer.setCompletionMode(
             QCompleter.CompletionMode.PopupCompletion
         )
-        self.product_completer.setMaxVisibleItems(12)
+        # Giới hạn chiều cao popup; nhiều kết quả sẽ cuộn thay vì tràn màn hình.
+        self.product_completer.setMaxVisibleItems(8)
+        suggestion_popup = self.product_completer.popup()
+        suggestion_popup.setMaximumHeight(280)
+        suggestion_popup.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
+        suggestion_popup.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
         self.product_search.setCompleter(self.product_completer)
         self.product_completer.activated.connect(self.add_completed_product)
         self.product_search.returnPressed.connect(self.add_selected_product)
