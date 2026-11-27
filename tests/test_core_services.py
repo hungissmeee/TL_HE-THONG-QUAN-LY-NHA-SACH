@@ -1011,7 +1011,7 @@ class ReportServiceTests(unittest.TestCase):
         self.assertIn("PDT.TONG_TIEN_HOAN", repository.sql)
         self.assertEqual(
             repository.params,
-            ("2026-01-01", "2026-01-31", "NV01", "NV01",
+            ("2026-01-01", "2026-01-31", "NV01",
              "%HD%", "%HD%", "%HD%", "%HD%"),
         )
 
