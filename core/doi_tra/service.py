@@ -91,12 +91,18 @@ class ReturnService:
                 "condition": condition,
                 "action": action,
             })
+        payload = {
+            "invoice_code": invoice_code,
+            "reason": reason,
+            "items": items,
+        }
+        if confirmed_restore_codes is None:
+            # Giữ tương thích với các adapter/mock Repository cũ khi không cần khôi phục.
+            return self.repository.create_return(
+                payload, username, is_admin=is_admin
+            )
         return self.repository.create_return(
-            {
-                "invoice_code": invoice_code,
-                "reason": reason,
-                "items": items,
-            },
+            payload,
             username,
             is_admin=is_admin,
             confirmed_restore_codes=confirmed_restore_codes,
