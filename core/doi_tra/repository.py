@@ -505,9 +505,12 @@ class ReturnRepository:
             actions = self.build_inventory_reversal_actions(details)
             for product_code, quantity, direction in actions:
                 if direction == "ADD":
+                    # Đảo phiếu đổi hàng có thể hoàn sản phẩm về mã đã bị xóa mềm.
+                    # Kích hoạt lại sản phẩm và cộng tồn trong cùng transaction.
                     cursor.execute("""
                         UPDATE dbo.SAN_PHAM
-                        SET SLTON = ISNULL(SLTON, 0) + ?
+                        SET IS_DELETED = 0,
+                            SLTON = ISNULL(SLTON, 0) + ?
                         WHERE MASP = ?
                     """, quantity, product_code)
                 else:
