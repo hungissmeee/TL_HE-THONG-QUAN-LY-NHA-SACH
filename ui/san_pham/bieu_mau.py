@@ -27,6 +27,8 @@ from PySide6.QtWidgets import (
     QStackedWidget,
     QDateEdit,
     QGroupBox,
+    QFrame,
+    QScrollArea,
 )
 from .bo_chon import SearchableSingleSelect, SearchableMultiSelect
 
@@ -44,8 +46,8 @@ class ProductFormDialog(QDialog):
         self.existing = None
 
         self.setWindowTitle("Chỉnh sửa sản phẩm" if self.is_edit else "Thêm sản phẩm mới")
-        self.setMinimumWidth(580)
-        self.setMinimumHeight(880)
+        self.setMinimumSize(580, 480)
+        self.resize(640, 720)
 
         if self.is_edit:
             self.load_existing_product()
@@ -165,17 +167,32 @@ class ProductFormDialog(QDialog):
     def setup_ui(self):
         """Tạo các trường thông tin chung và trường riêng theo loại sản phẩm."""
         root = QVBoxLayout(self)
+        root.setContentsMargins(12, 12, 12, 12)
+        root.setSpacing(8)
+
+        # Cuộn phần trường nhập khi form dài; nút thao tác luôn ở cuối hộp thoại.
+        scroll_area = QScrollArea(self)
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+        scroll_area.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+
+        form_content = QWidget()
+        content_layout = QVBoxLayout(form_content)
+        content_layout.setContentsMargins(4, 4, 4, 4)
+        content_layout.setSpacing(9)
 
         title = QLabel("CHỈNH SỬA SẢN PHẨM" if self.is_edit else "THÊM SẢN PHẨM MỚI")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("font-size: 20px; font-weight: bold;")
-        root.addWidget(title)
+        content_layout.addWidget(title)
 
         self.type_combo = QComboBox()
         self.type_combo.addItem("Sách", "book")
         self.type_combo.addItem("Sản phẩm khác", "other")
-        root.addWidget(QLabel("Loại sản phẩm:"))
-        root.addWidget(self.type_combo)
+        content_layout.addWidget(QLabel("Loại sản phẩm:"))
+        content_layout.addWidget(self.type_combo)
 
         common_group = QGroupBox("Thông tin chung")
         common_form = QFormLayout(common_group)
@@ -256,7 +273,7 @@ class ProductFormDialog(QDialog):
         inventory_note.setWordWrap(True)
         inventory_note.setStyleSheet("color: #AAB7C8; font-size: 11px;")
         common_form.addRow("", inventory_note)
-        root.addWidget(common_group)
+        content_layout.addWidget(common_group)
 
         self.type_stack = QStackedWidget()
 
@@ -307,8 +324,11 @@ class ProductFormDialog(QDialog):
         other_form.addRow("Thương hiệu:", self.brand_combo)
         self.type_stack.addWidget(other_page)
 
-        root.addWidget(self.type_stack)
+        content_layout.addWidget(self.type_stack)
         self.type_combo.currentIndexChanged.connect(self.type_stack.setCurrentIndex)
+
+        scroll_area.setWidget(form_content)
+        root.addWidget(scroll_area, 1)
 
         buttons = QHBoxLayout()
         save_button = QPushButton("Lưu thay đổi" if self.is_edit else "Thêm sản phẩm")

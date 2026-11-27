@@ -8,6 +8,7 @@ from decimal import Decimal
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtWidgets import QApplication, QTableWidget
+from ui.styles import MAIN_WINDOW_STYLESHEET
 
 from database.connection import Database
 from ui.table_sort import (
@@ -53,6 +54,24 @@ class FakeCursor:
 
     def fetchone(self):
         return (self.last_number,)
+
+
+class NativeQtControlStyleTests(unittest.TestCase):
+    """Đảm bảo stylesheet chung không ghi đè các mũi tên và nút điều hướng Qt."""
+
+    def test_combo_spinbox_and_calendar_keep_native_subcontrols(self):
+        forbidden_overrides = (
+            "QComboBox::drop-down",
+            "QComboBox::down-arrow",
+            "QAbstractSpinBox::up-button",
+            "QAbstractSpinBox::down-button",
+            "QAbstractSpinBox::up-arrow",
+            "QAbstractSpinBox::down-arrow",
+            "QCalendarWidget QToolButton",
+        )
+        for selector in forbidden_overrides:
+            with self.subTest(selector=selector):
+                self.assertNotIn(selector, MAIN_WINDOW_STYLESHEET)
 
 
 class DatabaseUtilityTests(unittest.TestCase):

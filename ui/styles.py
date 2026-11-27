@@ -274,22 +274,6 @@ MAIN_WINDOW_STYLESHEET = """
                 border-color: #344256;
             }
 
-            QComboBox::drop-down {
-                subcontrol-origin: padding;
-                subcontrol-position: top right;
-                width: 28px;
-                border: none;
-                border-left: 1px solid #39465A;
-                border-top-right-radius: 5px;
-                border-bottom-right-radius: 5px;
-                background-color: transparent;
-            }
-
-            QComboBox::down-arrow {
-                width: 9px;
-                height: 9px;
-            }
-
             QComboBox QAbstractItemView {
                 background-color: #202938;
                 color: #E5E7EB;
@@ -298,24 +282,6 @@ MAIN_WINDOW_STYLESHEET = """
                 selection-color: white;
                 outline: none;
                 padding: 3px;
-            }
-
-            QAbstractSpinBox::up-button,
-            QAbstractSpinBox::down-button {
-                width: 18px;
-                background-color: #34445A;
-                border: none;
-            }
-
-            QAbstractSpinBox::up-button:hover,
-            QAbstractSpinBox::down-button:hover {
-                background-color: #465B75;
-            }
-
-            QAbstractSpinBox::up-arrow,
-            QAbstractSpinBox::down-arrow {
-                width: 8px;
-                height: 8px;
             }
 
             QCheckBox,
@@ -407,18 +373,6 @@ MAIN_WINDOW_STYLESHEET = """
             QCalendarWidget QWidget {
                 background-color: #202938;
                 color: #E5E7EB;
-            }
-
-            QCalendarWidget QToolButton {
-                color: #E5E7EB;
-                background-color: #34445A;
-                border: none;
-                border-radius: 4px;
-                padding: 5px;
-            }
-
-            QCalendarWidget QToolButton:hover {
-                background-color: #465B75;
             }
 
             QCalendarWidget QAbstractItemView {
