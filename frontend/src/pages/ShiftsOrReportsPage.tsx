@@ -15,6 +15,12 @@ const err = (e: unknown) => e instanceof ApiError ? e.message : "Không thể ho
 const money = (v: unknown) => Number(v ?? 0).toLocaleString("vi-VN") + " ₫";
 const dateText = (v: unknown) => v ? dayjs(String(v)).format("DD/MM/YYYY") : "—";
 
+const SHIFT_TIMES: Record<number, [string, string]> = {
+  1: ["07:00", "12:00"],
+  2: ["12:00", "17:00"],
+  3: ["17:00", "22:00"],
+};
+
 function ShiftsPage() {
   const { user } = useAuth();
   const isManager = ["admin", "rl_QuanLy"].includes(user?.role_code || "");
@@ -156,24 +162,84 @@ function ShiftsPage() {
       <div className="operation-list-heading"><Title level={4}>Ca của bạn</Title><Button icon={<ReloadOutlined />} onClick={() => void load()}>Làm mới</Button></div>
       <Table<DataRow> rowKey="maca" columns={employeeColumns} dataSource={mine} loading={loading} pagination={false} locale={{ emptyText: "Hiện không có ca phù hợp để đăng ký hoặc chốt." }} />
     </Card>}
-    <Modal title="Tạo ca làm việc" open={openCreate} onCancel={() => setOpenCreate(false)} onOk={() => createForm.submit()} okText="Tạo ca" cancelText="Hủy" confirmLoading={createSaving}>
-      <Form form={createForm} layout="vertical" onFinish={(v) => void createShift(v)}>
-        <Form.Item name="ngaylam" label="Ngày làm" rules={[{ required: true }]}><DatePicker format="DD/MM/YYYY" style={{ width: "100%" }} /></Form.Item>
-        <Form.Item name="soca" label="Số ca" rules={[{ required: true }]}><Select options={[{ value: 1, label: "Ca 1 · 07:00–12:00" }, { value: 2, label: "Ca 2 · 12:00–17:00" }, { value: 3, label: "Ca 3 · 17:00–22:00" }]} /></Form.Item>
-        <Form.Item name="tmdauca" label="Tiền đầu ca" rules={[{ required: true }]}><InputNumber min={0} precision={2} style={{ width: "100%" }} /></Form.Item>
-        <Alert type="info" message="Giờ mở/đóng ca là lịch cố định của hệ thống. Không thể tạo trùng số ca trong cùng ngày." />
+    <Modal
+      title="Tạo ca làm việc"
+      open={openCreate}
+      onCancel={() => setOpenCreate(false)}
+      onOk={() => createForm.submit()}
+      okText="Tạo ca"
+      cancelText="Hủy"
+      confirmLoading={createSaving}
+      width={560}
+      className="desktop-entity-modal"
+    >
+      <Form
+        form={createForm}
+        className="desktop-dialog-form"
+        layout="horizontal"
+        labelCol={{ xs: { span: 24 }, sm: { span: 8 } }}
+        wrapperCol={{ xs: { span: 24 }, sm: { span: 16 } }}
+        onFinish={(values) => void createShift(values)}
+      >
+        <Card size="small" title="Thông tin ca làm việc" className="desktop-form-section">
+          <Form.Item name="soca" label="Ca làm việc" rules={[{ required: true }]}>
+            <Select options={[
+              { value: 1, label: "Ca 1 (07:00 – 12:00)" },
+              { value: 2, label: "Ca 2 (12:00 – 17:00)" },
+              { value: 3, label: "Ca 3 (17:00 – 22:00)" },
+            ]} />
+          </Form.Item>
+          <Form.Item name="ngaylam" label="Ngày làm" rules={[{ required: true }]}>
+            <DatePicker format="DD/MM/YYYY" style={{ width: "100%" }} />
+          </Form.Item>
+          <Form.Item noStyle shouldUpdate={(previous, current) => previous.soca !== current.soca}>
+            {({ getFieldValue }) => {
+              const shiftNumber = Number(getFieldValue("soca") || 1);
+              const times = SHIFT_TIMES[shiftNumber] || SHIFT_TIMES[1];
+              return (
+                <>
+                  <Form.Item label="Giờ mở">
+                    <Input value={times[0]} readOnly />
+                  </Form.Item>
+                  <Form.Item label="Giờ đóng">
+                    <Input value={times[1]} readOnly />
+                  </Form.Item>
+                </>
+              );
+            }}
+          </Form.Item>
+          <Form.Item name="tmdauca" label="Tiền đầu ca" rules={[{ required: true }]}>
+            <InputNumber min={0} precision={2} style={{ width: "100%" }} />
+          </Form.Item>
+          <Alert
+            type="info"
+            showIcon
+            message="Mỗi ngày có tối đa 3 ca cố định. Không thể tạo trùng số ca trong cùng ngày."
+          />
+        </Card>
       </Form>
     </Modal>
-    <Modal title={rosterTitle} open={rosterOpen} onCancel={() => setRosterOpen(false)} footer={<Button onClick={() => setRosterOpen(false)}>Đóng</Button>}>
-      <Table<DataRow> rowKey="manv" pagination={false} dataSource={roster} columns={[
-        { title: "Mã NV", dataIndex: "manv", key: "manv" }, { title: "Họ tên", dataIndex: "tennv", key: "tennv" },
-        { title: "Vai trò", dataIndex: "vaitro", key: "vaitro" }, { title: "SĐT", dataIndex: "sdt", key: "sdt" },
-      ]} />
+    <Modal title={rosterTitle} open={rosterOpen} onCancel={() => setRosterOpen(false)} footer={<Button onClick={() => setRosterOpen(false)}>Đóng</Button>} width={720} className="desktop-transaction-modal">
+      <Card size="small" title="Danh sách nhân viên trong ca" className="desktop-form-section">
+        <Table<DataRow> rowKey="manv" pagination={false} dataSource={roster} columns={[
+          { title: "Mã NV", dataIndex: "manv", key: "manv", width: 100 },
+          { title: "Họ tên", dataIndex: "tennv", key: "tennv" },
+          { title: "Vai trò", dataIndex: "vaitro", key: "vaitro", width: 140 },
+          { title: "SĐT", dataIndex: "sdt", key: "sdt", width: 130 },
+        ]} />
+      </Card>
     </Modal>
-    <Modal title="Ghi tiền cuối ca" open={Boolean(closingShift)} onCancel={() => setClosingShift(null)} onOk={() => void submitClosingCash()} okText="Ghi nhận" cancelText="Hủy" confirmLoading={closingSaving}>
-      <p>{closingShift ? "Ca " + String(closingShift.soca) + " · " + dateText(closingShift.ngaylam) : ""}</p>
-      <InputNumber min={0} precision={2} value={cash} onChange={(v) => setCash(v === null ? null : Number(v))} style={{ width: "100%" }} placeholder="Nhập số tiền cuối ca" />
-      <Alert className="operation-info" type="warning" message="Mỗi ca chỉ được ghi tiền cuối ca một lần và chỉ sau khi ca kết thúc." />
+    <Modal title="Ghi tiền cuối ca" open={Boolean(closingShift)} onCancel={() => setClosingShift(null)} onOk={() => void submitClosingCash()} okText="Ghi nhận" cancelText="Hủy" confirmLoading={closingSaving} width={560} className="desktop-entity-modal">
+      <Card size="small" title="Thông tin ca" className="desktop-form-section">
+        <Descriptions bordered size="small" column={1}>
+          <Descriptions.Item label="Ngày làm">{closingShift ? dateText(closingShift.ngaylam) : "—"}</Descriptions.Item>
+          <Descriptions.Item label="Ca làm việc">{closingShift ? "Ca " + String(closingShift.soca) : "—"}</Descriptions.Item>
+        </Descriptions>
+      </Card>
+      <Card size="small" title="Ghi nhận tiền cuối ca" className="desktop-form-section">
+        <InputNumber min={0} precision={2} value={cash} onChange={(value) => setCash(value === null ? null : Number(value))} style={{ width: "100%" }} placeholder="Nhập số tiền cuối ca" />
+        <Alert className="operation-info" type="warning" showIcon message="Mỗi ca chỉ được ghi tiền cuối ca một lần và chỉ sau khi ca kết thúc." />
+      </Card>
     </Modal>
   </div>;
 }
