@@ -12,9 +12,6 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QFormLayout,
-    QTableWidget,
-    QHeaderView,
-    QAbstractItemView,
     QMessageBox,
     QSpinBox,
     QDoubleSpinBox,
@@ -22,10 +19,8 @@ from PySide6.QtWidgets import (
 )
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
-    set_table_minimum_section_size,
-    pause_table_sorting,
-    resume_table_sorting,
 )
+from ui.product_table import ProductTableWidget
 from .dung_chung import MONEY_QUANT, Decimal, ROUND_HALF_UP, money, as_decimal
 from .tao_nha_cung_cap import CreateSupplierDialog
 from ui.permissions import is_admin_account
@@ -180,14 +175,13 @@ class CreateImportDialog(QDialog):
 
         cart_box = QGroupBox("Sản phẩm trong phiếu nhập")
         cart_layout = QVBoxLayout(cart_box)
-        self.cart_table = QTableWidget(0, 8)
-        self.cart_table.setHorizontalHeaderLabels([
-            "Mã SP", "Tên sản phẩm", "ĐVT", "Số lượng",
-            "Đơn giá nhập (đã gồm VAT)", "VAT (%)", "Thành tiền", "Thao tác"
-        ])
-        self._configure_table(
-            self.cart_table,
-            stretch_column=1
+        self.cart_table = ProductTableWidget(
+            [
+                "Mã SP", "Tên sản phẩm", "ĐVT", "Số lượng",
+                "Đơn giá nhập (đã gồm VAT)", "VAT (%)", "Thành tiền", "Thao tác"
+            ],
+            stretch_column=1,
+            parent=self,
         )
         cart_layout.addWidget(self.cart_table)
         root.addWidget(cart_box, 3)
@@ -218,27 +212,6 @@ class CreateImportDialog(QDialog):
         actions.addWidget(close_button)
         bottom.addLayout(actions, 1)
         root.addLayout(bottom)
-
-    @staticmethod
-    def _configure_table(table, stretch_column=None):
-        """Cấu hình bảng giỏ hàng, giữ nguyên thứ tự thêm sản phẩm."""
-        table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
-        table.setAlternatingRowColors(True)
-        table.verticalHeader().setVisible(False)
-        table.setSortingEnabled(False)
-
-        header = table.horizontalHeader()
-        set_table_minimum_section_size(table)
-        header.setSectionsClickable(False)
-        header.setSortIndicatorShown(False)
-        header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-
-        if stretch_column is not None:
-            header.setSectionResizeMode(
-                stretch_column, QHeaderView.ResizeMode.Stretch
-            )
 
     @staticmethod
     def _set_cell(table, row, column, value):
@@ -402,56 +375,51 @@ class CreateImportDialog(QDialog):
 
     def refresh_cart(self):
         """Cập nhật giỏ hàng với số lượng và đơn giá chỉnh ngay trên từng dòng."""
-        pause_table_sorting(self.cart_table)
-        try:
-            self.cart_table.setRowCount(0)
+        self.cart_table.setRowCount(0)
 
-            for index, (code, item) in enumerate(self.cart.items()):
-                self.cart_table.insertRow(index)
-                self._set_cell(self.cart_table, index, 0, code)
-                self._set_cell(self.cart_table, index, 1, item["tensp"])
-                self._set_cell(self.cart_table, index, 2, item["dvt"])
-                self._set_cell(self.cart_table, index, 5, money(item["vat"]))
+        for index, (code, item) in enumerate(self.cart.items()):
+            self.cart_table.insert_product_row(index)
+            self._set_cell(self.cart_table, index, 0, code)
+            self._set_cell(self.cart_table, index, 1, item["tensp"])
+            self._set_cell(self.cart_table, index, 2, item["dvt"])
+            self._set_cell(self.cart_table, index, 5, money(item["vat"]))
 
-                quantity = QSpinBox(self.cart_table)
-                quantity.setRange(1, 999999)
-                quantity.setValue(int(item["quantity"]))
-                quantity.setMinimumHeight(34)
-                quantity.valueChanged.connect(
-                    lambda value, product_code=code:
-                    self._update_cart_quantity(product_code, value)
-                )
-                self.cart_table.setCellWidget(index, 3, quantity)
+            quantity = QSpinBox(self.cart_table)
+            quantity.setRange(1, 999999)
+            quantity.setValue(int(item["quantity"]))
+            quantity.setMinimumHeight(34)
+            quantity.valueChanged.connect(
+                lambda value, product_code=code:
+                self._update_cart_quantity(product_code, value)
+            )
+            self.cart_table.setCellWidget(index, 3, quantity)
 
-                price = QDoubleSpinBox(self.cart_table)
-                price.setLocale(QLocale.c())
-                price.setGroupSeparatorShown(False)
-                price.setDecimals(2)
-                price.setRange(0, 999999999999.99)
-                price.setSuffix(" đ")
-                price.setValue(float(item["price"]))
-                price.setMinimumHeight(34)
-                price.valueChanged.connect(
-                    lambda value, product_code=code:
-                    self._update_cart_price(product_code, value)
-                )
-                self.cart_table.setCellWidget(index, 4, price)
+            price = QDoubleSpinBox(self.cart_table)
+            price.setLocale(QLocale.c())
+            price.setGroupSeparatorShown(False)
+            price.setDecimals(2)
+            price.setRange(0, 999999999999.99)
+            price.setSuffix(" đ")
+            price.setValue(float(item["price"]))
+            price.setMinimumHeight(34)
+            price.valueChanged.connect(
+                lambda value, product_code=code:
+                self._update_cart_price(product_code, value)
+            )
+            self.cart_table.setCellWidget(index, 4, price)
 
-                self._set_cell(
-                    self.cart_table, index, 6,
-                    money(item["price"] * item["quantity"])
-                )
+            self._set_cell(
+                self.cart_table, index, 6,
+                money(item["price"] * item["quantity"])
+            )
 
-                remove_button = QPushButton("Bỏ")
-                remove_button.setObjectName("dangerButton")
-                remove_button.clicked.connect(
-                    lambda _checked=False, product_code=code:
-                    self._remove_cart_item(product_code)
-                )
-                self.cart_table.setCellWidget(index, 7, remove_button)
-                self.cart_table.setRowHeight(index, 44)
-        finally:
-            resume_table_sorting(self.cart_table)
+            remove_button = QPushButton("Bỏ")
+            remove_button.setObjectName("dangerButton")
+            remove_button.clicked.connect(
+                lambda _checked=False, product_code=code:
+                self._remove_cart_item(product_code)
+            )
+            self.cart_table.setCellWidget(index, 7, remove_button)
 
     def _update_cart_quantity(self, code, quantity):
         """Cập nhật số lượng và thành tiền của một mặt hàng trong giỏ."""

@@ -11,19 +11,14 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QFormLayout,
-    QTableWidget,
-    QHeaderView,
-    QAbstractItemView,
     QMessageBox,
     QSpinBox,
     QGroupBox,
 )
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
-    set_table_minimum_section_size,
-    pause_table_sorting,
-    resume_table_sorting,
 )
+from ui.product_table import ProductTableWidget
 from .dung_chung import MONEY_QUANT, Decimal, InvalidOperation, ROUND_HALF_UP, money, as_decimal, date_text, time_text
 from ui.permissions import is_admin_account
 from ui.san_pham.tim_kiem import find_matching_product_codes
@@ -186,16 +181,15 @@ class CreateInvoiceDialog(QDialog):
 
         cart_group = QGroupBox("Giỏ hàng")
         cart_layout = QVBoxLayout(cart_group)
-        self.cart_table = QTableWidget(0, 7)
-        self.cart_table.setMinimumHeight(170)
-        self.cart_table.setHorizontalHeaderLabels([
-            "Mã SP", "Tên sản phẩm", "Số lượng",
-            "Đơn giá (đã gồm VAT)", "VAT (%)", "Thành tiền", "Thao tác"
-        ])
-        self._configure_table(
-            self.cart_table,
-            stretch_column=1
+        self.cart_table = ProductTableWidget(
+            [
+                "Mã SP", "Tên sản phẩm", "Số lượng",
+                "Đơn giá (đã gồm VAT)", "VAT (%)", "Thành tiền", "Thao tác"
+            ],
+            stretch_column=1,
+            parent=self,
         )
+        self.cart_table.setMinimumHeight(170)
         cart_layout.addWidget(self.cart_table)
         root.addWidget(cart_group, 3)
 
@@ -231,27 +225,6 @@ class CreateInvoiceDialog(QDialog):
         actions.addWidget(self.cancel_button)
         bottom.addLayout(actions, 1)
         root.addLayout(bottom)
-
-    @staticmethod
-    def _configure_table(table, stretch_column=None):
-        """Cấu hình bảng giỏ hàng, giữ nguyên thứ tự thêm sản phẩm."""
-        table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
-        table.setAlternatingRowColors(True)
-        table.verticalHeader().setVisible(False)
-        table.setSortingEnabled(False)
-
-        header = table.horizontalHeader()
-        set_table_minimum_section_size(table)
-        header.setSectionsClickable(False)
-        header.setSortIndicatorShown(False)
-        header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-
-        if stretch_column is not None:
-            header.setSectionResizeMode(
-                stretch_column, QHeaderView.ResizeMode.Stretch
-            )
 
     @staticmethod
     def _set_cell(table, row, column, value, data=None):
@@ -399,38 +372,33 @@ class CreateInvoiceDialog(QDialog):
 
     def _refresh_cart(self):
         """Cập nhật giỏ hàng với bộ điều chỉnh số lượng ngay trên từng dòng."""
-        pause_table_sorting(self.cart_table)
-        try:
-            self.cart_table.setRowCount(0)
-            for row_index, (masp, item) in enumerate(self.cart.items()):
-                line_total = item["price"] * item["quantity"]
-                self.cart_table.insertRow(row_index)
+        self.cart_table.setRowCount(0)
+        for row_index, (masp, item) in enumerate(self.cart.items()):
+            line_total = item["price"] * item["quantity"]
+            self.cart_table.insert_product_row(row_index)
 
-                self._set_cell(self.cart_table, row_index, 0, masp)
-                self._set_cell(self.cart_table, row_index, 1, item["tensp"])
-                self._set_cell(self.cart_table, row_index, 3, money(item["price"]))
-                self._set_cell(self.cart_table, row_index, 4, money(item["vat"]))
-                self._set_cell(self.cart_table, row_index, 5, money(line_total))
+            self._set_cell(self.cart_table, row_index, 0, masp)
+            self._set_cell(self.cart_table, row_index, 1, item["tensp"])
+            self._set_cell(self.cart_table, row_index, 3, money(item["price"]))
+            self._set_cell(self.cart_table, row_index, 4, money(item["vat"]))
+            self._set_cell(self.cart_table, row_index, 5, money(line_total))
 
-                quantity = QSpinBox(self.cart_table)
-                quantity.setRange(1, max(1, int(item["stock"])))
-                quantity.setValue(int(item["quantity"]))
-                quantity.setMinimumHeight(34)
-                quantity.valueChanged.connect(
-                    lambda value, code=masp: self._update_cart_quantity(code, value)
-                )
-                self.cart_table.setCellWidget(row_index, 2, quantity)
+            quantity = QSpinBox(self.cart_table)
+            quantity.setRange(1, max(1, int(item["stock"])))
+            quantity.setValue(int(item["quantity"]))
+            quantity.setMinimumHeight(34)
+            quantity.valueChanged.connect(
+                lambda value, code=masp: self._update_cart_quantity(code, value)
+            )
+            self.cart_table.setCellWidget(row_index, 2, quantity)
 
-                remove_button = QPushButton("Bỏ")
-                remove_button.setObjectName("dangerButton")
-                remove_button.clicked.connect(
-                    lambda _checked=False, product_code=masp:
-                    self._remove_cart_item(product_code)
-                )
-                self.cart_table.setCellWidget(row_index, 6, remove_button)
-                self.cart_table.setRowHeight(row_index, 44)
-        finally:
-            resume_table_sorting(self.cart_table)
+            remove_button = QPushButton("Bỏ")
+            remove_button.setObjectName("dangerButton")
+            remove_button.clicked.connect(
+                lambda _checked=False, product_code=masp:
+                self._remove_cart_item(product_code)
+            )
+            self.cart_table.setCellWidget(row_index, 6, remove_button)
 
     def _update_cart_quantity(self, masp, quantity):
         """Đồng bộ số lượng ở giỏ và cập nhật thành tiền, tổng thanh toán."""

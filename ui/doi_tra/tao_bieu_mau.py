@@ -5,13 +5,13 @@ from decimal import Decimal, ROUND_HALF_UP
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
-    QFormLayout, QGroupBox, QComboBox, QCompleter, QLineEdit, QTableWidget,
-    QTableWidgetItem, QHeaderView, QAbstractItemView, QMessageBox, QSpinBox,
+    QFormLayout, QGroupBox, QComboBox, QCompleter, QLineEdit,
+    QTableWidgetItem, QMessageBox, QSpinBox,
 )
 
 from .dung_chung import MONEY_QUANT, as_decimal, date_text, money
 from ui.permissions import is_admin_account
-from ui.table_sort import set_table_minimum_section_size
+from ui.product_table import ProductTableWidget
 
 
 class CreateReturnDialog(QDialog):
@@ -112,13 +112,16 @@ class CreateReturnDialog(QDialog):
         hint.setWordWrap(True)
         items_layout.addWidget(hint)
 
-        self.table = QTableWidget(0, 9)
-        self.table.setHorizontalHeaderLabels([
-            "Mã SP", "Tên sản phẩm", "Đã mua", "Đã xử lý",
-            "Còn được xử lý", "Số lượng", "Tình trạng hàng",
-            "Hình thức xử lý", "Tiền hoàn"
-        ])
-        self._configure_items_table(self.table)
+        self.table = ProductTableWidget(
+            [
+                "Mã SP", "Tên sản phẩm", "Đã mua", "Đã xử lý",
+                "Còn được xử lý", "Số lượng", "Tình trạng hàng",
+                "Hình thức xử lý", "Tiền hoàn"
+            ],
+            stretch_column=1,
+            fixed_column_widths={5: 100},
+            parent=self,
+        )
         items_layout.addWidget(self.table, 1)
         root.addWidget(items_group, 1)
 
@@ -155,31 +158,6 @@ class CreateReturnDialog(QDialog):
         completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         completer.setFilterMode(Qt.MatchFlag.MatchContains)
         completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-
-    @staticmethod
-    def _configure_items_table(table):
-        """Cấu hình bảng đổi trả; giữ đủ chiều rộng cho QSpinBox native."""
-        table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        table.setSelectionBehavior(
-            QAbstractItemView.SelectionBehavior.SelectRows
-        )
-        table.setAlternatingRowColors(True)
-        table.verticalHeader().setVisible(False)
-
-        header = table.horizontalHeader()
-        set_table_minimum_section_size(table)
-        header.setSectionResizeMode(
-            QHeaderView.ResizeMode.ResizeToContents
-        )
-        # Cột số lượng cần rộng hơn độ rộng tiêu đề để hiển thị số và nút
-        # tăng/giảm; cột tên sản phẩm Stretch sẽ co giãn phần còn lại.
-        header.setSectionResizeMode(
-            5, QHeaderView.ResizeMode.Fixed
-        )
-        table.setColumnWidth(5, 100)
-        header.setSectionResizeMode(
-            1, QHeaderView.ResizeMode.Stretch
-        )
 
     @staticmethod
     def _find_invoice_index(invoice_combo, typed_text):
@@ -324,8 +302,7 @@ class CreateReturnDialog(QDialog):
                     / Decimal("100")
                 ).quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
 
-                row = self.table.rowCount()
-                self.table.insertRow(row)
+                row = self.table.insert_product_row()
                 values = [
                     masp, str(data[1] or ""), purchased, processed,
                     remaining, "", "", "", money(0)
@@ -365,10 +342,6 @@ class CreateReturnDialog(QDialog):
                 quantity.valueChanged.connect(self.update_totals)
                 condition.currentIndexChanged.connect(self.update_totals)
                 action.currentIndexChanged.connect(self.update_totals)
-
-                # Giống giỏ hàng hóa đơn/phiếu nhập: hàng cao 44 px để
-                # QSpinBox, QComboBox và nội dung không bị cắt theo chiều dọc.
-                self.table.setRowHeight(row, 44)
 
             self.save_button.setEnabled(bool(self.row_controls))
             self.update_totals()

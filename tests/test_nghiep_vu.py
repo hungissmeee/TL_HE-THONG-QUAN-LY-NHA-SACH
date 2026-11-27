@@ -14,6 +14,7 @@ from PySide6.QtWidgets import QCompleter
 from ui.styles import MAIN_WINDOW_STYLESHEET, apply_app_palette
 
 from database.connection import Database
+from ui.product_table import ProductTableWidget
 from ui.table_sort import (
     SORT_ROLE,
     SortableTableWidgetItem,
@@ -141,37 +142,58 @@ class NativeQtControlStyleTests(unittest.TestCase):
             _APP.setPalette(original)
 
 
-class CartTableOrderTests(unittest.TestCase):
-    """Giỏ hàng hóa đơn và phiếu nhập phải giữ nguyên thứ tự thêm sản phẩm."""
+class ProductTableWidgetTests(unittest.TestCase):
+    """Các bảng sản phẩm của hóa đơn, phiếu nhập và đổi trả dùng chung cấu hình."""
 
-    def _assert_cart_table_keeps_insertion_order(self, configure_table):
-        table = QTableWidget(0, 3)
-        configure_table(table, stretch_column=1)
+    def test_product_table_keeps_insertion_order_and_native_headers(self):
+        from PySide6.QtWidgets import QHeaderView
+        from ui.product_table import ProductTableWidget
+
+        table = ProductTableWidget(
+            ["Mã SP", "Tên sản phẩm", "Số lượng"],
+            stretch_column=1,
+        )
 
         self.assertFalse(table.isSortingEnabled())
         self.assertFalse(table.horizontalHeader().sectionsClickable())
         self.assertFalse(table.horizontalHeader().isSortIndicatorShown())
+        self.assertEqual(
+            table.horizontalHeader().minimumSectionSize(),
+            DEFAULT_MIN_SECTION_SIZE,
+        )
 
         codes = ["SP003", "SP001", "SP002"]
-        for row, code in enumerate(codes):
-            table.insertRow(row)
+        for code in codes:
+            row = table.insert_product_row()
             table.setItem(row, 0, SortableTableWidgetItem(code))
 
         self.assertEqual(
             [table.item(row, 0).text() for row in range(table.rowCount())],
             codes,
         )
+        self.assertEqual(table.rowHeight(0), ProductTableWidget.DEFAULT_ROW_HEIGHT)
+        self.assertEqual(
+            table.horizontalHeader().sectionResizeMode(1),
+            QHeaderView.ResizeMode.Stretch,
+        )
         table.close()
 
-    def test_invoice_cart_keeps_products_in_added_order(self):
-        self._assert_cart_table_keeps_insertion_order(
-            CreateInvoiceDialog._configure_table
+    def test_product_table_supports_workflow_specific_fixed_columns(self):
+        from PySide6.QtWidgets import QHeaderView
+        from ui.product_table import ProductTableWidget
+
+        table = ProductTableWidget(
+            ["Mã SP", "Tên sản phẩm", "Đã mua", "Số lượng"],
+            stretch_column=1,
+            fixed_column_widths={3: 100},
         )
 
-    def test_import_cart_keeps_products_in_added_order(self):
-        self._assert_cart_table_keeps_insertion_order(
-            CreateImportDialog._configure_table
+        self.assertEqual(table.columnWidth(3), 100)
+        self.assertEqual(
+            table.horizontalHeader().sectionResizeMode(3),
+            QHeaderView.ResizeMode.Fixed,
         )
+        table.close()
 
 
 class ReturnDialogWidgetTests(unittest.TestCase):
