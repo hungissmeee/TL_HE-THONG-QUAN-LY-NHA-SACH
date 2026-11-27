@@ -617,10 +617,13 @@ class BaoCaoRepository:
         }
 
     def shift_report(self, start_date, end_date):
+        """Báo cáo ca, số hóa đơn và doanh số theo ca; tách biệt tiền kiểm kê."""
         return self._fetch_all("""
             SELECT
                 C.MACA, CAST(C.NGAYLAM AS date), C.SOCA, C.TGMO, C.TGDONG,
-                COUNT(DISTINCT L.MANV), C.TMDAUCA, C.TMCUOICA,
+                COUNT(DISTINCT L.MANV),
+                COALESCE(S.SO_HD, 0), COALESCE(S.DOANH_THU, 0),
+                C.TMDAUCA, C.TMCUOICA,
                 CASE
                     WHEN C.TGMO IS NULL OR C.TGDONG IS NULL THEN N'Chưa cấu hình giờ'
                     WHEN SYSDATETIME() >= T.END_AT THEN N'Đã kết thúc'
@@ -644,10 +647,91 @@ class BaoCaoRepository:
                         )
                     ) AS END_AT
             ) T
+            OUTER APPLY (
+                SELECT
+                    COUNT(*) AS SO_HD,
+                    COALESCE(SUM(
+                        H.TIEN_HANG - ROUND(H.TIEN_HANG * H.TYLEGIAM / 100.0, 2)
+                    ), 0) AS DOANH_THU
+                FROM (
+                    SELECT
+                        HD.MAHD,
+                        COALESCE(SUM(COALESCE(CT.DONGIA, 0)
+                            * COALESCE(CT.SOLUONG, 0)), 0) AS TIEN_HANG,
+                        COALESCE(KM.TYLEGIAM, 0) AS TYLEGIAM
+                    FROM dbo.HOA_DON HD
+                    LEFT JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
+                    LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
+                    WHERE HD.MACA = C.MACA AND HD.TRANGTHAI = 1
+                    GROUP BY HD.MAHD, KM.TYLEGIAM
+                ) H
+            ) S
             LEFT JOIN dbo.LAMCA L ON L.MACA = C.MACA
             WHERE C.NGAYLAM >= CONVERT(date, ?)
               AND C.NGAYLAM < DATEADD(day, 1, CONVERT(date, ?))
             GROUP BY C.MACA, C.NGAYLAM, C.SOCA, C.TGMO, C.TGDONG,
-                     C.TMDAUCA, C.TMCUOICA, T.START_AT, T.END_AT
+                     C.TMDAUCA, C.TMCUOICA, T.START_AT, T.END_AT,
+                     S.SO_HD, S.DOANH_THU
             ORDER BY C.NGAYLAM DESC, C.SOCA, C.MACA
         """, (start_date, end_date))
+
+    def employee_sales_report(self, start_date, end_date):
+        """Bán hàng theo nhân viên lập và đổi trả theo nhân viên xử lý."""
+        return self._fetch_all("""
+            WITH InvoiceTotals AS (
+                SELECT
+                    HD.MAHD, HD.MANV,
+                    COALESCE(KM.TYLEGIAM, 0) AS TYLEGIAM,
+                    COALESCE(SUM(COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0)), 0)
+                        AS TIEN_HANG,
+                    COALESCE(SUM(CT.SOLUONG), 0) AS SL_BAN
+                FROM dbo.HOA_DON HD
+                LEFT JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
+                LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
+                WHERE HD.TRANGTHAI = 1
+                  AND HD.NGAYLAP >= CONVERT(date, ?)
+                  AND HD.NGAYLAP < DATEADD(day, 1, CONVERT(date, ?))
+                GROUP BY HD.MAHD, HD.MANV, KM.TYLEGIAM
+            ),
+            SalesByEmployee AS (
+                SELECT
+                    MANV,
+                    COUNT(*) AS SO_HOA_DON,
+                    SUM(SL_BAN) AS SL_BAN,
+                    SUM(TIEN_HANG - ROUND(TIEN_HANG * TYLEGIAM / 100.0, 2))
+                        AS DOANH_THU
+                FROM InvoiceTotals
+                GROUP BY MANV
+            ),
+            ReturnsByEmployee AS (
+                SELECT
+                    PDT.MANV,
+                    COUNT(DISTINCT PDT.MAPDT) AS SO_PHIEU_XU_LY,
+                    SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 0
+                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_HOAN_TIEN,
+                    SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 1
+                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_DOI_HANG,
+                    SUM(COALESCE(PDT.TONG_TIEN_HOAN, 0)) AS TIEN_HOAN
+                FROM dbo.PHIEU_DOI_TRA PDT
+                LEFT JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT
+                WHERE PDT.NGAY_DOI_TRA >= CONVERT(date, ?)
+                  AND PDT.NGAY_DOI_TRA < DATEADD(day, 1, CONVERT(date, ?))
+                GROUP BY PDT.MANV
+            )
+            SELECT
+                COALESCE(NV.MANV, S.MANV, R.MANV),
+                COALESCE(NV.TENNV, N''),
+                COALESCE(S.SO_HOA_DON, 0),
+                COALESCE(S.SL_BAN, 0),
+                COALESCE(S.DOANH_THU, 0),
+                COALESCE(R.SO_PHIEU_XU_LY, 0),
+                COALESCE(R.SL_HOAN_TIEN, 0),
+                COALESCE(R.SL_DOI_HANG, 0),
+                COALESCE(R.TIEN_HOAN, 0)
+            FROM SalesByEmployee S
+            FULL OUTER JOIN ReturnsByEmployee R ON R.MANV = S.MANV
+            LEFT JOIN dbo.NHAN_VIEN NV
+                ON NV.MANV = COALESCE(S.MANV, R.MANV)
+            ORDER BY COALESCE(S.DOANH_THU, 0) DESC, NV.TENNV
+        """, (start_date, end_date, start_date, end_date))
+
