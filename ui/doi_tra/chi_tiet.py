@@ -56,10 +56,10 @@ class ReturnDetailDialog(QDialog):
         form.addRow("Lý do:", QLabel(str(self.header["reason"])))
         root.addWidget(info)
 
-        self.table = QTableWidget(0, 7)
+        self.table = QTableWidget(0, 6)
         self.table.setHorizontalHeaderLabels([
             "Mã SP", "Tên sản phẩm", "SL", "Tình trạng hàng",
-            "Hình thức xử lý", "Đơn giá hoàn", "Thành tiền hoàn"
+            "Hình thức xử lý", "Thành tiền hoàn"
         ])
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
@@ -72,11 +72,10 @@ class ReturnDetailDialog(QDialog):
 
         for row_index, item in enumerate(self.items):
             self.table.insertRow(row_index)
-            line_total = item["unit_refund"] * item["quantity"]
             values = [
                 item["masp"], item["tensp"], item["quantity"],
                 item["condition"], item["action"],
-                money(item["unit_refund"]), money(line_total),
+                money(item["line_refund_total"]),
             ]
             for column, value in enumerate(values):
                 self.table.setItem(row_index, column, QTableWidgetItem(str(value)))
