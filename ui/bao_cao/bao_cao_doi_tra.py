@@ -39,38 +39,7 @@ class ReturnReportPage(ReportBasePage):
 
     def load_report(self):
         start_date, end_date = self.date_parameters()
-        sql = """
-            SELECT
-                PDT.MAPDT,
-                PDT.NGAY_DOI_TRA,
-                COALESCE(PDT.MAHD, N''),
-                COALESCE(NV.TENNV, PDT.MANV, N''),
-                COALESCE(PDT.LY_DO, N''),
-                COALESCE(CT.SL_HOAN_TIEN, 0),
-                COALESCE(CT.SL_DOI_HANG, 0),
-                COALESCE(CT.SL_NGUYEN_VEN, 0),
-                COALESCE(CT.SL_HANG_HONG, 0),
-                COALESCE(PDT.TONG_TIEN_HOAN, 0)
-            FROM dbo.PHIEU_DOI_TRA PDT
-            LEFT JOIN dbo.NHAN_VIEN NV ON NV.MANV = PDT.MANV
-            OUTER APPLY (
-                SELECT
-                    SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 0
-                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_HOAN_TIEN,
-                    SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 1
-                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_DOI_HANG,
-                    SUM(CASE WHEN CTDT.TINHTRANGHANG = 1
-                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_NGUYEN_VEN,
-                    SUM(CASE WHEN CTDT.TINHTRANGHANG = 0
-                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_HANG_HONG
-                FROM dbo.CHI_TIET_DOI_TRA CTDT
-                WHERE CTDT.MAPDT = PDT.MAPDT
-            ) CT
-            WHERE PDT.NGAY_DOI_TRA >= CONVERT(date, ?)
-              AND PDT.NGAY_DOI_TRA < DATEADD(day, 1, CONVERT(date, ?))
-            ORDER BY PDT.NGAY_DOI_TRA DESC, PDT.MAPDT DESC
-        """
-        rows = self.fetch_all(sql, (start_date, end_date))
+        rows = self.service.return_report(start_date, end_date)
         refund_quantity = sum(int(row[5] or 0) for row in rows)
         exchange_quantity = sum(int(row[6] or 0) for row in rows)
         intact_quantity = sum(int(row[7] or 0) for row in rows)
