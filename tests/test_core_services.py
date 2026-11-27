@@ -1008,7 +1008,7 @@ class ReportServiceTests(unittest.TestCase):
         self.assertIn("ReturnHeaders AS", repository.sql)
         self.assertIn("I.TENNV LIKE ?", repository.sql)
         self.assertNotIn("NV.TENNV LIKE ?", repository.sql)
-        self.assertIn("PDT.TONG_TIEN_HOAN", repository.sql)
+        self.assertIn("SUM(COALESCE(TONG_TIEN_HOAN, 0))", repository.sql)
         self.assertEqual(
             repository.params,
             ("2026-01-01", "2026-01-31", "NV01",
