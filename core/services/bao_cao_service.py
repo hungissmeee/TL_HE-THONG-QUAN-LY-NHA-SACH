@@ -24,6 +24,13 @@ class BaoCaoService:
             raise ValueError("Ngày bắt đầu không được lớn hơn ngày kết thúc.")
         return start.isoformat(), end.isoformat()
 
+    def fetch_all(self, sql, params=()):
+        """Compatibility read-only query for report extensions."""
+        return self.repository.fetch_all(sql, params)
+
+    def fetch_one(self, sql, params=()):
+        return self.repository.fetch_one(sql, params)
+
     def overview_summary(self, start_date, end_date):
         return self.repository.overview_summary(*self._validate_dates(start_date, end_date))
 
