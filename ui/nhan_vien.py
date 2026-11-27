@@ -12,6 +12,8 @@ from PySide6.QtWidgets import (
 
 from PySide6.QtCore import Qt
 from ui.tai_khoan import EmployeePermissionDialog
+from core.repositories.nhan_vien_repository import NhanVienRepository
+from core.services.nhan_vien_service import NhanVienService
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
     prepare_sortable_table,
@@ -130,6 +132,7 @@ class EmployeeWindow(QWidget):
         super().__init__()
 
         self.db = db
+        self.service = NhanVienService(NhanVienRepository(db))
 
         self.is_admin = (
             str(getattr(self.db, "username", "") or "").strip().lower() == "admin"
@@ -265,83 +268,25 @@ class EmployeeWindow(QWidget):
     # ======================================
 
     def load_employees(self):
-        """Tải hồ sơ nhân viên theo từ khóa tìm kiếm."""
-
-        conn = self.db.get_connection()
-
-        if conn is None:
-            QMessageBox.warning(
-                self, "Thông báo",
-                "Chưa có kết nối database!"
-            )
-            return
-
-        cursor = None
-
+        """Tải danh sách nhân viên qua Service."""
         try:
-
-            keyword = self.search_input.text().strip()
-
-            cursor = conn.cursor()
-
-            cursor.execute("""
-                SELECT MANV, TENNV, VAITRO, SDT
-                FROM NHAN_VIEN
-                WHERE MANV LIKE ?
-                   OR TENNV LIKE ?
-                ORDER BY MANV
-            """, f"%{keyword}%", f"%{keyword}%")
-
-            employees = cursor.fetchall()
-
+            employees = self.service.list_employees(self.search_input.text())
             pause_table_sorting(self.table)
-
             self.table.setRowCount(0)
-
             for row_index, employee in enumerate(employees):
-
                 self.table.insertRow(row_index)
-
-                values = [
-                    employee[0],
-                    employee[1],
-                    employee[2],
-                    employee[3]
-                ]
-
-                for col_index, value in enumerate(values):
-
-                    item = QTableWidgetItem(
-                        "" if value is None else str(value)
-                    )
-
+                for col_index, value in enumerate(employee):
                     self.table.setItem(
-                        row_index,
-                        col_index,
-                        item
+                        row_index, col_index,
+                        QTableWidgetItem("" if value is None else str(value))
                     )
-
-            self.total_label.setText(
-                f"Tổng số nhân viên: {len(employees)}"
-            )
-
-        except Exception as e:
-
+            self.total_label.setText(f"Tổng số nhân viên: {len(employees)}")
+        except Exception as error:
             QMessageBox.critical(
-                self, "Lỗi",
-                f"Không thể tải danh sách nhân viên!\n{e}"
+                self, "Lỗi", f"Không thể tải danh sách nhân viên!\\n{error}"
             )
-
         finally:
-
             resume_table_sorting(self.table)
-
-            if cursor is not None:
-                cursor.close()
-
-    # ======================================
-    # GIAO DIỆN THÊM NHÂN VIÊN
-    # ======================================
 
     def create_add_page(self):
         """Tạo biểu mẫu nhập thông tin và cấp tài khoản SQL Server cho nhân viên mới."""
@@ -441,97 +386,32 @@ class EmployeeWindow(QWidget):
     # ======================================
 
     def create_employee(self):
-        """Kiểm tra thông tin, sinh mã và tạo tài khoản cùng hồ sơ nhân viên."""
-
-        manv = self.manv.text().strip()
-        tennv = self.tennv.text().strip()
-        vaitro = self.vaitro.currentText()
-        sdt = self.sdt.text().strip()
-
-        password = self.password.text()
-        confirm = self.confirm_password.text()
-
+        """Kiểm tra biểu mẫu và tạo hồ sơ/tài khoản qua Service."""
         if not self.is_admin:
-            QMessageBox.warning(
-                self, "Từ chối",
-                "Chỉ admin được tạo nhân viên!"
-            )
+            QMessageBox.warning(self, "Từ chối", "Chỉ admin được tạo nhân viên!")
             return
-        if self.vaitro.currentIndex() == 0:
-            QMessageBox.warning(
-                self,
-                "Thông báo",
-                "Vui lòng chọn vai trò nhân viên!"
-            )
-            return
-        if not all([
-            manv, tennv, vaitro,
-            password, confirm
-        ]):
-            QMessageBox.warning(
-                self, "Thông báo",
-                "Vui lòng nhập đầy đủ thông tin!"
-            )
-            return
-
-        if password != confirm:
-            QMessageBox.warning(
-                self, "Thông báo",
-                "Mật khẩu xác nhận không khớp!"
-            )
-            return
-
-
-        conn = self.db.get_connection()
-        if conn is None:
-            QMessageBox.warning(
-                self, "Thông báo", "Chưa có kết nối database!"
-            )
-            return
-
-        cursor = None
         try:
-            # Khóa bảng và tính lại mã ngay trước khi tạo tài khoản.
-            # Hồ sơ NHAN_VIEN được giữ lại khi xóa SQL Login, nên mã cũ
-            # vẫn được tính và không bao giờ được cấp lại.
-            cursor = conn.cursor()
-            manv = self._next_employee_code(cursor, lock_table=True)
-            self.manv.setText(manv)
-            cursor.close()
-            cursor = None
-
-            # create_account phải dùng cùng self.conn và commit/rollback
-            # transaction này sau khi tạo Login, User và hồ sơ nhân viên.
-            self.db.create_account(
-                manv,
-                tennv,
-                vaitro,
-                sdt or None,
-                password
-            )
-
+            employee_code = self.service.create_employee({
+                "name": self.tennv.text(),
+                "role": self.vaitro.currentText() if self.vaitro.currentIndex() > 0 else "",
+                "phone": self.sdt.text(),
+                "password": self.password.text(),
+                "confirm_password": self.confirm_password.text(),
+            })
             QMessageBox.information(
                 self, "Thành công",
-                f"Đã tạo nhân viên {manv} và tài khoản thành công!"
+                f"Đã tạo nhân viên {employee_code} và tài khoản thành công!"
             )
-
             self.clear_form()
             self.show_list_page()
             self.load_employees()
-
-        except Exception as e:
-            conn.rollback()
+        except (ValueError, PermissionError) as error:
+            QMessageBox.warning(self, "Không thể tạo nhân viên", str(error))
+        except Exception as error:
             QMessageBox.critical(
                 self, "Lỗi tạo nhân viên",
-                str(e)
+                f"{error}\\n\\nGiao dịch đã được hoàn tác."
             )
-        finally:
-            if cursor is not None:
-                cursor.close()
-
-    # ======================================
-    # CHUYỂN GIAO DIỆN CON
-    # ======================================
 
     def show_add_page(self):
         """Chuyển sang biểu mẫu tạo nhân viên sau khi kiểm tra quyền."""
@@ -551,59 +431,22 @@ class EmployeeWindow(QWidget):
     # XÓA DỮ LIỆU FORM
     # ======================================
 
-    def _next_employee_code(self, cursor, lock_table=False):
-        """Sinh mã NV001, NV002... từ toàn bộ hồ sơ NHAN_VIEN.
-
-        Không lọc theo trạng thái tài khoản hoặc IS_DELETED (nếu có).
-        Khi tạo mới, TABLOCKX + HOLDLOCK giữ khóa đến khi create_account
-        commit transaction, tránh hai lần thêm cùng sinh một mã.
-        """
-        table_hint = " WITH (TABLOCKX, HOLDLOCK)" if lock_table else ""
-        cursor.execute(f"""
-            SELECT COALESCE(
-                MAX(TRY_CONVERT(BIGINT, SUBSTRING(MANV, 3, 18))),
-                0
-            )
-            FROM dbo.NHAN_VIEN{table_hint}
-            WHERE UPPER(LEFT(MANV, 2)) = 'NV'
-              AND TRY_CONVERT(BIGINT, SUBSTRING(MANV, 3, 18)) IS NOT NULL
-        """)
-
-        last_number = cursor.fetchone()[0] or 0
-        code = f"NV{int(last_number) + 1:03d}"
-
-        if len(code) > 20:
-            raise ValueError("Mã nhân viên vượt quá 20 ký tự.")
-
-        return code
+    @staticmethod
+    def _next_employee_code(cursor, lock_table=False):
+        """Giữ API cũ cho test; sinh mã thuộc Repository."""
+        return NhanVienRepository._next_employee_code(cursor, lock_table)
 
     def refresh_employee_code(self):
-        """Hiển thị trước mã nhân viên kế tiếp; ô mã không cho nhập tay."""
+        """Hiển thị mã nhân viên dự kiến do Service/Repository sinh."""
         if not hasattr(self, "manv"):
             return
-
-        conn = self.db.get_connection()
-        if conn is None:
-            self.manv.clear()
-            return
-
-        cursor = None
         try:
-            cursor = conn.cursor()
-            code = self._next_employee_code(cursor, lock_table=False)
-            self.manv.setText(code)
-            conn.commit()
-        except Exception as e:
-            conn.rollback()
+            self.manv.setText(self.service.preview_next_employee_code())
+        except Exception as error:
             self.manv.setText("Không tạo được mã")
             QMessageBox.warning(
-                self,
-                "Không thể tạo mã nhân viên",
-                f"Không lấy được mã nhân viên tự động.\n{e}"
+                self, "Không thể tạo mã nhân viên", str(error)
             )
-        finally:
-            if cursor is not None:
-                cursor.close()
 
     def clear_form(self):
         """Xóa các trường nhập và tạo lại mã nhân viên dự kiến."""
@@ -628,7 +471,7 @@ class EmployeeWindow(QWidget):
         account_info = {}
         if self.is_admin:
             try:
-                account_info = self.db.get_employee_permissions(values[0])
+                account_info = self.service.get_employee_permissions(values[0])
             except Exception as e:
                 QMessageBox.critical(
                     self,
@@ -670,7 +513,7 @@ class EmployeeWindow(QWidget):
             return False
 
         try:
-            self.db.set_employee_account_enabled(manv, enabled)
+            self.service.set_account_enabled(manv, enabled)
             message = (
                 "Đã kích hoạt lại tài khoản."
                 if enabled
