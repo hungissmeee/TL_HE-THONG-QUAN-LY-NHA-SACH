@@ -24,3 +24,14 @@ def resolve_connection(connection_source):
     if connection is None:
         raise RuntimeError("Chưa có kết nối SQL Server.")
     return connection
+
+
+def restore_and_activate_product(cursor, product_code, quantity):
+    """Kích hoạt lại sản phẩm và cộng tồn kho trong cùng transaction."""
+    cursor.execute("""
+        UPDATE dbo.SAN_PHAM
+        SET IS_DELETED = 0,
+            SLTON = ISNULL(SLTON, 0) + ?
+        WHERE MASP = ?
+    """, quantity, product_code)
+    return cursor.rowcount == 1
