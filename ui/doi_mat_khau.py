@@ -42,6 +42,7 @@ class ChangePasswordDialog(QDialog):
         # Nút đổi mật khẩu
         self.change_button = QPushButton("Đổi mật khẩu")
         self.change_button.setProperty("buttonRole", "primary")
+        self.change_button.setObjectName("primaryButton")
         self.change_button.clicked.connect(self.change_password)
 
         # Nút hủy
