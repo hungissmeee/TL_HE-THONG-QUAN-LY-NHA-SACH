@@ -20,6 +20,7 @@ from ui.formatters import (
     format_number as number_text,
     format_report_date as date_text,
 )
+from ui.table_sort import SortableTableWidgetItem
 
 
 REPORTS = {
@@ -184,15 +185,17 @@ REPORTS = {
     },
     "stock_card": {
         "title": "BÁO CÁO XUẤT NHẬP TỒN CHI TIẾT (THẺ KHO)",
-        "description": "Các lần nhập, bán, khách trả hàng nguyên vẹn và xuất hàng đổi; tồn chạy được tái dựng từ số tồn hiện tại và lịch sử chứng từ.",
+        "description": "Các lần nhập, bán, khách trả hàng nguyên vẹn và xuất hàng đổi; trị giá nhập lấy theo phiếu nhập, trị giá xuất ước tính theo giá nhập hiện đang lưu.",
         "method": "stock_card_report",
         "headers": [
             "Ngày giao dịch", "Loại giao dịch", "Mã chứng từ",
-            "Mã hàng", "Tên hàng", "SL nhập", "SL xuất", "Tồn sau giao dịch",
+            "Mã hàng", "Tên hàng", "SL nhập", "Giá trị nhập",
+            "SL xuất", "Giá trị xuất*", "Tồn sau giao dịch",
         ],
-        "number_cols": [5, 6, 7],
+        "number_cols": [5, 7, 9],
+        "money_cols": [6, 8],
         "date_cols": [0],
-        "sum_cols": [5, 6],
+        "sum_cols": [5, 6, 7, 8],
         "search": True,
     },
     "shift": {
@@ -511,8 +514,8 @@ class ReportCenterPage(QWidget):
         self.search_input.clear()
         self._build_table_headers(definition)
         self.filter_note.setText(
-            "Đơn giá nhập và số dư kho không có lịch sử điều chỉnh riêng trong CSDL; "
-            "các cột có dấu * là số liệu ước tính theo giá nhập hiện lưu."
+            "CSDL chưa có nhật ký điều chỉnh kho riêng; tồn đầu/tồn chạy được tái dựng từ SLTON và chứng từ đã lưu. "
+            "Giá trị tồn, xuất, hàng trả và đổi hàng có dấu * là ước tính theo giá nhập hiện lưu."
             if self.current_report in {"stock_movement", "stock_card", "current_inventory"}
             else ""
         )
@@ -626,7 +629,7 @@ class ReportCenterPage(QWidget):
             row = self.table.rowCount()
             self.table.insertRow(row)
             for col, value in enumerate(values):
-                item = QTableWidgetItem(self._format_value(value, col, definition))
+                item = SortableTableWidgetItem(self._format_value(value, col, definition))
                 item.setData(Qt.ItemDataRole.UserRole, value)
                 item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
                 if col in definition.get("money_cols", []) or col in definition.get("number_cols", []):
