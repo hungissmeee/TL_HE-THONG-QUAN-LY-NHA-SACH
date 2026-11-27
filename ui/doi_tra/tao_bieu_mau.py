@@ -3,11 +3,11 @@
 from decimal import Decimal, ROUND_HALF_UP
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIntValidator
 from PySide6.QtWidgets import (
     QDialog, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
-    QFormLayout, QGroupBox, QComboBox, QCompleter, QLineEdit, QTableWidget,
-    QTableWidgetItem, QHeaderView, QAbstractItemView, QMessageBox,
+    QFormLayout, QGroupBox, QComboBox, QCompleter, QLineEdit, QSpinBox,
+    QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
+    QMessageBox,
 )
 
 from .dung_chung import MONEY_QUANT, as_decimal, date_text, money
@@ -133,9 +133,33 @@ class CreateReturnDialog(QDialog):
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setAlternatingRowColors(True)
         self.table.verticalHeader().setVisible(False)
+        self.table.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
+        self.table.setHorizontalScrollMode(
+            QAbstractItemView.ScrollMode.ScrollPerPixel
+        )
+
+        # Bố trí cột theo độ rộng thực tế của các ô nhập giống giỏ hàng
+        # hóa đơn/phiếu nhập; cột tên sản phẩm co giãn theo cửa sổ.
         header = self.table.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        column_widths = {
+            0: 72,   # Mã SP
+            2: 68,   # Đã mua
+            3: 72,   # Đã xử lý
+            4: 108,  # Còn được xử lý
+            5: 96,   # Số lượng
+            6: 155,  # Tình trạng hàng
+            7: 190,  # Hình thức xử lý
+            8: 100,  # Tiền hoàn
+        }
+        for column, width in column_widths.items():
+            self.table.setColumnWidth(column, width)
+        header.setMinimumSectionSize(60)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        self.table.setColumnWidth(1, 180)
+
         items_layout.addWidget(self.table, 1)
         root.addWidget(items_group, 1)
 
@@ -308,25 +332,48 @@ class CreateReturnDialog(QDialog):
                 for column, value in enumerate(values):
                     self.table.setItem(row, column, QTableWidgetItem(str(value)))
 
-                quantity = QLineEdit("0")
-                quantity.setValidator(QIntValidator(0, remaining, quantity))
+                # Dùng QSpinBox giống ô số lượng trong hóa đơn/phiếu nhập:
+                # có nút tăng giảm, giới hạn trực tiếp theo lượng còn lại.
+                quantity = QSpinBox(self.table)
+                quantity.setRange(0, remaining)
+                quantity.setValue(0)
                 quantity.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                quantity.setMinimumWidth(88)
+                quantity.setMinimumHeight(34)
                 quantity.setToolTip(
                     f"Chỉ nhập số nguyên từ 0 đến {remaining}. "
                     f"Đơn vị tính: {data[2] or 'Không xác định'}"
                 )
 
-                condition = QComboBox()
+                condition = QComboBox(self.table)
                 condition.addItem("Còn nguyên vẹn", 1)
                 condition.addItem("Đã hỏng", 0)
+                condition.setMinimumWidth(145)
+                condition.setMinimumHeight(34)
+                condition.setMinimumContentsLength(12)
+                condition.setSizeAdjustPolicy(
+                    QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+                )
+                condition.setToolTip("Chọn tình trạng thực tế của hàng khách trả.")
 
-                action = QComboBox()
+                action = QComboBox(self.table)
                 action.addItem("Hoàn tiền", 0)
                 action.addItem("Đổi sản phẩm cùng mã", 1)
+                action.setMinimumWidth(180)
+                action.setMinimumHeight(34)
+                action.setMinimumContentsLength(20)
+                action.setSizeAdjustPolicy(
+                    QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+                )
+                action.setToolTip(
+                    "Chọn hoàn tiền hoặc đổi sản phẩm cùng mã. "
+                    "Chỉ hàng đã hỏng mới được đổi."
+                )
 
                 self.table.setCellWidget(row, 5, quantity)
                 self.table.setCellWidget(row, 6, condition)
                 self.table.setCellWidget(row, 7, action)
+                self.table.setRowHeight(row, 44)
                 self.row_controls[masp] = {
                     "row": row,
                     "quantity": quantity,
@@ -335,7 +382,7 @@ class CreateReturnDialog(QDialog):
                     "action": action,
                     "net_price": net_price,
                 }
-                quantity.textChanged.connect(self.update_totals)
+                quantity.valueChanged.connect(self.update_totals)
                 condition.currentIndexChanged.connect(self.update_totals)
                 action.currentIndexChanged.connect(self.update_totals)
 
@@ -348,9 +395,7 @@ class CreateReturnDialog(QDialog):
         """Tính tiền hoàn dự kiến; dòng đổi sản phẩm không hoàn tiền."""
         total = Decimal("0.00")
         for controls in self.row_controls.values():
-            quantity = self._parse_quantity_input(
-                controls["quantity"].text()
-            )
+            quantity = int(controls["quantity"].value())
             condition = controls["condition"].currentData()
             action = controls["action"].currentData()
             amount_item = self.table.item(controls["row"], 8)
@@ -380,9 +425,7 @@ class CreateReturnDialog(QDialog):
         selected = []
         for masp, controls in self.row_controls.items():
             try:
-                quantity = self._parse_quantity_input(
-                    controls["quantity"].text()
-                )
+                quantity = int(controls["quantity"].value())
             except ValueError as error:
                 QMessageBox.warning(self, "Số lượng không hợp lệ", str(error))
                 controls["quantity"].setFocus()
