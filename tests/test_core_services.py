@@ -207,7 +207,7 @@ class ImportServiceTests(unittest.TestCase):
     def test_import_rejects_zero_price(self):
         data = self.valid_payload()
         data["items"][0]["price"] = 0
-        with self.assertRaisesRegex(ValueError, "đơn giá"):
+        with self.assertRaisesRegex(ValueError, "Đơn giá"):
             self.service.create_import(data)
 
     def test_import_rejects_invalid_vat(self):
