@@ -16,6 +16,20 @@ class SanPhamService:
     def list_products(self, keyword=""):
         return self.repository.list_products(keyword)
 
+    def list_products_page(
+        self, keyword="", product_type="all", page=1, page_size=20,
+        sort_by="masp", sort_order="asc",
+    ):
+        """Ủy quyền tìm kiếm và phân trang sản phẩm cho Repository."""
+        return self.repository.list_products_page(
+            keyword=keyword,
+            product_type=product_type,
+            page=page,
+            page_size=page_size,
+            sort_by=sort_by,
+            sort_order=sort_order,
+        )
+
     def get_product(self, product_code):
         return self.repository.get_product(product_code)
 
