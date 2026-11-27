@@ -173,9 +173,9 @@ class ProductRepositoryPaginationTests(unittest.TestCase):
         def cursor(self):
             return self.fake_cursor
 
-    def _run_query(self, sort_by):
+    def _run_query(self, sort_by, sort_order="asc"):
         connection = self.FakeConnection()
-        result = SanPhamRepository(connection).list_products_page(sort_by=sort_by)
+        result = SanPhamRepository(connection).list_products_page(sort_by=sort_by, sort_order=sort_order)
         self.assertEqual(result, {"items": [], "total": 0})
         self.assertTrue(connection.fake_cursor.closed)
         return connection.fake_cursor.statements[-1]
@@ -190,7 +190,7 @@ class ProductRepositoryPaginationTests(unittest.TestCase):
         self.assertIn("ORDER BY SP.TENSP ASC, SP.MASP ASC OFFSET", sql)
 
     def test_descending_sort_keeps_masp_tiebreaker(self):
-        sql = self._run_query("giaban")
+        sql = self._run_query("giaban", sort_order="desc")
         self.assertIn("ORDER BY SP.GIABAN DESC, SP.MASP ASC OFFSET", sql)
 
 
