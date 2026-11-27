@@ -33,6 +33,13 @@ class FrontendOptions:
     port: int
 
 
+@dataclass(frozen=True)
+class NpmRuntime:
+    """Lệnh chạy npm bằng Node trực tiếp, không qua npm.cmd/cmd.exe."""
+
+    command_prefix: tuple[str, ...]
+
+
 @dataclass
 class RunningProcess:
     name: str
@@ -64,43 +71,53 @@ def load_frontend_options() -> FrontendOptions:
     )
 
 
-def _find_npm() -> str:
-    """Tìm npm trên Windows, Linux hoặc macOS."""
-    if not shutil.which("node"):
+def _find_npm() -> NpmRuntime:
+    """Tìm Node.js và npm-cli.js; Windows không gọi npm.cmd qua cmd.exe."""
+    node_path = shutil.which("node.exe" if os.name == "nt" else "node")
+    if not node_path:
+        node_path = shutil.which("node")
+    if not node_path:
         raise SystemExit(
             "[BookHub] Không tìm thấy Node.js. Hãy cài Node.js bản LTS rồi mở Terminal mới."
         )
 
-    candidates = ("npm.cmd", "npm") if os.name == "nt" else ("npm",)
-    for candidate in candidates:
-        path = shutil.which(candidate)
-        if path:
-            return path
+    if os.name != "nt":
+        npm_path = shutil.which("npm")
+        if not npm_path:
+            raise SystemExit(
+                "[BookHub] Không tìm thấy npm. Hãy kiểm tra lại cài đặt Node.js."
+            )
+        return NpmRuntime((npm_path,))
+
+    npm_path = shutil.which("npm.cmd") or shutil.which("npm")
+    search_directories = [Path(node_path).resolve().parent]
+    if npm_path:
+        search_directories.append(Path(npm_path).resolve().parent)
+
+    # Bản cài Node.js chính thức đặt npm CLI trong node_modules/npm/bin.
+    checked = set()
+    for directory in search_directories:
+        candidate = directory / "node_modules" / "npm" / "bin" / "npm-cli.js"
+        normalized = str(candidate).casefold()
+        if normalized in checked:
+            continue
+        checked.add(normalized)
+        if candidate.is_file():
+            return NpmRuntime((node_path, str(candidate)))
+
     raise SystemExit(
-        "[BookHub] Không tìm thấy npm. Hãy cài Node.js bản LTS rồi mở Terminal mới."
+        "[BookHub] Tìm thấy Node.js nhưng không tìm thấy npm-cli.js. "
+        "Hãy cài lại Node.js bản LTS từ nodejs.org (chọn cài kèm npm), "
+        "sau đó mở Terminal mới."
     )
 
 
-def _npm_command(npm_path: str, arguments: list[str]) -> list[str]:
-    """Tạo lệnh npm tương thích với npm.cmd và đường dẫn có dấu cách trên Windows."""
-    if os.name == "nt":
-        # cmd.exe xử lý chuỗi bắt đầu bằng dấu ngoặc kép theo quy tắc đặc biệt.
-        # Dùng CALL trước đường dẫn đã quote để cmd không hiểu nhầm đường dẫn
-        # "C:\\Program Files\\...\\npm.cmd" thành chuỗi tiêu đề của /c.
-        npm_executable = subprocess.list2cmdline([npm_path])
-        command_arguments = subprocess.list2cmdline(arguments)
-        command_line = f"call {npm_executable} {command_arguments}".rstrip()
-        return [
-            os.environ.get("COMSPEC", "cmd.exe"),
-            "/d",
-            "/s",
-            "/c",
-            command_line,
-        ]
-    return [npm_path, *arguments]
+def _npm_command(npm_runtime: NpmRuntime, arguments: list[str]) -> list[str]:
+    """Tạo argv chạy npm-cli.js bằng node.exe; an toàn với đường dẫn có dấu cách."""
+    return [*npm_runtime.command_prefix, *arguments]
 
 
-def _ensure_frontend_dependencies(npm_path: str) -> None:
+def _ensure_frontend_dependencies(npm_runtime: NpmRuntime) -> None:
     """Tự cài dependencies khi người dùng chưa chạy npm install."""
     package_file = FRONTEND_DIR / "package.json"
     vite_bins = (
@@ -114,7 +131,7 @@ def _ensure_frontend_dependencies(npm_path: str) -> None:
 
     print("[BookHub] Chưa có thư viện Frontend. Đang chạy npm install...", flush=True)
     result = subprocess.run(
-        _npm_command(npm_path, ["install", "--no-audit", "--no-fund"]),
+        _npm_command(npm_runtime, ["install", "--no-audit", "--no-fund"]),
         cwd=FRONTEND_DIR,
         check=False,
     )
@@ -217,8 +234,8 @@ def main() -> int:
 
     try:
         _check_python_dependencies()
-        npm_path = _find_npm()
-        _ensure_frontend_dependencies(npm_path)
+        npm_runtime = _find_npm()
+        _ensure_frontend_dependencies(npm_runtime)
     except SystemExit as exc:
         print(str(exc), file=sys.stderr)
         return 2
@@ -252,7 +269,7 @@ def main() -> int:
         frontend = _start_process(
             "Frontend",
             _npm_command(
-                npm_path,
+                npm_runtime,
                 [
                     "run", "dev", "--",
                     "--host", frontend_options.host,
