@@ -15,6 +15,8 @@ from PySide6.QtWidgets import (
     QDateTimeEdit,
 )
 from PySide6.QtCore import QDateTime, QLocale
+from core.repositories.khuyen_mai_repository import KhuyenMaiRepository
+from core.services.khuyen_mai_service import KhuyenMaiService
 
 
 class PromotionFormDialog(QDialog):
@@ -23,6 +25,7 @@ class PromotionFormDialog(QDialog):
     def __init__(self, db, parent=None):
         super().__init__(parent)
         self.db = db
+        self.service = KhuyenMaiService(KhuyenMaiRepository(db))
         self.promotion_code = None
 
         self.setWindowTitle("Thêm chương trình khuyến mãi")
@@ -102,74 +105,22 @@ class PromotionFormDialog(QDialog):
         )
 
     def save_promotion(self):
-        """Sinh mã và thêm khuyến mãi trong một transaction."""
-        name = self.name_input.text().strip()
-        if not name:
-            QMessageBox.warning(
-                self, "Thiếu thông tin", "Vui lòng nhập tên chương trình."
-            )
-            self.name_input.setFocus()
-            return
-
-        start_qdt = self.start_input.dateTime()
-        end_qdt = self.end_input.dateTime()
-        if start_qdt >= end_qdt:
-            QMessageBox.warning(
-                self,
-                "Thời hạn không hợp lệ",
-                "Thời gian kết thúc phải sau thời gian bắt đầu.",
-            )
-            self.end_input.setFocus()
-            return
-
-        conn = self.db.get_connection()
-        if conn is None:
-            QMessageBox.warning(
-                self, "Thông báo", "Chưa có kết nối SQL Server."
-            )
-            return
-
-        cursor = None
+        """Kiểm tra và tạo chương trình qua Service/Repository."""
+        payload = {
+            "name": self.name_input.text(),
+            "discount_rate": Decimal(f"{self.rate_input.value():.2f}"),
+            "start_at": self._to_datetime(self.start_input.dateTime()),
+            "end_at": self._to_datetime(self.end_input.dateTime()),
+        }
         try:
-            cursor = conn.cursor()
-
-            # Khóa bảng trong transaction để hai người tạo cùng lúc
-            # không sinh trùng mã khuyến mãi.
-            cursor.execute("""
-                SELECT COALESCE(
-                    MAX(TRY_CONVERT(BIGINT, SUBSTRING(MAKM, 3, 18))), 0
-                )
-                FROM dbo.CHUONG_TRINH_KM WITH (TABLOCKX, HOLDLOCK)
-                WHERE UPPER(LEFT(MAKM, 2)) = 'KM'
-                  AND TRY_CONVERT(BIGINT, SUBSTRING(MAKM, 3, 18)) IS NOT NULL
-            """)
-            last_number = int(cursor.fetchone()[0] or 0)
-            code = f"KM{last_number + 1:06d}"
-
-            rate = Decimal(f"{self.rate_input.value():.2f}")
-            start_at = self._to_datetime(start_qdt)
-            end_at = self._to_datetime(end_qdt)
-
-            cursor.execute("""
-                INSERT INTO dbo.CHUONG_TRINH_KM
-                    (MAKM, TENKM, TYLEGIAM, NGAYBD, NGAYKT, IS_DELETED)
-                VALUES (?, ?, ?, ?, ?, 0)
-            """, (code, name, rate, start_at, end_at))
-
-            conn.commit()
+            code = self.service.create_promotion(payload, can_manage=True)
             self.promotion_code = code
             QMessageBox.information(
-                self,
-                "Thành công",
+                self, "Thành công",
                 f"Đã thêm chương trình khuyến mãi {code}.",
             )
             self.accept()
-
+        except (ValueError, PermissionError) as error:
+            QMessageBox.warning(self, "Thông tin chưa hợp lệ", str(error))
         except Exception as error:
-            conn.rollback()
-            QMessageBox.critical(
-                self, "Không thể thêm khuyến mãi", str(error)
-            )
-        finally:
-            if cursor is not None:
-                cursor.close()
+            QMessageBox.critical(self, "Không thể thêm khuyến mãi", str(error))
