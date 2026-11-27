@@ -119,7 +119,7 @@ function ImportsPage() {
               <Col xs={8} md={4}><Form.Item name={[field.name, "price"]} rules={[{ required: true }]}><InputNumber min={0.01} precision={2} style={{ width: "100%" }} placeholder="Đơn giá" /></Form.Item></Col>
               <Col xs={5} md={3}><Form.Item name={[field.name, "vat"]}><InputNumber min={0} max={100} precision={2} style={{ width: "100%" }} placeholder="VAT" /></Form.Item></Col>
               <Col xs={3} md={2}><Button danger type="text" icon={<StopOutlined />} onClick={() => remove(field.name)} /></Col>
-            </Row)}
+            </Row>)}
           </>}
         </Form.List>
         <Alert type="info" showIcon message="Giá nhập bình quân và tồn kho được cập nhật tự động trong cùng giao dịch khi lập phiếu." />
