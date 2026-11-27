@@ -20,7 +20,7 @@ from ui.formatters import (
     format_number as number_text,
     format_report_date as date_text,
 )
-from ui.table_sort import SortableTableWidgetItem
+from ui.table_sort import SORT_ROLE, SortableTableWidgetItem
 
 
 REPORTS = {
@@ -631,6 +631,7 @@ class ReportCenterPage(QWidget):
             for col, value in enumerate(values):
                 item = SortableTableWidgetItem(self._format_value(value, col, definition))
                 item.setData(Qt.ItemDataRole.UserRole, value)
+                item.setData(SORT_ROLE, value)
                 item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
                 if col in definition.get("money_cols", []) or col in definition.get("number_cols", []):
                     item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
