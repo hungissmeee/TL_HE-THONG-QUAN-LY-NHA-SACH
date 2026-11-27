@@ -2,7 +2,7 @@
 
 from decimal import Decimal
 
-from core.sql_support import resolve_connection
+from core.sql_support import resolve_connection, restore_and_activate_product
 
 
 class HoaDonRepository:
@@ -406,15 +406,9 @@ class HoaDonRepository:
                 quantity = int(item[1] or 0)
                 if quantity <= 0:
                     raise ValueError(f"Số lượng hoàn kho không hợp lệ cho sản phẩm {product_code}.")
-                # Hủy hóa đơn có thể hoàn hàng về một sản phẩm đã bị xóa mềm.
-                # Khôi phục trạng thái hoạt động cùng transaction với biến động tồn kho.
-                cursor.execute("""
-                    UPDATE dbo.SAN_PHAM
-                    SET IS_DELETED = 0,
-                        SLTON = ISNULL(SLTON, 0) + ?
-                    WHERE MASP = ?
-                """, quantity, product_code)
-                if cursor.rowcount != 1:
+                # Hủy hóa đơn có thể hoàn hàng về sản phẩm đã xóa mềm.
+                # Khôi phục trạng thái hoạt động và cộng tồn trong cùng transaction.
+                if not restore_and_activate_product(cursor, product_code, quantity):
                     raise LookupError(
                         f"Không tìm thấy sản phẩm {product_code}; thao tác hủy đã được hoàn tác."
                     )
