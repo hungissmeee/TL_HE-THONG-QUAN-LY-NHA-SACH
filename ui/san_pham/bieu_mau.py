@@ -305,6 +305,7 @@ class ProductFormDialog(QDialog):
 
         buttons = QHBoxLayout()
         save_button = QPushButton("Lưu thay đổi" if self.is_edit else "Thêm sản phẩm")
+        save_button.setProperty("buttonRole", "primary")
         save_button.clicked.connect(self.save_product)
         cancel_button = QPushButton("Hủy")
         cancel_button.clicked.connect(self.reject)
