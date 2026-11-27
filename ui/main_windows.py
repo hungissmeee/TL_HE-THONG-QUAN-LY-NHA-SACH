@@ -21,6 +21,7 @@ from ui.bao_cao import (
     ReturnReportPage,
     InventoryReportPage,
     ProductReportPage,
+    ShiftReportPage,
 )
 from ui.bao_cao.bao_cao_co_so import ReportBasePage
 from ui.styles import MAIN_WINDOW_STYLESHEET
@@ -41,7 +42,7 @@ class MainWindow(QMainWindow):
             "returns", "promotions", "authors", "genres", "publishers", "brands",
             "shifts", "report_overview", "report_revenue",
             "report_invoice", "report_import", "report_return",
-            "report_inventory", "report_product",
+            "report_inventory", "report_product", "report_shifts",
         ),
         "Thu ngân": (
             "home", "products", "invoices", "shifts",
@@ -120,6 +121,7 @@ class MainWindow(QMainWindow):
                     "report_return",
                     "report_inventory",
                     "report_product",
+                    "report_shifts",
                 ],
                 "expanded": False,
             },
@@ -316,6 +318,10 @@ class MainWindow(QMainWindow):
         add_allowed_page(
             "report_product", "Báo cáo sản phẩm",
             lambda: ProductReportPage(self.db)
+        )
+        add_allowed_page(
+            "report_shifts", "Báo cáo ca làm việc",
+            lambda: ShiftReportPage(self.db)
         )
         add_allowed_page(
             "imports", "Phiếu nhập", lambda: ImportWindow(self.db)
