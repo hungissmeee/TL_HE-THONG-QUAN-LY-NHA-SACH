@@ -48,60 +48,15 @@ class ShiftReportPage(ReportBasePage):
 
     def load_report(self):
         start_date, end_date = self.date_parameters()
-
-        sql = """
-            SELECT
-                C.MACA,
-                CAST(C.NGAYLAM AS date) AS NGAYLAM,
-                C.SOCA,
-                C.TGMO,
-                C.TGDONG,
-                COUNT(DISTINCT L.MANV) AS SO_NHAN_VIEN,
-                C.TMDAUCA,
-                C.TMCUOICA,
-                CASE
-                    WHEN C.TGMO IS NULL OR C.TGDONG IS NULL THEN N'Chưa cấu hình giờ'
-                    WHEN SYSDATETIME() >= T.END_AT THEN N'Đã kết thúc'
-                    WHEN SYSDATETIME() >= T.START_AT THEN N'Đang diễn ra'
-                    ELSE N'Chưa bắt đầu'
-                END AS TRANG_THAI_CA
-            FROM dbo.CA_LAM_VIEC C
-            CROSS APPLY (
-                SELECT
-                    DATEADD(
-                        SECOND,
-                        DATEDIFF(SECOND, CAST('00:00:00' AS TIME), C.TGMO),
-                        CAST(CAST(C.NGAYLAM AS DATE) AS DATETIME2)
-                    ) AS START_AT,
-                    DATEADD(
-                        SECOND,
-                        DATEDIFF(SECOND, CAST('00:00:00' AS TIME), C.TGDONG),
-                        DATEADD(
-                            DAY,
-                            CASE WHEN C.TGDONG <= C.TGMO THEN 1 ELSE 0 END,
-                            CAST(CAST(C.NGAYLAM AS DATE) AS DATETIME2)
-                        )
-                    ) AS END_AT
-            ) T
-            LEFT JOIN dbo.LAMCA L ON L.MACA = C.MACA
-            WHERE C.NGAYLAM >= CONVERT(date, ?)
-              AND C.NGAYLAM < DATEADD(day, 1, CONVERT(date, ?))
-            GROUP BY
-                C.MACA, C.NGAYLAM, C.SOCA, C.TGMO, C.TGDONG,
-                C.TMDAUCA, C.TMCUOICA, T.START_AT, T.END_AT
-            ORDER BY C.NGAYLAM DESC, C.SOCA, C.MACA
-        """
-        rows = self.fetch_all(sql, (start_date, end_date))
+        rows = self.service.shift_report(start_date, end_date)
 
         total_shifts = len(rows)
         employee_registrations = sum(int(row[5] or 0) for row in rows)
         ended_shifts = sum(1 for row in rows if row[8] == "Đã kết thúc")
-        closed_rows = [row for row in rows if row[7] is not None]
         unclosed_shifts = sum(
-            1 for row in rows
-            if row[8] == "Đã kết thúc" and row[7] is None
+            1 for row in rows if row[8] == "Đã kết thúc" and row[7] is None
         )
-        closing_cash_total = sum((row[7] or 0) for row in closed_rows)
+        closing_cash_total = sum((row[7] or 0) for row in rows if row[7] is not None)
 
         self.set_stat("total", number_text(total_shifts))
         self.set_stat("employees", number_text(employee_registrations))
