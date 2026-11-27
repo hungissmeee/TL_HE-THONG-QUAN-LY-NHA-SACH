@@ -382,23 +382,16 @@ class BaoCaoRepository:
         return {"summary": summary, "rows": rows}
 
     def product_report(self, start_date, end_date, sort, keyword=""):
-        """Báo cáo lượng bán/hoàn/đổi theo sản phẩm.
-
-        Tiền hoàn chỉ được lưu ở cấp PHIEU_DOI_TRA.TONG_TIEN_HOAN.
-        Không phân bổ ngược tiền hoàn theo từng sản phẩm vì chứng từ không
-        lưu đơn giá hoàn riêng cho từng dòng.
-        """
+        """Báo cáo số lượng bán, hoàn, đổi và tình trạng hàng theo sản phẩm."""
         order_options = {
             "quantity_desc": (
-                "COALESCE(S.SL_BAN, 0) DESC, "
-                "COALESCE(S.DOANH_THU, 0) DESC, SP.TENSP ASC"
+                "COALESCE(S.SL_BAN, 0) DESC, SP.TENSP ASC"
             ),
             "quantity_asc": (
-                "COALESCE(S.SL_BAN, 0) ASC, "
-                "COALESCE(S.DOANH_THU, 0) ASC, SP.TENSP ASC"
+                "COALESCE(S.SL_BAN, 0) ASC, SP.TENSP ASC"
             ),
-            "revenue_desc": (
-                "COALESCE(S.DOANH_THU, 0) DESC, "
+            "refund_desc": (
+                "COALESCE(R.SL_HOAN_TIEN, 0) DESC, "
                 "COALESCE(S.SL_BAN, 0) DESC, SP.TENSP ASC"
             ),
         }
@@ -412,15 +405,9 @@ class BaoCaoRepository:
             WITH Sales AS (
                 SELECT CT.MASP,
                     COUNT(DISTINCT HD.MAHD) AS SO_HD,
-                    SUM(COALESCE(CT.SOLUONG, 0)) AS SL_BAN,
-                    SUM(COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0)) AS TIEN_HANG,
-                    SUM(COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0)
-                        * COALESCE(KM.TYLEGIAM, 0) / 100.0) AS TIEN_GIAM,
-                    SUM(COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0)
-                        * (1 - COALESCE(KM.TYLEGIAM, 0) / 100.0)) AS DOANH_THU
+                    SUM(COALESCE(CT.SOLUONG, 0)) AS SL_BAN
                 FROM dbo.HOA_DON HD
                 INNER JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
-                LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
                 WHERE HD.TRANGTHAI = 1
                   AND HD.NGAYLAP >= CONVERT(date, ?)
                   AND HD.NGAYLAP < DATEADD(day, 1, CONVERT(date, ?))
@@ -431,7 +418,11 @@ class BaoCaoRepository:
                     SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 0
                         THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_HOAN_TIEN,
                     SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 1
-                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_DOI_HANG
+                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_DOI_HANG,
+                    SUM(CASE WHEN CTDT.TINHTRANGHANG = 1
+                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_NGUYEN_VEN,
+                    SUM(CASE WHEN CTDT.TINHTRANGHANG = 0
+                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_HANG_HONG
                 FROM dbo.PHIEU_DOI_TRA PDT
                 INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT
                 WHERE PDT.NGAY_DOI_TRA >= CONVERT(date, ?)
@@ -443,8 +434,7 @@ class BaoCaoRepository:
                 SP.MASP, COALESCE(SP.TENSP, N''),
                 COALESCE(S.SO_HD, 0), COALESCE(S.SL_BAN, 0),
                 COALESCE(R.SL_HOAN_TIEN, 0), COALESCE(R.SL_DOI_HANG, 0),
-                COALESCE(S.TIEN_HANG, 0), COALESCE(S.TIEN_GIAM, 0),
-                COALESCE(S.DOANH_THU, 0),
+                COALESCE(R.SL_NGUYEN_VEN, 0), COALESCE(R.SL_HANG_HONG, 0),
                 COALESCE(SP.SLTON, 0)
             FROM dbo.SAN_PHAM SP
             LEFT JOIN Sales S ON S.MASP = SP.MASP
@@ -455,6 +445,74 @@ class BaoCaoRepository:
         """
         return self._fetch_all(sql, (
             start_date, end_date, start_date, end_date, *search_params
+        ))
+
+    def product_report_summary(self, start_date, end_date):
+        """Tổng hợp toàn kỳ: số lượng, doanh thu và tổng thu sau hoàn."""
+        return self._fetch_one("""
+            WITH InvoiceSubtotals AS (
+                SELECT
+                    HD.MAHD,
+                    COALESCE(KM.TYLEGIAM, 0) AS TYLEGIAM,
+                    COALESCE(
+                        SUM(COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0)),
+                        0
+                    ) AS TIEN_HANG
+                FROM dbo.HOA_DON HD
+                LEFT JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
+                LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
+                WHERE HD.TRANGTHAI = 1
+                  AND HD.NGAYLAP >= CONVERT(date, ?)
+                  AND HD.NGAYLAP < DATEADD(day, 1, CONVERT(date, ?))
+                GROUP BY HD.MAHD, KM.TYLEGIAM
+            ),
+            Sales AS (
+                SELECT COALESCE(SUM(
+                    TIEN_HANG - ROUND(TIEN_HANG * TYLEGIAM / 100.0, 2)
+                ), 0) AS DOANH_THU
+                FROM InvoiceSubtotals
+            ),
+            ReturnQuantities AS (
+                SELECT
+                    COALESCE(SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 0
+                        THEN CTDT.SOLUONG ELSE 0 END), 0) AS SL_HOAN_TIEN,
+                    COALESCE(SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 1
+                        THEN CTDT.SOLUONG ELSE 0 END), 0) AS SL_DOI_HANG,
+                    COALESCE(SUM(CASE WHEN CTDT.TINHTRANGHANG = 1
+                        THEN CTDT.SOLUONG ELSE 0 END), 0) AS SL_NGUYEN_VEN,
+                    COALESCE(SUM(CASE WHEN CTDT.TINHTRANGHANG = 0
+                        THEN CTDT.SOLUONG ELSE 0 END), 0) AS SL_HANG_HONG
+                FROM dbo.PHIEU_DOI_TRA PDT
+                LEFT JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT
+                WHERE PDT.NGAY_DOI_TRA >= CONVERT(date, ?)
+                  AND PDT.NGAY_DOI_TRA < DATEADD(day, 1, CONVERT(date, ?))
+            ),
+            Refunds AS (
+                SELECT COALESCE(SUM(PDT.TONG_TIEN_HOAN), 0) AS TIEN_HOAN
+                FROM dbo.PHIEU_DOI_TRA PDT
+                WHERE PDT.NGAY_DOI_TRA >= CONVERT(date, ?)
+                  AND PDT.NGAY_DOI_TRA < DATEADD(day, 1, CONVERT(date, ?))
+            )
+            SELECT
+                (SELECT COALESCE(SUM(CT.SOLUONG), 0)
+                 FROM dbo.HOA_DON HD
+                 INNER JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
+                 WHERE HD.TRANGTHAI = 1
+                   AND HD.NGAYLAP >= CONVERT(date, ?)
+                   AND HD.NGAYLAP < DATEADD(day, 1, CONVERT(date, ?))
+                ) AS SL_BAN,
+                RQ.SL_HOAN_TIEN, RQ.SL_DOI_HANG,
+                RQ.SL_NGUYEN_VEN, RQ.SL_HANG_HONG,
+                S.DOANH_THU, R.TIEN_HOAN,
+                S.DOANH_THU - R.TIEN_HOAN AS TONG_THU_SAU_HOAN
+            FROM Sales S
+            CROSS JOIN ReturnQuantities RQ
+            CROSS JOIN Refunds R
+        """, (
+            start_date, end_date,
+            start_date, end_date,
+            start_date, end_date,
+            start_date, end_date,
         ))
 
     def shift_report(self, start_date, end_date):
