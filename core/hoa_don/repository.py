@@ -153,7 +153,7 @@ class HoaDonRepository:
                 params.extend([like] * 9)
             sql += """
                 GROUP BY HD.MAHD, HD.NGAYLAP, HD.MANV, NV.TENNV,
-                         HD.MACA, C.SOCA, HD.TIENKHACHDUA, HD.TRANGTHAI,
+                         HD.MACA, C.SOCA, HD.TIENKHACHDUA, HD.TRANGTHAI
                 ORDER BY HD.NGAYLAP DESC, HD.MAHD DESC
             """
             cursor.execute(sql, *params)
