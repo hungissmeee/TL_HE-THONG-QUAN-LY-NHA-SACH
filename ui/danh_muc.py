@@ -314,8 +314,8 @@ class CatalogPage(QWidget):
     def setup_ui(self):
         """Tạo form, bảng danh mục, bộ lọc tìm kiếm và các nút thao tác."""
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(12)
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setSpacing(10)
 
         top = QHBoxLayout()
         title = QLabel(self.config["title"])
