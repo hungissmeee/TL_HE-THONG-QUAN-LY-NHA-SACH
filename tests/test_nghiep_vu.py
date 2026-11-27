@@ -82,6 +82,28 @@ class NativeQtControlStyleTests(unittest.TestCase):
             with self.subTest(selector=selector):
                 self.assertNotIn(selector, MAIN_WINDOW_STYLESHEET)
 
+    def test_sortable_tables_have_a_minimum_column_width(self):
+        from PySide6.QtWidgets import QHeaderView, QTableWidget
+        from ui.table_sort import DEFAULT_MIN_SECTION_SIZE
+
+        table = QTableWidget(0, 5)
+        prepare_sortable_table(table)
+
+        self.assertEqual(
+            table.horizontalHeader().minimumSectionSize(),
+            DEFAULT_MIN_SECTION_SIZE,
+        )
+        table.close()
+
+    def test_sortable_table_minimum_column_width_can_be_overridden(self):
+        from PySide6.QtWidgets import QTableWidget
+
+        table = QTableWidget(0, 3)
+        prepare_sortable_table(table, minimum_section_size=110)
+
+        self.assertEqual(table.horizontalHeader().minimumSectionSize(), 110)
+        table.close()
+
     def test_dark_palette_uses_standard_qt_roles(self):
         original = _APP.palette()
         try:

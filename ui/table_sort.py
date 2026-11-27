@@ -17,6 +17,9 @@ from PySide6.QtWidgets import (
 
 SORT_ROLE = Qt.ItemDataRole.UserRole + 100
 
+# Ngưỡng tối thiểu dùng chung để cột không bị ép quá hẹp khi thu nhỏ cửa sổ.
+DEFAULT_MIN_SECTION_SIZE = 90
+
 
 class SortableTableWidgetItem(QTableWidgetItem):
     """Thành phần này phụ trách chức năng SortableTableWidgetItem trong hệ thống."""
@@ -115,7 +118,8 @@ class SortableTableWidgetItem(QTableWidgetItem):
 def prepare_sortable_table(
     table,
     default_column=0,
-    default_order=Qt.SortOrder.AscendingOrder
+    default_order=Qt.SortOrder.AscendingOrder,
+    minimum_section_size=DEFAULT_MIN_SECTION_SIZE
 ):
     """Bật sắp xếp và hiển thị mũi tên ở cột mặc định."""
 
@@ -125,6 +129,8 @@ def prepare_sortable_table(
     column = max(0, min(default_column, table.columnCount() - 1))
 
     header = table.horizontalHeader()
+    if minimum_section_size is not None:
+        header.setMinimumSectionSize(max(0, int(minimum_section_size)))
     header.setSectionsClickable(True)
     header.setSortIndicatorShown(True)
 
