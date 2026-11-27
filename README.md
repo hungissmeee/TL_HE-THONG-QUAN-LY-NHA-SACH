@@ -209,4 +209,32 @@ Sao lưu database trước khi cập nhật, sau đó chạy:
 
 `database/migrations/001_remove_return_unit_refund.sql`
 
+## 5.5. Phạm vi và cách đọc các báo cáo
+
+Phân hệ báo cáo hiện là **báo cáo quản trị vận hành**, không thay thế bộ báo cáo tài chính hoặc sổ kế toán theo chế độ kế toán doanh nghiệp.
+
+| Báo cáo | Nội dung |
+|---|---|
+| Tổng quan | Doanh số hóa đơn hợp lệ, tiền hoàn, hóa đơn hủy, trị giá nhập, xu hướng bán/hoàn theo ngày và sản phẩm bán chạy |
+| Doanh số | Tổng hợp theo ngày/tháng/năm; phân tích chương trình khuyến mãi; doanh số theo nhân viên lập hóa đơn và phiếu đổi trả theo nhân viên xử lý |
+| Hóa đơn | Chi tiết hóa đơn, tiền hàng, giảm giá, số phải trả, số khách đưa, tiền thừa, trạng thái và đổi trả lũy kế theo hóa đơn gốc |
+| Nhập hàng | Phiếu nhập hợp lệ, tổng hợp theo nhà cung cấp và theo sản phẩm |
+| Đổi trả | Số lượng hoàn tiền/đổi hàng, tình trạng hàng, tiền hoàn ở cấp phiếu |
+| Sản phẩm | Số hóa đơn, số lượng nhập, bán, hoàn tiền, đổi hàng và tồn hiện tại; không phân bổ tiền hoàn xuống từng mã hàng |
+| Tồn kho | Ảnh chụp tồn hiện tại, hàng sắp hết/hết hàng và giá trị tồn ước tính theo giá nhập bình quân hiện lưu trên sản phẩm |
+| Ca làm việc | Nhân viên đăng ký, số hóa đơn, doanh số theo ca, tiền đầu ca và số tiền kiểm kê cuối ca |
+
+### Quy ước đọc số liệu
+
+- Doanh số bán được ghi nhận theo ngày lập hóa đơn; tiền hoàn được ghi nhận theo ngày lập phiếu đổi trả. Vì vậy, chênh lệch doanh số sau hoàn trong báo cáo kỳ là doanh số phát sinh trong kỳ trừ tiền hoàn phát sinh trong cùng kỳ, không phải phép đối chiếu theo hóa đơn gốc.
+- Báo cáo hóa đơn và hiệu quả khuyến mãi có thể xem tiền hoàn lũy kế gắn với hóa đơn gốc, kể cả phiếu đổi trả được lập sau ngày/kỳ bán.
+- Tiền hoàn chỉ lưu ở `PHIEU_DOI_TRA.TONG_TIEN_HOAN`; không tính tiền hoàn theo đơn giá từng dòng sản phẩm.
+- Tiền cuối ca là số tiền kiểm kê được ghi nhận tại quầy, không tự động được coi là doanh thu hoặc dòng tiền thuần.
+- Giá trị tồn kho là ước tính theo `SAN_PHAM.GIANHAP` hiện tại nhân số lượng tồn. Đây không phải giá vốn lịch sử tại từng ngày trong quá khứ.
+
+### Những báo cáo kế toán chưa thể lập chính xác
+
+Database hiện chưa có sổ cái/bút toán, danh mục tài khoản kế toán, chi phí vận hành, chứng từ thanh toán công nợ, sổ quỹ thu–chi, tài sản và lịch sử giá vốn theo từng lần xuất. Vì vậy ứng dụng chưa thể lập chính xác báo cáo kết quả hoạt động kinh doanh/lãi lỗ, bảng cân đối kế toán, lưu chuyển tiền tệ, công nợ phải thu/phải trả hoặc báo cáo thuế chính thức. Muốn bổ sung các báo cáo này cần phát triển thêm các phân hệ và dữ liệu kế toán tương ứng.
+
+
 Migration gỡ ràng buộc và cột giá hoàn trên từng dòng của `CHI_TIET_DOI_TRA`. Tiền hoàn chính thức tiếp tục được lưu tại `PHIEU_DOI_TRA.TONG_TIEN_HOAN`. Với database mới được tạo bằng `database/script.sql`, cũng chạy migration này sau khi khởi tạo để đồng bộ schema với phiên bản ứng dụng.
