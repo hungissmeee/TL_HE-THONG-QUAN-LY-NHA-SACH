@@ -618,3 +618,669 @@ button, input { font: inherit; }
 .report-table-section-title {
   margin: 20px 0 10px !important;
 }
+
+/* ---------------------------------------------------------
+   Light theme – palette for the custom BookHub components
+   --------------------------------------------------------- */
+:root {
+  --bh-page: #171b24;
+  --bh-panel: #202938;
+  --bh-panel-raised: #263448;
+  --bh-panel-muted: #29374b;
+  --bh-border: #39465a;
+  --bh-border-soft: #344256;
+  --bh-text: #e5e7eb;
+  --bh-text-strong: #f3f4f6;
+  --bh-text-muted: #aab7c8;
+  --bh-accent: #83aaff;
+  --bh-row-hover: #29374b;
+}
+
+:root[data-theme="light"] {
+  --bh-page: #f4f7fb;
+  --bh-panel: #ffffff;
+  --bh-panel-raised: #ffffff;
+  --bh-panel-muted: #f0f4f9;
+  --bh-border: #d8e0eb;
+  --bh-border-soft: #e5eaf1;
+  --bh-text: #344256;
+  --bh-text-strong: #182437;
+  --bh-text-muted: #617087;
+  --bh-accent: #1d4ed8;
+  --bh-row-hover: #eff5ff;
+}
+
+:root[data-theme="light"],
+:root[data-theme="light"] body,
+:root[data-theme="light"] #root {
+  color: var(--bh-text);
+  background: var(--bh-page);
+}
+
+:root[data-theme="light"] .app-layout,
+:root[data-theme="light"] .app-main,
+:root[data-theme="light"] .app-content {
+  background: var(--bh-page);
+}
+
+:root[data-theme="light"] .app-header {
+  background: #ffffff;
+  border-bottom-color: var(--bh-border);
+  box-shadow: 0 1px 3px rgba(20, 35, 60, .04);
+}
+
+:root[data-theme="light"] .header-title,
+:root[data-theme="light"] .dashboard-heading h2.ant-typography,
+:root[data-theme="light"] .products-heading h2.ant-typography,
+:root[data-theme="light"] .operation-heading h2.ant-typography,
+:root[data-theme="light"] .status-card h4.ant-typography,
+:root[data-theme="light"] .welcome-card h4.ant-typography,
+:root[data-theme="light"] .coming-soon-card h3.ant-typography {
+  color: var(--bh-text-strong);
+}
+
+:root[data-theme="light"] .muted-text,
+:root[data-theme="light"] .header-user,
+:root[data-theme="light"] .sidebar-user-role {
+  color: var(--bh-text-muted) !important;
+}
+
+:root[data-theme="light"] .eyebrow,
+:root[data-theme="light"] .login-kicker {
+  color: #2457ad !important;
+}
+
+:root[data-theme="light"] .status-card,
+:root[data-theme="light"] .welcome-card,
+:root[data-theme="light"] .coming-soon-card,
+:root[data-theme="light"] .products-card,
+:root[data-theme="light"] .operation-card,
+:root[data-theme="light"] .operation-stats .ant-card,
+:root[data-theme="light"] .desktop-form-section,
+:root[data-theme="light"] .login-card {
+  background: var(--bh-panel);
+  border-color: var(--bh-border);
+  box-shadow: 0 3px 12px rgba(22, 38, 62, .035);
+}
+
+:root[data-theme="light"] .operation-card,
+:root[data-theme="light"] .products-card {
+  border-color: var(--bh-border);
+}
+
+:root[data-theme="light"] .desktop-form-section .ant-card-head {
+  border-bottom-color: var(--bh-border-soft);
+}
+
+:root[data-theme="light"] .desktop-form-section .ant-card-head-title {
+  color: var(--bh-text-strong);
+}
+
+:root[data-theme="light"] .operation-card .ant-table,
+:root[data-theme="light"] .products-card .ant-table,
+:root[data-theme="light"] .report-data-table .ant-table {
+  background: transparent;
+}
+
+:root[data-theme="light"] .operation-page .ant-table-thead > tr > th,
+:root[data-theme="light"] .products-card .ant-table-thead > tr > th {
+  background: #eef3fa;
+  color: #26364d;
+  border-bottom-color: var(--bh-border);
+}
+
+:root[data-theme="light"] .operation-page .ant-table-tbody > tr > td,
+:root[data-theme="light"] .products-card .ant-table-tbody > tr > td {
+  color: var(--bh-text);
+  border-bottom-color: var(--bh-border-soft);
+}
+
+:root[data-theme="light"] .operation-page .ant-table-tbody > tr.ant-table-row:hover > td,
+:root[data-theme="light"] .products-card .ant-table-tbody > tr.ant-table-row:hover > td {
+  background: var(--bh-row-hover);
+}
+
+:root[data-theme="light"] .ant-table-cell-fix-left,
+:root[data-theme="light"] .ant-table-cell-fix-right {
+  background: #ffffff;
+}
+
+:root[data-theme="light"] .ant-table-tbody > tr:hover > .ant-table-cell-fix-left,
+:root[data-theme="light"] .ant-table-tbody > tr:hover > .ant-table-cell-fix-right {
+  background: var(--bh-row-hover);
+}
+
+:root[data-theme="light"] .ant-table-sticky-scroll {
+  background: rgba(255,255,255,.88);
+}
+
+:root[data-theme="light"] .sidebar-brand,
+:root[data-theme="light"] .sidebar-account {
+  background: #ffffff;
+  border-color: var(--bh-border);
+}
+
+:root[data-theme="light"] .sidebar-brand-text,
+:root[data-theme="light"] .sidebar-user-name {
+  color: #17243a !important;
+}
+
+:root[data-theme="light"] .sidebar-brand-text small {
+  color: var(--bh-text-muted);
+}
+
+:root[data-theme="light"] .sidebar-brand-mark {
+  background: #eaf1ff;
+  border-color: #c9d9fb;
+  color: #2457ad;
+}
+
+:root[data-theme="light"] .app-sider {
+  background: #ffffff !important;
+  border-right: 1px solid var(--bh-border);
+}
+
+:root[data-theme="light"] .app-menu,
+:root[data-theme="light"] .mobile-app-menu {
+  background: #ffffff !important;
+  color: var(--bh-text);
+}
+
+:root[data-theme="light"] .app-menu .ant-menu-item-group-title {
+  color: #7b8798 !important;
+}
+
+:root[data-theme="light"] .app-menu .ant-menu-item {
+  color: #46566d;
+}
+
+:root[data-theme="light"] .app-menu .ant-menu-item:hover {
+  background: #f0f5fc !important;
+  color: #1d4ed8 !important;
+}
+
+:root[data-theme="light"] .app-menu .ant-menu-item-selected {
+  background: #e7efff !important;
+  color: #1d4ed8 !important;
+}
+
+:root[data-theme="light"] .sidebar-password {
+  background: #eaf1ff !important;
+  color: #1d4ed8 !important;
+}
+
+:root[data-theme="light"] .sidebar-password:hover {
+  background: #dce8ff !important;
+  color: #173f9e !important;
+}
+
+:root[data-theme="light"] .sidebar-logout {
+  background: #fff1f0 !important;
+  color: #b42318 !important;
+}
+
+:root[data-theme="light"] .sidebar-logout:hover {
+  background: #ffe1df !important;
+  color: #912018 !important;
+}
+
+:root[data-theme="light"] .login-form-panel {
+  background: #f4f7fb;
+}
+
+:root[data-theme="light"] .login-card {
+  background: #ffffff;
+  border-color: var(--bh-border);
+  box-shadow: 0 18px 50px rgba(28, 48, 78, .10);
+}
+
+:root[data-theme="light"] .login-card-heading h2.ant-typography {
+  color: #17243a;
+}
+
+:root[data-theme="light"] .login-card .ant-form-item-label > label {
+  color: #344256;
+}
+
+:root[data-theme="light"] .login-card .ant-input-affix-wrapper,
+:root[data-theme="light"] .login-card .ant-input {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #17243a;
+}
+
+:root[data-theme="light"] .login-card .ant-input-affix-wrapper-focused {
+  border-color: #3b82f6;
+}
+
+:root[data-theme="light"] .login-security-note {
+  color: #2457ad;
+}
+
+:root[data-theme="light"] .product-subform {
+  background: #f8fafc;
+  border-color: var(--bh-border);
+}
+
+:root[data-theme="light"] .operation-stats .ant-statistic-title {
+  color: var(--bh-text-muted);
+}
+
+:root[data-theme="light"] .operation-stats .ant-statistic-content {
+  color: var(--bh-text-strong);
+}
+
+:root[data-theme="light"] .transaction-total-value {
+  color: #16803d !important;
+}
+
+:root[data-theme="light"] .transaction-line-row {
+  border-bottom-color: var(--bh-border-soft);
+}
+
+:root[data-theme="light"] .ant-modal-content,
+:root[data-theme="light"] .ant-drawer-content {
+  background: #ffffff;
+}
+
+:root[data-theme="light"] .ant-modal-header,
+:root[data-theme="light"] .ant-drawer-header {
+  background: #ffffff;
+  border-bottom-color: var(--bh-border-soft);
+}
+
+:root[data-theme="light"] .ant-modal-title,
+:root[data-theme="light"] .ant-drawer-title {
+  color: #182437;
+}
+
+:root[data-theme="light"] .ant-modal-close {
+  color: #59677a;
+}
+
+:root[data-theme="light"] .ant-form-item-label > label {
+  color: #344256;
+}
+
+:root[data-theme="light"] .ant-form-item-extra,
+:root[data-theme="light"] .ant-form-item-explain {
+  color: #65748b;
+}
+
+:root[data-theme="light"] .report-table-hint {
+  color: #31527e;
+}
+
+.theme-toggle-button {
+  flex-shrink: 0;
+}
+
+.theme-toggle-label {
+  white-space: nowrap;
+}
+
+.header-leading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.mobile-menu-button {
+  display: none;
+  flex-shrink: 0;
+  color: var(--bh-text) !important;
+}
+
+.mobile-navigation-drawer .ant-drawer-content {
+  height: 100%;
+}
+
+.mobile-drawer-inner {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  background: var(--bh-panel);
+}
+
+.mobile-drawer-inner .sidebar-brand {
+  flex-shrink: 0;
+}
+
+.mobile-app-menu {
+  height: auto;
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 12px;
+}
+
+.mobile-sidebar-account {
+  position: static;
+  flex-shrink: 0;
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--bh-border);
+}
+
+:root[data-theme="light"] .mobile-navigation-drawer .ant-drawer-content {
+  background: #ffffff;
+}
+
+.login-brand-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.login-theme-toggle {
+  flex-shrink: 0;
+  border-color: rgba(210, 224, 245, .5) !important;
+  color: #f3f7ff !important;
+}
+
+.login-theme-toggle:hover {
+  background: rgba(255,255,255,.1) !important;
+  border-color: #ffffff !important;
+  color: #ffffff !important;
+}
+
+/* ---------------------------------------------------------
+   Responsive layouts for tablet and mobile devices
+   --------------------------------------------------------- */
+@media (max-width: 991px) {
+  .app-sider {
+    display: none !important;
+  }
+
+  .mobile-menu-button {
+    display: inline-flex;
+  }
+
+  .app-header {
+    height: 62px;
+    padding-inline: 18px;
+  }
+
+  .app-content {
+    padding: 22px 18px;
+  }
+
+  .dashboard-content,
+  .products-page,
+  .operation-page {
+    max-width: 100%;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .products-card > .ant-card-body,
+  .operation-card > .ant-card-body {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 700px) {
+  html, body, #root {
+    min-width: 320px;
+  }
+
+  .app-header {
+    height: 58px;
+    gap: 8px;
+    padding-inline: 10px;
+  }
+
+  .header-leading {
+    gap: 4px;
+  }
+
+  .header-title {
+    max-width: 42vw;
+    font-size: 16px;
+  }
+
+  .header-actions {
+    gap: 5px !important;
+  }
+
+  .theme-toggle-button {
+    width: 36px;
+    min-width: 36px;
+    height: 34px;
+    padding-inline: 0;
+  }
+
+  .theme-toggle-label,
+  .header-actions .ant-tag,
+  .header-user {
+    display: none;
+  }
+
+  .app-content {
+    padding: 16px 10px calc(22px + env(safe-area-inset-bottom));
+  }
+
+  .dashboard-heading,
+  .products-heading,
+  .operation-heading {
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .dashboard-heading h2.ant-typography,
+  .products-heading h2.ant-typography,
+  .operation-heading h2.ant-typography {
+    font-size: 23px;
+    line-height: 1.25;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .status-card .ant-card-body {
+    min-height: auto;
+    padding: 18px;
+  }
+
+  .products-card > .ant-card-body,
+  .operation-card > .ant-card-body {
+    padding: 12px;
+  }
+
+  .products-toolbar,
+  .operation-toolbar {
+    align-items: stretch;
+    gap: 9px;
+  }
+
+  .products-search,
+  .operation-search {
+    flex: 1 1 100%;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .products-toolbar > *,
+  .operation-toolbar > * {
+    max-width: 100%;
+  }
+
+  .operation-toolbar .ant-picker,
+  .operation-toolbar .ant-select,
+  .operation-toolbar .ant-input,
+  .operation-toolbar .ant-input-number,
+  .products-toolbar .ant-input-search {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .operation-stats .ant-col {
+    width: 100%;
+  }
+
+  .operation-list-heading {
+    align-items: stretch;
+  }
+
+  .operation-list-heading > .ant-btn {
+    align-self: flex-start;
+  }
+
+  .login-page {
+    min-height: 100svh;
+    grid-template-columns: 1fr;
+  }
+
+  .login-brand-panel {
+    min-height: 210px;
+    padding: 24px 20px;
+  }
+
+  .login-brand-top {
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .brand-name {
+    font-size: 15px;
+    letter-spacing: .025em;
+  }
+
+  .brand-caption {
+    font-size: 9px;
+  }
+
+  .brand-mark {
+    width: 40px;
+    height: 40px;
+    font-size: 19px;
+  }
+
+  .login-theme-toggle {
+    padding-inline: 9px;
+    font-size: 12px;
+  }
+
+  .brand-message {
+    margin: 28px 0 8px;
+  }
+
+  .brand-message h1.ant-typography {
+    margin: 10px 0;
+    font-size: clamp(28px, 8vw, 36px);
+  }
+
+  .login-form-panel {
+    align-items: start;
+    padding: 18px 12px 30px;
+  }
+
+  .login-card {
+    width: 100%;
+  }
+
+  .login-card .ant-card-body {
+    padding: 22px 18px;
+  }
+
+  .ant-modal-root .ant-modal {
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px);
+    margin: 10px auto;
+    padding-bottom: 0;
+  }
+
+  .ant-modal-root .ant-modal-content {
+    border-radius: 10px;
+  }
+
+  .ant-modal-root .ant-modal-body {
+    max-height: calc(100svh - 150px);
+    padding: 14px;
+  }
+
+  .ant-modal-root .ant-modal-footer {
+    padding: 10px 14px 14px;
+  }
+
+  .desktop-form-section .ant-card-head {
+    padding-inline: 10px;
+  }
+
+  .desktop-form-section .ant-card-body {
+    padding: 10px 10px 4px;
+  }
+
+  .transaction-product-search .ant-btn {
+    min-height: 38px;
+  }
+
+  .ant-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px;
+  }
+
+  .ant-pagination-options {
+    margin-inline-start: 4px !important;
+  }
+
+  .report-summary-stats .ant-statistic-content {
+    font-size: 22px;
+  }
+
+  .report-table-section-title {
+    font-size: 16px !important;
+  }
+
+  .login-security-note {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 390px) {
+  .app-content {
+    padding-inline: 8px;
+  }
+
+  .header-title {
+    max-width: 38vw;
+    font-size: 15px;
+  }
+
+  .login-brand-panel {
+    padding-inline: 16px;
+  }
+
+  .login-theme-toggle {
+    padding-inline: 7px;
+    font-size: 11px;
+  }
+
+  .brand-name {
+    max-width: 175px;
+    font-size: 13px;
+  }
+
+  .app-header .ant-avatar {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
