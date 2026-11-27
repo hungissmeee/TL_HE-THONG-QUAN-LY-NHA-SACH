@@ -117,17 +117,31 @@ class ReturnService:
         )
 
     @staticmethod
+    def calculate_line_refund(
+        line_total, sold_quantity, refunded_quantity,
+        already_refunded_amount, current_quantity,
+    ):
+        """Tính tiền hoàn dự kiến theo giá trị sau giảm đã lưu ở hóa đơn."""
+        return ReturnRepository.calculate_refund_delta(
+            line_total,
+            sold_quantity,
+            refunded_quantity,
+            already_refunded_amount,
+            current_quantity,
+        )
+
+    @staticmethod
     def calculate_refund(lines):
-        """Hàm thuần hỗ trợ test và hiển thị số tiền hoàn dự kiến."""
+        """Cộng các khoản hoàn theo dòng đã được tính sẵn."""
         total = Decimal("0.00")
         for line in lines:
             try:
-                price = Decimal(str(line["net_price"]))
-                quantity = int(line["quantity"])
+                amount = Decimal(str(line["line_refund_total"]))
+                action = int(line.get("action", 0))
             except (KeyError, TypeError, ValueError, InvalidOperation):
                 raise ValueError("Dữ liệu tính tiền hoàn không hợp lệ.")
-            if not price.is_finite() or price < 0 or quantity < 0:
-                raise ValueError("Đơn giá hoặc số lượng hoàn không hợp lệ.")
-            if int(line.get("action", 0)) == 0:
-                total += price * quantity
+            if not amount.is_finite() or amount < 0:
+                raise ValueError("Thành tiền hoàn không hợp lệ.")
+            if action == 0:
+                total += amount
         return total.quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
