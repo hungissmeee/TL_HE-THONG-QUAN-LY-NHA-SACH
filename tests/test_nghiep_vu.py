@@ -1115,8 +1115,9 @@ class InvoiceSafetyTests(unittest.TestCase):
             self.assertNotIn(old_page, all_roles)
 
         source = inspect.getsource(MainWindow.__init__)
-        self.assertIn('"standalone_page": "report_center"', source)
-        self.assertNotIn('"key": "reports"', source)
+        self.assertIn('"key": "reports"', source)
+        self.assertIn('"pages": ["report_center"]', source)
+        self.assertNotIn('"standalone_page": "report_center"', source)
 
 
 class ShiftDateFormatterTests(unittest.TestCase):
@@ -1157,16 +1158,30 @@ class ReportCenterTests(unittest.TestCase):
         self.assertNotIn("add_stat_cards", source)
         self.assertNotIn("reportPrimaryKpi", source)
 
-    def test_report_center_uses_dark_theme_and_dropdown_categories(self):
+    def test_report_center_uses_dark_theme_and_invoice_style_combos(self):
         import inspect
         from ui.bao_cao.trung_tam_bao_cao import ReportCenterPage
 
         source = inspect.getsource(ReportCenterPage._build_ui)
-        self.assertIn("reportCategoryButton", source)
-        self.assertIn("QMenu", source)
+        self.assertIn("reportCategoryCombo", source)
+        self.assertIn("reportTypeCombo", source)
+        self.assertIn("QComboBox", source)
+        self.assertNotIn("QToolButton", source)
+        self.assertNotIn("QMenu", source)
         self.assertNotIn("background: #FFFFFF", source)
         self.assertNotIn("QTreeWidget", source)
         self.assertIn("ScrollBarAsNeeded", source)
+
+    def test_report_total_is_joined_to_table_in_one_zero_spacing_frame(self):
+        import inspect
+        from ui.bao_cao.trung_tam_bao_cao import ReportCenterPage
+
+        source = inspect.getsource(ReportCenterPage._build_ui)
+        self.assertIn("self.report_table_frame = QFrame()", source)
+        self.assertIn("report_table_layout.setSpacing(0)", source)
+        self.assertIn("report_table_layout.addWidget(self.table, 1)", source)
+        self.assertIn("report_table_layout.addWidget(self.footer)", source)
+        self.assertNotIn("right.addWidget(self.footer)", source)
 
     def test_report_center_syncs_horizontal_scroll_for_totals_and_group_headers(self):
         import inspect
