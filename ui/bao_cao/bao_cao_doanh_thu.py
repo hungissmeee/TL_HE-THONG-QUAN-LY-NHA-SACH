@@ -99,48 +99,8 @@ class RevenueReportPage(ReportBasePage):
     def load_report(self):
         start_date, end_date = self.date_parameters()
         period_name = self.period_combo.currentText()
-        sales_period = self.PERIODS[period_name]
-        refund_period = self.REFUND_PERIODS[period_name]
-
-        sql = f"""
-            WITH Sales AS (
-                SELECT
-                    {sales_period} AS KY,
-                    COUNT(DISTINCT HD.MAHD) AS SO_HD,
-                    SUM(COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0)) AS TIEN_HANG,
-                    SUM(COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0)
-                        * COALESCE(KM.TYLEGIAM, 0) / 100.0) AS TIEN_GIAM,
-                    SUM(COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0)
-                        * (1 - COALESCE(KM.TYLEGIAM, 0) / 100.0)) AS DOANH_THU
-                FROM dbo.HOA_DON HD
-                LEFT JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
-                LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
-                WHERE HD.TRANGTHAI = 1
-                  AND HD.NGAYLAP >= CONVERT(date, ?)
-                  AND HD.NGAYLAP < DATEADD(day, 1, CONVERT(date, ?))
-                GROUP BY {sales_period}
-            ), Refunds AS (
-                SELECT
-                    {refund_period} AS KY,
-                    SUM(COALESCE(PDT.TONG_TIEN_HOAN, 0)) AS TIEN_HOAN
-                FROM dbo.PHIEU_DOI_TRA PDT
-                WHERE PDT.NGAY_DOI_TRA >= CONVERT(date, ?)
-                  AND PDT.NGAY_DOI_TRA < DATEADD(day, 1, CONVERT(date, ?))
-                GROUP BY {refund_period}
-            )
-            SELECT
-                COALESCE(S.KY, R.KY) AS KY,
-                COALESCE(S.SO_HD, 0),
-                COALESCE(S.TIEN_HANG, 0),
-                COALESCE(S.TIEN_GIAM, 0),
-                COALESCE(S.DOANH_THU, 0),
-                COALESCE(R.TIEN_HOAN, 0),
-                COALESCE(S.DOANH_THU, 0) - COALESCE(R.TIEN_HOAN, 0) AS DOANH_THU_SAU_HOAN
-            FROM Sales S
-            FULL OUTER JOIN Refunds R ON R.KY = S.KY
-            ORDER BY KY DESC
-        """
-        rows = self.fetch_all(sql, (start_date, end_date, start_date, end_date))
+        period_key = {"Ngày": "day", "Tháng": "month", "Năm": "year"}[period_name]
+        rows = self.service.revenue_by_period(start_date, end_date, period_key)
 
         gross_total = sum((row[2] or 0) for row in rows)
         discount_total = sum((row[3] or 0) for row in rows)
@@ -179,58 +139,10 @@ class RevenueReportPage(ReportBasePage):
                 money_text(row[6]),
             ))
 
-        # Trục thời gian của biểu đồ phải chạy từ cũ đến mới.
         self.chart.set_data(list(reversed(chart_rows)))
         self.fill_table(self.table, display_rows)
-        promotion_sql = """
-            WITH PromotionSales AS (
-                SELECT
-                    HD.MAKM,
-                    COALESCE(KM.TENKM, N'Không áp dụng khuyến mãi') AS TENKM,
-                    COALESCE(KM.TYLEGIAM, 0) AS TYLEGIAM,
-                    COUNT(DISTINCT HD.MAHD) AS SO_HD,
-                    COALESCE(SUM(CT.DONGIA * CT.SOLUONG), 0) AS TIEN_HANG,
-                    COALESCE(SUM(CT.DONGIA * CT.SOLUONG
-                        * COALESCE(KM.TYLEGIAM, 0) / 100.0), 0) AS TIEN_GIAM,
-                    COALESCE(SUM(CT.DONGIA * CT.SOLUONG
-                        * (1 - COALESCE(KM.TYLEGIAM, 0) / 100.0)), 0) AS DOANH_THU
-                FROM dbo.HOA_DON HD
-                LEFT JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
-                LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
-                WHERE HD.TRANGTHAI = 1
-                  AND HD.NGAYLAP >= CONVERT(date, ?)
-                  AND HD.NGAYLAP < DATEADD(day, 1, CONVERT(date, ?))
-                GROUP BY HD.MAKM, KM.TENKM, KM.TYLEGIAM
-            ),
-            PromotionRefunds AS (
-                SELECT
-                    HD.MAKM,
-                    COALESCE(SUM(PDT.TONG_TIEN_HOAN), 0) AS TIEN_HOAN
-                FROM dbo.HOA_DON HD
-                INNER JOIN dbo.PHIEU_DOI_TRA PDT ON PDT.MAHD = HD.MAHD
-                WHERE HD.TRANGTHAI = 1
-                  AND HD.NGAYLAP >= CONVERT(date, ?)
-                  AND HD.NGAYLAP < DATEADD(day, 1, CONVERT(date, ?))
-                GROUP BY HD.MAKM
-            )
-            SELECT
-                S.MAKM,
-                S.TENKM,
-                S.TYLEGIAM,
-                S.SO_HD,
-                S.TIEN_HANG,
-                S.TIEN_GIAM,
-                S.DOANH_THU,
-                COALESCE(R.TIEN_HOAN, 0) AS TIEN_HOAN,
-                S.DOANH_THU - COALESCE(R.TIEN_HOAN, 0) AS DOANH_THU_SAU_HOAN
-            FROM PromotionSales S
-            LEFT JOIN PromotionRefunds R
-                ON ISNULL(R.MAKM, '') = ISNULL(S.MAKM, '')
-            ORDER BY S.DOANH_THU DESC, S.TENKM
-        """
-        promotion_rows = self.fetch_all(
-            promotion_sql, (start_date, end_date, start_date, end_date)
-        )
+
+        promotion_rows = self.service.promotion_effectiveness(start_date, end_date)
         self.fill_table(self.promotion_table, [
             (
                 row[0] or "—",
@@ -245,4 +157,3 @@ class RevenueReportPage(ReportBasePage):
             )
             for row in promotion_rows
         ])
-
