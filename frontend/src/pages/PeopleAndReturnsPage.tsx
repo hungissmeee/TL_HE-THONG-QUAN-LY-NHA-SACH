@@ -152,6 +152,12 @@ function ReturnsPage() {
     } },
   ];
 
+  const estimatedRefund = lines.reduce((sum, line) => {
+    if (line.action === 1) return sum;
+    const item = invoiceData?.items.find((entry) => entry.product_code === line.product_code);
+    return sum + Number(item?.net_price || 0) * line.quantity;
+  }, 0);
+
   return <div className="operation-page">
     <div className="operation-heading"><div><Text className="eyebrow">BÁN HÀNG</Text><Title level={2}>Đổi trả</Title><Text className="muted-text">Chỉ hóa đơn còn hiệu lực trong ngày mới đủ điều kiện đổi trả.</Text></div>{canManage && <Button type="primary" icon={<PlusOutlined />} onClick={() => void openAdd()}>Lập phiếu đổi trả</Button>}</div>
     <Card bordered={false} className="operation-card">
@@ -162,33 +168,124 @@ function ReturnsPage() {
       </div>
       <Table<DataRow> rowKey="mapdt" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }} />
     </Card>
-    <Modal title="Lập phiếu đổi trả" open={open} onCancel={() => setOpen(false)} onOk={() => void create()} okText="Lập phiếu" cancelText="Hủy" confirmLoading={saving} width={1000} destroyOnClose>
-      <Form layout="vertical">
-        <Form.Item label="Hóa đơn đủ điều kiện đổi trả">
-          <Select showSearch optionFilterProp="label" value={invoiceCode} onChange={(v) => void selectInvoice(v)} placeholder="Chọn hóa đơn trong ngày" options={eligible.map((x) => ({ value: x.mahd, label: x.mahd + " · " + dt(x.ngaylap) }))} />
-        </Form.Item>
-      </Form>
-      {loadingInvoice ? <Spin /> : invoiceData ? <>
-        <Alert type="info" showIcon message={"Hóa đơn " + invoiceData.invoice_code + " · Tỷ lệ giảm giá gốc " + invoiceData.discount_rate + "%"} />
-        <Table rowKey="product_code" size="small" pagination={false} dataSource={invoiceData.items} columns={returnColumns} />
-      </> : <Text type="secondary">Chọn hóa đơn để tải các sản phẩm và số lượng còn có thể xử lý.</Text>}
-      <Form layout="vertical" className="return-reason">
-        <Form.Item label="Lý do đổi trả" required><Input.TextArea rows={2} maxLength={255} value={reason} onChange={(e) => setReason(e.target.value)} /></Form.Item>
-      </Form>
-      <Alert type="warning" showIcon message="Chỉ đổi cùng mã khi hàng trả đã hỏng. Hàng nguyên vẹn chỉ được hoàn tiền và được nhập lại kho." />
-    </Modal>
-    <Modal title="Chi tiết phiếu đổi trả" open={detailOpen} onCancel={() => setDetailOpen(false)} footer={<Button onClick={() => setDetailOpen(false)}>Đóng</Button>} width={820}>
-      {!detail ? <Spin /> : <>
-        <Descriptions bordered size="small" column={2}>
-          <Descriptions.Item label="Mã phiếu">{String(detail.header.mapdt)}</Descriptions.Item><Descriptions.Item label="Ngày">{dt(detail.header.ngay)}</Descriptions.Item>
-          <Descriptions.Item label="Hóa đơn gốc">{String(detail.header.mahd)}</Descriptions.Item><Descriptions.Item label="Nhân viên">{String(detail.header.tennv)}</Descriptions.Item>
-          <Descriptions.Item label="Lý do" span={2}>{String(detail.header.reason)}</Descriptions.Item><Descriptions.Item label="Tổng tiền hoàn">{money(detail.header.refund)}</Descriptions.Item>
+    <Modal
+      title="Lập phiếu đổi trả"
+      open={open}
+      onCancel={() => setOpen(false)}
+      onOk={() => void create()}
+      okText="Lập phiếu"
+      cancelText="Hủy"
+      confirmLoading={saving}
+      width={1120}
+      destroyOnClose
+      className="desktop-transaction-modal"
+    >
+      <Card size="small" title="Hóa đơn gốc" className="desktop-form-section">
+        <Form className="desktop-dialog-form" layout="horizontal" labelCol={{ xs: { span: 24 }, sm: { span: 7 } }} wrapperCol={{ xs: { span: 24 }, sm: { span: 17 } }}>
+          <Form.Item label="Mã hóa đơn">
+            <Select
+              showSearch
+              optionFilterProp="label"
+              value={invoiceCode}
+              onChange={(value) => void selectInvoice(value)}
+              placeholder="Chọn hóa đơn đủ điều kiện trong ngày"
+              options={eligible.map((item) => ({
+                value: item.mahd,
+                label: item.mahd + " · " + dt(item.ngaylap),
+              }))}
+            />
+          </Form.Item>
+        </Form>
+        {loadingInvoice ? <div className="product-modal-loading"><Spin /></div> : invoiceData ? (
+          <Alert type="info" showIcon message={"Hóa đơn " + invoiceData.invoice_code + " · Ngày lập " + dt(invoiceData.invoice_date) + " · Tỷ lệ giảm giá gốc " + invoiceData.discount_rate + "%"} />
+        ) : (
+          <Text type="secondary">
+            {eligible.length ? "Chọn hóa đơn trong ngày để xem các sản phẩm còn đủ điều kiện đổi trả." : "Không có hóa đơn đủ điều kiện trong ngày."}
+          </Text>
+        )}
+      </Card>
+
+      <Card size="small" title="Thông tin xử lý" className="desktop-form-section">
+        <Form className="desktop-dialog-form" layout="vertical">
+          <Form.Item label="Lý do" required>
+            <Input.TextArea
+              rows={2}
+              maxLength={255}
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              placeholder="Nhập lý do khách yêu cầu đổi hoặc trả..."
+            />
+          </Form.Item>
+        </Form>
+      </Card>
+
+      <Card size="small" title="Sản phẩm trong hóa đơn" className="desktop-form-section">
+        <Text type="secondary" className="return-condition-hint">
+          Hàng nguyên vẹn chỉ được hoàn tiền. Đổi sản phẩm chỉ áp dụng với hàng đã hỏng và đổi đúng sản phẩm cùng mã.
+        </Text>
+        {invoiceData ? (
+          <Table
+            rowKey="product_code"
+            size="small"
+            pagination={false}
+            dataSource={invoiceData.items}
+            columns={returnColumns}
+            scroll={{ x: 900 }}
+          />
+        ) : (
+          <Text type="secondary">Chọn hóa đơn gốc để hiển thị danh sách sản phẩm.</Text>
+        )}
+      </Card>
+
+      <Card size="small" title="Tổng kết" className="desktop-form-section transaction-total-card">
+        <Descriptions bordered size="small" column={1}>
+          <Descriptions.Item label="Tổng tiền hoàn dự kiến">
+            <Text strong className="transaction-total-value">{money(estimatedRefund)}</Text>
+          </Descriptions.Item>
         </Descriptions>
-        <Table<DataRow> rowKey="masp" pagination={false} dataSource={detail.items} columns={[
-          { title: "Mã SP", dataIndex: "masp", key: "masp" }, { title: "Sản phẩm", dataIndex: "tensp", key: "tensp" },
-          { title: "SL", dataIndex: "quantity", key: "quantity" }, { title: "Đơn giá hoàn", dataIndex: "unit_refund", key: "unit_refund", render: money },
-          { title: "Tình trạng", dataIndex: "condition", key: "condition" }, { title: "Hình thức", dataIndex: "action", key: "action" },
-        ]} />
+        <Alert
+          type="warning"
+          showIcon
+          message="Chỉ đổi cùng mã khi hàng trả đã hỏng. Hàng nguyên vẹn chỉ được hoàn tiền và được nhập lại kho."
+        />
+      </Card>
+    </Modal>
+    <Modal
+      title="Chi tiết phiếu đổi trả"
+      open={detailOpen}
+      onCancel={() => setDetailOpen(false)}
+      footer={<Button onClick={() => setDetailOpen(false)}>Đóng</Button>}
+      width={820}
+      className="desktop-transaction-modal"
+    >
+      {!detail ? <Spin /> : <>
+        <Card size="small" title="Thông tin phiếu" className="desktop-form-section">
+          <Descriptions bordered size="small" column={1}>
+            <Descriptions.Item label="Mã phiếu">{String(detail.header.mapdt)}</Descriptions.Item>
+            <Descriptions.Item label="Ngày xử lý">{dt(detail.header.ngay)}</Descriptions.Item>
+            <Descriptions.Item label="Hóa đơn gốc">{String(detail.header.mahd)}</Descriptions.Item>
+            <Descriptions.Item label="Nhân viên xử lý">{String(detail.header.tennv || "—")}</Descriptions.Item>
+            <Descriptions.Item label="Lý do">{String(detail.header.reason || detail.header.lydo || "—")}</Descriptions.Item>
+          </Descriptions>
+        </Card>
+        <Card size="small" title="Chi tiết sản phẩm" className="desktop-form-section">
+          <Table<DataRow> rowKey="masp" pagination={false} dataSource={detail.items} columns={[
+            { title: "Mã SP", dataIndex: "masp", key: "masp", width: 90 },
+            { title: "Sản phẩm", dataIndex: "tensp", key: "tensp" },
+            { title: "Số lượng", dataIndex: "quantity", key: "quantity", width: 90, align: "right" },
+            { title: "Tình trạng hàng", dataIndex: "condition", key: "condition", width: 135 },
+            { title: "Hình thức xử lý", dataIndex: "action", key: "action", width: 135 },
+            { title: "Đơn giá hoàn", dataIndex: "unit_refund", key: "unit_refund", render: money, align: "right" },
+            { title: "Thành tiền hoàn", key: "amount", render: (_: unknown, item: DataRow) => money(Number(item.unit_refund || 0) * Number(item.quantity || 0)), align: "right" },
+          ]} />
+        </Card>
+        <Card size="small" title="Tổng kết" className="desktop-form-section transaction-total-card">
+          <Descriptions bordered size="small" column={1}>
+            <Descriptions.Item label="Tổng tiền hoàn">
+              <Text strong className="transaction-total-value">{money(detail.header.refund)}</Text>
+            </Descriptions.Item>
+          </Descriptions>
+        </Card>
       </>}
     </Modal>
   </div>;
@@ -241,10 +338,12 @@ function EmployeesPage() {
       </div>
       <Table<DataRow> rowKey="manv" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }} />
     </Card>
-    <Modal title={employee ? "Cập nhật nhân viên " + String(employee.manv) : "Nhân viên"} open={Boolean(employee)} onCancel={() => setEmployee(null)} onOk={() => form.submit()} okText="Lưu thay đổi" cancelText="Hủy">
-      <Form form={form} layout="vertical" onFinish={(v) => void save(v)}>
-        <Form.Item name="full_name" label="Họ tên" rules={[{ required: true, whitespace: true, max: 100 }]}><Input maxLength={100} /></Form.Item>
-        <Form.Item name="phone" label="Số điện thoại"><Input maxLength={15} /></Form.Item>
+    <Modal title={employee ? "Cập nhật nhân viên " + String(employee.manv) : "Nhân viên"} open={Boolean(employee)} onCancel={() => setEmployee(null)} onOk={() => form.submit()} okText="Lưu thay đổi" cancelText="Hủy" width={560} className="desktop-entity-modal">
+      <Form form={form} className="desktop-dialog-form" layout="horizontal" labelCol={{ xs: { span: 24 }, sm: { span: 8 } }} wrapperCol={{ xs: { span: 24 }, sm: { span: 16 } }} onFinish={(v) => void save(v)}>
+        <Card size="small" title="Thông tin nhân viên" className="desktop-form-section">
+          <Form.Item name="full_name" label="Họ tên" rules={[{ required: true, whitespace: true, max: 100 }]}><Input maxLength={100} placeholder="Nhập họ tên" /></Form.Item>
+          <Form.Item name="phone" label="Số điện thoại"><Input maxLength={15} placeholder="Số điện thoại" /></Form.Item>
+        </Card>
       </Form>
     </Modal>
   </div>;
