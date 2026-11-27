@@ -2,6 +2,13 @@
 
 import os
 from dataclasses import dataclass, field
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+ENV_FILE = PROJECT_ROOT / ".env"
 
 
 class ConfigurationError(ValueError):
@@ -63,7 +70,10 @@ class Settings:
 
 
 def load_settings() -> Settings:
-    """Đọc và kiểm tra cấu hình; không tải tệp .env tự động."""
+    """Tự nạp .env tại thư mục gốc rồi kiểm tra cấu hình Backend."""
+    # Biến môi trường đã có từ hệ điều hành/CI được ưu tiên hơn nội dung .env.
+    load_dotenv(dotenv_path=ENV_FILE, override=False)
+
     environment = os.getenv("BOOKHUB_WEB_ENV", "development").strip().casefold()
     if environment not in {"development", "test", "production"}:
         raise ConfigurationError(
