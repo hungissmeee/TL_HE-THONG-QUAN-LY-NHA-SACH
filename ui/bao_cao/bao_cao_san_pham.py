@@ -48,7 +48,7 @@ class ProductReportPage(ReportBasePage):
 
         self.table = self.make_table([
             "Xếp hạng", "Mã sản phẩm", "Tên sản phẩm", "Số hóa đơn",
-            "SL đã bán", "SL hoàn tiền", "SL đổi hàng",
+            "SL nhập", "SL đã bán", "SL hoàn tiền", "SL đổi hàng",
             "SL nguyên vẹn", "SL hàng hỏng", "Tồn kho hiện tại",
         ])
         self.content_layout.addWidget(self.table)
@@ -79,7 +79,7 @@ class ProductReportPage(ReportBasePage):
                 number_text(row[3]), number_text(row[4]),
                 number_text(row[5]), number_text(row[6]),
                 number_text(row[7]), number_text(row[8]),
-                number_text(row[9]),
+                number_text(row[9]), number_text(row[10]),
             )
             for row in rows
         ])
