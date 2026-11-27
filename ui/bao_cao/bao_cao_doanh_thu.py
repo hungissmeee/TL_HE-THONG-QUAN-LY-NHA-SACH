@@ -79,6 +79,13 @@ class RevenueReportPage(ReportBasePage):
         promotion_title = QLabel("Hiệu quả chương trình khuyến mãi")
         promotion_title.setStyleSheet("font-size: 14px; font-weight: bold;")
         self.content_layout.addWidget(promotion_title)
+        promotion_note = QLabel(
+            "Phân nhóm theo ngày lập hóa đơn. Tiền hoàn ở bảng này là lũy kế "
+            "của các hóa đơn thuộc kỳ, kể cả phiếu đổi trả được lập sau kỳ."
+        )
+        promotion_note.setWordWrap(True)
+        promotion_note.setStyleSheet("color: #8291A5; font-size: 10px;")
+        self.content_layout.addWidget(promotion_note)
         self.promotion_table = self.make_table([
             "Mã khuyến mãi", "Tên chương trình", "Tỷ lệ giảm",
             "Số hóa đơn", "Tiền hàng", "Tiền giảm",
