@@ -202,13 +202,6 @@ class CreateInvoiceDialog(QDialog):
             default_sort_column=0
         )
         cart_layout.addWidget(self.cart_table)
-
-        remove_row = QHBoxLayout()
-        remove_row.addStretch()
-        self.remove_item_button = QPushButton("Bỏ sản phẩm khỏi giỏ")
-        self.remove_item_button.clicked.connect(self.remove_selected_cart_item)
-        remove_row.addWidget(self.remove_item_button)
-        cart_layout.addLayout(remove_row)
         root.addWidget(cart_group, 3)
 
         bottom = QHBoxLayout()
