@@ -146,9 +146,9 @@ class CreateReturnDialog(QDialog):
         header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         control_column_widths = {
-            5: 112,  # Số lượng: chừa chỗ cho nút tăng/giảm
-            6: 172,  # Tình trạng hàng: chừa chỗ cho mũi tên
-            7: 210,  # Hình thức xử lý: đủ chỗ cho nội dung và mũi tên
+            5: 116,  # Số lượng: chừa chỗ cho hai nút tăng/giảm
+            6: 202,  # Tình trạng hàng: hiển thị đủ "Còn nguyên vẹn"
+            7: 242,  # Hình thức xử lý: hiển thị đủ lựa chọn dài nhất
         }
         for column, width in control_column_widths.items():
             header.setSectionResizeMode(
@@ -345,6 +345,10 @@ class CreateReturnDialog(QDialog):
                 condition.addItem("Còn nguyên vẹn", 1)
                 condition.addItem("Đã hỏng", 0)
                 condition.setMinimumHeight(34)
+                condition.setMinimumContentsLength(14)
+                condition.setSizeAdjustPolicy(
+                    QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+                )
                 condition.setToolTip("Chọn tình trạng thực tế của hàng khách trả.")
                 self.table.setCellWidget(row, 6, condition)
 
@@ -352,6 +356,10 @@ class CreateReturnDialog(QDialog):
                 action.addItem("Hoàn tiền", 0)
                 action.addItem("Đổi sản phẩm cùng mã", 1)
                 action.setMinimumHeight(34)
+                action.setMinimumContentsLength(22)
+                action.setSizeAdjustPolicy(
+                    QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+                )
                 action.setToolTip(
                     "Chọn hoàn tiền hoặc đổi sản phẩm cùng mã. "
                     "Chỉ hàng đã hỏng mới được đổi."
