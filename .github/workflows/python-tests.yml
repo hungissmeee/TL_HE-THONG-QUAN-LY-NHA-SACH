@@ -4,11 +4,13 @@ on:
   push:
     branches:
       - main
+      - "refactor-app"
       - "refactor/**"
       - "fix/**"
   pull_request:
     branches:
       - main
+      - "refactor-app"
       - "refactor/**"
   workflow_dispatch:
 
