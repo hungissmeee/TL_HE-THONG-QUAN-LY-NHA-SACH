@@ -287,6 +287,8 @@ function ImportsPage() {
 }
 
 type CartLine = { product_code: string; quantity: number };
+const NO_PROMOTION = "__NO_PROMOTION__";
+
 function InvoicesPage() {
   const { user } = useAuth();
   const canCreate = ["admin", "rl_ThuNgan", "rl_QuanLy"].includes(user?.role_code || "");
@@ -299,7 +301,7 @@ function InvoicesPage() {
   const [lookupLoading, setLookupLoading] = useState(false);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<string>();
-  const [promotionCode, setPromotionCode] = useState<string>();
+  const [promotionCode, setPromotionCode] = useState<string>(NO_PROMOTION);
   const [cash, setCash] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [detail, setDetail] = useState<{ header: DataRow; items: DataRow[] } | null>(null);
@@ -314,7 +316,7 @@ function InvoicesPage() {
 
   async function openAdd() {
     setOpen(true); setLookupLoading(true); setLookup(null);
-    setCart([]); setSelectedProduct(undefined); setPromotionCode(undefined); setCash(null);
+    setCart([]); setSelectedProduct(undefined); setPromotionCode(NO_PROMOTION); setCash(null);
     try { setLookup(await operationsApi.invoiceLookups()); }
     catch (e) { setOpen(false); message.error(err(e)); } finally { setLookupLoading(false); }
   }
@@ -338,7 +340,9 @@ function InvoicesPage() {
     setSelectedProduct(undefined);
   }
 
-  const promo = lookup?.promotions.find((p) => String(p[0]) === promotionCode);
+  const promo = promotionCode === NO_PROMOTION
+    ? undefined
+    : lookup?.promotions.find((p) => String(p[0]) === promotionCode);
   const discount = Number(promo?.[2] || 0);
   const subtotal = cart.reduce((sum, line) => sum + Number(lookup?.products.find((p) => p.masp === line.product_code)?.price || 0) * line.quantity, 0);
   const total = subtotal * (1 - discount / 100);
@@ -348,7 +352,11 @@ function InvoicesPage() {
     if (cash === null || cash < total) { message.warning("Tiền khách đưa chưa đủ thanh toán."); return; }
     setSaving(true);
     try {
-      const result = await operationsApi.createInvoice({ promotion_code: promotionCode || null, cash, items: cart });
+      const result = await operationsApi.createInvoice({
+        promotion_code: promotionCode === NO_PROMOTION ? null : promotionCode,
+        cash,
+        items: cart,
+      });
       message.success("Đã lập hóa đơn " + String(result.code || "") + ".");
       setOpen(false); await load();
     } catch (e) { message.error(err(e)); } finally { setSaving(false); }
@@ -478,15 +486,16 @@ function InvoicesPage() {
             <Form className="desktop-dialog-form invoice-promotion-form" layout="horizontal" labelCol={{ xs: { span: 24 }, sm: { span: 7 } }} wrapperCol={{ xs: { span: 24 }, sm: { span: 17 } }}>
               <Form.Item label="Khuyến mãi">
                 <Select
-                  allowClear
                   value={promotionCode}
                   onChange={setPromotionCode}
                   style={{ width: "100%" }}
-                  placeholder="Không áp dụng khuyến mãi"
-                  options={lookup.promotions.map((promotion) => ({
-                    value: String(promotion[0]),
-                    label: String(promotion[1]) + " (" + promotion[2] + "%)",
-                  }))}
+                  options={[
+                    { value: NO_PROMOTION, label: "Không có khuyến mãi" },
+                    ...lookup.promotions.map((promotion) => ({
+                      value: String(promotion[0]),
+                      label: String(promotion[1]) + " (" + promotion[2] + "%)",
+                    })),
+                  ]}
                 />
               </Form.Item>
             </Form>
