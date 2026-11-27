@@ -1016,5 +1016,32 @@ class ShiftDateFormatterTests(unittest.TestCase):
 
 
 
+class ReportServiceSeparationTests(unittest.TestCase):
+    """Đảm bảo trang báo cáo chỉ gọi Service, không nhúng SQL trong UI."""
+
+    def test_report_pages_delegate_loading_to_service(self):
+        import inspect
+        from ui.bao_cao.bao_cao_tong_quan import OverviewReportPage
+        from ui.bao_cao.bao_cao_doanh_thu import RevenueReportPage
+        from ui.bao_cao.bao_cao_hoa_don import InvoiceReportPage
+        from ui.bao_cao.bao_cao_phieu_nhap import ImportReportPage
+        from ui.bao_cao.bao_cao_doi_tra import ReturnReportPage
+        from ui.bao_cao.bao_cao_ton_kho import InventoryReportPage
+        from ui.bao_cao.bao_cao_san_pham import ProductReportPage
+        from ui.bao_cao.bao_cao_ca_lam_viec import ShiftReportPage
+
+        pages = (
+            OverviewReportPage, RevenueReportPage, InvoiceReportPage,
+            ImportReportPage, ReturnReportPage, InventoryReportPage,
+            ProductReportPage, ShiftReportPage,
+        )
+        for page in pages:
+            source = inspect.getsource(page.load_report)
+            with self.subTest(page=page.__name__):
+                self.assertIn("self.service.", source)
+                self.assertNotIn("cursor.execute", source)
+                self.assertNotIn("SELECT ", source)
+
+
 if __name__ == "__main__":
     unittest.main()
