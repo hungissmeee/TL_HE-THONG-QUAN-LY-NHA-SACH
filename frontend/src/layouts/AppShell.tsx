@@ -232,7 +232,7 @@ export function AppShell() {
   return (
     <>
     <Layout className="app-layout">
-      <Sider className="app-sider" width={248} breakpoint="lg" collapsedWidth={72} theme="dark">
+      <Sider className="app-sider" width={235} breakpoint="lg" collapsedWidth={72} theme="dark">
         <div className="sidebar-brand">
           <div className="sidebar-brand-mark"><BookOutlined /></div>
           <div className="sidebar-brand-text">HỆ THỐNG QUẢN LÝ<small>NHÀ SÁCH</small></div>
@@ -248,11 +248,14 @@ export function AppShell() {
         />
 
         <div className="sidebar-account">
+          <Button className="sidebar-password" type="text" icon={<LockOutlined />} block onClick={() => setPasswordOpen(true)}>
+            Đổi mật khẩu
+          </Button>
           <div className="sidebar-user">
             <Avatar icon={<UserOutlined />} />
             <div className="sidebar-user-meta">
               <Text className="sidebar-user-name">{user?.full_name || user?.employee_code}</Text>
-              <Text className="sidebar-user-role">{user?.role}</Text>
+              <Text className="sidebar-user-role">{user?.employee_code} · {user?.role}</Text>
             </div>
           </div>
           <Button className="sidebar-logout" type="text" icon={<LogoutOutlined />} block onClick={logout}>
@@ -266,14 +269,6 @@ export function AppShell() {
           <div className="header-title">{pageTitle}</div>
           <Space className="header-actions" size={12}>
             <Tag color="blue">{user?.role}</Tag>
-            <Button
-              type="text"
-              className="header-change-password"
-              icon={<LockOutlined />}
-              onClick={() => setPasswordOpen(true)}
-            >
-              Đổi mật khẩu
-            </Button>
             <Avatar size="small" icon={<UserOutlined />} />
             <Text className="header-user">{user?.full_name || user?.employee_code}</Text>
           </Space>
