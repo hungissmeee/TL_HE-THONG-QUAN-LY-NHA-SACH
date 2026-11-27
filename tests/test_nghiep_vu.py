@@ -79,6 +79,9 @@ class SharedWidgetStyleTests(unittest.TestCase):
             with self.subTest(control=object_name):
                 self.assertIn(object_name, MAIN_WINDOW_STYLESHEET)
 
+        self.assertIn("qt_calendar_monthbutton::menu-indicator", MAIN_WINDOW_STYLESHEET)
+        self.assertIn("border-top: 5px solid #D6DEE9", MAIN_WINDOW_STYLESHEET)
+
     def test_calendar_navigation_controls_do_not_overlap(self):
         calendar = QCalendarWidget()
         calendar.setStyleSheet(MAIN_WINDOW_STYLESHEET)
@@ -101,7 +104,6 @@ class SharedWidgetStyleTests(unittest.TestCase):
         self.assertGreaterEqual(previous.width(), 30)
         self.assertGreaterEqual(following.width(), 30)
         self.assertFalse(month.geometry().intersects(year.geometry()))
-
 
 class DatabaseUtilityTests(unittest.TestCase):
     """Kiểm thử cấu hình kết nối, vai trò và kiểm tra quyền quản trị."""

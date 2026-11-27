@@ -529,9 +529,25 @@ MAIN_WINDOW_STYLESHEET = """
                 padding: 0px 8px;
             }
 
-            /* Không để tam giác menu mặc định đè lên chữ tháng. */
+            /* Mũi tên menu tháng được vẽ riêng và chừa khoảng trống bên phải cho chữ. */
+            QCalendarWidget QToolButton#qt_calendar_monthbutton {
+                padding: 0px 20px 0px 8px;
+            }
+
             QCalendarWidget QToolButton#qt_calendar_monthbutton::menu-indicator {
+                subcontrol-origin: padding;
+                subcontrol-position: right center;
+                right: 7px;
                 image: none;
+                width: 0px;
+                height: 0px;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 5px solid #D6DEE9;
+            }
+
+            QCalendarWidget QToolButton#qt_calendar_monthbutton:disabled::menu-indicator {
+                border-top-color: #718096;
             }
 
             QCalendarWidget QSpinBox {
