@@ -986,6 +986,30 @@ class ReportServiceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.service.inventory_report(5, "unknown")
 
+    def test_inventory_report_summary_is_not_narrowed_by_status_filter(self):
+        class CaptureRepository(BaoCaoRepository):
+            def __init__(self):
+                self.calls = []
+
+            def _fetch_one(self, sql, params=()):
+                self.calls.append(("summary", sql, params))
+                return (10, 2, 1, Decimal("1234.00"))
+
+            def _fetch_all(self, sql, params=()):
+                self.calls.append(("rows", sql, params))
+                return []
+
+        repository = CaptureRepository()
+        result = repository.inventory_report(5, "low", "book")
+
+        self.assertEqual(result["summary"], (10, 2, 1, Decimal("1234.00")))
+        summary_call, rows_call = repository.calls
+        self.assertEqual(summary_call[0], "summary")
+        self.assertNotIn("SLTON", summary_call[1].split("WHERE", 1)[-1].split("AND", 1)[0])
+        self.assertEqual(summary_call[2], (5, "%book%", "%book%"))
+        self.assertIn("SLTON", rows_call[1])
+        self.assertEqual(rows_call[2], (5, "%book%", "%book%", 5))
+
     def test_product_report_sql_does_not_read_removed_refund_unit_price(self):
         class CaptureRepository(BaoCaoRepository):
             def __init__(self):
@@ -1101,6 +1125,24 @@ class ReportServiceTests(unittest.TestCase):
             ("2026-01-01", "2026-01-31", "2026-01-01", "2026-01-31",
              "2026-01-01", "2026-01-31"),
         )
+
+    def test_shift_report_counts_actual_invoices_not_aggregate_row(self):
+        class CaptureRepository(BaoCaoRepository):
+            def __init__(self):
+                self.sql = None
+                self.params = None
+
+            def _fetch_all(self, sql, params=()):
+                self.sql = sql
+                self.params = params
+                return []
+
+        repository = CaptureRepository()
+        repository.shift_report("2026-01-01", "2026-01-31")
+
+        self.assertIn("COUNT(H.MAHD) AS SO_HD", repository.sql)
+        self.assertNotIn("COUNT(*) AS SO_HD", repository.sql)
+        self.assertEqual(repository.params, ("2026-01-01", "2026-01-31"))
 
     def test_shift_report_sql_uses_invoice_level_discount_rounding(self):
         class CaptureRepository(BaoCaoRepository):
