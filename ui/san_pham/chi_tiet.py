@@ -13,6 +13,8 @@ from PySide6.QtWidgets import (
     QGroupBox,
 )
 from .bieu_mau import ProductFormDialog
+from core.repositories.san_pham_repository import SanPhamRepository
+from core.services.san_pham_service import SanPhamService
 
 
 class ProductDetailDialog(QDialog):
@@ -23,6 +25,7 @@ class ProductDetailDialog(QDialog):
         """Khởi tạo hộp thoại chi tiết và xác định các thao tác được phép."""
         super().__init__(parent)
         self.db = db
+        self.service = SanPhamService(SanPhamRepository(db))
         self.product = product
         self.can_edit = can_edit
         self.can_delete = can_delete
@@ -71,65 +74,22 @@ class ProductDetailDialog(QDialog):
         )
         detail_form = QFormLayout(detail_group)
 
-        cursor = None
         try:
-            cursor = self.db.get_connection().cursor()
-            if p.get("loai") == "Sách":
-                cursor.execute("""
-                    SELECT S.ISBN, S.NAMXB, NXB.TENNXB
-                    FROM dbo.SACH S
-                    LEFT JOIN dbo.NHA_XUAT_BAN NXB ON NXB.MANXB = S.MANXB
-                    WHERE S.MASP = ?
-                """, p["masp"])
-                book = cursor.fetchone()
-                if book:
-                    self.add_info(detail_form, "ISBN:", book[0])
-                    self.add_info(detail_form, "Năm xuất bản:", book[1])
-                    self.add_info(detail_form, "Nhà xuất bản:", book[2])
-
-                cursor.execute("""
-                    SELECT TG.TENTG
-                    FROM dbo.THUOC_TG TTG
-                    JOIN dbo.TAC_GIA TG ON TG.MATG = TTG.MATG
-                    WHERE TTG.MASP = ?
-                    ORDER BY TG.TENTG
-                """, p["masp"])
-                authors = [row[0] for row in cursor.fetchall()]
-                self.add_info(
-                    detail_form, "Tác giả:",
-                    ", ".join(authors) if authors else "Chưa có thông tin"
-                )
-
-                cursor.execute("""
-                    SELECT TL.TENTL
-                    FROM dbo.THUOC_TL TTL
-                    JOIN dbo.THE_LOAI TL ON TL.MATL = TTL.MATL
-                    WHERE TTL.MASP = ?
-                    ORDER BY TL.TENTL
-                """, p["masp"])
-                genres = [row[0] for row in cursor.fetchall()]
-                self.add_info(
-                    detail_form, "Thể loại:",
-                    ", ".join(genres) if genres else "Chưa có thông tin"
-                )
+            detail = self.service.get_product_detail(p['masp']) or {}
+            if p.get('loai') == 'Sách':
+                self.add_info(detail_form, 'ISBN:', detail.get('isbn'))
+                self.add_info(detail_form, 'Năm xuất bản:', detail.get('namxb'))
+                self.add_info(detail_form, 'Nhà xuất bản:', detail.get('ten_nxb'))
+                authors = detail.get('authors') or []
+                genres = detail.get('genres') or []
+                self.add_info(detail_form, 'Tác giả:', ', '.join(authors) if authors else 'Chưa có thông tin')
+                self.add_info(detail_form, 'Thể loại:', ', '.join(genres) if genres else 'Chưa có thông tin')
             else:
-                cursor.execute("""
-                    SELECT SPK.NGAYSX, TH.TENTH, TH.XUATXU
-                    FROM dbo.SAN_PHAM_KHAC SPK
-                    LEFT JOIN dbo.THUONG_HIEU TH ON TH.MATH = SPK.MATH
-                    WHERE SPK.MASP = ?
-                """, p["masp"])
-                other = cursor.fetchone()
-                if other:
-                    self.add_info(detail_form, "Ngày sản xuất:", other[0])
-                    self.add_info(detail_form, "Thương hiệu:", other[1])
-                    self.add_info(detail_form, "Xuất xứ:", other[2])
-        except Exception as e:
-            QMessageBox.warning(self, "Không thể tải chi tiết", str(e))
-        finally:
-            if cursor is not None:
-                cursor.close()
-
+                self.add_info(detail_form, 'Ngày sản xuất:', detail.get('ngaysx'))
+                self.add_info(detail_form, 'Thương hiệu:', detail.get('brand_name'))
+                self.add_info(detail_form, 'Xuất xứ:', detail.get('brand_origin'))
+        except Exception as error:
+            QMessageBox.warning(self, 'Không thể tải chi tiết', str(error))
         layout.addWidget(detail_group)
 
         buttons = QHBoxLayout()
