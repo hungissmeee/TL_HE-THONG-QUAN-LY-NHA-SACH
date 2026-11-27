@@ -29,7 +29,8 @@ class BaoCaoRepository:
                 COUNT(DISTINCT CASE WHEN HD.TRANGTHAI = 1 THEN HD.MAHD END),
                 COUNT(DISTINCT CASE WHEN HD.TRANGTHAI = 0 THEN HD.MAHD END),
                 COALESCE(SUM(CASE WHEN HD.TRANGTHAI = 1 THEN
-                    COALESCE(CT.THANHTIENSAUGIAM, 0)
+                    COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0)
+                    * (1 - COALESCE(KM.TYLEGIAM, 0) / 100.0)
                     ELSE 0 END), 0)
             FROM dbo.HOA_DON HD
             LEFT JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
@@ -62,7 +63,8 @@ class BaoCaoRepository:
                     CAST(HD.NGAYLAP AS date) AS NGAY,
                     COUNT(DISTINCT HD.MAHD) AS SO_HD,
                     COALESCE(SUM(CT.SOLUONG), 0) AS SO_LUONG,
-                    COALESCE(SUM(COALESCE(CT.THANHTIENSAUGIAM, 0)), 0) AS DOANH_THU
+                    COALESCE(SUM(COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0)
+                        * (1 - COALESCE(KM.TYLEGIAM, 0) / 100.0)), 0) AS DOANH_THU
                 FROM dbo.HOA_DON HD
                 INNER JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
                 LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
@@ -99,7 +101,8 @@ class BaoCaoRepository:
                 SP.MASP,
                 COALESCE(SP.TENSP, N''),
                 SUM(COALESCE(CT.SOLUONG, 0)) AS SO_LUONG,
-                SUM(COALESCE(CT.THANHTIENSAUGIAM, 0)) AS DOANH_THU
+                SUM(COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0)
+                    * (1 - COALESCE(KM.TYLEGIAM, 0) / 100.0)) AS DOANH_THU
             FROM dbo.HOA_DON HD
             INNER JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
             INNER JOIN dbo.SAN_PHAM SP ON SP.MASP = CT.MASP
@@ -129,9 +132,11 @@ class BaoCaoRepository:
                 SELECT
                     {sales_period} AS KY,
                     COUNT(DISTINCT HD.MAHD) AS SO_HD,
-                    SUM(COALESCE(CT.THANHTIEN, 0)) AS TIEN_HANG,
-                    SUM(COALESCE(CT.THANHTIEN, 0) - COALESCE(CT.THANHTIENSAUGIAM, 0)) AS TIEN_GIAM,
-                    SUM(COALESCE(CT.THANHTIENSAUGIAM, 0)) AS DOANH_THU
+                    SUM(COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0)) AS TIEN_HANG,
+                    SUM(COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0)
+                        * COALESCE(KM.TYLEGIAM, 0) / 100.0) AS TIEN_GIAM,
+                    SUM(COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0)
+                        * (1 - COALESCE(KM.TYLEGIAM, 0) / 100.0)) AS DOANH_THU
                 FROM dbo.HOA_DON HD
                 LEFT JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
                 LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
@@ -172,9 +177,11 @@ class BaoCaoRepository:
                     COALESCE(KM.TENKM, N'Không áp dụng khuyến mãi') AS TENKM,
                     COALESCE(KM.TYLEGIAM, 0) AS TYLEGIAM,
                     COUNT(DISTINCT HD.MAHD) AS SO_HD,
-                    COALESCE(SUM(CT.THANHTIEN), 0) AS TIEN_HANG,
-                    COALESCE(SUM(CT.THANHTIEN - CT.THANHTIENSAUGIAM), 0) AS TIEN_GIAM,
-                    COALESCE(SUM(CT.THANHTIENSAUGIAM), 0) AS DOANH_THU
+                    COALESCE(SUM(CT.DONGIA * CT.SOLUONG), 0) AS TIEN_HANG,
+                    COALESCE(SUM(CT.DONGIA * CT.SOLUONG
+                        * COALESCE(KM.TYLEGIAM, 0) / 100.0), 0) AS TIEN_GIAM,
+                    COALESCE(SUM(CT.DONGIA * CT.SOLUONG
+                        * (1 - COALESCE(KM.TYLEGIAM, 0) / 100.0)), 0) AS DOANH_THU
                 FROM dbo.HOA_DON HD
                 LEFT JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
                 LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
@@ -212,17 +219,19 @@ class BaoCaoRepository:
                 COALESCE(CONVERT(nvarchar(20), HD.MACA), N''),
                 COALESCE(S.TIEN_HANG, 0),
                 COALESCE(KM.TYLEGIAM, 0),
-                COALESCE(S.TIEN_HANG, 0) - COALESCE(S.TIEN_SAU_GIAM, 0),
-                COALESCE(S.TIEN_SAU_GIAM, 0),
+                COALESCE(S.TIEN_HANG, 0) * COALESCE(KM.TYLEGIAM, 0) / 100.0,
+                COALESCE(S.TIEN_HANG, 0) * (1 - COALESCE(KM.TYLEGIAM, 0) / 100.0),
                 CASE WHEN HD.TRANGTHAI = 1
-                    THEN COALESCE(S.TIEN_SAU_GIAM, 0)
+                    THEN COALESCE(S.TIEN_HANG, 0)
+                        * (1 - COALESCE(KM.TYLEGIAM, 0) / 100.0)
                     ELSE 0 END,
                 COALESCE(R.SO_PHIEU, 0),
                 COALESCE(RX.SL_HOAN_TIEN, 0),
                 COALESCE(RX.SL_DOI_HANG, 0),
                 COALESCE(R.TIEN_HOAN, 0),
                 CASE WHEN HD.TRANGTHAI = 1
-                    THEN COALESCE(S.TIEN_SAU_GIAM, 0)
+                    THEN COALESCE(S.TIEN_HANG, 0)
+                        * (1 - COALESCE(KM.TYLEGIAM, 0) / 100.0)
                         - COALESCE(R.TIEN_HOAN, 0)
                     ELSE 0 END,
                 COALESCE(HD.TIENKHACHDUA, 0),
@@ -231,9 +240,7 @@ class BaoCaoRepository:
             LEFT JOIN dbo.NHAN_VIEN NV ON NV.MANV = HD.MANV
             LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
             OUTER APPLY (
-                SELECT
-                    SUM(COALESCE(CT.THANHTIEN, 0)) AS TIEN_HANG,
-                    SUM(COALESCE(CT.THANHTIENSAUGIAM, 0)) AS TIEN_SAU_GIAM
+                SELECT SUM(COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0)) AS TIEN_HANG
                 FROM dbo.CHI_TIET_HOA_DON CT WHERE CT.MAHD = HD.MAHD
             ) S
             OUTER APPLY (
@@ -400,9 +407,11 @@ class BaoCaoRepository:
                 SELECT CT.MASP,
                     COUNT(DISTINCT HD.MAHD) AS SO_HD,
                     SUM(COALESCE(CT.SOLUONG, 0)) AS SL_BAN,
-                    SUM(COALESCE(CT.THANHTIEN, 0)) AS TIEN_HANG,
-                    SUM(COALESCE(CT.THANHTIEN, 0) - COALESCE(CT.THANHTIENSAUGIAM, 0)) AS TIEN_GIAM,
-                    SUM(COALESCE(CT.THANHTIENSAUGIAM, 0)) AS DOANH_THU
+                    SUM(COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0)) AS TIEN_HANG,
+                    SUM(COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0)
+                        * COALESCE(KM.TYLEGIAM, 0) / 100.0) AS TIEN_GIAM,
+                    SUM(COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0)
+                        * (1 - COALESCE(KM.TYLEGIAM, 0) / 100.0)) AS DOANH_THU
                 FROM dbo.HOA_DON HD
                 INNER JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
                 LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
@@ -418,7 +427,7 @@ class BaoCaoRepository:
                     SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 1
                         THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_DOI_HANG,
                     SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 0
-                        THEN COALESCE(CTDT.TONGTIENHOAN, 0)
+                        THEN COALESCE(CTDT.DONGIAHOAN, 0) * COALESCE(CTDT.SOLUONG, 0)
                         ELSE 0 END) AS TIEN_HOAN
                 FROM dbo.PHIEU_DOI_TRA PDT
                 INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT

@@ -102,19 +102,12 @@ class ReturnRepository:
                     COALESCE(SP.DVT, N''),
                     COALESCE(CT.SOLUONG, 0),
                     COALESCE(R.DA_XU_LY, 0),
-                    COALESCE(R.DA_HOAN_TIEN, 0),
-                    COALESCE(R.TIEN_DA_HOAN, 0),
-                    COALESCE(CT.THANHTIENSAUGIAM, 0),
+                    COALESCE(CT.DONGIA, 0),
                     COALESCE(CT.VAT, 0)
                 FROM dbo.CHI_TIET_HOA_DON CT
                 LEFT JOIN dbo.SAN_PHAM SP ON SP.MASP = CT.MASP
                 OUTER APPLY (
-                    SELECT
-                        SUM(COALESCE(CTDT.SOLUONG, 0)) AS DA_XU_LY,
-                        SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 0
-                            THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS DA_HOAN_TIEN,
-                        SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 0
-                            THEN COALESCE(CTDT.TONGTIENHOAN, 0) ELSE 0 END) AS TIEN_DA_HOAN
+                    SELECT SUM(COALESCE(CTDT.SOLUONG, 0)) AS DA_XU_LY
                     FROM dbo.PHIEU_DOI_TRA PDT
                     INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT
                     WHERE PDT.MAHD = CT.MAHD AND CTDT.MASP = CT.MASP
@@ -126,8 +119,10 @@ class ReturnRepository:
             for row in cursor.fetchall():
                 purchased = int(row[3] or 0)
                 processed = int(row[4] or 0)
-                refunded_quantity = int(row[5] or 0)
-                refunded_amount = Decimal(str(row[6] or 0))
+                net_price = (
+                    Decimal(str(row[5] or 0)) * (Decimal("100") - discount_rate)
+                    / Decimal("100")
+                ).quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
                 items.append({
                     "product_code": str(row[0]),
                     "product_name": str(row[1] or ""),
@@ -135,10 +130,8 @@ class ReturnRepository:
                     "purchased": purchased,
                     "processed": processed,
                     "remaining": max(purchased - processed, 0),
-                    "refunded_quantity": refunded_quantity,
-                    "refunded_amount": refunded_amount,
-                    "line_total_after_discount": Decimal(str(row[7] or 0)),
-                    "vat": Decimal(str(row[8] or 0)),
+                    "net_price": net_price,
+                    "vat": Decimal(str(row[6] or 0)),
                 })
             return {
                 "invoice_code": invoice_code,
@@ -211,7 +204,7 @@ class ReturnRepository:
             cursor.execute("""
                 SELECT CT.MASP,
                        COALESCE(SP.TENSP, N'(Sản phẩm không còn trong danh mục)'),
-                       CT.SOLUONG, CT.TONGTIENHOAN, CT.VAT,
+                       CT.SOLUONG, CT.DONGIAHOAN, CT.VAT,
                        CT.TINHTRANGHANG, CT.HINH_THUC_XU_LY
                 FROM dbo.CHI_TIET_DOI_TRA CT
                 LEFT JOIN dbo.SAN_PHAM SP ON SP.MASP = CT.MASP
@@ -225,7 +218,7 @@ class ReturnRepository:
                     "masp": item[0],
                     "tensp": item[1] or "",
                     "quantity": int(item[2] or 0),
-                    "line_refund_total": item[3] or 0,
+                    "unit_refund": item[3] or 0,
                     "vat": item[4] or 0,
                     "condition": (
                         "Còn nguyên vẹn" if condition is not None and int(condition) == 1
@@ -308,40 +301,6 @@ class ReturnRepository:
             cursor.close()
 
     @staticmethod
-    def calculate_refund_delta(
-        line_total, sold_quantity, refunded_quantity,
-        already_refunded_amount, current_quantity,
-    ):
-        """Tính tiền hoàn mới, bảo đảm tổng hoàn lũy kế không vượt giá trị dòng."""
-        total = Decimal(str(line_total or 0)).quantize(
-            MONEY_QUANT, rounding=ROUND_HALF_UP
-        )
-        sold = int(sold_quantity or 0)
-        refunded = int(refunded_quantity or 0)
-        current = int(current_quantity or 0)
-        already_paid = Decimal(str(already_refunded_amount or 0)).quantize(
-            MONEY_QUANT, rounding=ROUND_HALF_UP
-        )
-        if sold <= 0 or refunded < 0 or current < 0 or refunded + current > sold:
-            raise ValueError("Số lượng hoàn trả không hợp lệ.")
-
-        def cumulative_amount(quantity):
-            if quantity <= 0:
-                return Decimal("0.00")
-            if quantity >= sold:
-                return total
-            return (total * quantity / sold).quantize(
-                MONEY_QUANT, rounding=ROUND_HALF_UP
-            )
-
-        target = cumulative_amount(refunded + current)
-        remaining_value = max(total - already_paid, Decimal("0.00"))
-        return min(
-            max(target - already_paid, Decimal("0.00")),
-            remaining_value,
-        ).quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
-
-    @staticmethod
     def _next_return_code(cursor):
         cursor.execute("""
             SELECT COALESCE(
@@ -373,8 +332,9 @@ class ReturnRepository:
             invoice_code = payload["invoice_code"]
             reason = payload["reason"]
             cursor.execute("""
-                SELECT HD.NGAYLAP, HD.TRANGTHAI
+                SELECT HD.NGAYLAP, HD.TRANGTHAI, ISNULL(KM.TYLEGIAM, 0)
                 FROM dbo.HOA_DON HD WITH (UPDLOCK, HOLDLOCK)
+                LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
                 WHERE HD.MAHD = ?
             """, invoice_code)
             invoice = cursor.fetchone()
@@ -388,6 +348,7 @@ class ReturnRepository:
             if int(cursor.fetchone()[0] or 0) != 1:
                 raise ValueError("Chỉ được đổi trả trong cùng ngày lập hóa đơn.")
 
+            discount_rate = Decimal(str(invoice[2] or 0))
             verified_lines = []
             total_refund = Decimal("0.00")
             for line in payload["items"]:
@@ -397,8 +358,7 @@ class ReturnRepository:
                 action = line["action"]
 
                 cursor.execute("""
-                    SELECT COALESCE(SOLUONG, 0), COALESCE(VAT, 0),
-                           COALESCE(THANHTIENSAUGIAM, 0)
+                    SELECT COALESCE(SOLUONG, 0), COALESCE(DONGIA, 0), COALESCE(VAT, 0)
                     FROM dbo.CHI_TIET_HOA_DON WITH (UPDLOCK, HOLDLOCK)
                     WHERE MAHD = ? AND MASP = ?
                 """, invoice_code, product_code)
@@ -407,23 +367,15 @@ class ReturnRepository:
                     raise ValueError(f"Sản phẩm {product_code} không thuộc hóa đơn gốc.")
 
                 purchased = int(sold_line[0] or 0)
-                vat = Decimal(str(sold_line[1] or 0))
-                line_total_after_discount = Decimal(str(sold_line[2] or 0))
+                original_price = Decimal(str(sold_line[1] or 0))
+                vat = Decimal(str(sold_line[2] or 0))
                 cursor.execute("""
-                    SELECT
-                        COALESCE(SUM(CTDT.SOLUONG), 0),
-                        COALESCE(SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 0
-                            THEN CTDT.SOLUONG ELSE 0 END), 0),
-                        COALESCE(SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 0
-                            THEN CTDT.TONGTIENHOAN ELSE 0 END), 0)
+                    SELECT COALESCE(SUM(CTDT.SOLUONG), 0)
                     FROM dbo.PHIEU_DOI_TRA PDT WITH (UPDLOCK, HOLDLOCK)
                     INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT
                     WHERE PDT.MAHD = ? AND CTDT.MASP = ?
                 """, invoice_code, product_code)
-                processed_row = cursor.fetchone()
-                processed = int(processed_row[0] or 0)
-                refunded_quantity = int(processed_row[1] or 0)
-                already_refunded_amount = Decimal(str(processed_row[2] or 0))
+                processed = int(cursor.fetchone()[0] or 0)
                 remaining = purchased - processed
                 if remaining < 0 or quantity > remaining:
                     raise ValueError(
@@ -434,6 +386,10 @@ class ReturnRepository:
                         f"Sản phẩm {product_code}: chỉ được đổi sản phẩm khi hàng trả đã hỏng."
                     )
 
+                net_price = (
+                    original_price * (Decimal("100") - discount_rate)
+                    / Decimal("100")
+                ).quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
                 if action == 1:
                     cursor.execute("""
                         UPDATE dbo.SAN_PHAM
@@ -444,7 +400,7 @@ class ReturnRepository:
                     """, quantity, product_code, quantity)
                     if cursor.rowcount != 1:
                         raise ValueError(f"Sản phẩm {product_code} không đủ tồn kho để đổi.")
-                    line_refund_total = Decimal("0.00")
+                    refund_unit_price = Decimal("0.00")
                 else:
                     if condition == 1:
                         cursor.execute("""
@@ -482,17 +438,11 @@ class ReturnRepository:
                             """, quantity, product_code)
                             if cursor.rowcount != 1:
                                 raise LookupError(f"Không tìm thấy sản phẩm {product_code}.")
-                    line_refund_total = self.calculate_refund_delta(
-                        line_total_after_discount,
-                        purchased,
-                        refunded_quantity,
-                        already_refunded_amount,
-                        quantity,
-                    )
-                    total_refund += line_refund_total
+                    refund_unit_price = net_price
+                    total_refund += net_price * quantity
 
                 verified_lines.append((
-                    product_code, quantity, line_refund_total,
+                    product_code, quantity, refund_unit_price,
                     vat, condition, action,
                 ))
 
@@ -509,7 +459,7 @@ class ReturnRepository:
             for line in verified_lines:
                 cursor.execute("""
                     INSERT INTO dbo.CHI_TIET_DOI_TRA
-                        (MASP, MAPDT, SOLUONG, TONGTIENHOAN, VAT,
+                        (MASP, MAPDT, SOLUONG, DONGIAHOAN, VAT,
                          TINHTRANGHANG, HINH_THUC_XU_LY)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                 """, line[0], return_code, line[1], line[2], line[3], line[4], line[5])

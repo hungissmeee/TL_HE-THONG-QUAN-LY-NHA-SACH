@@ -1,6 +1,6 @@
 """Service nghiệp vụ hóa đơn bán hàng dùng chung cho Desktop và Backend."""
 
-from decimal import Decimal, InvalidOperation, ROUND_DOWN, ROUND_HALF_UP
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from core.hoa_don.repository import HoaDonRepository
 
@@ -46,61 +46,6 @@ class HoaDonService:
         if not code:
             raise ValueError("Mã hóa đơn không hợp lệ.")
         return self.repository.get_invoice_detail(code)
-
-    @staticmethod
-    def allocate_invoice_discount(cart, discount):
-        """Phân bổ tiền giảm cấp hóa đơn về từng dòng, bảo đảm tổng khớp tuyệt đối."""
-        discount = Decimal(str(discount)).quantize(
-            MONEY_QUANT, rounding=ROUND_HALF_UP
-        )
-        line_amounts = {
-            code: (item["price"] * item["quantity"]).quantize(
-                MONEY_QUANT, rounding=ROUND_HALF_UP
-            )
-            for code, item in cart.items()
-        }
-        subtotal = sum(line_amounts.values(), Decimal("0.00"))
-        if not line_amounts or subtotal <= 0 or discount == 0:
-            return {
-                code: {
-                    "line_total": amount,
-                    "line_discount": Decimal("0.00"),
-                    "line_total_after_discount": amount,
-                }
-                for code, amount in line_amounts.items()
-            }
-
-        raw_shares = {
-            code: discount * amount / subtotal
-            for code, amount in line_amounts.items()
-        }
-        allocated = {
-            code: raw.quantize(MONEY_QUANT, rounding=ROUND_DOWN)
-            for code, raw in raw_shares.items()
-        }
-        remaining_cents = int(
-            (discount - sum(allocated.values(), Decimal("0.00"))) / MONEY_QUANT
-        )
-        ranked_codes = sorted(
-            line_amounts,
-            key=lambda code: (
-                -(raw_shares[code] - allocated[code]),
-                str(code).casefold(),
-            ),
-        )
-        for code in ranked_codes[:remaining_cents]:
-            allocated[code] += MONEY_QUANT
-
-        return {
-            code: {
-                "line_total": line_amounts[code],
-                "line_discount": allocated[code],
-                "line_total_after_discount": (
-                    line_amounts[code] - allocated[code]
-                ).quantize(MONEY_QUANT, rounding=ROUND_HALF_UP),
-            }
-            for code in line_amounts
-        }
 
     def create_invoice(self, data, is_admin=False):
         data = dict(data or {})
@@ -152,17 +97,7 @@ class HoaDonService:
         discount = (subtotal * discount_rate / Decimal("100")).quantize(
             MONEY_QUANT, rounding=ROUND_HALF_UP
         )
-        allocated = self.allocate_invoice_discount(cart, discount)
-        for code, amounts in allocated.items():
-            cart[code].update(amounts)
-        total = sum(
-            (item["line_total_after_discount"] for item in cart.values()),
-            Decimal("0.00"),
-        ).quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
-        if total != (subtotal - discount).quantize(
-            MONEY_QUANT, rounding=ROUND_HALF_UP
-        ):
-            raise RuntimeError("Phân bổ khuyến mãi không khớp tổng tiền hóa đơn.")
+        total = (subtotal - discount).quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
         cash = self._decimal(data.get("cash"), "Tiền khách đưa").quantize(
             MONEY_QUANT, rounding=ROUND_HALF_UP
         )

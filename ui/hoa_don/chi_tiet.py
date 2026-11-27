@@ -61,9 +61,8 @@ class InvoiceDetailDialog(QDialog):
             item["price"] = as_decimal(item.get("price"))
             item["quantity"] = int(item.get("quantity") or 0)
             item["vat"] = as_decimal(item.get("vat"))
-            item["line_total"] = as_decimal(item.get("line_total"))
-            item["line_total_after_discount"] = as_decimal(
-                item.get("line_total_after_discount")
+            item["line_total"] = (item["price"] * item["quantity"]).quantize(
+                MONEY_QUANT, rounding=ROUND_HALF_UP
             )
             items.append(item)
         return header, items
@@ -74,11 +73,10 @@ class InvoiceDetailDialog(QDialog):
             (item["line_total"] for item in self.items),
             Decimal("0.00")
         ).quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
-        total = sum(
-            (item["line_total_after_discount"] for item in self.items),
-            Decimal("0.00"),
+        discount = (
+            subtotal * self.header["discount_rate"] / Decimal("100")
         ).quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
-        discount = (subtotal - total).quantize(
+        total = (subtotal - discount).quantize(
             MONEY_QUANT, rounding=ROUND_HALF_UP
         )
         change = self.header["cash"] - total
@@ -121,10 +119,10 @@ class InvoiceDetailDialog(QDialog):
             )
         root.addWidget(info)
 
-        self.table = QTableWidget(0, 8)
+        self.table = QTableWidget(0, 7)
         self.table.setHorizontalHeaderLabels([
             "Mã SP", "Tên sản phẩm", "ĐVT", "Số lượng",
-            "Đơn giá (đã gồm VAT)", "VAT (%)", "Thành tiền", "Sau giảm"
+            "Đơn giá (đã gồm VAT)", "VAT (%)", "Thành tiền"
         ])
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
@@ -142,8 +140,7 @@ class InvoiceDetailDialog(QDialog):
             values = [
                 item["masp"], item["tensp"], item["dvt"],
                 item["quantity"], money(item["price"]),
-                money(item["vat"]), money(item["line_total"]),
-                money(item["line_total_after_discount"])
+                money(item["vat"]), money(item["line_total"])
             ]
             for col, value in enumerate(values):
                 self.table.setItem(
@@ -222,8 +219,7 @@ class InvoiceDetailDialog(QDialog):
                 "</td></tr>"
                 "<tr class='item-price-row'>"
                 f"<td class='qty-price' width='68%'>{item['quantity']} x {money(item['price'])}</td>"
-                f"<td class='amount right' width='32%'>{money(item['line_total'])}"
-                f"<br><small>Sau giảm: {money(item['line_total_after_discount'])}</small></td>"
+                f"<td class='amount right' width='32%'>{money(item['line_total'])}</td>"
                 "</tr>"
             )
         items_html = "".join(item_rows) or (
