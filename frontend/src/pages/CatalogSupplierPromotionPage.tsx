@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  Alert,
   Button,
   Card,
   DatePicker,
@@ -219,7 +220,6 @@ function SuppliersPage() {
   const [showInactive, setShowInactive] = useState(false);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
-  const [nextCode, setNextCode] = useState("");
   const [saving, setSaving] = useState(false);
   const [form] = Form.useForm();
 
@@ -393,16 +393,9 @@ function PromotionsPage() {
   }, [keyword, showDeleted]);
   useEffect(() => { void load(); }, [load]);
 
-  async function openCreate() {
+  function openCreate() {
     form.resetFields();
     setOpen(true);
-    try {
-      const result = await operationsApi.promotionNextCode();
-      setNextCode(result.code);
-    } catch (error) {
-      setOpen(false);
-      message.error(errorText(error));
-    }
   }
 
   async function create(values: { name: string; discount_rate: number; period: [dayjs.Dayjs, dayjs.Dayjs] }) {
