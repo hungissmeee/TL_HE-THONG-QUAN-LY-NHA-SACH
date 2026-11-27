@@ -172,11 +172,7 @@ class CreateInvoiceDialog(QDialog):
         )
         self.product_search.returnPressed.connect(self.add_selected_product)
 
-        self.add_product_button = QPushButton("Thêm")
-        self.add_product_button.setMinimumHeight(42)
-        self.add_product_button.clicked.connect(self.add_selected_product)
         search_row.addWidget(self.product_search, 1)
-        search_row.addWidget(self.add_product_button)
         products_layout.addLayout(search_row)
 
         search_hint = QLabel(
