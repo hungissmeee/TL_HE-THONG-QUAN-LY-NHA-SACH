@@ -436,7 +436,7 @@ class CatalogPage(QWidget):
             QMessageBox.warning(
                 self,
                 "Không thể tạo mã tự động",
-                f"Không lấy được mã cho {self.config['table']}.\\n{error}",
+                f"Không lấy được mã cho {self.config['table']}.\n{error}",
             )
             return ""
         finally:
