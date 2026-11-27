@@ -322,7 +322,8 @@ class ProductWindow(QWidget):
                         WHEN SPK.MASP IS NOT NULL THEN N'Sản phẩm khác'
                         ELSE N'Chưa phân loại'
                     END AS LOAI,
-                    SP.DVT, SP.GIANHAP, SP.GIABAN, SP.SLTON, SP.VAT
+                    SP.DVT, SP.GIANHAP, SP.GIABAN, SP.SLTON, SP.VAT,
+                    SP.BARCODE
                 FROM dbo.SAN_PHAM SP
                 LEFT JOIN dbo.SACH S ON S.MASP = SP.MASP
                 LEFT JOIN dbo.SAN_PHAM_KHAC SPK ON SPK.MASP = SP.MASP
@@ -336,7 +337,7 @@ class ProductWindow(QWidget):
             product = {
                 "masp": row[0], "tensp": row[1], "loai": row[2],
                 "dvt": row[3], "gianhap": row[4], "giaban": row[5],
-                "slton": row[6], "vat": row[7]
+                "slton": row[6], "vat": row[7], "barcode": row[8]
             }
         except Exception as e:
             QMessageBox.critical(self, "Lỗi", f"Không thể lấy chi tiết sản phẩm!\n{e}")
