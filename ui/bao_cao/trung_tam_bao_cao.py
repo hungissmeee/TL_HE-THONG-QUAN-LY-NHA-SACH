@@ -252,7 +252,7 @@ class ReportCenterPage(QWidget):
         self.rows = []
         self._build_ui()
         self._load_employees()
-        self._select_report("daily_sales")
+        self._configure_report()
 
     def _build_ui(self):
         root = QHBoxLayout(self)
@@ -487,9 +487,12 @@ class ReportCenterPage(QWidget):
         self.table.horizontalScrollBar().valueChanged.connect(
             self._sync_horizontal_scroll
         )
+        self.table.horizontalScrollBar().rangeChanged.connect(
+            self._sync_horizontal_scroll_range
+        )
 
         self.status_label = QLabel("Chọn một báo cáo ở danh mục bên trái.")
-        self.status_label.setStyleSheet("color: #64748B; font-size: 10px;")
+        self.status_label.setStyleSheet("color: #AAB7C8; font-size: 10px;")
         right.addWidget(self.status_label)
         root.addWidget(self.right_panel, 1)
 
@@ -520,7 +523,7 @@ class ReportCenterPage(QWidget):
         self.date_to.setDate(end)
 
     def _select_report(self, key):
-        if key not in REPORTS or key == self.current_report:
+        if key not in REPORTS:
             return
         self.current_report = key
         self._configure_report()
@@ -735,10 +738,27 @@ class ReportCenterPage(QWidget):
         viewport_width = max(100, self.table.viewport().width())
         self.footer.setFixedWidth(viewport_width)
         self.group_header.setFixedWidth(viewport_width)
+        self._sync_horizontal_scroll_range(
+            0, self.table.horizontalScrollBar().maximum()
+        )
+
+    def _sync_horizontal_scroll_range(self, minimum, maximum):
+        page_step = self.table.horizontalScrollBar().pageStep()
+        value = self.table.horizontalScrollBar().value()
+        for target in (self.footer, self.group_header):
+            scrollbar = target.horizontalScrollBar()
+            scrollbar.setRange(minimum, maximum)
+            scrollbar.setPageStep(page_step)
+            scrollbar.setValue(value)
 
     def _sync_horizontal_scroll(self, value):
-        self.footer.horizontalScrollBar().setValue(value)
-        self.group_header.horizontalScrollBar().setValue(value)
+        for target in (self.footer, self.group_header):
+            target.horizontalScrollBar().setValue(value)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "table"):
+            self._sync_footer_widths()
 
     def export_xlsx(self):
         if not self.rows:
