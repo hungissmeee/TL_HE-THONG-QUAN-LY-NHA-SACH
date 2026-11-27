@@ -7,7 +7,7 @@ import {
 import { DeleteOutlined, PlusOutlined, ReloadOutlined, TeamOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
 import { ApiError } from "@/services/api";
-import { operationsApi, type Row } from "@/features/operations/operationsApi";
+import { operationsApi, type DataRow } from "@/features/operations/operationsApi";
 import { useAuth } from "@/features/auth/AuthContext";
 
 const { Title, Text } = Typography;
@@ -21,15 +21,15 @@ function ShiftsPage() {
   const isManager = ["admin", "rl_QuanLy"].includes(user?.role_code || "");
   const isAccountant = ["admin", "rl_KeToan"].includes(user?.role_code || "");
   const [summary, setSummary] = useState<Row | null>(null);
-  const [current, setCurrent] = useState<Row[]>([]);
-  const [history, setHistory] = useState<Row[]>([]);
-  const [mine, setMine] = useState<Row[]>([]);
+  const [current, setCurrent] = useState<DataRow[]>([]);
+  const [history, setHistory] = useState<DataRow[]>([]);
+  const [mine, setMine] = useState<DataRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [period, setPeriod] = useState("all");
   const [openCreate, setOpenCreate] = useState(false);
   const [createSaving, setCreateSaving] = useState(false);
   const [createForm] = Form.useForm();
-  const [roster, setRoster] = useState<Row[]>([]);
+  const [roster, setRoster] = useState<DataRow[]>([]);
   const [rosterTitle, setRosterTitle] = useState("");
   const [rosterOpen, setRosterOpen] = useState(false);
   const [closingShift, setClosingShift] = useState<Row | null>(null);
@@ -99,12 +99,12 @@ function ShiftsPage() {
     { title: "Mã ca", dataIndex: "maca", key: "maca", width: 85 },
     { title: "Ngày", dataIndex: "ngaylam", key: "ngaylam", width: 120, render: dateText },
     { title: "Ca", dataIndex: "soca", key: "soca", width: 65, render: (v: unknown) => "Ca " + String(v) },
-    { title: "Giờ làm", key: "hours", width: 145, render: (_: unknown, row: Row) => String(row.tgmo || "").slice(0, 5) + " – " + String(row.tgdong || "").slice(0, 5) },
+    { title: "Giờ làm", key: "hours", width: 145, render: (_: unknown, row: DataRow) => String(row.tgmo || "").slice(0, 5) + " – " + String(row.tgdong || "").slice(0, 5) },
     { title: "Nhân viên", dataIndex: "so_nhan_vien", key: "count", width: 100, align: "right" },
     { title: "Tiền đầu ca", dataIndex: "tmdauca", key: "opening", width: 140, align: "right", render: money },
     { title: "Tiền cuối ca", dataIndex: "tmcuoica", key: "closing", width: 140, align: "right", render: (v: unknown) => v === null ? "Chưa chốt" : money(v) },
     { title: "Trạng thái", dataIndex: "trangthai", key: "status", width: 130, render: (v: string) => <Tag color={v === "Đang diễn ra" ? "success" : v === "Đã kết thúc" ? "default" : "blue"}>{v}</Tag> },
-    { title: "Thao tác", key: "actions", width: 170, render: (_: unknown, row: Row) => <Space>
+    { title: "Thao tác", key: "actions", width: 170, render: (_: unknown, row: DataRow) => <Space>
       <Button size="small" icon={<TeamOutlined />} onClick={() => void showRoster(Number(row.maca))}>Nhân viên</Button>
       {isManager && row.trangthai === "Sắp bắt đầu" && <Popconfirm title="Xóa ca này?" okText="Xóa" cancelText="Hủy" onConfirm={() => void deleteShift(Number(row.maca))}><Button size="small" danger icon={<DeleteOutlined />} /></Popconfirm>}
     </Space> },
@@ -114,10 +114,10 @@ function ShiftsPage() {
     { title: "Mã ca", dataIndex: "maca", key: "maca", width: 85 },
     { title: "Ngày", dataIndex: "ngaylam", key: "ngaylam", width: 130, render: dateText },
     { title: "Ca", dataIndex: "soca", key: "soca", width: 70, render: (v: unknown) => "Ca " + String(v) },
-    { title: "Giờ làm", key: "hours", width: 150, render: (_: unknown, row: Row) => String(row.tgmo || "").slice(0, 5) + " – " + String(row.tgdong || "").slice(0, 5) },
+    { title: "Giờ làm", key: "hours", width: 150, render: (_: unknown, row: DataRow) => String(row.tgmo || "").slice(0, 5) + " – " + String(row.tgdong || "").slice(0, 5) },
     { title: "Số nhân viên", dataIndex: "so_nhan_vien", key: "count", width: 115 },
-    { title: "Trạng thái", key: "status", render: (_: unknown, row: Row) => <Tag color={row.is_registered ? "success" : "default"}>{row.is_registered ? "Đã đăng ký" : row.is_ended ? "Đã kết thúc" : "Chưa đăng ký"}</Tag> },
-    { title: "Thao tác", key: "actions", width: 175, render: (_: unknown, row: Row) => <Space>
+    { title: "Trạng thái", key: "status", render: (_: unknown, row: DataRow) => <Tag color={row.is_registered ? "success" : "default"}>{row.is_registered ? "Đã đăng ký" : row.is_ended ? "Đã kết thúc" : "Chưa đăng ký"}</Tag> },
+    { title: "Thao tác", key: "actions", width: 175, render: (_: unknown, row: DataRow) => <Space>
       {!row.is_registered && !row.is_ended && <Button size="small" type="primary" onClick={() => void registerShift(Number(row.maca))}>Đăng ký</Button>}
       {isAccountant && row.is_ended && row.tmcuoica === null && <Button size="small" onClick={() => { setClosingShift(row); setCash(null); }}>Ghi tiền cuối ca</Button>}
     </Space> },
@@ -130,7 +130,7 @@ function ShiftsPage() {
         <Col xs={24} md={8}><Card bordered={false}><Statistic title="Ca đang diễn ra" value={Number(summary?.active_shifts || 0)} /></Card></Col>
         <Col xs={24} md={8}><Card bordered={false}><Statistic title="Nhân viên đang làm" value={Number(summary?.active_employees || 0)} /></Card></Col>
         <Col xs={24} md={8}><Card bordered={false}><Statistic title="Tổng ca hôm nay" value={Number(summary?.today_shifts || 0)} /></Card></Col>
-      </Row>
+      </Row
       <Card bordered={false} className="operation-card">
         <div className="operation-list-heading"><Title level={4}>Ca đang diễn ra</Title><Button icon={<ReloadOutlined />} onClick={() => void load()}>Làm mới</Button></div>
         <Table<Row> rowKey="maca" columns={managerColumns} dataSource={current} loading={loading} pagination={false} locale={{ emptyText: "Hiện không có ca đang diễn ra." }} />
@@ -200,7 +200,7 @@ function ReportsPage({ reportType }: { reportType: string }) {
   const [inventoryStatus, setInventoryStatus] = useState<"all" | "low" | "out">("all");
   const [keyword, setKeyword] = useState("");
   const [result, setResult] = useState<{
-    summary?: Row; trend?: Row[]; top_products?: Row[]; items?: Row[]; suppliers?: Row[];
+    summary?: DataRow; trend?: DataRow[]; top_products?: DataRow[]; items?: DataRow[]; suppliers?: DataRow[];
   } | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -217,7 +217,7 @@ function ReportsPage({ reportType }: { reportType: string }) {
   }, [reportType, range, period, sort, threshold, inventoryStatus, keyword]);
   useEffect(() => { void load(); }, [load]);
 
-  function makeColumns(items: Row[]): TableColumnsType<Row> {
+  function makeColumns(items: DataRow[]): TableColumnsType<Row> {
     if (!items.length) return [];
     return Object.keys(items[0]).map((key) => ({
       title: titleCase(key),
@@ -252,13 +252,13 @@ function ReportsPage({ reportType }: { reportType: string }) {
           <Col xs={24} md={8}><Card bordered={false}><Statistic title="Hóa đơn đã hủy" value={Number(result.summary.hoa_don_da_huy || 0)} /></Card></Col>
           <Col xs={24} md={8}><Card bordered={false}><Statistic title="Giá trị nhập" value={Number(result.summary.gia_tri_nhap || 0)} suffix="₫" formatter={(v) => Number(v).toLocaleString("vi-VN")} /></Card></Col>
           <Col xs={24} md={8}><Card bordered={false}><Statistic title="Doanh thu sau hoàn" value={Number(result.summary.doanh_thu || 0) - Number(result.summary.tien_hoan || 0)} suffix="₫" formatter={(v) => Number(v).toLocaleString("vi-VN")} /></Card></Col>
-        </Row>}
+        </Row}
         {reportType === "report_inventory" && result?.summary && <Row gutter={[14, 14]} className="operation-stats">
           <Col xs={24} md={8}><Card bordered={false}><Statistic title="Tổng sản phẩm" value={Number(result.summary.total_products || 0)} /></Card></Col>
           <Col xs={24} md={8}><Card bordered={false}><Statistic title="Sắp hết hàng" value={Number(result.summary.low_stock || 0)} /></Card></Col>
           <Col xs={24} md={8}><Card bordered={false}><Statistic title="Hết hàng" value={Number(result.summary.out_of_stock || 0)} /></Card></Col>
           <Col xs={24} md={8}><Card bordered={false}><Statistic title="Giá trị tồn kho" value={Number(result.summary.inventory_value || 0)} suffix="₫" formatter={(v) => Number(v).toLocaleString("vi-VN")} /></Card></Col>
-        </Row>}
+        </Row}
         {reportType === "report_overview" ? <>
           <Title level={4}>Doanh thu theo ngày</Title>
           <Table<Row> rowKey={(r) => String(r.ngay)} dataSource={result?.trend || []} columns={makeColumns(result?.trend || [])} pagination={{ pageSize: 8 }} />
