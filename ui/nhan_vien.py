@@ -179,6 +179,7 @@ class EmployeeWindow(QWidget):
         if self.is_admin:
 
             add_button = QPushButton("+ Thêm nhân viên")
+            add_button.setProperty("buttonRole", "primary")
             add_button.clicked.connect(self.show_add_page)
 
             top_layout.addWidget(add_button)
