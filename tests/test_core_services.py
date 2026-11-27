@@ -882,7 +882,11 @@ class FakeReportRepository(BaoCaoRepository):
 
     def import_report(self, start, end):
         self.calls.append(("import_report", start, end))
-        return {"imports": [], "suppliers": []}
+        return {"imports": [], "suppliers": [], "products": []}
+
+    def employee_sales_report(self, start, end):
+        self.calls.append(("employee_sales_report", start, end))
+        return []
 
     def return_report(self, start, end):
         self.calls.append(("return_report", start, end))
@@ -1004,7 +1008,12 @@ class ReportServiceTests(unittest.TestCase):
         self.assertIn("SL_DOI_HANG", repository.sql)
         self.assertEqual(
             repository.params,
-            ("2026-11-01", "2026-11-30", "2026-11-01", "2026-11-30", "%SP%", "%SP%"),
+            (
+                "2026-11-01", "2026-11-30",
+                "2026-11-01", "2026-11-30",
+                "2026-11-01", "2026-11-30",
+                "%SP%", "%SP%",
+            ),
         )
 
     def test_product_report_summary_service_delegates_with_validated_dates(self):
@@ -1062,6 +1071,13 @@ class ReportServiceTests(unittest.TestCase):
             self.service.product_report(
                 "2026-01-01", "2026-01-31", "MASP DESC; DROP TABLE SAN_PHAM"
             )
+
+    def test_employee_sales_report_delegates_with_validated_dates(self):
+        self.service.employee_sales_report("2026-01-01", "2026-01-31")
+        self.assertEqual(
+            self.repository.calls[-1],
+            ("employee_sales_report", "2026-01-01", "2026-01-31"),
+        )
 
     def test_invoice_import_return_and_shift_reports_delegate(self):
         self.service.invoice_report("2026-01-01", "2026-01-31")
