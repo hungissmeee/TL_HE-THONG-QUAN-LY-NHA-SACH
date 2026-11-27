@@ -266,6 +266,7 @@ class CatalogPage(QWidget):
         button_layout = QHBoxLayout()
 
         self.add_button = QPushButton("Thêm mới")
+        self.add_button.setProperty("buttonRole", "primary")
         self.add_button.clicked.connect(self.submit_form)
 
         self.clear_button = QPushButton("Xóa nội dung")
