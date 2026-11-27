@@ -5,7 +5,7 @@ import os
 import pyodbc
 
 
-DB_NAME = "CSDLTEST"
+DB_NAME = "CSDLQLNHASACH"
 
 class Database:
 
@@ -16,7 +16,7 @@ class Database:
         self.username = None
 
         # Cấu hình có thể thay đổi theo máy triển khai mà không sửa mã nguồn.
-        self.server = os.getenv("BOOKHUB_SQL_SERVER", r"localhost\MSSQLSERVER01")
+        self.server = os.getenv("BOOKHUB_SQL_SERVER", r"localhost")
         self.database = os.getenv("BOOKHUB_SQL_DATABASE", DB_NAME)
         self.driver = os.getenv(
             "BOOKHUB_SQL_DRIVER", "ODBC Driver 18 for SQL Server"

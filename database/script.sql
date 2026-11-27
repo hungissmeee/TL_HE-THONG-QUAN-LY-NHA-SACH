@@ -7,9 +7,8 @@
     Script chi tao cau truc, cac role, tai khoan admin va ho so admin;
     khong them du lieu mau va khong tao tai khoan nhan vien mau.
 */
-
 -- 1. Tao database
-CREATE DATABASE CSDLTEST;
+CREATE DATABASE CSDLQLNHASACH;
 GO
 
 -- 2. Tao tai khoan dang nhap admin o cap SQL Server
@@ -24,7 +23,7 @@ GRANT ALTER ANY LOGIN TO admin;
 GO
 
 -- 3. Chuyen vao database vua tao
-USE CSDLTEST;
+USE CSDLQLNHASACH;
 GO
 
 -- 4. Tao cac bang va rang buoc
