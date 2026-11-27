@@ -339,9 +339,15 @@ class CreateImportDialog(QDialog):
             cursor.close()
 
     def _reset_product_search(self):
-        """Xóa từ khóa sau khi QCompleter hoàn tất xử lý lựa chọn."""
-        self.product_search.clear()
-        self.product_search.setFocus()
+        """Đóng gợi ý, xóa nội dung và trả focus về ô tìm kiếm."""
+        self.product_completer.popup().hide()
+        self.product_search.blockSignals(True)
+        try:
+            self.product_search.clear()
+        finally:
+            self.product_search.blockSignals(False)
+        self.product_search.setFocus(Qt.FocusReason.OtherFocusReason)
+        self.product_search.setCursorPosition(0)
 
     def add_completed_product(self, completion):
         """Thêm sản phẩm khi người dùng chọn một gợi ý."""
@@ -405,7 +411,7 @@ class CreateImportDialog(QDialog):
         self.update_total()
         # QCompleter có thể ghi lại completion sau khi signal activated kết thúc.
         # Đặt clear/focus vào lượt event kế tiếp để nội dung không bị điền lại.
-        QTimer.singleShot(0, self._reset_product_search)
+        QTimer.singleShot(50, self._reset_product_search)
 
     def refresh_cart(self):
         """Cập nhật giỏ hàng với số lượng và đơn giá chỉnh ngay trên từng dòng."""
