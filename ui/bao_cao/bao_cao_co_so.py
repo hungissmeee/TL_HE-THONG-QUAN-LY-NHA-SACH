@@ -179,12 +179,13 @@ class ReportBasePage(QWidget):
         columns=3,
         section_title=None,
         section_description=None,
+        primary_key=None,
     ):
-        """Tạo các thẻ chỉ số có nhãn, diễn giải và màu nhấn theo ý nghĩa dữ liệu.
+        """Tạo một KPI chính nổi bật và các KPI phụ có thứ bậc thấp hơn.
 
         Mỗi phần tử có dạng (key, title, value) hoặc
-        (key, title, value, description, tone). Màu nhấn chỉ hỗ trợ
-        phân loại nhanh, không thay thế nội dung giải thích của chỉ số.
+        (key, title, value, description, tone).
+        primary_key chỉ định KPI kết quả quan trọng nhất của nhóm.
         """
         if section_title:
             section_label = QLabel(section_title)
@@ -201,35 +202,112 @@ class ReportBasePage(QWidget):
             )
             self.content_layout.addWidget(description_label)
 
-        # Giữ các thẻ cùng chiều rộng và khoảng cách để dễ so sánh số liệu.
-        grid = QGridLayout()
-        grid.setContentsMargins(0, 2, 0, 5)
-        grid.setHorizontalSpacing(10)
-        grid.setVerticalSpacing(10)
-
         tone_colors = {
             "primary": "#60A5FA",
             "positive": "#34D399",
             "warning": "#FBBF24",
             "negative": "#F87171",
             "violet": "#A78BFA",
-            "neutral": "#64748B",
+            "neutral": "#94A3B8",
         }
 
-        for index, definition in enumerate(definitions):
+        featured = next(
+            (item for item in definitions if item[0] == primary_key),
+            None,
+        )
+        secondary = [
+            item for item in definitions
+            if featured is None or item[0] != primary_key
+        ]
+
+        # KPI quan trọng nhất chiếm toàn chiều ngang, giá trị đặt ở vị trí dễ quét mắt.
+        if featured is not None:
+            key, title, initial_value = featured[:3]
+            description = featured[3] if len(featured) > 3 else ""
+            tone = featured[4] if len(featured) > 4 else "primary"
+            accent_color = tone_colors.get(tone, tone_colors["primary"])
+
+            primary_card = QFrame()
+            primary_card.setObjectName("reportPrimaryKpi")
+            primary_card.setMinimumHeight(112)
+            primary_card.setStyleSheet(
+                "QFrame#reportPrimaryKpi {"
+                " background-color: #202B3B;"
+                " border: 1px solid #46566D;"
+                " border-radius: 9px;"
+                "}"
+            )
+
+            primary_layout = QHBoxLayout(primary_card)
+            primary_layout.setContentsMargins(18, 14, 20, 14)
+            primary_layout.setSpacing(16)
+
+            text_layout = QVBoxLayout()
+            text_layout.setSpacing(5)
+
+            eyebrow = QLabel("KẾT QUẢ CHÍNH")
+            eyebrow.setStyleSheet(
+                "color: #94A3B8; font-size: 10px; font-weight: 700;"
+                " background: transparent; border: none;"
+            )
+            text_layout.addWidget(eyebrow)
+
+            title_label = QLabel(title)
+            title_label.setWordWrap(True)
+            title_label.setStyleSheet(
+                "color: #F1F5F9; font-size: 14px; font-weight: 700;"
+                " background: transparent; border: none;"
+            )
+            text_layout.addWidget(title_label)
+
+            if description:
+                detail_label = QLabel(description)
+                detail_label.setWordWrap(True)
+                detail_label.setStyleSheet(
+                    "color: #94A3B8; font-size: 10px;"
+                    " background: transparent; border: none;"
+                )
+                text_layout.addWidget(detail_label)
+
+            primary_layout.addLayout(text_layout, 1)
+
+            value_label = QLabel(str(initial_value))
+            value_label.setAlignment(
+                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+            )
+            value_label.setWordWrap(True)
+            value_label.setStyleSheet(
+                f"color: {accent_color}; font-size: 30px; font-weight: 800;"
+                " background: transparent; border: none;"
+            )
+            primary_layout.addWidget(value_label, 0)
+
+            self.content_layout.addWidget(primary_card)
+            self.kpi_labels[key] = value_label
+
+        if not secondary:
+            return
+
+        # Các số liệu còn lại là thông tin đối chiếu, dùng thẻ nhỏ và nhẹ hơn.
+        grid = QGridLayout()
+        grid.setContentsMargins(0, 0, 0, 3)
+        grid.setHorizontalSpacing(8)
+        grid.setVerticalSpacing(8)
+
+        for index, definition in enumerate(secondary):
             key, title, initial_value = definition[:3]
             description = definition[3] if len(definition) > 3 else ""
             tone = definition[4] if len(definition) > 4 else "neutral"
             accent_color = tone_colors.get(tone, tone_colors["neutral"])
 
             card = QFrame()
-            card.setObjectName("reportStatCard")
-            card.setMinimumHeight(108)
+            card.setObjectName("reportSecondaryKpi")
+            card.setMinimumHeight(76)
             card.setStyleSheet(
-                "QFrame#reportStatCard {"
-                " background-color: #202B3B;"
-                " border: 1px solid #344256;"
-                " border-radius: 9px;"
+                "QFrame#reportSecondaryKpi {"
+                " background-color: #1D2735;"
+                " border: 1px solid #303E50;"
+                " border-radius: 7px;"
                 "}"
             )
 
@@ -237,26 +315,25 @@ class ReportBasePage(QWidget):
             card_layout.setContentsMargins(0, 0, 0, 0)
             card_layout.setSpacing(0)
 
-            # Dải màu nhỏ giúp nhận biết nhóm chỉ số mà không tô toàn bộ thẻ.
             accent = QFrame()
-            accent.setFixedWidth(4)
+            accent.setFixedWidth(3)
             accent.setStyleSheet(
                 f"background-color: {accent_color};"
                 " border: none;"
-                " border-top-left-radius: 8px;"
-                " border-bottom-left-radius: 8px;"
+                " border-top-left-radius: 6px;"
+                " border-bottom-left-radius: 6px;"
             )
             card_layout.addWidget(accent)
 
             content = QWidget()
             content_layout = QVBoxLayout(content)
-            content_layout.setContentsMargins(13, 10, 12, 10)
-            content_layout.setSpacing(4)
+            content_layout.setContentsMargins(10, 7, 10, 7)
+            content_layout.setSpacing(2)
 
             title_label = QLabel(title)
             title_label.setWordWrap(True)
             title_label.setStyleSheet(
-                "color: #C0CCDA; font-size: 11px; font-weight: 600;"
+                "color: #B8C4D3; font-size: 10px; font-weight: 600;"
                 " background: transparent; border: none;"
             )
             content_layout.addWidget(title_label)
@@ -265,7 +342,7 @@ class ReportBasePage(QWidget):
                 detail_label = QLabel(description)
                 detail_label.setWordWrap(True)
                 detail_label.setStyleSheet(
-                    "color: #8999AD; font-size: 10px;"
+                    "color: #8291A5; font-size: 9px;"
                     " background: transparent; border: none;"
                 )
                 content_layout.addWidget(detail_label)
@@ -273,7 +350,7 @@ class ReportBasePage(QWidget):
             value_label = QLabel(str(initial_value))
             value_label.setWordWrap(True)
             value_label.setStyleSheet(
-                "color: #F8FAFC; font-size: 21px; font-weight: 700;"
+                "color: #E2E8F0; font-size: 16px; font-weight: 700;"
                 " background: transparent; border: none;"
             )
             content_layout.addWidget(value_label)
