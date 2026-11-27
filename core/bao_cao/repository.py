@@ -31,7 +31,11 @@ class BaoCaoRepository:
 
     def daily_sales_report(self, start_date, end_date, employee_code=None, keyword=""):
         search_sql = ""
-        params = [start_date, end_date, employee_code, employee_code]
+        employee_sql = ""
+        params = [start_date, end_date]
+        if employee_code:
+            employee_sql = " AND HD.MANV = ?"
+            params.append(employee_code)
         if keyword:
             search_sql = """
                 AND (HD.MAHD LIKE ? OR I.TENNV LIKE ?
@@ -56,7 +60,7 @@ class BaoCaoRepository:
                 LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
                 WHERE HD.NGAYLAP >= CONVERT(date, ?)
                   AND HD.NGAYLAP < DATEADD(day, 1, CONVERT(date, ?))
-                  AND (? IS NULL OR HD.MANV = ?)
+                  {employee_sql}
                 GROUP BY HD.MAHD, HD.NGAYLAP, HD.MANV, HD.MACA,
                          HD.TIENKHACHDUA, HD.TRANGTHAI, NV.TENNV,
                          C.SOCA, KM.TYLEGIAM
