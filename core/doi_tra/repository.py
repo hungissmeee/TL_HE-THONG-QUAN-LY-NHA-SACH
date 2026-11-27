@@ -3,6 +3,7 @@
 from decimal import Decimal, ROUND_HALF_UP
 
 from core.sql_support import resolve_connection, restore_and_activate_product
+from core.doi_tra.calculation import calculate_invoice_refund
 
 
 MONEY_QUANT = Decimal("0.01")
@@ -78,7 +79,7 @@ class ReturnRepository:
             cursor.close()
 
     def get_invoice_items(self, invoice_code):
-        """Lấy các dòng hàng gốc và số lượng đã được xử lý qua phiếu đổi trả."""
+        """Lấy dòng hàng gốc, số lượng đã xử lý và số lượng đã hoàn tiền."""
         conn = self._connection()
         cursor = conn.cursor()
         try:
@@ -102,36 +103,44 @@ class ReturnRepository:
                     COALESCE(SP.DVT, N''),
                     COALESCE(CT.SOLUONG, 0),
                     COALESCE(R.DA_XU_LY, 0),
+                    COALESCE(R.DA_HOAN_TIEN, 0),
                     COALESCE(CT.DONGIA, 0),
                     COALESCE(CT.VAT, 0)
                 FROM dbo.CHI_TIET_HOA_DON CT
                 LEFT JOIN dbo.SAN_PHAM SP ON SP.MASP = CT.MASP
                 OUTER APPLY (
-                    SELECT SUM(COALESCE(CTDT.SOLUONG, 0)) AS DA_XU_LY
+                    SELECT
+                        SUM(COALESCE(CTDT.SOLUONG, 0)) AS DA_XU_LY,
+                        SUM(
+                            CASE WHEN ISNULL(CTDT.HINH_THUC_XU_LY, 0) = 0
+                                 THEN COALESCE(CTDT.SOLUONG, 0)
+                                 ELSE 0 END
+                        ) AS DA_HOAN_TIEN
                     FROM dbo.PHIEU_DOI_TRA PDT
-                    INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT
-                    WHERE PDT.MAHD = CT.MAHD AND CTDT.MASP = CT.MASP
+                    INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT
+                        ON CTDT.MAPDT = PDT.MAPDT
+                    WHERE PDT.MAHD = CT.MAHD
+                      AND CTDT.MASP = CT.MASP
                 ) R
                 WHERE CT.MAHD = ?
                 ORDER BY CT.MASP
             """, invoice_code)
+
             items = []
             for row in cursor.fetchall():
                 purchased = int(row[3] or 0)
                 processed = int(row[4] or 0)
-                net_price = (
-                    Decimal(str(row[5] or 0)) * (Decimal("100") - discount_rate)
-                    / Decimal("100")
-                ).quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
+                refunded = int(row[5] or 0)
                 items.append({
                     "product_code": str(row[0]),
                     "product_name": str(row[1] or ""),
                     "unit": str(row[2] or ""),
                     "purchased": purchased,
                     "processed": processed,
+                    "refunded": refunded,
                     "remaining": max(purchased - processed, 0),
-                    "net_price": net_price,
-                    "vat": Decimal(str(row[6] or 0)),
+                    "original_price": Decimal(str(row[6] or 0)),
+                    "vat": Decimal(str(row[7] or 0)),
                 })
             return {
                 "invoice_code": invoice_code,
@@ -204,8 +213,7 @@ class ReturnRepository:
             cursor.execute("""
                 SELECT CT.MASP,
                        COALESCE(SP.TENSP, N'(Sản phẩm không còn trong danh mục)'),
-                       CT.SOLUONG, CT.DONGIAHOAN, CT.VAT,
-                       CT.TINHTRANGHANG, CT.HINH_THUC_XU_LY
+                       CT.SOLUONG, CT.TINHTRANGHANG, CT.HINH_THUC_XU_LY
                 FROM dbo.CHI_TIET_DOI_TRA CT
                 LEFT JOIN dbo.SAN_PHAM SP ON SP.MASP = CT.MASP
                 WHERE CT.MAPDT = ?
@@ -213,13 +221,11 @@ class ReturnRepository:
             """, return_code)
             items = []
             for item in cursor.fetchall():
-                condition, action = item[5], item[6]
+                condition, action = item[3], item[4]
                 items.append({
                     "masp": item[0],
                     "tensp": item[1] or "",
                     "quantity": int(item[2] or 0),
-                    "unit_refund": item[3] or 0,
-                    "vat": item[4] or 0,
                     "condition": (
                         "Còn nguyên vẹn" if condition is not None and int(condition) == 1
                         else "Đã hỏng" if condition is not None else "Chưa ghi nhận"
@@ -318,7 +324,7 @@ class ReturnRepository:
     def create_return(
         self, payload, username, is_admin=False, confirmed_restore_codes=None
     ):
-        """Tạo phiếu, khôi phục sản phẩm được xác nhận và cập nhật tồn kho nguyên tử."""
+        """Lập phiếu đổi trả; tiền hoàn là chênh lệch hai tổng hóa đơn."""
         confirmed_restore_codes = {
             str(code or "").strip().casefold()
             for code in (confirmed_restore_codes or [])
@@ -331,10 +337,12 @@ class ReturnRepository:
             employee_code = self.ensure_manager(cursor, username, is_admin)
             invoice_code = payload["invoice_code"]
             reason = payload["reason"]
+
             cursor.execute("""
                 SELECT HD.NGAYLAP, HD.TRANGTHAI, ISNULL(KM.TYLEGIAM, 0)
                 FROM dbo.HOA_DON HD WITH (UPDLOCK, HOLDLOCK)
-                LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
+                LEFT JOIN dbo.CHUONG_TRINH_KM KM WITH (UPDLOCK, HOLDLOCK)
+                    ON KM.MAKM = HD.MAKM
                 WHERE HD.MAHD = ?
             """, invoice_code)
             invoice = cursor.fetchone()
@@ -349,47 +357,104 @@ class ReturnRepository:
                 raise ValueError("Chỉ được đổi trả trong cùng ngày lập hóa đơn.")
 
             discount_rate = Decimal(str(invoice[2] or 0))
-            verified_lines = []
-            total_refund = Decimal("0.00")
-            for line in payload["items"]:
-                product_code = line["product_code"]
-                quantity = line["quantity"]
-                condition = line["condition"]
-                action = line["action"]
-
-                cursor.execute("""
-                    SELECT COALESCE(SOLUONG, 0), COALESCE(DONGIA, 0), COALESCE(VAT, 0)
-                    FROM dbo.CHI_TIET_HOA_DON WITH (UPDLOCK, HOLDLOCK)
-                    WHERE MAHD = ? AND MASP = ?
-                """, invoice_code, product_code)
-                sold_line = cursor.fetchone()
-                if sold_line is None:
-                    raise ValueError(f"Sản phẩm {product_code} không thuộc hóa đơn gốc.")
-
-                purchased = int(sold_line[0] or 0)
-                original_price = Decimal(str(sold_line[1] or 0))
-                vat = Decimal(str(sold_line[2] or 0))
-                cursor.execute("""
-                    SELECT COALESCE(SUM(CTDT.SOLUONG), 0)
+            cursor.execute("""
+                SELECT
+                    CT.MASP,
+                    COALESCE(CT.SOLUONG, 0),
+                    COALESCE(CT.DONGIA, 0),
+                    COALESCE(CT.VAT, 0),
+                    COALESCE(R.DA_XU_LY, 0),
+                    COALESCE(R.DA_HOAN_TIEN, 0)
+                FROM dbo.CHI_TIET_HOA_DON CT WITH (UPDLOCK, HOLDLOCK)
+                OUTER APPLY (
+                    SELECT
+                        SUM(COALESCE(CTDT.SOLUONG, 0)) AS DA_XU_LY,
+                        SUM(
+                            CASE WHEN ISNULL(CTDT.HINH_THUC_XU_LY, 0) = 0
+                                 THEN COALESCE(CTDT.SOLUONG, 0)
+                                 ELSE 0 END
+                        ) AS DA_HOAN_TIEN
                     FROM dbo.PHIEU_DOI_TRA PDT WITH (UPDLOCK, HOLDLOCK)
-                    INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT
-                    WHERE PDT.MAHD = ? AND CTDT.MASP = ?
-                """, invoice_code, product_code)
-                processed = int(cursor.fetchone()[0] or 0)
-                remaining = purchased - processed
-                if remaining < 0 or quantity > remaining:
+                    INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT WITH (UPDLOCK, HOLDLOCK)
+                        ON CTDT.MAPDT = PDT.MAPDT
+                    WHERE PDT.MAHD = CT.MAHD
+                      AND CTDT.MASP = CT.MASP
+                ) R
+                WHERE CT.MAHD = ?
+                ORDER BY CT.MASP
+            """, invoice_code)
+
+            invoice_items = []
+            invoice_lines = {}
+            for row in cursor.fetchall():
+                product_code = str(row[0] or "").strip()
+                purchased = int(row[1] or 0)
+                processed = int(row[4] or 0)
+                refunded = int(row[5] or 0)
+                if not product_code:
+                    raise ValueError("Hóa đơn có dòng sản phẩm không hợp lệ.")
+                if (
+                    purchased <= 0 or processed < 0 or processed > purchased
+                    or refunded < 0 or refunded > processed
+                ):
                     raise ValueError(
-                        f"Sản phẩm {product_code} chỉ còn {max(remaining, 0)} sản phẩm có thể xử lý."
+                        f"Lịch sử đổi trả của sản phẩm {product_code} không hợp lệ."
                     )
+                product_line = {
+                    "product_code": product_code,
+                    "purchased": purchased,
+                    "processed": processed,
+                    "refunded": refunded,
+                    "original_price": Decimal(str(row[2] or 0)),
+                    "vat": Decimal(str(row[3] or 0)),
+                }
+                invoice_items.append(product_line)
+                invoice_lines[product_code] = product_line
+
+            if not invoice_items:
+                raise ValueError("Hóa đơn không có sản phẩm để đổi trả.")
+
+            # Kiểm tra toàn bộ dòng trước khi thay đổi tồn kho.
+            seen = set()
+            for line in payload["items"]:
+                product_code = str(line.get("product_code") or "").strip()
+                quantity = int(line.get("quantity") or 0)
+                condition = line.get("condition")
+                action = line.get("action")
+                if (
+                    not product_code or product_code in seen
+                    or quantity <= 0 or condition not in (0, 1)
+                    or action not in (0, 1)
+                ):
+                    raise ValueError("Dữ liệu sản phẩm đổi trả không hợp lệ.")
+                seen.add(product_code)
                 if action == 1 and condition != 0:
                     raise ValueError(
                         f"Sản phẩm {product_code}: chỉ được đổi sản phẩm khi hàng trả đã hỏng."
                     )
+                sold_line = invoice_lines.get(product_code)
+                if sold_line is None:
+                    raise ValueError(
+                        f"Sản phẩm {product_code} không thuộc hóa đơn gốc."
+                    )
+                remaining = sold_line["purchased"] - sold_line["processed"]
+                if remaining < 0 or quantity > remaining:
+                    raise ValueError(
+                        f"Sản phẩm {product_code} chỉ còn {max(remaining, 0)} sản phẩm có thể xử lý."
+                    )
 
-                net_price = (
-                    original_price * (Decimal("100") - discount_rate)
-                    / Decimal("100")
-                ).quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
+            calculation = calculate_invoice_refund(
+                invoice_items, payload["items"], discount_rate
+            )
+            total_refund = calculation["total_refund"]
+
+            # Cập nhật kho theo tình trạng và hình thức xử lý.
+            for line in payload["items"]:
+                product_code = str(line["product_code"]).strip()
+                quantity = int(line["quantity"])
+                condition = line["condition"]
+                action = line["action"]
+
                 if action == 1:
                     cursor.execute("""
                         UPDATE dbo.SAN_PHAM
@@ -399,56 +464,48 @@ class ReturnRepository:
                           AND ISNULL(SLTON, 0) >= ?
                     """, quantity, product_code, quantity)
                     if cursor.rowcount != 1:
-                        raise ValueError(f"Sản phẩm {product_code} không đủ tồn kho để đổi.")
-                    refund_unit_price = Decimal("0.00")
-                else:
-                    if condition == 1:
+                        raise ValueError(
+                            f"Sản phẩm {product_code} không đủ tồn kho để đổi."
+                        )
+                elif condition == 1:
+                    cursor.execute("""
+                        SELECT ISNULL(IS_DELETED, 0)
+                        FROM dbo.SAN_PHAM WITH (UPDLOCK, HOLDLOCK)
+                        WHERE MASP = ?
+                    """, product_code)
+                    product_state = cursor.fetchone()
+                    if product_state is None:
+                        raise LookupError(f"Không tìm thấy sản phẩm {product_code}.")
+
+                    is_deleted = int(product_state[0] or 0) == 1
+                    if is_deleted:
+                        if product_code.casefold() not in confirmed_restore_codes:
+                            raise ValueError(
+                                f"Sản phẩm {product_code} đã bị xóa mềm. "
+                                "Cần xác nhận khôi phục trước khi hoàn hàng."
+                            )
                         cursor.execute("""
-                            SELECT ISNULL(IS_DELETED, 0)
-                            FROM dbo.SAN_PHAM WITH (UPDLOCK, HOLDLOCK)
-                            WHERE MASP = ?
-                        """, product_code)
-                        product_state = cursor.fetchone()
-                        if product_state is None:
-                            raise LookupError(f"Không tìm thấy sản phẩm {product_code}.")
+                            UPDATE dbo.SAN_PHAM
+                            SET IS_DELETED = 0,
+                                SLTON = ISNULL(SLTON, 0) + ?
+                            WHERE MASP = ? AND ISNULL(IS_DELETED, 0) = 1
+                        """, quantity, product_code)
+                        if cursor.rowcount != 1:
+                            raise RuntimeError(
+                                f"Không thể khôi phục sản phẩm {product_code} và cập nhật tồn kho."
+                            )
+                        restored_products.append(product_code)
+                    else:
+                        cursor.execute("""
+                            UPDATE dbo.SAN_PHAM
+                            SET SLTON = ISNULL(SLTON, 0) + ?
+                            WHERE MASP = ? AND ISNULL(IS_DELETED, 0) = 0
+                        """, quantity, product_code)
+                        if cursor.rowcount != 1:
+                            raise LookupError(
+                                f"Không tìm thấy sản phẩm {product_code}."
+                            )
 
-                        is_deleted = int(product_state[0] or 0) == 1
-                        if is_deleted:
-                            if product_code.casefold() not in confirmed_restore_codes:
-                                raise ValueError(
-                                    f"Sản phẩm {product_code} đã bị xóa mềm. "
-                                    "Cần xác nhận khôi phục trước khi hoàn hàng."
-                                )
-                            cursor.execute("""
-                                UPDATE dbo.SAN_PHAM
-                                SET IS_DELETED = 0,
-                                    SLTON = ISNULL(SLTON, 0) + ?
-                                WHERE MASP = ? AND ISNULL(IS_DELETED, 0) = 1
-                            """, quantity, product_code)
-                            if cursor.rowcount != 1:
-                                raise RuntimeError(
-                                    f"Không thể khôi phục sản phẩm {product_code} và cập nhật tồn kho."
-                                )
-                            restored_products.append(product_code)
-                        else:
-                            cursor.execute("""
-                                UPDATE dbo.SAN_PHAM
-                                SET SLTON = ISNULL(SLTON, 0) + ?
-                                WHERE MASP = ? AND ISNULL(IS_DELETED, 0) = 0
-                            """, quantity, product_code)
-                            if cursor.rowcount != 1:
-                                raise LookupError(f"Không tìm thấy sản phẩm {product_code}.")
-                    refund_unit_price = net_price
-                    total_refund += net_price * quantity
-
-                verified_lines.append((
-                    product_code, quantity, refund_unit_price,
-                    vat, condition, action,
-                ))
-
-            total_refund = total_refund.quantize(
-                MONEY_QUANT, rounding=ROUND_HALF_UP
-            )
             return_code = self._next_return_code(cursor)
             cursor.execute("""
                 INSERT INTO dbo.PHIEU_DOI_TRA
@@ -456,13 +513,17 @@ class ReturnRepository:
                 VALUES (?, SYSDATETIME(), ?, ?, ?, ?)
             """, return_code, reason, total_refund, invoice_code, employee_code)
 
-            for line in verified_lines:
+            for line in payload["items"]:
                 cursor.execute("""
                     INSERT INTO dbo.CHI_TIET_DOI_TRA
-                        (MASP, MAPDT, SOLUONG, DONGIAHOAN, VAT,
+                        (MASP, MAPDT, SOLUONG, VAT,
                          TINHTRANGHANG, HINH_THUC_XU_LY)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, line[0], return_code, line[1], line[2], line[3], line[4], line[5])
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                    line["product_code"], return_code, line["quantity"],
+                    invoice_lines[line["product_code"]]["vat"],
+                    line["condition"], line["action"],
+                )
 
             conn.commit()
             return {
