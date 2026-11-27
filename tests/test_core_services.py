@@ -987,8 +987,8 @@ class ReportServiceTests(unittest.TestCase):
         source = inspect.getsource(BaoCaoRepository)
         self.assertIn("def _fetch_all(", source)
         self.assertIn("def _fetch_one(", source)
-        self.assertNotIn("\\n    def fetch_all(", source)
-        self.assertNotIn("\\n    def fetch_one(", source)
+        self.assertNotIn("\n    def fetch_all(", source)
+        self.assertNotIn("\n    def fetch_one(", source)
 
     def test_daily_sales_sql_uses_invoice_level_refund_total_and_outer_alias(self):
         class CaptureRepository(BaoCaoRepository):
