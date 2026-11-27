@@ -117,13 +117,7 @@ class CreateReturnDialog(QDialog):
             "Còn được xử lý", "Số lượng", "Tình trạng hàng",
             "Hình thức xử lý", "Tiền hoàn"
         ])
-        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self.table.setAlternatingRowColors(True)
-        self.table.verticalHeader().setVisible(False)
-        header = self.table.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        self._configure_items_table(self.table)
         items_layout.addWidget(self.table, 1)
         root.addWidget(items_group, 1)
 
@@ -160,6 +154,30 @@ class CreateReturnDialog(QDialog):
         completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         completer.setFilterMode(Qt.MatchFlag.MatchContains)
         completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+
+    @staticmethod
+    def _configure_items_table(table):
+        """Cấu hình bảng đổi trả; giữ đủ chiều rộng cho QSpinBox native."""
+        table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        table.setSelectionBehavior(
+            QAbstractItemView.SelectionBehavior.SelectRows
+        )
+        table.setAlternatingRowColors(True)
+        table.verticalHeader().setVisible(False)
+
+        header = table.horizontalHeader()
+        header.setSectionResizeMode(
+            QHeaderView.ResizeMode.ResizeToContents
+        )
+        # Cột số lượng cần rộng hơn độ rộng tiêu đề để hiển thị số và nút
+        # tăng/giảm; cột tên sản phẩm Stretch sẽ co giãn phần còn lại.
+        header.setSectionResizeMode(
+            5, QHeaderView.ResizeMode.Fixed
+        )
+        table.setColumnWidth(5, 100)
+        header.setSectionResizeMode(
+            1, QHeaderView.ResizeMode.Stretch
+        )
 
     @staticmethod
     def _find_invoice_index(invoice_combo, typed_text):

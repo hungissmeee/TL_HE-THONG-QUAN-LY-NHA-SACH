@@ -132,6 +132,23 @@ class ReturnDialogWidgetTests(unittest.TestCase):
         )
         combo.close()
 
+    def test_return_table_reserves_width_for_quantity_spinbox(self):
+        from PySide6.QtWidgets import QHeaderView, QTableWidget
+
+        table = QTableWidget(0, 9)
+        CreateReturnDialog._configure_items_table(table)
+
+        self.assertEqual(
+            table.horizontalHeader().sectionResizeMode(5),
+            QHeaderView.ResizeMode.Fixed,
+        )
+        self.assertEqual(table.columnWidth(5), 100)
+        self.assertEqual(
+            table.horizontalHeader().sectionResizeMode(1),
+            QHeaderView.ResizeMode.Stretch,
+        )
+        table.close()
+
     def test_return_quantity_editor_row_matches_invoice_cart_height(self):
         from PySide6.QtWidgets import QSpinBox, QTableWidget
 
