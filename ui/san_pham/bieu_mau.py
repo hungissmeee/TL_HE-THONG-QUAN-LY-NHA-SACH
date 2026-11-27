@@ -363,7 +363,7 @@ class ProductFormDialog(QDialog):
         try:
             code = self.service.save_product(payload, product_code=self.product_code)
             self.masp.setText(code)
-            message = f'Đã cập nhật sản phẩm {code} thành công!' if self.is_edit else f'Đã thêm sản phẩm thành công!\\nMã sản phẩm: {code}'
+            message = f'Đã cập nhật sản phẩm {code} thành công!' if self.is_edit else f'Đã thêm sản phẩm thành công!\nMã sản phẩm: {code}'
             QMessageBox.information(self, 'Thành công', message)
             self.accept()
         except Exception as error:
