@@ -7,7 +7,7 @@ import {
 import { EyeOutlined, PlusOutlined, ReloadOutlined, StopOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
 import { ApiError } from "@/services/api";
-import { operationsApi, type ImportLookup, type InvoiceLookup, type Row } from "@/features/operations/operationsApi";
+import { operationsApi, type ImportLookup, type InvoiceLookup, type DataRow } from "@/features/operations/operationsApi";
 import { useAuth } from "@/features/auth/AuthContext";
 
 const { Title, Text } = Typography;
@@ -24,12 +24,12 @@ function ImportsPage() {
   const { user } = useAuth();
   const canWrite = ["admin", "rl_QuanLy", "rl_NhanVienKho"].includes(user?.role_code || "");
   const { period, setPeriod } = usePeriod();
-  const [rows, setRows] = useState<Row[]>([]);
+  const [rows, setRows] = useState<DataRow[]>([]);
   const [keyword, setKeyword] = useState("");
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [lookups, setLookups] = useState<ImportLookup | null>(null);
-  const [detail, setDetail] = useState<{ header: Row; items: Row[] } | null>(null);
+  const [detail, setDetail] = useState<{ header: DataRow; items: DataRow[] } | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -58,7 +58,7 @@ function ImportsPage() {
     catch (e) { setDetailOpen(false); message.error(err(e)); }
   }
 
-  async function save(values: Row) {
+  async function save(values: DataRow) {
     setSaving(true);
     try {
       const result = await operationsApi.createImport(values);
@@ -80,7 +80,7 @@ function ImportsPage() {
     { title: "Số HĐ NCC", dataIndex: "shdncc", key: "shdncc", width: 120 },
     { title: "Tổng trị giá", dataIndex: "tongtrigia", key: "tongtrigia", width: 145, align: "right", render: money },
     { title: "Trạng thái", dataIndex: "trangthai", key: "status", width: 120, render: (v: boolean) => <Tag color={v ? "success" : "default"}>{v ? "Có hiệu lực" : "Đã hủy"}</Tag> },
-    { title: "Thao tác", key: "actions", width: 175, render: (_: unknown, row: Row) => <Space>
+    { title: "Thao tác", key: "actions", width: 175, render: (_: unknown, row: DataRow) => <Space>
       <Button size="small" icon={<EyeOutlined />} onClick={() => void showDetail(String(row.mapn))}>Chi tiết</Button>
       {canWrite && row.trangthai && <Popconfirm title="Hủy phiếu nhập?" description="Tồn kho sẽ được hoàn tác nếu hiện còn đủ số lượng." okText="Hủy phiếu" cancelText="Đóng" onConfirm={() => void cancel(String(row.mapn))}><Button size="small" danger icon={<StopOutlined />} /></Popconfirm>}
     </Space> },
@@ -102,7 +102,7 @@ function ImportsPage() {
           <Col xs={24} md={12}><Form.Item name="supplier_code" label="Nhà cung cấp" rules={[{ required: true }]}><Select showSearch optionFilterProp="label" options={lookups.suppliers.map((s) => ({ value: s.code, label: s.code + " - " + s.name }))} /></Form.Item></Col>
           <Col xs={24} md={12}><Form.Item name="import_type" label="Loại phiếu nhập" rules={[{ required: true }]}><Select options={[{ value: "Nhập hàng", label: "Nhập hàng" }, { value: "Nhập bổ sung", label: "Nhập bổ sung" }, { value: "Nhập điều chỉnh", label: "Nhập điều chỉnh" }]} /></Form.Item></Col>
           <Col span={24}><Form.Item name="supplier_invoice" label="Số hóa đơn nhà cung cấp"><Input maxLength={50} /></Form.Item></Col>
-        </Row>
+        </Row
         <Form.List name="items">
           {(fields, { add, remove }) => <>
             <div className="operation-list-heading"><Text strong>Chi tiết sản phẩm</Text><Button size="small" icon={<PlusOutlined />} onClick={() => add({ quantity: 1, vat: 0 })}>Thêm dòng</Button></div>
@@ -119,7 +119,7 @@ function ImportsPage() {
               <Col xs={8} md={4}><Form.Item name={[field.name, "price"]} rules={[{ required: true }]}><InputNumber min={0.01} precision={2} style={{ width: "100%" }} placeholder="Đơn giá" /></Form.Item></Col>
               <Col xs={5} md={3}><Form.Item name={[field.name, "vat"]}><InputNumber min={0} max={100} precision={2} style={{ width: "100%" }} placeholder="VAT" /></Form.Item></Col>
               <Col xs={3} md={2}><Button danger type="text" icon={<StopOutlined />} onClick={() => remove(field.name)} /></Col>
-            </Row>)}
+            </Row)}
           </>}
         </Form.List>
         <Alert type="info" showIcon message="Giá nhập bình quân và tồn kho được cập nhật tự động trong cùng giao dịch khi lập phiếu." />
@@ -151,7 +151,7 @@ function InvoicesPage() {
   const { user } = useAuth();
   const canCreate = ["admin", "rl_ThuNgan", "rl_QuanLy"].includes(user?.role_code || "");
   const { period, setPeriod } = usePeriod();
-  const [rows, setRows] = useState<Row[]>([]);
+  const [rows, setRows] = useState<DataRow[]>([]);
   const [keyword, setKeyword] = useState("");
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
@@ -162,7 +162,7 @@ function InvoicesPage() {
   const [promotionCode, setPromotionCode] = useState<string>();
   const [cash, setCash] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
-  const [detail, setDetail] = useState<{ header: Row; items: Row[] } | null>(null);
+  const [detail, setDetail] = useState<{ header: DataRow; items: DataRow[] } | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
   const load = useCallback(async () => {
@@ -236,7 +236,7 @@ function InvoicesPage() {
     { title: "Tổng tiền", dataIndex: "tongtien", key: "tongtien", width: 150, align: "right", render: money },
     { title: "Tiền khách đưa", dataIndex: "tienkhachdua", key: "tienkhachdua", width: 155, align: "right", render: money },
     { title: "Trạng thái", dataIndex: "trangthai", key: "status", width: 110, render: (v: boolean) => <Tag color={v ? "success" : "default"}>{v ? "Có hiệu lực" : "Đã hủy"}</Tag> },
-    { title: "Thao tác", key: "actions", width: 190, render: (_: unknown, row: Row) => <Space>
+    { title: "Thao tác", key: "actions", width: 190, render: (_: unknown, row: DataRow) => <Space>
       <Button size="small" icon={<EyeOutlined />} onClick={() => void showDetail(String(row.mahd))}>Chi tiết</Button>
       {canCreate && row.trangthai && <Popconfirm title="Hủy hóa đơn?" description="Hóa đơn đã có phiếu đổi trả không thể hủy." okText="Hủy hóa đơn" cancelText="Đóng" onConfirm={() => void cancel(String(row.mahd))}><Button danger size="small" icon={<StopOutlined />} /></Popconfirm>}
     </Space> },
@@ -263,7 +263,7 @@ function InvoicesPage() {
         <Row gutter={16} className="invoice-checkout">
           <Col xs={24} md={12}><Text type="secondary">Khuyến mãi</Text><Select allowClear value={promotionCode} onChange={setPromotionCode} style={{ width: "100%" }} placeholder="Không áp dụng" options={lookup.promotions.map((p) => ({ value: String(p[0]), label: String(p[1]) + " · giảm " + p[2] + "%" }))} /></Col>
           <Col xs={24} md={12}><Text type="secondary">Tiền khách đưa</Text><InputNumber min={0} precision={2} value={cash} onChange={(v) => setCash(v === null ? null : Number(v))} style={{ width: "100%" }} /></Col>
-        </Row>
+        </Row
         <Descriptions bordered size="small" column={2} className="invoice-totals">
           <Descriptions.Item label="Tiền hàng">{money(subtotal)}</Descriptions.Item>
           <Descriptions.Item label={"Giảm giá (" + discount + "%)"}>{money(subtotal - total)}</Descriptions.Item>
