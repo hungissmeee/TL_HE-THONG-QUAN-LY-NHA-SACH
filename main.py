@@ -6,7 +6,6 @@ from PySide6.QtWidgets import QApplication
 
 from database.connection import Database
 from ui.login import LoginWindow
-from ui.styles import install_bookhub_style
 
 
 APP_NAME = "Hệ thống quản lý nhà sách"
@@ -14,7 +13,6 @@ APP_NAME = "Hệ thống quản lý nhà sách"
 app = QApplication(sys.argv)
 app.setApplicationName(APP_NAME)
 app.setApplicationDisplayName(APP_NAME)
-install_bookhub_style(app)
 
 # Khởi tạo một đối tượng kết nối dùng chung trong toàn bộ phiên làm việc.
 db = Database()
