@@ -589,6 +589,27 @@ class SupplierPagePermissionTests(unittest.TestCase):
         self.assertTrue(can_view_suppliers("admin", ""))
 
 
+class DatabasePermissionScriptTests(unittest.TestCase):
+    """Đảm bảo script database mới đồng bộ quyền cập nhật mã vạch."""
+
+    def test_fresh_setup_grants_barcode_update_and_enforces_uniqueness(self):
+        from pathlib import Path
+
+        script_path = Path(__file__).resolve().parents[1] / "database" / "script.sql"
+        script = script_path.read_text(encoding="utf-8-sig")
+
+        self.assertRegex(
+            script,
+            r"GRANT UPDATE ON dbo\\.SAN_PHAM \\([^;]*\\bBARCODE\\b[^;]*\\) TO rl_QuanLy;",
+        )
+        self.assertRegex(
+            script,
+            r"GRANT UPDATE ON dbo\\.SAN_PHAM \\([^;]*\\bBARCODE\\b[^;]*\\) TO rl_NhanVienKho;",
+        )
+        self.assertIn("CREATE UNIQUE INDEX UX_SAN_PHAM_BARCODE", script)
+        self.assertIn("WHERE BARCODE IS NOT NULL AND BARCODE <> ''", script)
+
+
 class CodeGenerationTests(unittest.TestCase):
     """Kiểm thử quy tắc sinh mã tăng dần của các nhóm dữ liệu."""
 
