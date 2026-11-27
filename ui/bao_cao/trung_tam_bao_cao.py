@@ -185,17 +185,17 @@ REPORTS = {
     },
     "stock_card": {
         "title": "BÁO CÁO XUẤT NHẬP TỒN CHI TIẾT (THẺ KHO)",
-        "description": "Các lần nhập, bán, khách trả hàng nguyên vẹn và xuất hàng đổi; trị giá nhập lấy theo phiếu nhập, trị giá xuất ước tính theo giá nhập hiện đang lưu.",
+        "description": "Theo dõi tồn đầu kỳ, từng lần nhập/bán/khách trả/đổi hàng và tồn sau giao dịch. Trị giá nhập nhà cung cấp lấy theo chứng từ; khách trả và trị giá xuất được ước tính theo giá nhập hiện lưu.",
         "method": "stock_card_report",
         "headers": [
             "Ngày giao dịch", "Loại giao dịch", "Mã chứng từ",
-            "Mã hàng", "Tên hàng", "SL nhập", "Giá trị nhập",
-            "SL xuất", "Giá trị xuất*", "Tồn sau giao dịch",
+            "Mã hàng", "Tên hàng", "Tồn đầu kỳ", "SL nhập",
+            "Giá trị nhập†", "SL xuất", "Giá trị xuất*", "Tồn sau giao dịch",
         ],
-        "number_cols": [5, 7, 9],
-        "money_cols": [6, 8],
+        "number_cols": [5, 6, 8, 10],
+        "money_cols": [7, 9],
         "date_cols": [0],
-        "sum_cols": [5, 6, 7, 8],
+        "sum_cols": [6, 7, 8, 9],
         "search": True,
     },
     "shift": {
