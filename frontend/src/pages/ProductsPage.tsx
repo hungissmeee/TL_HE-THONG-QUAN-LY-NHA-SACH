@@ -131,8 +131,13 @@ export function ProductsPage() {
         sort_by: sortBy,
         sort_order: sortOrder,
       });
-      setRows(response.items);
       setTotal(response.total);
+      const lastPage = Math.max(1, response.total_pages);
+      if (page > lastPage) {
+        setPage(lastPage);
+        return;
+      }
+      setRows(response.items);
     } catch (error) {
       message.error(getErrorMessage(error));
     } finally {
