@@ -115,7 +115,7 @@ function ReturnsPage() {
     catch (e) { message.error(err(e)); }
   }
 
-  const columns: TableColumnsType<Row> = [
+  const columns: TableColumnsType<DataRow> = [
     { title: "Mã phiếu", dataIndex: "mapdt", key: "mapdt", width: 140 },
     { title: "Ngày đổi trả", dataIndex: "ngay", key: "ngay", width: 175, render: dt },
     { title: "Hóa đơn gốc", dataIndex: "mahd", key: "mahd", width: 140 },
@@ -198,7 +198,7 @@ function EmployeesPage() {
   const [rows, setRows] = useState<DataRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState("");
-  const [employee, setEmployee] = useState<Row | null>(null);
+  const [employee, setEmployee] = useState<DataRow | null>(null);
   const [form] = Form.useForm();
 
   const load = useCallback(async () => {
@@ -223,7 +223,7 @@ function EmployeesPage() {
     } catch (e) { message.error(err(e)); }
   }
 
-  const columns: TableColumnsType<Row> = [
+  const columns: TableColumnsType<DataRow> = [
     { title: "Mã nhân viên", dataIndex: "manv", key: "manv", width: 145 },
     { title: "Họ tên", dataIndex: "tennv", key: "tennv" },
     { title: "Vai trò", dataIndex: "vaitro", key: "vaitro", width: 155 },
