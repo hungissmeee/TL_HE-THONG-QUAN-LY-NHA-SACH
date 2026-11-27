@@ -139,7 +139,7 @@ class ProductDetailDialog(QDialog):
 
         if self.can_delete:
             delete_button = QPushButton("Xóa sản phẩm")
-            delete_button.setProperty("buttonRole", "danger")
+            delete_button.setObjectName("dangerButton")
             delete_button.clicked.connect(self.delete_product)
             buttons.addWidget(delete_button)
 
