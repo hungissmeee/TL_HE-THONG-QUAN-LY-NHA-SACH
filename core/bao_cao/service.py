@@ -73,12 +73,16 @@ class BaoCaoService:
 
     def product_report(self, start_date, end_date, sort, keyword=""):
         start, end = self._validate_dates(start_date, end_date)
-        if sort not in {"quantity_desc", "quantity_asc", "revenue_desc"}:
+        if sort not in {"quantity_desc", "quantity_asc", "refund_desc"}:
             raise ValueError("Kiểu sắp xếp báo cáo sản phẩm không hợp lệ.")
         keyword = str(keyword or "").strip()
         if len(keyword) > 100:
             raise ValueError("Từ khóa tìm kiếm không được vượt quá 100 ký tự.")
         return self.repository.product_report(start, end, sort, keyword)
+
+    def product_report_summary(self, start_date, end_date):
+        start, end = self._validate_dates(start_date, end_date)
+        return self.repository.product_report_summary(start, end)
 
     def shift_report(self, start_date, end_date):
         return self.repository.shift_report(*self._validate_dates(start_date, end_date))
