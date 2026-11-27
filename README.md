@@ -209,32 +209,40 @@ Sao lưu database trước khi cập nhật, sau đó chạy:
 
 `database/migrations/001_remove_return_unit_refund.sql`
 
-## 5.5. Phạm vi và cách đọc các báo cáo
+## 5.5. Trung tâm báo cáo POS
 
-Phân hệ báo cáo hiện là **báo cáo quản trị vận hành**, không thay thế bộ báo cáo tài chính hoặc sổ kế toán theo chế độ kế toán doanh nghiệp.
+Phân hệ báo cáo được tổ chức lại thành **một Trung tâm báo cáo**. Danh mục ở bên trái được chia theo nhóm nghiệp vụ; nội dung bên phải là bảng báo cáo dạng chứng từ, có kỳ báo cáo, bộ lọc, dòng tổng cộng và chức năng xuất Excel `.xlsx`. Không sử dụng các thẻ KPI tiền lớn.
 
-| Báo cáo | Nội dung |
-|---|---|
-| Tổng quan | Doanh số hóa đơn hợp lệ, tiền hoàn, hóa đơn hủy, trị giá nhập, xu hướng bán/hoàn theo ngày và sản phẩm bán chạy |
-| Doanh số | Tổng hợp theo ngày/tháng/năm; phân tích chương trình khuyến mãi; doanh số theo nhân viên lập hóa đơn và phiếu đổi trả theo nhân viên xử lý |
-| Hóa đơn | Chi tiết hóa đơn, tiền hàng, giảm giá, số phải trả, số khách đưa, tiền thừa, trạng thái và đổi trả lũy kế theo hóa đơn gốc |
-| Nhập hàng | Phiếu nhập hợp lệ, tổng hợp theo nhà cung cấp và theo sản phẩm |
-| Đổi trả | Số lượng hoàn tiền/đổi hàng, tình trạng hàng, tiền hoàn ở cấp phiếu |
-| Sản phẩm | Số hóa đơn, số lượng nhập, bán, hoàn tiền, đổi hàng và tồn hiện tại; không phân bổ tiền hoàn xuống từng mã hàng |
-| Tồn kho | Ảnh chụp tồn hiện tại, hàng sắp hết/hết hàng và giá trị tồn ước tính theo giá nhập bình quân hiện lưu trên sản phẩm |
-| Ca làm việc | Nhân viên đăng ký, số hóa đơn, doanh số theo ca, tiền đầu ca và số tiền kiểm kê cuối ca |
+| Nhóm | Báo cáo | Nội dung |
+|---|---|---|
+| Bán hàng | Báo cáo cuối ngày | Danh sách hóa đơn, khách lẻ, nhân viên, thời gian, ca, số lượng, tiền hàng, giảm giá, doanh số, đổi trả lũy kế theo hóa đơn gốc, khách đưa, tiền thừa và trạng thái |
+| Bán hàng | Bán hàng theo thời gian | Tổng hợp ngày/tháng/năm: số đơn, số lượng bán, tiền hàng, giảm giá, doanh số, số lượng trả, số phiếu trả, tiền hoàn và chênh lệch phát sinh trong kỳ |
+| Bán hàng | Bán hàng theo nhân viên | Doanh số theo nhân viên lập hóa đơn; số phiếu hoàn/đổi và tiền hoàn theo nhân viên lập phiếu đổi trả |
+| Bán hàng | Bán hàng theo sản phẩm | Số hóa đơn, số lượng bán, hoàn tiền, đổi hàng và tồn hiện tại; không phân bổ tiền hoàn xuống từng sản phẩm |
+| Bán hàng | Hiệu quả khuyến mãi | Số hóa đơn, tiền hàng, tiền giảm, doanh số và tiền hoàn lũy kế gắn với các hóa đơn của chương trình |
+| Hàng hóa/kho | Nhập – xuất – tồn | Tồn đầu, nhập nhà cung cấp, khách trả nhập lại, xuất bán, xuất đổi và tồn cuối; nhóm cột số lượng và thành tiền |
+| Hàng hóa/kho | Xuất nhập tồn chi tiết (thẻ kho) | Ngày, loại giao dịch, mã chứng từ, mặt hàng, lượng nhập, lượng xuất và tồn sau từng giao dịch |
+| Hàng hóa/kho | Tồn kho hiện tại | Số lượng tồn, giá nhập hiện tại, giá bán, giá trị tồn ước tính, tình trạng sắp hết/hết hàng |
+| Nhập hàng | Chi tiết nhập hàng | Từng dòng hàng trên phiếu nhập hợp lệ, nhà cung cấp, số hóa đơn NCC, nhân viên, số lượng, đơn giá và thành tiền |
+| Nhập hàng | Nhập hàng theo nhà cung cấp | Số phiếu, tổng số lượng và trị giá nhập theo nhà cung cấp |
+| Đổi trả | Chi tiết đổi trả | Mã phiếu, hóa đơn gốc, nhân viên xử lý, lý do, số dòng, số lượng hoàn/đổi, tình trạng hàng và tổng tiền hoàn cấp phiếu |
+| Ca làm việc | Báo cáo cuối ca | Lượt nhân viên, số hóa đơn, số lượng bán, doanh số, phiếu trả, tiền hoàn, tiền đầu ca, tiền kiểm kê cuối ca và trạng thái chốt |
 
-### Quy ước đọc số liệu
+### Quy ước số liệu
 
-- Doanh số bán được ghi nhận theo ngày lập hóa đơn; tiền hoàn được ghi nhận theo ngày lập phiếu đổi trả. Vì vậy, chênh lệch doanh số sau hoàn trong báo cáo kỳ là doanh số phát sinh trong kỳ trừ tiền hoàn phát sinh trong cùng kỳ, không phải phép đối chiếu theo hóa đơn gốc.
-- Báo cáo hóa đơn và hiệu quả khuyến mãi có thể xem tiền hoàn lũy kế gắn với hóa đơn gốc, kể cả phiếu đổi trả được lập sau ngày/kỳ bán.
-- Tiền hoàn chỉ lưu ở `PHIEU_DOI_TRA.TONG_TIEN_HOAN`; không tính tiền hoàn theo đơn giá từng dòng sản phẩm.
-- Tiền cuối ca là số tiền kiểm kê được ghi nhận tại quầy, không tự động được coi là doanh thu hoặc dòng tiền thuần.
-- Giá trị tồn kho là ước tính theo `SAN_PHAM.GIANHAP` hiện tại nhân số lượng tồn. Đây không phải giá vốn lịch sử tại từng ngày trong quá khứ.
+- Doanh số bán được xác định từ hóa đơn hợp lệ sau khuyến mãi; tiền giảm được làm tròn riêng từng hóa đơn theo cách tính của ứng dụng.
+- Báo cáo cuối ngày lấy tiền hoàn lũy kế theo hóa đơn gốc. Báo cáo bán hàng theo thời gian nhóm doanh số theo ngày lập hóa đơn và tiền hoàn theo ngày lập phiếu; chênh lệch theo kỳ không phải doanh thu thuần theo hóa đơn gốc.
+- Hóa đơn không lưu thông tin khách hàng; nhãn “Khách lẻ” là nhãn hiển thị, không phải dữ liệu khách hàng được lưu.
+- Tiền hoàn chỉ lưu ở `PHIEU_DOI_TRA.TONG_TIEN_HOAN`; báo cáo sản phẩm không tính hoặc phân bổ đơn giá hoàn cho từng mã hàng.
+- Báo cáo tồn kho hiện tại là ảnh chụp theo `SAN_PHAM.SLTON`. Giá trị tồn dùng `SAN_PHAM.GIANHAP` hiện lưu, không phải giá vốn lịch sử theo ngày.
+- Báo cáo nhập–xuất–tồn và thẻ kho tái dựng từ số tồn hiện tại cùng các hóa đơn, phiếu nhập và phiếu đổi trả còn hiệu lực. CSDL chưa có nhật ký điều chỉnh kho riêng; nếu đã chỉnh tồn thủ công hoặc có giao dịch ngoài hệ thống thì tồn đầu/tồn chạy tái dựng có thể chênh lệch. Các giá trị thành tiền theo tồn/xuất/khách trả/đổi hàng là ước tính theo giá nhập hiện tại; trị giá nhập nhà cung cấp lấy theo đơn giá trên chứng từ nhập.
+- Tiền cuối ca là số kiểm kê ghi nhận, không đồng nghĩa với doanh số hoặc dòng tiền thực thu.
 
-### Những báo cáo kế toán chưa thể lập chính xác
+### Phạm vi kế toán
 
-Database hiện chưa có sổ cái/bút toán, danh mục tài khoản kế toán, chi phí vận hành, chứng từ thanh toán công nợ, sổ quỹ thu–chi, tài sản và lịch sử giá vốn theo từng lần xuất. Vì vậy ứng dụng chưa thể lập chính xác báo cáo kết quả hoạt động kinh doanh/lãi lỗ, bảng cân đối kế toán, lưu chuyển tiền tệ, công nợ phải thu/phải trả hoặc báo cáo thuế chính thức. Muốn bổ sung các báo cáo này cần phát triển thêm các phân hệ và dữ liệu kế toán tương ứng.
+Đây là báo cáo quản trị nội bộ/POS, không phải bộ báo cáo tài chính hoặc sổ kế toán chính thức. CSDL hiện chưa có sổ cái/bút toán, chi phí vận hành, sổ quỹ thu–chi đầy đủ, thanh toán công nợ, phương thức thanh toán hoặc lịch sử giá vốn theo từng lần xuất. Vì vậy hệ thống chưa thể tính chính xác lợi nhuận ròng, công nợ phải thu/phải trả hay lập báo cáo tài chính/thuế chính thức.
 
+### Xuất Excel
 
-Migration gỡ ràng buộc và cột giá hoàn trên từng dòng của `CHI_TIET_DOI_TRA`. Tiền hoàn chính thức tiếp tục được lưu tại `PHIEU_DOI_TRA.TONG_TIEN_HOAN`. Với database mới được tạo bằng `database/script.sql`, cũng chạy migration này sau khi khởi tạo để đồng bộ schema với phiên bản ứng dụng.
+Nút **Xuất Excel** tạo tệp `.xlsx` có tên báo cáo, đơn vị, kỳ báo cáo, ngày xuất, tiêu đề nhóm cột (với báo cáo nhập–xuất–tồn), định dạng số/ngày/tiền, bộ lọc cột, cố định hàng tiêu đề và công thức tổng cộng. Báo cáo có thể gồm các bảng riêng; mỗi bảng có thể xuất độc lập theo lựa chọn tương ứng nếu được đăng ký trong trung tâm.
+
