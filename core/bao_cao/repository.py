@@ -703,35 +703,48 @@ class BaoCaoRepository:
                 FROM InvoiceTotals
                 GROUP BY MANV
             ),
-            ReturnsByEmployee AS (
+            ReturnHeadersByEmployee AS (
                 SELECT
                     PDT.MANV,
-                    COUNT(DISTINCT PDT.MAPDT) AS SO_PHIEU_XU_LY,
+                    COUNT(*) AS SO_PHIEU_XU_LY,
+                    SUM(COALESCE(PDT.TONG_TIEN_HOAN, 0)) AS TIEN_HOAN
+                FROM dbo.PHIEU_DOI_TRA PDT
+                WHERE PDT.NGAY_DOI_TRA >= CONVERT(date, ?)
+                  AND PDT.NGAY_DOI_TRA < DATEADD(day, 1, CONVERT(date, ?))
+                GROUP BY PDT.MANV
+            ),
+            ReturnLinesByEmployee AS (
+                SELECT
+                    PDT.MANV,
                     SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 0
                         THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_HOAN_TIEN,
                     SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 1
-                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_DOI_HANG,
-                    SUM(COALESCE(PDT.TONG_TIEN_HOAN, 0)) AS TIEN_HOAN
+                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_DOI_HANG
                 FROM dbo.PHIEU_DOI_TRA PDT
-                LEFT JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT
+                INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT
                 WHERE PDT.NGAY_DOI_TRA >= CONVERT(date, ?)
                   AND PDT.NGAY_DOI_TRA < DATEADD(day, 1, CONVERT(date, ?))
                 GROUP BY PDT.MANV
             )
             SELECT
-                COALESCE(NV.MANV, S.MANV, R.MANV),
+                COALESCE(NV.MANV, S.MANV, RH.MANV),
                 COALESCE(NV.TENNV, N''),
                 COALESCE(S.SO_HOA_DON, 0),
                 COALESCE(S.SL_BAN, 0),
                 COALESCE(S.DOANH_THU, 0),
-                COALESCE(R.SO_PHIEU_XU_LY, 0),
-                COALESCE(R.SL_HOAN_TIEN, 0),
-                COALESCE(R.SL_DOI_HANG, 0),
-                COALESCE(R.TIEN_HOAN, 0)
+                COALESCE(RH.SO_PHIEU_XU_LY, 0),
+                COALESCE(RL.SL_HOAN_TIEN, 0),
+                COALESCE(RL.SL_DOI_HANG, 0),
+                COALESCE(RH.TIEN_HOAN, 0)
             FROM SalesByEmployee S
-            FULL OUTER JOIN ReturnsByEmployee R ON R.MANV = S.MANV
+            FULL OUTER JOIN ReturnHeadersByEmployee RH ON RH.MANV = S.MANV
+            LEFT JOIN ReturnLinesByEmployee RL
+                ON RL.MANV = COALESCE(S.MANV, RH.MANV)
             LEFT JOIN dbo.NHAN_VIEN NV
-                ON NV.MANV = COALESCE(S.MANV, R.MANV)
+                ON NV.MANV = COALESCE(S.MANV, RH.MANV)
             ORDER BY COALESCE(S.DOANH_THU, 0) DESC, NV.TENNV
-        """, (start_date, end_date, start_date, end_date))
-
+        """, (
+            start_date, end_date,
+            start_date, end_date,
+            start_date, end_date,
+        ))
