@@ -48,8 +48,6 @@ class ProductWindow(QWidget):
     def setup_ui(self):
         """Tạo thanh tìm kiếm, bảng sản phẩm và các nút thao tác."""
         root = QVBoxLayout(self)
-        root.setContentsMargins(4, 4, 4, 4)
-        root.setSpacing(10)
 
         top = QHBoxLayout()
         title = QLabel("DANH SÁCH SẢN PHẨM")
@@ -67,14 +65,6 @@ class ProductWindow(QWidget):
         refresh_button.clicked.connect(self.load_products)
         top.addWidget(refresh_button)
         root.addLayout(top)
-
-        description = QLabel(
-            "Tra cứu danh sách sản phẩm; nhấp đúp vào một dòng để xem chi tiết, "
-            "chỉnh sửa hoặc ngừng kinh doanh theo quyền được cấp."
-        )
-        description.setWordWrap(True)
-        description.setStyleSheet("color: #AAB7C8; font-size: 11px;")
-        root.addWidget(description)
 
         # Thanh tìm kiếm sản phẩm
         search_layout = QHBoxLayout()

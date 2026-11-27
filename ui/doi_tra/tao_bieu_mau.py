@@ -3,11 +3,11 @@
 from decimal import Decimal, ROUND_HALF_UP
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QIntValidator
 from PySide6.QtWidgets import (
     QDialog, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
-    QFormLayout, QGroupBox, QComboBox, QCompleter, QLineEdit, QSpinBox,
-    QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
-    QMessageBox,
+    QFormLayout, QGroupBox, QComboBox, QCompleter, QLineEdit, QTableWidget,
+    QTableWidgetItem, QHeaderView, QAbstractItemView, QMessageBox,
 )
 
 from .dung_chung import MONEY_QUANT, as_decimal, date_text, money
@@ -133,32 +133,9 @@ class CreateReturnDialog(QDialog):
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setAlternatingRowColors(True)
         self.table.verticalHeader().setVisible(False)
-        self.table.setHorizontalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAsNeeded
-        )
-        self.table.setHorizontalScrollMode(
-            QAbstractItemView.ScrollMode.ScrollPerPixel
-        )
-
-        # Dùng cùng cách co giãn cột như bảng giỏ hàng hóa đơn/phiếu nhập.
-        # Các cột điều khiển được chừa riêng không gian cho nút và mũi tên.
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-        # Giữ cột tên sản phẩm đủ rộng; khi thiếu chỗ, bảng cuộn ngang
-        # thay vì co cột và cắt nội dung.
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(1, 210)
-        control_column_widths = {
-            5: 116,  # Số lượng: chừa chỗ cho hai nút tăng/giảm
-            6: 202,  # Tình trạng hàng: hiển thị đủ "Còn nguyên vẹn"
-            7: 242,  # Hình thức xử lý: hiển thị đủ lựa chọn dài nhất
-        }
-        for column, width in control_column_widths.items():
-            header.setSectionResizeMode(
-                column, QHeaderView.ResizeMode.Fixed
-            )
-            self.table.setColumnWidth(column, width)
-
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         items_layout.addWidget(self.table, 1)
         root.addWidget(items_group, 1)
 
@@ -329,51 +306,27 @@ class CreateReturnDialog(QDialog):
                     remaining, "", "", "", money(0)
                 ]
                 for column, value in enumerate(values):
-                    cell_item = QTableWidgetItem(str(value))
-                    cell_item.setToolTip(str(value))
-                    self.table.setItem(row, column, cell_item)
+                    self.table.setItem(row, column, QTableWidgetItem(str(value)))
 
-                # Giữ nguyên mẫu dùng trong hóa đơn và phiếu nhập:
-                # tạo control với bảng làm parent, gắn trực tiếp vào cell,
-                # chiều cao control 34 px và chiều cao dòng 44 px.
-                quantity = QSpinBox(self.table)
-                quantity.setRange(0, remaining)
-                quantity.setValue(0)
-                quantity.setMinimumHeight(34)
+                quantity = QLineEdit("0")
+                quantity.setValidator(QIntValidator(0, remaining, quantity))
+                quantity.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 quantity.setToolTip(
                     f"Chỉ nhập số nguyên từ 0 đến {remaining}. "
                     f"Đơn vị tính: {data[2] or 'Không xác định'}"
                 )
-                self.table.setCellWidget(row, 5, quantity)
 
-                condition = QComboBox(self.table)
+                condition = QComboBox()
                 condition.addItem("Còn nguyên vẹn", 1)
                 condition.addItem("Đã hỏng", 0)
-                condition.setMinimumHeight(34)
-                condition.setMinimumContentsLength(14)
-                condition.setSizeAdjustPolicy(
-                    QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
-                )
-                condition.setToolTip("Chọn tình trạng thực tế của hàng khách trả.")
-                self.table.setCellWidget(row, 6, condition)
 
-                action = QComboBox(self.table)
+                action = QComboBox()
                 action.addItem("Hoàn tiền", 0)
                 action.addItem("Đổi sản phẩm cùng mã", 1)
-                action.setMinimumHeight(34)
-                action.setMinimumContentsLength(22)
-                action.setSizeAdjustPolicy(
-                    QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
-                )
-                action.setToolTip(
-                    "Chọn hoàn tiền hoặc đổi sản phẩm cùng mã. "
-                    "Chỉ hàng đã hỏng mới được đổi."
-                )
-                self.table.setCellWidget(row, 7, action)
 
-                # Bảng đổi trả có thêm ba cột điều khiển và stylesheet ô
-                # có padding dọc; chừa thêm khoảng trống để nút không chạm mép.
-                self.table.setRowHeight(row, 50)
+                self.table.setCellWidget(row, 5, quantity)
+                self.table.setCellWidget(row, 6, condition)
+                self.table.setCellWidget(row, 7, action)
                 self.row_controls[masp] = {
                     "row": row,
                     "quantity": quantity,
@@ -382,7 +335,7 @@ class CreateReturnDialog(QDialog):
                     "action": action,
                     "net_price": net_price,
                 }
-                quantity.valueChanged.connect(self.update_totals)
+                quantity.textChanged.connect(self.update_totals)
                 condition.currentIndexChanged.connect(self.update_totals)
                 action.currentIndexChanged.connect(self.update_totals)
 
@@ -395,23 +348,21 @@ class CreateReturnDialog(QDialog):
         """Tính tiền hoàn dự kiến; dòng đổi sản phẩm không hoàn tiền."""
         total = Decimal("0.00")
         for controls in self.row_controls.values():
-            quantity = int(controls["quantity"].value())
+            quantity = self._parse_quantity_input(
+                controls["quantity"].text()
+            )
             condition = controls["condition"].currentData()
             action = controls["action"].currentData()
             amount_item = self.table.item(controls["row"], 8)
 
             if quantity > 0 and action == 1 and condition != 0:
-                amount_item.setText("Không hợp lệ")
-                amount_item.setToolTip(
-                    "Chỉ được đổi sản phẩm khi hàng khách trả đã hỏng."
-                )
+                amount_item.setText("Chỉ đổi hàng đã hỏng")
                 continue
 
             amount = controls["net_price"] * quantity if action == 0 else Decimal("0")
             amount = amount.quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
             total += amount
             amount_item.setText(money(amount))
-            amount_item.setToolTip(f"Tiền hoàn dự kiến: {money(amount)}")
         self.total_label.setText(f"Tổng tiền hoàn: {money(total)} đ")
 
     def save_return(self):
@@ -429,7 +380,9 @@ class CreateReturnDialog(QDialog):
         selected = []
         for masp, controls in self.row_controls.items():
             try:
-                quantity = int(controls["quantity"].value())
+                quantity = self._parse_quantity_input(
+                    controls["quantity"].text()
+                )
             except ValueError as error:
                 QMessageBox.warning(self, "Số lượng không hợp lệ", str(error))
                 controls["quantity"].setFocus()

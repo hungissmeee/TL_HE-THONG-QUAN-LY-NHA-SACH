@@ -19,7 +19,6 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QDateEdit,
 )
-from ui.styles import configure_date_edit
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
     prepare_sortable_table,
@@ -118,13 +117,11 @@ class InvoiceWindow(QWidget):
 
         self.from_date = QDateEdit()
         self.from_date.setCalendarPopup(True)
-        configure_date_edit(self.from_date)
         self.from_date.setDisplayFormat("dd/MM/yyyy")
         self.from_date.setDate(QDate.currentDate().addDays(-30))
 
         self.to_date = QDateEdit()
         self.to_date.setCalendarPopup(True)
-        configure_date_edit(self.to_date)
         self.to_date.setDisplayFormat("dd/MM/yyyy")
         self.to_date.setDate(QDate.currentDate())
 

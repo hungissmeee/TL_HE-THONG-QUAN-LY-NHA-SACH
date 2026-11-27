@@ -82,13 +82,6 @@ class SupplierWindow(QWidget):
         title.setStyleSheet("font-size: 20px; font-weight: bold;")
         header.addWidget(title)
         header.addStretch()
-
-        self.add_button = QPushButton("+ Thêm nhà cung cấp")
-        self.add_button.setProperty("buttonRole", "primary")
-        self.add_button.setObjectName("primaryButton")
-        self.add_button.clicked.connect(self.add_supplier)
-        header.addWidget(self.add_button)
-
         self.refresh_button = QPushButton("Làm mới")
         self.refresh_button.clicked.connect(self.load_data)
         header.addWidget(self.refresh_button)
@@ -101,27 +94,34 @@ class SupplierWindow(QWidget):
         description.setStyleSheet("color: #AAB7C8; font-size: 11px;")
         root.addWidget(description)
 
-        # Từ khóa và trạng thái nằm trên cùng một thanh lọc.
+        actions = QHBoxLayout()
+        self.add_button = QPushButton("+ Thêm nhà cung cấp")
+        self.add_button.setProperty("buttonRole", "primary")
+        self.add_button.setObjectName("primaryButton")
+        self.add_button.clicked.connect(self.add_supplier)
+        actions.addWidget(self.add_button)
+        actions.addStretch()
+        root.addLayout(actions)
+
         search = QHBoxLayout()
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText(
-            "Tìm theo mã, tên, số điện thoại, địa chỉ hoặc mã số thuế..."
-        )
+        self.search_input.setPlaceholderText("Tìm theo mã, tên, số điện thoại, địa chỉ hoặc mã số thuế...")
         self.search_input.returnPressed.connect(self.load_data)
         self.search_button = QPushButton("Tìm kiếm")
         self.search_button.clicked.connect(self.load_data)
         self.clear_search_button = QPushButton("Xóa tìm kiếm")
         self.clear_search_button.clicked.connect(self.clear_search)
-        self.show_inactive_check = QCheckBox(
-            "Hiện cả nhà cung cấp đã ngừng hoạt động"
-        )
-        self.show_inactive_check.toggled.connect(self.load_data)
-
         search.addWidget(self.search_input, 1)
         search.addWidget(self.search_button)
         search.addWidget(self.clear_search_button)
-        search.addWidget(self.show_inactive_check)
         root.addLayout(search)
+
+        filters = QHBoxLayout()
+        self.show_inactive_check = QCheckBox("Hiện cả nhà cung cấp đã ngừng hoạt động")
+        self.show_inactive_check.toggled.connect(self.load_data)
+        filters.addWidget(self.show_inactive_check)
+        filters.addStretch()
+        root.addLayout(filters)
 
         self.table = QTableWidget(0, 6)
         self.table.setHorizontalHeaderLabels([

@@ -1,214 +1,4 @@
-"""Bảng màu và tiện ích giao diện dùng chung cho BookHub."""
-
-from pathlib import Path
-
-from PySide6.QtCore import QPoint, QSize, Qt, QUrl
-from PySide6.QtGui import QColor, QIcon, QPainter, QPixmap, QPolygon
-from PySide6.QtWidgets import (
-    QDateEdit,
-    QDateTimeEdit,
-    QToolButton,
-)
-
-
-_ICON_DIR = Path(__file__).resolve().parent / "assets" / "icons"
-
-
-def _icon_url(filename):
-    """Trả URL file tuyệt đối để QSS tải icon ổn định khi chạy từ thư mục bất kỳ."""
-    return QUrl.fromLocalFile(str(_ICON_DIR / filename)).toString()
-
-
-def _make_triangle_icon(direction, color="#E5E7EB"):
-    """Tạo icon tam giác cho hai nút chuyển tháng của lịch."""
-    pixmap = QPixmap(18, 18)
-    pixmap.fill(Qt.GlobalColor.transparent)
-
-    center = 9
-    half_width = 4
-    half_height = 5
-    if direction == "left":
-        points = [
-            QPoint(center + half_height, center - half_width),
-            QPoint(center + half_height, center + half_width),
-            QPoint(center - half_height, center),
-        ]
-    else:
-        points = [
-            QPoint(center - half_height, center - half_width),
-            QPoint(center - half_height, center + half_width),
-            QPoint(center + half_height, center),
-        ]
-
-    painter = QPainter(pixmap)
-    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-    painter.setPen(Qt.PenStyle.NoPen)
-    painter.setBrush(QColor(color))
-    painter.drawPolygon(QPolygon(points))
-    painter.end()
-    return QIcon(pixmap)
-
-
-def build_calendar_stylesheet():
-    """Tạo stylesheet lịch với icon file SVG cho nút tháng/năm."""
-    down_arrow = _icon_url("arrow-down.svg")
-    return f"""
-        QCalendarWidget {{
-            background-color: #202938;
-            color: #E5E7EB;
-            border: 1px solid #46546A;
-        }}
-
-        QCalendarWidget QWidget#qt_calendar_navigationbar {{
-            background-color: #29374B;
-            color: #E5E7EB;
-            min-height: 42px;
-            padding: 4px 6px;
-        }}
-
-        QCalendarWidget QToolButton {{
-            color: #E5E7EB;
-            background-color: transparent;
-            border: 1px solid transparent;
-            border-radius: 4px;
-            min-height: 30px;
-            padding: 3px 6px;
-            font-weight: 600;
-            text-align: center;
-        }}
-
-        QCalendarWidget QToolButton:hover {{
-            background-color: #3B526E;
-            border-color: #60758F;
-        }}
-
-        QCalendarWidget QToolButton#qt_calendar_prevmonth,
-        QCalendarWidget QToolButton#qt_calendar_nextmonth {{
-            min-width: 32px;
-            max-width: 32px;
-            min-height: 30px;
-            max-height: 30px;
-            padding: 2px;
-        }}
-
-        QCalendarWidget QToolButton#qt_calendar_monthbutton {{
-            min-width: 112px;
-            max-width: 132px;
-            padding-left: 8px;
-            padding-right: 24px;
-        }}
-
-        QCalendarWidget QToolButton#qt_calendar_yearbutton {{
-            min-width: 72px;
-            max-width: 86px;
-            padding-left: 6px;
-            padding-right: 22px;
-        }}
-
-        QCalendarWidget QToolButton#qt_calendar_monthbutton::menu-indicator,
-        QCalendarWidget QToolButton#qt_calendar_yearbutton::menu-indicator {{
-            image: url("{down_arrow}");
-            subcontrol-origin: padding;
-            subcontrol-position: right center;
-            width: 12px;
-            height: 12px;
-            right: 7px;
-        }}
-
-        QCalendarWidget QMenu {{
-            background-color: #202938;
-            color: #E5E7EB;
-            border: 1px solid #46546A;
-            padding: 4px;
-        }}
-
-        QCalendarWidget QMenu::item {{
-            padding: 5px 18px;
-            border-radius: 3px;
-        }}
-
-        QCalendarWidget QMenu::item:selected {{
-            background-color: #3B526E;
-            color: #FFFFFF;
-        }}
-
-        QCalendarWidget QSpinBox {{
-            min-width: 84px;
-            min-height: 30px;
-            padding-right: 28px;
-        }}
-
-        QCalendarWidget QAbstractItemView {{
-            background-color: #202938;
-            color: #E5E7EB;
-            selection-background-color: #2563EB;
-            selection-color: #FFFFFF;
-            outline: none;
-        }}
-
-        QCalendarWidget QAbstractItemView:disabled {{
-            color: #64748B;
-        }}
-    """
-
-
-CALENDAR_STYLESHEET = build_calendar_stylesheet()
-
-
-def configure_date_edit(date_edit):
-    """Căn chỉnh lịch popup của QDateEdit/QDateTimeEdit dùng trong toàn hệ thống."""
-    # QDateEdit kế thừa QDateTimeEdit nên phải kiểm tra QDateEdit trước.
-    if isinstance(date_edit, QDateEdit):
-        date_edit.setMinimumWidth(148)
-    elif isinstance(date_edit, QDateTimeEdit):
-        date_edit.setMinimumWidth(180)
-
-    date_edit.setCalendarPopup(True)
-    calendar = date_edit.calendarWidget()
-    if calendar is None:
-        return
-
-    calendar.setMinimumWidth(340)
-    calendar.setStyleSheet(build_calendar_stylesheet())
-
-    previous_button = calendar.findChild(
-        QToolButton, "qt_calendar_prevmonth"
-    )
-    next_button = calendar.findChild(
-        QToolButton, "qt_calendar_nextmonth"
-    )
-    if previous_button is not None:
-        previous_button.setText("")
-        previous_button.setIcon(_make_triangle_icon("left"))
-        previous_button.setIconSize(QSize(14, 14))
-        previous_button.setToolButtonStyle(
-            Qt.ToolButtonStyle.ToolButtonIconOnly
-        )
-        previous_button.setAccessibleName("Tháng trước")
-
-    if next_button is not None:
-        next_button.setText("")
-        next_button.setIcon(_make_triangle_icon("right"))
-        next_button.setIconSize(QSize(14, 14))
-        next_button.setToolButtonStyle(
-            Qt.ToolButtonStyle.ToolButtonIconOnly
-        )
-        next_button.setAccessibleName("Tháng sau")
-
-    month_button = calendar.findChild(
-        QToolButton, "qt_calendar_monthbutton"
-    )
-    if month_button is not None:
-        month_button.setMinimumWidth(112)
-        month_button.setMinimumHeight(30)
-
-    year_button = calendar.findChild(
-        QToolButton, "qt_calendar_yearbutton"
-    )
-    if year_button is not None:
-        year_button.setMinimumWidth(72)
-        year_button.setMinimumHeight(30)
-
+"""Bảng màu và stylesheet chung cho giao diện BookHub."""
 
 MAIN_WINDOW_STYLESHEET = """
             QMainWindow {
@@ -484,35 +274,20 @@ MAIN_WINDOW_STYLESHEET = """
                 border-color: #344256;
             }
 
-            /* Chỉ chừa đúng vùng nút xổ xuống; phần chữ không bị ép hẹp. */
-            QComboBox {
-                padding-right: 30px;
-            }
-
-            /* Mũi tên tam giác của ComboBox. */
             QComboBox::drop-down {
                 subcontrol-origin: padding;
                 subcontrol-position: top right;
                 width: 28px;
                 border: none;
-                border-left: 1px solid #46546A;
+                border-left: 1px solid #39465A;
                 border-top-right-radius: 5px;
                 border-bottom-right-radius: 5px;
-                background-color: #34445A;
-            }
-
-            QComboBox::drop-down:hover {
-                background-color: #465B75;
+                background-color: transparent;
             }
 
             QComboBox::down-arrow {
-                image: url("BOOKHUB_ARROW_DOWN");
-                width: 10px;
-                height: 10px;
-            }
-
-            QComboBox::down-arrow:disabled {
-                image: url("BOOKHUB_ARROW_DOWN_DISABLED");
+                width: 9px;
+                height: 9px;
             }
 
             QComboBox QAbstractItemView {
@@ -525,112 +300,22 @@ MAIN_WINDOW_STYLESHEET = """
                 padding: 3px;
             }
 
-            /* Ô ngày cần đủ rộng cho dd/MM/yyyy và vùng mở lịch. */
-            QDateEdit,
-            QDateTimeEdit {
-                padding-left: 8px;
-                padding-right: 34px;
-                min-width: 176px;
-            }
-
-            /* Đủ chỗ hiển thị trọn dd/MM/yyyy và vùng nút lịch. */
-            QDateEdit {
-                min-width: 144px;
-            }
-
-            QDateEdit::drop-down,
-            QDateTimeEdit::drop-down {
-                subcontrol-origin: padding;
-                subcontrol-position: top right;
-                width: 28px;
-                border: none;
-                border-left: 1px solid #46546A;
-                border-top-right-radius: 5px;
-                border-bottom-right-radius: 5px;
+            QAbstractSpinBox::up-button,
+            QAbstractSpinBox::down-button {
+                width: 18px;
                 background-color: #34445A;
+                border: none;
             }
 
-            QDateEdit::drop-down:hover,
-            QDateTimeEdit::drop-down:hover {
+            QAbstractSpinBox::up-button:hover,
+            QAbstractSpinBox::down-button:hover {
                 background-color: #465B75;
             }
 
-            QDateEdit::down-arrow,
-            QDateTimeEdit::down-arrow {
-                image: url("BOOKHUB_ARROW_DOWN");
-                width: 10px;
-                height: 10px;
-            }
-
-            QDateEdit::down-arrow:disabled,
-            QDateTimeEdit::down-arrow:disabled {
-                image: url("BOOKHUB_ARROW_DOWN_DISABLED");
-            }
-
-            /* Chừa vùng nhập cho hai nút của SpinBox. */
-            QSpinBox,
-            QDoubleSpinBox {
-                padding-right: 24px;
-            }
-
-            /* Nút tăng/giảm chỉ áp dụng cho SpinBox dạng số. */
-            QSpinBox::up-button,
-            QDoubleSpinBox::up-button {
-                subcontrol-origin: border;
-                subcontrol-position: top right;
-                width: 22px;
-                border: none;
-                border-left: 1px solid #46546A;
-                border-bottom: 1px solid #46546A;
-                border-top-right-radius: 4px;
-                background-color: #34445A;
-            }
-
-            QSpinBox::down-button,
-            QDoubleSpinBox::down-button {
-                subcontrol-origin: border;
-                subcontrol-position: bottom right;
-                width: 22px;
-                border: none;
-                border-left: 1px solid #46546A;
-                border-top: 1px solid #46546A;
-                border-bottom-right-radius: 4px;
-                background-color: #34445A;
-            }
-
-            QSpinBox::up-button:hover,
-            QSpinBox::down-button:hover,
-            QDoubleSpinBox::up-button:hover,
-            QDoubleSpinBox::down-button:hover {
-                background-color: #465B75;
-            }
-
-            QSpinBox::up-arrow,
-            QDoubleSpinBox::up-arrow {
-                image: url("BOOKHUB_ARROW_UP");
-                width: 9px;
-                height: 9px;
-            }
-
-            QSpinBox::down-arrow,
-            QDoubleSpinBox::down-arrow {
-                image: url("BOOKHUB_ARROW_DOWN");
-                width: 9px;
-                height: 9px;
-            }
-
-            QSpinBox::up-arrow:disabled,
-            QDoubleSpinBox::up-arrow:disabled,
-            QSpinBox::up-arrow:off,
-            QDoubleSpinBox::up-arrow:off {
-                image: url("BOOKHUB_ARROW_UP_DISABLED");
-            }
-
-            QSpinBox::down-arrow:disabled,
-            QDoubleSpinBox::down-arrow:disabled,
-            QSpinBox::down-arrow:off,
-            QDoubleSpinBox::down-arrow:off {
-                image: url("BOOKHUB_ARROW_DOWN_DISABLED");
+            QAbstractSpinBox::up-arrow,
+            QAbstractSpinBox::down-arrow {
+                width: 8px;
+                height: 8px;
             }
 
             QCheckBox,
@@ -870,12 +555,3 @@ MAIN_WINDOW_STYLESHEET = """
                 background-color: #C94444;
             }
 """
-
-MAIN_WINDOW_STYLESHEET = (
-    MAIN_WINDOW_STYLESHEET
-    .replace("BOOKHUB_ARROW_DOWN_DISABLED", _icon_url("arrow-down-disabled.svg"))
-    .replace("BOOKHUB_ARROW_UP_DISABLED", _icon_url("arrow-up-disabled.svg"))
-    .replace("BOOKHUB_ARROW_DOWN", _icon_url("arrow-down.svg"))
-    .replace("BOOKHUB_ARROW_UP", _icon_url("arrow-up.svg"))
-)
-
