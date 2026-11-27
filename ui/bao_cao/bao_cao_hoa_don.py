@@ -34,7 +34,7 @@ class InvoiceReportPage(ReportBasePage):
             "Tiền hàng", "Tỷ lệ giảm", "Tiền giảm", "Thành tiền",
             "Doanh thu ghi nhận", "Số phiếu đổi trả", "SL hoàn tiền",
             "SL đổi hàng", "Tiền đã hoàn", "Doanh thu sau hoàn",
-            "Khách đưa", "Trạng thái"
+            "Khách đưa", "Tiền thừa", "Trạng thái"
         ])
         self.content_layout.addWidget(self.table)
         self.register_export_table("Bao cao hoa don", self.table)
@@ -44,9 +44,9 @@ class InvoiceReportPage(ReportBasePage):
         rows = self.service.invoice_report(start_date, end_date)
 
         total_count = len(rows)
-        valid_rows = [row for row in rows if row[15] is True or row[15] == 1]
+        valid_rows = [row for row in rows if row[16] is True or row[16] == 1]
         cancelled_count = sum(
-            1 for row in rows if row[15] is False or row[15] == 0
+            1 for row in rows if row[16] is False or row[16] == 0
         )
         gross_revenue = sum((row[8] or 0) for row in valid_rows)
         refund_total = sum((row[12] or 0) for row in rows)
@@ -61,8 +61,8 @@ class InvoiceReportPage(ReportBasePage):
 
         display = []
         for row in rows:
-            status = "Đã thanh toán" if row[15] is True or row[15] == 1 else (
-                "Đã hủy" if row[15] is False or row[15] == 0 else "Không xác định"
+            status = "Đã thanh toán" if row[16] is True or row[16] == 1 else (
+                "Đã hủy" if row[16] is False or row[16] == 0 else "Không xác định"
             )
             display.append((
                 row[0], date_text(row[1]), row[2], row[3],
@@ -71,6 +71,6 @@ class InvoiceReportPage(ReportBasePage):
                 money_text(row[8]), number_text(row[9]),
                 number_text(row[10]), number_text(row[11]),
                 money_text(row[12]), money_text(row[13]),
-                money_text(row[14]), status,
+                money_text(row[14]), money_text(row[15]), status,
             ))
         self.fill_table(self.table, display)
