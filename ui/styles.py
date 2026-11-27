@@ -319,19 +319,21 @@ MAIN_WINDOW_STYLESHEET = """
             /* Ô ngày cần đủ rộng cho dd/MM/yyyy và vùng mở lịch. */
             QDateEdit,
             QDateTimeEdit {
-                padding-right: 32px;
-                min-width: 168px;
+                padding-left: 8px;
+                padding-right: 34px;
+                min-width: 176px;
             }
 
+            /* Đủ chỗ hiển thị trọn dd/MM/yyyy và vùng nút lịch. */
             QDateEdit {
-                min-width: 128px;
+                min-width: 144px;
             }
 
             QDateEdit::drop-down,
             QDateTimeEdit::drop-down {
                 subcontrol-origin: padding;
                 subcontrol-position: top right;
-                width: 26px;
+                width: 28px;
                 border: none;
                 border-left: 1px solid #46546A;
                 border-top-right-radius: 5px;
