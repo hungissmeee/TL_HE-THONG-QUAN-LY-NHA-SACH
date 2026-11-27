@@ -653,7 +653,7 @@ class BaoCaoRepository:
             ) T
             OUTER APPLY (
                 SELECT
-                    COUNT(*) AS SO_HD,
+                    COUNT(H.MAHD) AS SO_HD,
                     COALESCE(SUM(
                         H.TIEN_HANG - ROUND(H.TIEN_HANG * H.TYLEGIAM / 100.0, 2)
                     ), 0) AS DOANH_THU
