@@ -220,6 +220,7 @@ function SuppliersPage() {
   const [showInactive, setShowInactive] = useState(false);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
+  const [nextCode, setNextCode] = useState("");
   const [saving, setSaving] = useState(false);
   const [form] = Form.useForm();
 
@@ -379,7 +380,6 @@ function PromotionsPage() {
   const [keyword, setKeyword] = useState("");
   const [showDeleted, setShowDeleted] = useState(false);
   const [open, setOpen] = useState(false);
-  const [nextCode, setNextCode] = useState("");
   const [saving, setSaving] = useState(false);
   const [form] = Form.useForm();
   const [renameRecord, setRenameRecord] = useState<Row | null>(null);
