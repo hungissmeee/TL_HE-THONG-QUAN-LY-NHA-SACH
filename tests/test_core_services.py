@@ -896,6 +896,19 @@ class FakeReportRepository(BaoCaoRepository):
         self.calls.append(("product_report", start, end, sort, keyword))
         return []
 
+    def product_report_summary(self, start, end):
+        self.calls.append(("product_report_summary", start, end))
+        return {
+            "sold": 10,
+            "refund_quantity": 2,
+            "exchange_quantity": 1,
+            "intact_quantity": 2,
+            "damaged_quantity": 1,
+            "gross_revenue": Decimal("1000.00"),
+            "refund_amount": Decimal("150.00"),
+            "net_revenue": Decimal("850.00"),
+        }
+
     def shift_report(self, start, end):
         self.calls.append(("shift_report", start, end))
         return []
@@ -982,7 +995,7 @@ class ReportServiceTests(unittest.TestCase):
 
         repository = CaptureRepository()
         repository.product_report(
-            "2026-11-01", "2026-11-30", "revenue_desc", "SP"
+            "2026-11-01", "2026-11-30", "refund_desc", "SP"
         )
 
         self.assertNotIn("DONGIAHOAN", repository.sql)
@@ -993,6 +1006,49 @@ class ReportServiceTests(unittest.TestCase):
             repository.params,
             ("2026-11-01", "2026-11-30", "2026-11-01", "2026-11-30", "%SP%", "%SP%"),
         )
+
+    def test_product_report_summary_service_delegates_with_validated_dates(self):
+        result = self.service.product_report_summary("2026-01-01", "2026-01-31")
+
+        self.assertEqual(
+            self.repository.calls[-1],
+            ("product_report_summary", "2026-01-01", "2026-01-31"),
+        )
+        self.assertEqual(result["net_revenue"], Decimal("850.00"))
+
+    def test_product_report_summary_sql_uses_voucher_level_refund_total(self):
+        class CaptureRepository(BaoCaoRepository):
+            def __init__(self):
+                self.sql = None
+                self.params = None
+
+            def _fetch_one(self, sql, params=()):
+                self.sql = sql
+                self.params = params
+                return (
+                    10, 2, 1, 2, 1,
+                    Decimal("1000.00"), Decimal("150.00"), Decimal("850.00"),
+                )
+
+        repository = CaptureRepository()
+        result = repository.product_report_summary("2026-01-01", "2026-01-31")
+
+        self.assertIn("ROUND(TIEN_HANG * TYLEGIAM / 100.0, 2)", repository.sql)
+        self.assertIn("SUM(PDT.TONG_TIEN_HOAN)", repository.sql)
+        self.assertNotIn("DONGIAHOAN", repository.sql)
+        self.assertEqual(
+            repository.params,
+            (
+                "2026-01-01", "2026-01-31",
+                "2026-01-01", "2026-01-31",
+                "2026-01-01", "2026-01-31",
+                "2026-01-01", "2026-01-31",
+            ),
+        )
+        self.assertEqual(result["sold"], 10)
+        self.assertEqual(result["refund_quantity"], 2)
+        self.assertEqual(result["exchange_quantity"], 1)
+        self.assertEqual(result["net_revenue"], Decimal("850.00"))
 
     def test_product_report_service_validates_sort_whitelist(self):
         self.service.product_report(
