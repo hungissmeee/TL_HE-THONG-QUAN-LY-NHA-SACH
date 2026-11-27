@@ -2,6 +2,7 @@
 
 import os
 import unittest
+from datetime import datetime
 from types import SimpleNamespace
 from decimal import Decimal
 
@@ -37,6 +38,7 @@ from ui.phieu_nhap.danh_sach import can_view_imports
 from ui.hoa_don.tao_bieu_mau import CreateInvoiceDialog
 from ui.hoa_don.danh_sach import InvoiceWindow
 from ui.ca_lam_viec.tao_bieu_mau import ShiftCreateDialog
+from ui.ca_lam_viec.danh_sach import ShiftWindow
 from ui.main_windows import MainWindow
 from ui.permissions import is_admin_account, allowed_pages_for_user
 from ui.doi_tra.tao_bieu_mau import CreateReturnDialog
@@ -999,6 +1001,19 @@ class InvoiceSafetyTests(unittest.TestCase):
         ):
             self.assertIn(page, MainWindow.ROLE_PAGE_ACCESS["Quản lý"])
             self.assertIn(page, MainWindow.ROLE_PAGE_ACCESS["Kế toán"])
+
+
+class ShiftDateFormatterTests(unittest.TestCase):
+    """Bảo đảm formatter ngày gọi được qua instance và trực tiếp."""
+
+    def test_format_date_is_static_and_accepts_datetime(self):
+        value = datetime(2026, 11, 27, 9, 30)
+        self.assertEqual(ShiftWindow._format_date(value), "27/11/2026")
+
+    def test_format_date_handles_none_and_string(self):
+        self.assertEqual(ShiftWindow._format_date(None), "")
+        self.assertEqual(ShiftWindow._format_date("2026-11-27"), "2026-11-27")
+
 
 
 if __name__ == "__main__":
