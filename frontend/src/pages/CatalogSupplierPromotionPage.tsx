@@ -125,7 +125,7 @@ function CatalogPage({ catalogType }: { catalogType: string }) {
     title: field.label,
     dataIndex: field.key,
     key: field.key,
-    ellipsis: true,
+
   }));
   if (data) {
     columns.push({
@@ -176,7 +176,7 @@ function CatalogPage({ catalogType }: { catalogType: string }) {
           loading={loading}
           pagination={{ pageSize: 10, showSizeChanger: true }}
           locale={{ emptyText: "Không có dữ liệu danh mục." }}
-        />
+        / scroll={{ x: "max-content" }} tableLayout="auto">
       </Card>
       <Modal
         title={editing ? "Chỉnh sửa danh mục" : data?.title || "Thêm danh mục"}
@@ -294,10 +294,10 @@ function SuppliersPage() {
 
   const columns = [
     { title: "Mã NCC", dataIndex: "mancc", key: "mancc", width: 120 },
-    { title: "Tên nhà cung cấp", dataIndex: "tenncc", key: "tenncc", ellipsis: true },
+    { title: "Tên nhà cung cấp", dataIndex: "tenncc", key: "tenncc" },
     { title: "Số điện thoại", dataIndex: "sdt", key: "sdt", width: 140 },
     { title: "Mã số thuế", dataIndex: "mst", key: "mst", width: 150 },
-    { title: "Địa chỉ", dataIndex: "diachi", key: "diachi", ellipsis: true },
+    { title: "Địa chỉ", dataIndex: "diachi", key: "diachi" },
     {
       title: "Trạng thái", dataIndex: "is_deleted", key: "status", width: 140,
       render: (value: boolean) => <Tag color={value ? "default" : "success"}>{value ? "Ngừng hoạt động" : "Đang hoạt động"}</Tag>,
@@ -346,7 +346,7 @@ function SuppliersPage() {
             onChange={(value) => setShowInactive(value === "all")}
           />
         </div>
-        <Table<Row> rowKey="mancc" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }} />
+        <Table<Row> rowKey="mancc" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }} / scroll={{ x: "max-content" }} tableLayout="auto">
       </Card>
       <Modal
         title={editing ? "Chỉnh sửa nhà cung cấp " + editing : "Thêm nhà cung cấp"}
@@ -434,7 +434,7 @@ function PromotionsPage() {
 
   const columns = [
     { title: "Mã KM", dataIndex: "makm", key: "makm", width: 130 },
-    { title: "Tên chương trình", dataIndex: "tenkm", key: "tenkm", ellipsis: true },
+    { title: "Tên chương trình", dataIndex: "tenkm", key: "tenkm" },
     { title: "Tỷ lệ giảm", dataIndex: "tylegiam", key: "tylegiam", width: 120, render: (v: unknown) => Number(v || 0) + "%" },
     { title: "Bắt đầu", dataIndex: "ngaybd", key: "ngaybd", width: 170, render: (v: string) => v ? dayjs(v).format("DD/MM/YYYY HH:mm") : "—" },
     { title: "Kết thúc", dataIndex: "ngaykt", key: "ngaykt", width: 170, render: (v: string) => v ? dayjs(v).format("DD/MM/YYYY HH:mm") : "—" },
@@ -472,7 +472,7 @@ function PromotionsPage() {
           <Input.Search className="operation-search" allowClear value={keyword} placeholder="Tìm mã hoặc tên chương trình..." onChange={(e) => setKeyword(e.target.value)} onSearch={(v) => setKeyword(v.trim())} enterButton="Tìm kiếm" />
           <Select value={showDeleted ? "all" : "active"} style={{ width: 190 }} options={[{ value: "active", label: "Đang sử dụng" }, { value: "all", label: "Bao gồm đã ngừng" }]} onChange={(v) => setShowDeleted(v === "all")} />
         </div>
-        <Table<Row> rowKey="makm" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }} />
+        <Table<Row> rowKey="makm" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }} / scroll={{ x: "max-content" }} tableLayout="auto">
       </Card>
       <Modal title="Tạo chương trình khuyến mãi" open={open} onCancel={() => setOpen(false)} onOk={() => form.submit()} okText="Tạo chương trình" cancelText="Hủy" confirmLoading={saving} width={560} destroyOnClose className="desktop-entity-modal">
         <Form form={form} className="desktop-dialog-form" layout="horizontal" labelCol={{ xs: { span: 24 }, sm: { span: 8 } }} wrapperCol={{ xs: { span: 24 }, sm: { span: 16 } }} onFinish={(v) => void create(v)}>
