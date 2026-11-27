@@ -158,13 +158,61 @@ MAIN_WINDOW_STYLESHEET = """
                 border: 1px solid #39465A;
             }
 
-            QPushButton:not(#navButton):not(#passwordButton):not(#logoutButton) {
+            /* Mac dinh: nut phu (secondary). */
+            QPushButton:not(#navButton):not(#passwordButton):not(#logoutButton):not([buttonRole="primary"]):not([buttonRole="danger"]) {
                 background-color: #34445A;
-                color: white;
+                color: #E5E7EB;
+                border: 1px solid #46546A;
+                border-radius: 5px;
+                padding: 7px 12px;
+                min-height: 18px;
             }
 
-            QPushButton:not(#navButton):not(#passwordButton):not(#logoutButton):hover {
+            QPushButton:not(#navButton):not(#passwordButton):not(#logoutButton):not([buttonRole="primary"]):not([buttonRole="danger"]):hover {
                 background-color: #465B75;
+                border-color: #60758F;
+            }
+
+            /* Primary: thao tac chinh cua man hinh/dialog. */
+            QPushButton[buttonRole="primary"] {
+                background-color: #2563EB;
+                color: #FFFFFF;
+                border: 1px solid #2563EB;
+                border-radius: 5px;
+                padding: 7px 14px;
+                min-height: 18px;
+                font-weight: 600;
+            }
+
+            QPushButton[buttonRole="primary"]:hover {
+                background-color: #1D4ED8;
+                border-color: #60A5FA;
+            }
+
+            QPushButton[buttonRole="primary"]:pressed {
+                background-color: #1E40AF;
+                border-color: #1E40AF;
+            }
+
+            /* Danger: xoa hoac huy mot chung tu/giao dich. */
+            QPushButton[buttonRole="danger"] {
+                background-color: #A83232;
+                color: #FFFFFF;
+                border: 1px solid #A83232;
+                border-radius: 5px;
+                padding: 7px 12px;
+                min-height: 18px;
+                font-weight: 600;
+            }
+
+            QPushButton[buttonRole="danger"]:hover {
+                background-color: #C94444;
+                border-color: #EF7777;
+            }
+
+            QPushButton[buttonRole="danger"]:pressed {
+                background-color: #842525;
+                border-color: #842525;
             }
 
             QLineEdit {
