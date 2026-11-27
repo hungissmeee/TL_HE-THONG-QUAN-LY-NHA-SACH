@@ -22,6 +22,10 @@ class ShiftReportPage(ReportBasePage):
              "Số ca được tạo trong khoảng thời gian", "neutral"),
             ("employees", "Lượt nhân viên đăng ký", "0",
              "Tổng lượt đăng ký ca, không phải số nhân viên duy nhất", "neutral"),
+            ("invoices", "Hóa đơn hợp lệ", "0",
+             "Số hóa đơn lập trong các ca", "positive"),
+            ("sales", "Doanh số theo ca", "0 đ",
+             "Tổng giá trị hóa đơn hợp lệ sau khuyến mãi, chưa trừ hoàn trả", "primary"),
             ("ended", "Ca đã kết thúc", "0",
              "Đã qua giờ đóng ca", "positive"),
             ("unclosed", "Ca kết thúc chưa chốt", "0",
@@ -32,8 +36,8 @@ class ShiftReportPage(ReportBasePage):
 
         self.table = self.make_table([
             "Mã ca", "Ngày làm", "Ca", "Giờ mở", "Giờ đóng",
-            "Số nhân viên", "Tiền đầu ca", "Tiền cuối ca",
-            "Trạng thái ca", "Trạng thái chốt",
+            "Số nhân viên", "Hóa đơn", "Doanh số",
+            "Tiền đầu ca", "Tiền cuối ca", "Trạng thái ca", "Trạng thái chốt",
         ])
         self.content_layout.addWidget(self.table)
         self.register_export_table("Bao cao ca lam viec", self.table)
@@ -52,14 +56,18 @@ class ShiftReportPage(ReportBasePage):
 
         total_shifts = len(rows)
         employee_registrations = sum(int(row[5] or 0) for row in rows)
-        ended_shifts = sum(1 for row in rows if row[8] == "Đã kết thúc")
+        invoice_count = sum(int(row[6] or 0) for row in rows)
+        sales_total = sum((row[7] or 0) for row in rows)
+        ended_shifts = sum(1 for row in rows if row[10] == "Đã kết thúc")
         unclosed_shifts = sum(
-            1 for row in rows if row[8] == "Đã kết thúc" and row[7] is None
+            1 for row in rows if row[10] == "Đã kết thúc" and row[9] is None
         )
-        closing_cash_total = sum((row[7] or 0) for row in rows if row[7] is not None)
+        closing_cash_total = sum((row[9] or 0) for row in rows if row[9] is not None)
 
         self.set_stat("total", number_text(total_shifts))
         self.set_stat("employees", number_text(employee_registrations))
+        self.set_stat("invoices", number_text(invoice_count))
+        self.set_stat("sales", money_text(sales_total))
         self.set_stat("ended", number_text(ended_shifts))
         self.set_stat("unclosed", number_text(unclosed_shifts))
         self.set_stat("cash", money_text(closing_cash_total))
@@ -72,10 +80,12 @@ class ShiftReportPage(ReportBasePage):
                 self._time_text(row[3]),
                 self._time_text(row[4]),
                 number_text(row[5]),
-                money_text(row[6]) if row[6] is not None else "Chưa ghi",
-                money_text(row[7]) if row[7] is not None else "Chưa chốt",
-                row[8],
-                "Đã chốt" if row[7] is not None else "Chưa chốt",
+                number_text(row[6]),
+                money_text(row[7]),
+                money_text(row[8]) if row[8] is not None else "Chưa ghi",
+                money_text(row[9]) if row[9] is not None else "Chưa chốt",
+                row[10],
+                "Đã chốt" if row[9] is not None else "Chưa chốt",
             )
             for row in rows
         ])
