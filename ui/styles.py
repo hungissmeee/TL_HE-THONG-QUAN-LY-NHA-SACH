@@ -4,7 +4,6 @@ from PySide6.QtCore import QPoint, QSize, Qt
 from PySide6.QtGui import QColor, QIcon, QPainter, QPixmap, QPolygon
 from PySide6.QtWidgets import (
     QApplication,
-    QCalendarWidget,
     QDateEdit,
     QDateTimeEdit,
     QProxyStyle,
