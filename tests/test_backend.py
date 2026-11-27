@@ -1,7 +1,9 @@
 """Kiểm thử Backend FastAPI và cấu hình SQL Server, không cần database thật."""
 
 import os
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
@@ -80,6 +82,44 @@ class BackendConfigurationTests(unittest.TestCase):
         self.assertEqual(settings.api_prefix, "/api/v1")
         self.assertFalse(settings.sql_trust_server_certificate)
         self.assertFalse(settings.database_configured)
+
+    def test_load_settings_reads_root_dotenv_file_automatically(self):
+        with tempfile.TemporaryDirectory() as directory:
+            env_file = Path(directory) / ".env"
+            env_file.write_text(
+                "BOOKHUB_WEB_ENV=test\\n"
+                "BOOKHUB_WEB_SQL_SERVER=sql.example.local\\n"
+                "BOOKHUB_WEB_SQL_DATABASE=BOOKHUB_TEST\\n"
+                "BOOKHUB_WEB_SQL_USERNAME=web_user\\n"
+                "BOOKHUB_WEB_SQL_PASSWORD=local_secret\\n",
+                encoding="utf-8",
+            )
+            with patch.dict(os.environ, {}, clear=True):
+                with patch("backend.config.ENV_FILE", env_file):
+                    settings = load_settings()
+
+        self.assertEqual(settings.environment, "test")
+        self.assertEqual(settings.sql_server, "sql.example.local")
+        self.assertEqual(settings.sql_database, "BOOKHUB_TEST")
+        self.assertEqual(settings.sql_username, "web_user")
+        self.assertEqual(settings.sql_password, "local_secret")
+        self.assertTrue(settings.database_configured)
+
+    def test_existing_os_environment_values_override_dotenv(self):
+        with tempfile.TemporaryDirectory() as directory:
+            env_file = Path(directory) / ".env"
+            env_file.write_text(
+                "BOOKHUB_WEB_ENV=development\\n",
+                encoding="utf-8",
+            )
+            with patch.dict(
+                os.environ, {"BOOKHUB_WEB_ENV": "production"}, clear=True
+            ):
+                with patch("backend.config.ENV_FILE", env_file):
+                    settings = load_settings()
+
+        self.assertEqual(settings.environment, "production")
+        self.assertFalse(settings.docs_enabled)
 
     def test_load_settings_rejects_invalid_environment(self):
         with patch.dict(os.environ, {"BOOKHUB_WEB_ENV": "prod"}, clear=True):
