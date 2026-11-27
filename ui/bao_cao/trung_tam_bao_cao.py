@@ -513,12 +513,21 @@ class ReportCenterPage(QWidget):
         self.search_input.setVisible(bool(definition.get("search")))
         self.search_input.clear()
         self._build_table_headers(definition)
-        self.filter_note.setText(
-            "CSDL chưa có nhật ký điều chỉnh kho riêng; tồn đầu/tồn chạy được tái dựng từ SLTON và chứng từ đã lưu. "
-            "Giá trị tồn, xuất, hàng trả và đổi hàng có dấu * là ước tính theo giá nhập hiện lưu."
-            if self.current_report in {"stock_movement", "stock_card", "current_inventory"}
-            else ""
-        )
+        note_by_report = {
+            "stock_movement": (
+                "CSDL chưa có nhật ký điều chỉnh kho riêng; tồn đầu/tồn cuối được tái dựng từ SLTON và chứng từ. "
+                "Thành tiền tồn, khách trả, xuất bán và xuất đổi là ước tính theo giá nhập hiện lưu; trị giá nhập NCC lấy theo phiếu nhập."
+            ),
+            "stock_card": (
+                "Tồn đầu và tồn sau giao dịch được tái dựng từ SLTON cùng chứng từ đã lưu. "
+                "Giá trị nhập NCC (†) lấy theo đơn giá phiếu nhập; khách trả nhập lại và giá trị xuất ( * ) ước tính theo giá nhập hiện lưu."
+            ),
+            "current_inventory": (
+                "Đây là ảnh chụp số tồn hiện tại. Giá trị tồn được ước tính bằng số lượng tồn nhân giá nhập hiện lưu; "
+                "không phải giá vốn lịch sử và không gồm điều chỉnh tồn thực hiện ngoài hệ thống."
+            ),
+        }
+        self.filter_note.setText(note_by_report.get(self.current_report, ""))
         self.refresh_data()
 
     def _build_table_headers(self, definition):
