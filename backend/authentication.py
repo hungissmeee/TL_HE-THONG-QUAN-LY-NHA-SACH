@@ -78,5 +78,9 @@ def authenticate_employee(settings: Settings, username: str, password: str) -> A
                 pass
         try:
             connection.rollback()
-        finally:
+        except Exception:
+            pass
+        try:
             connection.close()
+        except Exception:
+            pass
