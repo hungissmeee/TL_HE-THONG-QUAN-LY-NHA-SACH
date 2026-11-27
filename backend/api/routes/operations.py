@@ -546,7 +546,7 @@ def get_invoice_detail(
 @router.post("/invoices", status_code=status.HTTP_201_CREATED, summary="Lập hóa đơn")
 def create_invoice(
     payload: InvoicePayload,
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser = Depends(require_roles("rl_ThuNgan", "rl_QuanLy")),
     connection=Depends(get_db_connection),
 ):
     try:
