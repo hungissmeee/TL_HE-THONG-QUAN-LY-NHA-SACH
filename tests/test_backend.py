@@ -131,16 +131,16 @@ class BackendConfigurationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             env_file = Path(directory) / ".env"
             env_file.write_text(
-                "BOOKHUB_SQL_SERVER=desktop-sql\\\\INSTANCE\\n"
-                "BOOKHUB_SQL_DATABASE=BOOKHUB_DESKTOP\\n"
-                "BOOKHUB_SQL_DRIVER=ODBC Driver 18 for SQL Server\\n",
+                "BOOKHUB_SQL_SERVER=desktop-sql\\INSTANCE\n"
+                "BOOKHUB_SQL_DATABASE=BOOKHUB_DESKTOP\n"
+                "BOOKHUB_SQL_DRIVER=ODBC Driver 18 for SQL Server\n",
                 encoding="utf-8",
             )
             with patch.dict(os.environ, {}, clear=True):
                 with patch("database.connection.ENV_FILE", env_file):
                     database = Database()
 
-        self.assertEqual(database.server, "desktop-sql\\\\INSTANCE")
+        self.assertEqual(database.server, "desktop-sql\\INSTANCE")
         self.assertEqual(database.database, "BOOKHUB_DESKTOP")
         self.assertEqual(database.driver, "ODBC Driver 18 for SQL Server")
 
