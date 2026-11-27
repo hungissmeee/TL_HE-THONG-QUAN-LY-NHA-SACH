@@ -1,6 +1,7 @@
 """Kiểm thử thao tác ngưng hoạt động và kích hoạt lại tài khoản nhân viên."""
 
 import unittest
+from types import SimpleNamespace
 
 from database.connection import Database
 from core.nhan_vien.repository import NhanVienRepository
@@ -49,6 +50,26 @@ class EmployeeAccountStatusTests(unittest.TestCase):
         db.username = "admin"
         db.conn = connection
         return db, cursor, connection
+
+    def test_database_name_fallback_uses_current_sql_database_context(self):
+        cursor = FakeCursor("CSDLQLNHASACH")
+        repository = NhanVienRepository(SimpleNamespace())
+
+        database_name = repository._resolve_database_name(cursor)
+
+        self.assertEqual(database_name, "CSDLQLNHASACH")
+        self.assertEqual(cursor.commands, [("SELECT DB_NAME()", ())])
+
+    def test_database_name_prefers_explicit_connection_configuration(self):
+        cursor = FakeCursor("SHOULD_NOT_BE_USED")
+        repository = NhanVienRepository(
+            SimpleNamespace(database="BOOKHUB_DATABASE")
+        )
+
+        database_name = repository._resolve_database_name(cursor)
+
+        self.assertEqual(database_name, "BOOKHUB_DATABASE")
+        self.assertEqual(cursor.commands, [])
 
     def test_disable_account_uses_alter_login_disable(self):
         db, cursor, connection = self.make_database(0)
