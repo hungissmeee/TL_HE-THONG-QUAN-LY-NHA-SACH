@@ -911,3 +911,631 @@ class BaoCaoRepository:
             start_date, end_date,
             start_date, end_date,
         ))
+
+
+    # ---------------------------------------------------------
+    # Báo cáo POS: dữ liệu chứng từ, không phân bổ tiền hoàn theo SKU
+    # ---------------------------------------------------------
+    def daily_sales_report(self, start_date, end_date, keyword=""):
+        """Danh sách hóa đơn trong kỳ, kể cả hóa đơn đã hủy."""
+        search_sql = ""
+        params = [start_date, end_date]
+        if keyword:
+            search_sql = """
+                AND (
+                    HD.MAHD LIKE ? OR NV.TENNV LIKE ?
+                    OR HD.MANV LIKE ? OR CONVERT(nvarchar(20), HD.MACA) LIKE ?
+                )
+            """
+            params.extend([f"%{keyword}%"] * 4)
+        return self._fetch_all(f"""
+            SELECT
+                HD.MAHD,
+                N'Không lưu thông tin khách hàng' AS KHACH_HANG,
+                COALESCE(NV.TENNV, HD.MANV, N''),
+                HD.NGAYLAP,
+                COALESCE(CONVERT(nvarchar(20), C.SOCA), N''),
+                COALESCE(D.SO_LUONG, 0),
+                COALESCE(D.TIEN_HANG, 0),
+                ROUND(COALESCE(D.TIEN_HANG, 0) * COALESCE(KM.TYLEGIAM, 0) / 100.0, 2),
+                CASE WHEN HD.TRANGTHAI = 1
+                    THEN COALESCE(D.TIEN_HANG, 0)
+                         - ROUND(COALESCE(D.TIEN_HANG, 0)
+                           * COALESCE(KM.TYLEGIAM, 0) / 100.0, 2)
+                    ELSE 0 END AS DOANH_SO,
+                CASE WHEN HD.TRANGTHAI = 1
+                    THEN COALESCE(HD.TIENKHACHDUA, 0) ELSE 0 END,
+                CASE WHEN HD.TRANGTHAI = 1
+                    THEN CASE WHEN COALESCE(HD.TIENKHACHDUA, 0)
+                        > COALESCE(D.TIEN_HANG, 0)
+                          - ROUND(COALESCE(D.TIEN_HANG, 0)
+                            * COALESCE(KM.TYLEGIAM, 0) / 100.0, 2)
+                        THEN COALESCE(HD.TIENKHACHDUA, 0)
+                          - (COALESCE(D.TIEN_HANG, 0)
+                            - ROUND(COALESCE(D.TIEN_HANG, 0)
+                              * COALESCE(KM.TYLEGIAM, 0) / 100.0, 2))
+                        ELSE 0 END
+                    ELSE 0 END AS TIEN_THUA,
+                CASE WHEN HD.TRANGTHAI = 1 THEN N'Hợp lệ' ELSE N'Đã hủy' END
+            FROM dbo.HOA_DON HD
+            LEFT JOIN dbo.NHAN_VIEN NV ON NV.MANV = HD.MANV
+            LEFT JOIN dbo.CA_LAM_VIEC C ON C.MACA = HD.MACA
+            LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
+            OUTER APPLY (
+                SELECT
+                    SUM(COALESCE(CT.SOLUONG, 0)) AS SO_LUONG,
+                    SUM(COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0))
+                        AS TIEN_HANG
+                FROM dbo.CHI_TIET_HOA_DON CT
+                WHERE CT.MAHD = HD.MAHD
+            ) D
+            WHERE HD.NGAYLAP >= CONVERT(date, ?)
+              AND HD.NGAYLAP < DATEADD(day, 1, CONVERT(date, ?))
+              {search_sql}
+            ORDER BY HD.NGAYLAP DESC, HD.MAHD DESC
+        """, tuple(params))
+
+    def sales_by_period_report(self, start_date, end_date, period="day"):
+        """Bán hàng theo ngày/tháng/năm; trả hàng theo ngày lập phiếu."""
+        sales_periods = {
+            "day": "CAST(NGAYLAP AS date)",
+            "month": "DATEFROMPARTS(YEAR(NGAYLAP), MONTH(NGAYLAP), 1)",
+            "year": "DATEFROMPARTS(YEAR(NGAYLAP), 1, 1)",
+        }
+        return_periods = {
+            "day": "CAST(NGAY_DOI_TRA AS date)",
+            "month": "DATEFROMPARTS(YEAR(NGAY_DOI_TRA), MONTH(NGAY_DOI_TRA), 1)",
+            "year": "DATEFROMPARTS(YEAR(NGAY_DOI_TRA), 1, 1)",
+        }
+        sales_key = sales_periods[period]
+        return_key = return_periods[period]
+        return self._fetch_all(f"""
+            WITH InvoiceTotals AS (
+                SELECT HD.MAHD, HD.NGAYLAP, HD.TRANGTHAI,
+                    COALESCE(KM.TYLEGIAM, 0) AS TYLEGIAM,
+                    COALESCE(SUM(COALESCE(CT.DONGIA, 0)
+                        * COALESCE(CT.SOLUONG, 0)), 0) AS TIEN_HANG,
+                    COALESCE(SUM(COALESCE(CT.SOLUONG, 0)), 0) AS SL_BAN
+                FROM dbo.HOA_DON HD
+                LEFT JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
+                LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
+                WHERE HD.NGAYLAP >= CONVERT(date, ?)
+                  AND HD.NGAYLAP < DATEADD(day, 1, CONVERT(date, ?))
+                GROUP BY HD.MAHD, HD.NGAYLAP, HD.TRANGTHAI, KM.TYLEGIAM
+            ),
+            Sales AS (
+                SELECT {sales_key} AS KY,
+                    COUNT(CASE WHEN TRANGTHAI = 1 THEN 1 END) AS SO_HOA_DON,
+                    SUM(CASE WHEN TRANGTHAI = 1 THEN SL_BAN ELSE 0 END) AS SL_BAN,
+                    SUM(CASE WHEN TRANGTHAI = 1 THEN TIEN_HANG ELSE 0 END) AS TIEN_HANG,
+                    SUM(CASE WHEN TRANGTHAI = 1
+                        THEN ROUND(TIEN_HANG * TYLEGIAM / 100.0, 2)
+                        ELSE 0 END) AS TIEN_GIAM,
+                    SUM(CASE WHEN TRANGTHAI = 1
+                        THEN TIEN_HANG - ROUND(TIEN_HANG * TYLEGIAM / 100.0, 2)
+                        ELSE 0 END) AS DOAN_SO
+                FROM InvoiceTotals
+                GROUP BY {sales_key}
+            ),
+            ReturnHeaders AS (
+                SELECT {return_key} AS KY,
+                    SUM(COALESCE(TONG_TIEN_HOAN, 0)) AS TIEN_HOAN
+                FROM dbo.PHIEU_DOI_TRA
+                WHERE NGAY_DOI_TRA >= CONVERT(date, ?)
+                  AND NGAY_DOI_TRA < DATEADD(day, 1, CONVERT(date, ?))
+                GROUP BY {return_key}
+            ),
+            ReturnLines AS (
+                SELECT {return_key} AS KY,
+                    SUM(COALESCE(CTDT.SOLUONG, 0)) AS SL_TRA
+                FROM dbo.PHIEU_DOI_TRA PDT
+                INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT
+                WHERE PDT.NGAY_DOI_TRA >= CONVERT(date, ?)
+                  AND PDT.NGAY_DOI_TRA < DATEADD(day, 1, CONVERT(date, ?))
+                GROUP BY {return_key}
+            )
+            SELECT COALESCE(S.KY, H.KY, L.KY) AS KY,
+                COALESCE(S.SO_HOA_DON, 0),
+                COALESCE(S.SL_BAN, 0),
+                COALESCE(S.TIEN_HANG, 0),
+                COALESCE(S.TIEN_GIAM, 0),
+                COALESCE(S.DOAN_SO, 0),
+                COALESCE(L.SL_TRA, 0),
+                COALESCE(H.TIEN_HOAN, 0),
+                COALESCE(S.DOAN_SO, 0) - COALESCE(H.TIEN_HOAN, 0)
+            FROM Sales S
+            FULL OUTER JOIN ReturnHeaders H ON H.KY = S.KY
+            FULL OUTER JOIN ReturnLines L ON L.KY = COALESCE(S.KY, H.KY)
+            ORDER BY KY DESC
+        """, (start_date, end_date, start_date, end_date, start_date, end_date))
+
+    def sales_by_employee_report(self, start_date, end_date, keyword=""):
+        """Tách doanh số người bán và tiền hoàn của người xử lý phiếu."""
+        search_sql = ""
+        params = [start_date, end_date, start_date, end_date, start_date, end_date]
+        if keyword:
+            search_sql = " AND (NV.MANV LIKE ? OR NV.TENNV LIKE ?)"
+            params.extend((f"%{keyword}%", f"%{keyword}%"))
+        return self._fetch_all(f"""
+            WITH InvoiceTotals AS (
+                SELECT HD.MAHD, HD.MANV,
+                    COALESCE(KM.TYLEGIAM, 0) AS TYLEGIAM,
+                    COALESCE(SUM(COALESCE(CT.DONGIA, 0)
+                        * COALESCE(CT.SOLUONG, 0)), 0) AS TIEN_HANG,
+                    COALESCE(SUM(COALESCE(CT.SOLUONG, 0)), 0) AS SL_BAN
+                FROM dbo.HOA_DON HD
+                LEFT JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
+                LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
+                WHERE HD.TRANGTHAI = 1
+                  AND HD.NGAYLAP >= CONVERT(date, ?)
+                  AND HD.NGAYLAP < DATEADD(day, 1, CONVERT(date, ?))
+                GROUP BY HD.MAHD, HD.MANV, KM.TYLEGIAM
+            ),
+            Sales AS (
+                SELECT MANV, COUNT(*) AS SO_HD, SUM(SL_BAN) AS SL_BAN,
+                    SUM(TIEN_HANG) AS TIEN_HANG,
+                    SUM(ROUND(TIEN_HANG * TYLEGIAM / 100.0, 2)) AS TIEN_GIAM,
+                    SUM(TIEN_HANG - ROUND(TIEN_HANG * TYLEGIAM / 100.0, 2)) AS DOAN_SO
+                FROM InvoiceTotals GROUP BY MANV
+            ),
+            ReturnHeaders AS (
+                SELECT MANV, COUNT(*) AS SO_PHIEU,
+                    SUM(COALESCE(TONG_TIEN_HOAN, 0)) AS TIEN_HOAN
+                FROM dbo.PHIEU_DOI_TRA
+                WHERE NGAY_DOI_TRA >= CONVERT(date, ?)
+                  AND NGAY_DOI_TRA < DATEADD(day, 1, CONVERT(date, ?))
+                GROUP BY MANV
+            ),
+            ReturnLines AS (
+                SELECT PDT.MANV,
+                    SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 0
+                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_HOAN,
+                    SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 1
+                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_DOI
+                FROM dbo.PHIEU_DOI_TRA PDT
+                INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT
+                WHERE PDT.NGAY_DOI_TRA >= CONVERT(date, ?)
+                  AND PDT.NGAY_DOI_TRA < DATEADD(day, 1, CONVERT(date, ?))
+                GROUP BY PDT.MANV
+            )
+            SELECT COALESCE(NV.MANV, S.MANV, H.MANV),
+                COALESCE(NV.TENNV, N''),
+                COALESCE(S.SO_HD, 0), COALESCE(S.SL_BAN, 0),
+                COALESCE(S.TIEN_HANG, 0), COALESCE(S.TIEN_GIAM, 0),
+                COALESCE(S.DOAN_SO, 0), COALESCE(H.SO_PHIEU, 0),
+                COALESCE(L.SL_HOAN, 0), COALESCE(L.SL_DOI, 0),
+                COALESCE(H.TIEN_HOAN, 0)
+            FROM Sales S
+            FULL OUTER JOIN ReturnHeaders H ON H.MANV = S.MANV
+            LEFT JOIN ReturnLines L ON L.MANV = COALESCE(S.MANV, H.MANV)
+            LEFT JOIN dbo.NHAN_VIEN NV ON NV.MANV = COALESCE(S.MANV, H.MANV)
+            WHERE 1 = 1 {search_sql}
+            ORDER BY COALESCE(S.DOAN_SO, 0) DESC, NV.TENNV
+        """, tuple(params))
+
+    def product_movement_report(self, start_date, end_date, keyword=""):
+        """Số lượng nhập, bán, hoàn, đổi theo sản phẩm trong kỳ."""
+        search_sql = ""
+        params = [start_date, end_date, start_date, end_date, start_date, end_date]
+        if keyword:
+            search_sql = " AND (SP.MASP LIKE ? OR SP.TENSP LIKE ?)"
+            params.extend((f"%{keyword}%", f"%{keyword}%"))
+        return self._fetch_all(f"""
+            WITH Sales AS (
+                SELECT CT.MASP, COUNT(DISTINCT HD.MAHD) AS SO_HD,
+                    SUM(COALESCE(CT.SOLUONG, 0)) AS SL_BAN
+                FROM dbo.HOA_DON HD
+                INNER JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
+                WHERE HD.TRANGTHAI = 1
+                  AND HD.NGAYLAP >= CONVERT(date, ?)
+                  AND HD.NGAYLAP < DATEADD(day, 1, CONVERT(date, ?))
+                GROUP BY CT.MASP
+            ),
+            Purchases AS (
+                SELECT CT.MASP, SUM(COALESCE(CT.SOLUONG, 0)) AS SL_NHAP
+                FROM dbo.PHIEU_NHAP PN
+                INNER JOIN dbo.CHI_TIET_PHIEU_NHAP CT ON CT.MAPN = PN.MAPN
+                WHERE ISNULL(PN.TRANGTHAI, 1) = 1
+                  AND PN.NGAYNHAP >= CONVERT(date, ?)
+                  AND PN.NGAYNHAP < DATEADD(day, 1, CONVERT(date, ?))
+                GROUP BY CT.MASP
+            ),
+            Returns AS (
+                SELECT CTDT.MASP,
+                    SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 0
+                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_HOAN,
+                    SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 1
+                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_DOI,
+                    SUM(CASE WHEN CTDT.TINHTRANGHANG = 1
+                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_NGUYEN,
+                    SUM(CASE WHEN CTDT.TINHTRANGHANG = 0
+                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_HONG
+                FROM dbo.PHIEU_DOI_TRA PDT
+                INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT
+                WHERE PDT.NGAY_DOI_TRA >= CONVERT(date, ?)
+                  AND PDT.NGAY_DOI_TRA < DATEADD(day, 1, CONVERT(date, ?))
+                GROUP BY CTDT.MASP
+            )
+            SELECT SP.MASP, COALESCE(SP.TENSP, N''),
+                COALESCE(S.SO_HD, 0), COALESCE(P.SL_NHAP, 0),
+                COALESCE(S.SL_BAN, 0), COALESCE(R.SL_HOAN, 0),
+                COALESCE(R.SL_DOI, 0), COALESCE(R.SL_NGUYEN, 0),
+                COALESCE(R.SL_HONG, 0), COALESCE(SP.SLTON, 0)
+            FROM dbo.SAN_PHAM SP
+            LEFT JOIN Sales S ON S.MASP = SP.MASP
+            LEFT JOIN Purchases P ON P.MASP = SP.MASP
+            LEFT JOIN Returns R ON R.MASP = SP.MASP
+            WHERE (COALESCE(SP.IS_DELETED, 0) = 0
+                   OR S.MASP IS NOT NULL OR P.MASP IS NOT NULL OR R.MASP IS NOT NULL)
+              {search_sql}
+            ORDER BY COALESCE(S.SL_BAN, 0) DESC, SP.TENSP
+        """, tuple(params))
+
+    def import_detail_report(self, start_date, end_date, keyword=""):
+        """Chi tiết từng dòng hàng trên phiếu nhập còn hiệu lực."""
+        search_sql = ""
+        params = [start_date, end_date]
+        if keyword:
+            search_sql = """
+                AND (
+                    PN.MAPN LIKE ? OR CT.MASP LIKE ? OR SP.TENSP LIKE ?
+                    OR NCC.TENNCC LIKE ? OR NV.TENNV LIKE ?
+                )
+            """
+            params.extend([f"%{keyword}%"] * 5)
+        return self._fetch_all(f"""
+            SELECT PN.MAPN, PN.NGAYNHAP, COALESCE(PN.LOAIPHIEUNHAP, N''),
+                COALESCE(NCC.TENNCC, PN.MANCC, N''),
+                COALESCE(PN.SHDNCC, N''), COALESCE(NV.TENNV, PN.MANV, N''),
+                CT.MASP, COALESCE(SP.TENSP, N''),
+                COALESCE(CT.SOLUONG, 0), COALESCE(CT.DONGIA, 0),
+                COALESCE(CT.SOLUONG, 0) * COALESCE(CT.DONGIA, 0)
+            FROM dbo.PHIEU_NHAP PN
+            INNER JOIN dbo.CHI_TIET_PHIEU_NHAP CT ON CT.MAPN = PN.MAPN
+            LEFT JOIN dbo.SAN_PHAM SP ON SP.MASP = CT.MASP
+            LEFT JOIN dbo.NHA_CUNG_CAP NCC ON NCC.MANCC = PN.MANCC
+            LEFT JOIN dbo.NHAN_VIEN NV ON NV.MANV = PN.MANV
+            WHERE ISNULL(PN.TRANGTHAI, 1) = 1
+              AND PN.NGAYNHAP >= CONVERT(date, ?)
+              AND PN.NGAYNHAP < DATEADD(day, 1, CONVERT(date, ?))
+              {search_sql}
+            ORDER BY PN.NGAYNHAP DESC, PN.MAPN, SP.TENSP
+        """, tuple(params))
+
+    def import_supplier_report(self, start_date, end_date, keyword=""):
+        """Tổng hợp nhập hàng theo nhà cung cấp."""
+        search_sql = ""
+        params = [start_date, end_date]
+        if keyword:
+            search_sql = " AND (NCC.MANCC LIKE ? OR NCC.TENNCC LIKE ?)"
+            params.extend((f"%{keyword}%", f"%{keyword}%"))
+        return self._fetch_all(f"""
+            SELECT PN.MANCC, COALESCE(NCC.TENNCC, PN.MANCC, N''),
+                COALESCE(NCC.SDT, N''), COUNT(DISTINCT PN.MAPN),
+                COALESCE(SUM(D.SL_NHAP), 0), COALESCE(SUM(PN.TONGTRIGIA), 0)
+            FROM dbo.PHIEU_NHAP PN
+            LEFT JOIN dbo.NHA_CUNG_CAP NCC ON NCC.MANCC = PN.MANCC
+            OUTER APPLY (
+                SELECT SUM(COALESCE(CT.SOLUONG, 0)) AS SL_NHAP
+                FROM dbo.CHI_TIET_PHIEU_NHAP CT WHERE CT.MAPN = PN.MAPN
+            ) D
+            WHERE ISNULL(PN.TRANGTHAI, 1) = 1
+              AND PN.NGAYNHAP >= CONVERT(date, ?)
+              AND PN.NGAYNHAP < DATEADD(day, 1, CONVERT(date, ?))
+              {search_sql}
+            GROUP BY PN.MANCC, NCC.TENNCC, NCC.SDT
+            ORDER BY SUM(PN.TONGTRIGIA) DESC, NCC.TENNCC
+        """, tuple(params))
+
+    def return_detail_report(self, start_date, end_date, keyword=""):
+        """Danh sách phiếu đổi trả, tổng tiền giữ ở cấp phiếu."""
+        search_sql = ""
+        params = [start_date, end_date]
+        if keyword:
+            search_sql = """
+                AND (PDT.MAPDT LIKE ? OR PDT.MAHD LIKE ?
+                     OR PDT.MANV LIKE ? OR NV.TENNV LIKE ?)
+            """
+            params.extend([f"%{keyword}%"] * 4)
+        return self._fetch_all(f"""
+            SELECT PDT.MAPDT, PDT.NGAY_DOI_TRA, COALESCE(PDT.MAHD, N''),
+                COALESCE(NV.TENNV, PDT.MANV, N''), COALESCE(PDT.LY_DO, N''),
+                COALESCE(D.SO_DONG, 0), COALESCE(D.SL_HOAN, 0),
+                COALESCE(D.SL_DOI, 0), COALESCE(D.SL_NGUYEN, 0),
+                COALESCE(D.SL_HONG, 0), COALESCE(PDT.TONG_TIEN_HOAN, 0)
+            FROM dbo.PHIEU_DOI_TRA PDT
+            LEFT JOIN dbo.NHAN_VIEN NV ON NV.MANV = PDT.MANV
+            OUTER APPLY (
+                SELECT COUNT(*) AS SO_DONG,
+                    SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 0
+                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_HOAN,
+                    SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 1
+                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_DOI,
+                    SUM(CASE WHEN CTDT.TINHTRANGHANG = 1
+                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_NGUYEN,
+                    SUM(CASE WHEN CTDT.TINHTRANGHANG = 0
+                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_HONG
+                FROM dbo.CHI_TIET_DOI_TRA CTDT WHERE CTDT.MAPDT = PDT.MAPDT
+            ) D
+            WHERE PDT.NGAY_DOI_TRA >= CONVERT(date, ?)
+              AND PDT.NGAY_DOI_TRA < DATEADD(day, 1, CONVERT(date, ?))
+              {search_sql}
+            ORDER BY PDT.NGAY_DOI_TRA DESC, PDT.MAPDT DESC
+        """, tuple(params))
+
+    def promotion_report(self, start_date, end_date, keyword=""):
+        """Hiệu quả khuyến mãi; tiền hoàn được gắn theo hóa đơn gốc."""
+        search_sql = ""
+        params = [start_date, end_date]
+        if keyword:
+            search_sql = " AND (KM.MAKM LIKE ? OR KM.TENKM LIKE ?)"
+            params.extend((f"%{keyword}%", f"%{keyword}%"))
+        return self._fetch_all(f"""
+            WITH InvoiceTotals AS (
+                SELECT HD.MAHD, HD.MAKM, HD.NGAYLAP,
+                    COALESCE(KM.TENKM, N'Không áp dụng') AS TENKM,
+                    COALESCE(KM.TYLEGIAM, 0) AS TYLEGIAM,
+                    COALESCE(SUM(COALESCE(CT.DONGIA, 0)
+                        * COALESCE(CT.SOLUONG, 0)), 0) AS TIEN_HANG
+                FROM dbo.HOA_DON HD
+                LEFT JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
+                LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
+                WHERE HD.TRANGTHAI = 1
+                  AND HD.NGAYLAP >= CONVERT(date, ?)
+                  AND HD.NGAYLAP < DATEADD(day, 1, CONVERT(date, ?))
+                GROUP BY HD.MAHD, HD.MAKM, HD.NGAYLAP, KM.TENKM, KM.TYLEGIAM
+            ),
+            Sales AS (
+                SELECT MAKM, TENKM, TYLEGIAM, COUNT(*) AS SO_HD,
+                    SUM(TIEN_HANG) AS TIEN_HANG,
+                    SUM(ROUND(TIEN_HANG * TYLEGIAM / 100.0, 2)) AS TIEN_GIAM,
+                    SUM(TIEN_HANG - ROUND(TIEN_HANG * TYLEGIAM / 100.0, 2))
+                        AS DOAN_SO
+                FROM InvoiceTotals GROUP BY MAKM, TENKM, TYLEGIAM
+            ),
+            Refunds AS (
+                SELECT I.MAKM, SUM(COALESCE(PDT.TONG_TIEN_HOAN, 0)) AS TIEN_HOAN
+                FROM InvoiceTotals I
+                INNER JOIN dbo.PHIEU_DOI_TRA PDT ON PDT.MAHD = I.MAHD
+                GROUP BY I.MAKM
+            )
+            SELECT S.MAKM, S.TENKM, S.TYLEGIAM, S.SO_HD, S.TIEN_HANG,
+                S.TIEN_GIAM, S.DOAN_SO, COALESCE(R.TIEN_HOAN, 0),
+                S.DOAN_SO - COALESCE(R.TIEN_HOAN, 0)
+            FROM Sales S
+            LEFT JOIN Refunds R ON ISNULL(R.MAKM, '') = ISNULL(S.MAKM, '')
+            WHERE 1 = 1 {search_sql}
+            ORDER BY S.DOAN_SO DESC, S.TENKM
+        """, tuple(params))
+
+    def current_inventory_report(self, threshold=5, status="all", keyword=""):
+        """Ảnh chụp tồn kho hiện tại; giá trị kho dùng giá nhập hiện lưu."""
+        status_sql = ""
+        params = []
+        if status == "low":
+            status_sql = " AND COALESCE(SP.SLTON, 0) > 0 AND SP.SLTON <= ?"
+            params.append(threshold)
+        elif status == "out":
+            status_sql = " AND COALESCE(SP.SLTON, 0) <= 0"
+        search_sql = ""
+        if keyword:
+            search_sql = " AND (SP.MASP LIKE ? OR SP.TENSP LIKE ?)"
+            params.extend((f"%{keyword}%", f"%{keyword}%"))
+        return self._fetch_all(f"""
+            SELECT SP.MASP, COALESCE(SP.TENSP, N''), COALESCE(SP.DVT, N''),
+                COALESCE(SP.SLTON, 0), COALESCE(SP.GIANHAP, 0),
+                COALESCE(SP.GIABAN, 0),
+                COALESCE(SP.SLTON, 0) * COALESCE(SP.GIANHAP, 0),
+                CASE WHEN COALESCE(SP.SLTON, 0) <= 0 THEN N'Hết hàng'
+                     WHEN COALESCE(SP.SLTON, 0) <= ? THEN N'Sắp hết'
+                     ELSE N'Còn hàng' END
+            FROM dbo.SAN_PHAM SP
+            WHERE COALESCE(SP.IS_DELETED, 0) = 0
+              {status_sql}
+              {search_sql}
+            ORDER BY COALESCE(SP.SLTON, 0), SP.TENSP
+        """, (threshold, *params))
+
+    def stock_movement_report(self, start_date, end_date, keyword=""):
+        """Nhập–xuất–tồn tái dựng từ chứng từ còn hiệu lực và SLTON hiện tại.
+
+        Tồn đầu/cuối được đối chiếu ngược từ SLTON hiện tại và các biến động
+        đã lưu từ ngày bắt đầu đến hiện tại. Giá trị tồn/xuất/trả là ước tính
+        theo GIANHAP hiện tại; trị giá nhập NCC lấy đơn giá chứng từ thực tế.
+        """
+        search_sql = ""
+        search_params = []
+        if keyword:
+            search_sql = " AND (SP.MASP LIKE ? OR SP.TENSP LIKE ?)"
+            search_params = [f"%{keyword}%", f"%{keyword}%"]
+        return self._fetch_all(f"""
+            WITH Bounds AS (
+                SELECT CONVERT(date, ?) AS START_DATE,
+                       DATEADD(day, 1, CONVERT(date, ?)) AS END_EXCLUSIVE
+            ),
+            Movements AS (
+                SELECT CT.MASP, PN.NGAYNHAP AS NGAY,
+                    N'PURCHASE' AS LOAI,
+                    SUM(COALESCE(CT.SOLUONG, 0)) AS SL_NHAP,
+                    CAST(0 AS BIGINT) AS SL_XUAT,
+                    SUM(COALESCE(CT.SOLUONG, 0) * COALESCE(CT.DONGIA, 0))
+                        AS GT_NHAP_THUC_TE,
+                    CAST(0 AS DECIMAL(18, 2)) AS GT_XUAT_UOC_TINH
+                FROM dbo.PHIEU_NHAP PN
+                INNER JOIN dbo.CHI_TIET_PHIEU_NHAP CT ON CT.MAPN = PN.MAPN
+                CROSS JOIN Bounds B
+                WHERE ISNULL(PN.TRANGTHAI, 1) = 1
+                  AND PN.NGAYNHAP >= B.START_DATE
+                GROUP BY CT.MASP, PN.NGAYNHAP
+
+                UNION ALL
+
+                SELECT CT.MASP, HD.NGAYLAP, N'SALE',
+                    CAST(0 AS BIGINT), SUM(COALESCE(CT.SOLUONG, 0)),
+                    CAST(0 AS DECIMAL(18, 2)),
+                    SUM(COALESCE(CT.SOLUONG, 0) * COALESCE(SP.GIANHAP, 0))
+                FROM dbo.HOA_DON HD
+                INNER JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
+                INNER JOIN dbo.SAN_PHAM SP ON SP.MASP = CT.MASP
+                CROSS JOIN Bounds B
+                WHERE HD.TRANGTHAI = 1 AND HD.NGAYLAP >= B.START_DATE
+                GROUP BY CT.MASP, HD.NGAYLAP
+
+                UNION ALL
+
+                SELECT CTDT.MASP, PDT.NGAY_DOI_TRA, N'RETURN_IN',
+                    SUM(COALESCE(CTDT.SOLUONG, 0)), CAST(0 AS BIGINT),
+                    CAST(0 AS DECIMAL(18, 2)),
+                    CAST(0 AS DECIMAL(18, 2))
+                FROM dbo.PHIEU_DOI_TRA PDT
+                INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT
+                CROSS JOIN Bounds B
+                WHERE CTDT.HINH_THUC_XU_LY = 0
+                  AND CTDT.TINHTRANGHANG = 1
+                  AND PDT.NGAY_DOI_TRA >= B.START_DATE
+                GROUP BY CTDT.MASP, PDT.NGAY_DOI_TRA
+
+                UNION ALL
+
+                SELECT CTDT.MASP, PDT.NGAY_DOI_TRA, N'EXCHANGE_OUT',
+                    CAST(0 AS BIGINT), SUM(COALESCE(CTDT.SOLUONG, 0)),
+                    CAST(0 AS DECIMAL(18, 2)),
+                    SUM(COALESCE(CTDT.SOLUONG, 0) * COALESCE(SP.GIANHAP, 0))
+                FROM dbo.PHIEU_DOI_TRA PDT
+                INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT
+                INNER JOIN dbo.SAN_PHAM SP ON SP.MASP = CTDT.MASP
+                CROSS JOIN Bounds B
+                WHERE CTDT.HINH_THUC_XU_LY = 1
+                  AND PDT.NGAY_DOI_TRA >= B.START_DATE
+                GROUP BY CTDT.MASP, PDT.NGAY_DOI_TRA
+            ),
+            MovementSummary AS (
+                SELECT M.MASP,
+                    SUM(M.SL_NHAP - M.SL_XUAT) AS NET_FROM_START,
+                    SUM(CASE WHEN M.NGAY >= B.END_EXCLUSIVE
+                        THEN M.SL_NHAP - M.SL_XUAT ELSE 0 END) AS NET_AFTER_END,
+                    SUM(CASE WHEN M.NGAY >= B.START_DATE
+                              AND M.NGAY < B.END_EXCLUSIVE
+                              AND M.LOAI = N'PURCHASE'
+                        THEN M.SL_NHAP ELSE 0 END) AS SL_NHAP_NCC,
+                    SUM(CASE WHEN M.NGAY >= B.START_DATE
+                              AND M.NGAY < B.END_EXCLUSIVE
+                              AND M.LOAI = N'PURCHASE'
+                        THEN M.GT_NHAP_THUC_TE ELSE 0 END) AS GT_NHAP_NCC,
+                    SUM(CASE WHEN M.NGAY >= B.START_DATE
+                              AND M.NGAY < B.END_EXCLUSIVE
+                              AND M.LOAI = N'RETURN_IN'
+                        THEN M.SL_NHAP ELSE 0 END) AS SL_KHACH_TRA,
+                    SUM(CASE WHEN M.NGAY >= B.START_DATE
+                              AND M.NGAY < B.END_EXCLUSIVE
+                              AND M.LOAI = N'SALE'
+                        THEN M.SL_XUAT ELSE 0 END) AS SL_BAN,
+                    SUM(CASE WHEN M.NGAY >= B.START_DATE
+                              AND M.NGAY < B.END_EXCLUSIVE
+                              AND M.LOAI = N'SALE'
+                        THEN M.GT_XUAT_UOC_TINH ELSE 0 END) AS GT_BAN_UOC_TINH,
+                    SUM(CASE WHEN M.NGAY >= B.START_DATE
+                              AND M.NGAY < B.END_EXCLUSIVE
+                              AND M.LOAI = N'EXCHANGE_OUT'
+                        THEN M.SL_XUAT ELSE 0 END) AS SL_DOI_HANG,
+                    SUM(CASE WHEN M.NGAY >= B.START_DATE
+                              AND M.NGAY < B.END_EXCLUSIVE
+                              AND M.LOAI = N'EXCHANGE_OUT'
+                        THEN M.GT_XUAT_UOC_TINH ELSE 0 END) AS GT_DOI_UOC_TINH
+                FROM Movements M CROSS JOIN Bounds B
+                GROUP BY M.MASP
+            )
+            SELECT SP.MASP, COALESCE(SP.TENSP, N''), COALESCE(SP.DVT, N''),
+                COALESCE(SP.SLTON, 0) - COALESCE(M.NET_FROM_START, 0)
+                    AS TON_DAU,
+                (COALESCE(SP.SLTON, 0) - COALESCE(M.NET_FROM_START, 0))
+                    * COALESCE(SP.GIANHAP, 0) AS GT_TON_DAU_UOC_TINH,
+                COALESCE(M.SL_NHAP_NCC, 0), COALESCE(M.GT_NHAP_NCC, 0),
+                COALESCE(M.SL_KHACH_TRA, 0),
+                COALESCE(M.SL_KHACH_TRA, 0) * COALESCE(SP.GIANHAP, 0),
+                COALESCE(M.SL_BAN, 0), COALESCE(M.GT_BAN_UOC_TINH, 0),
+                COALESCE(M.SL_DOI_HANG, 0), COALESCE(M.GT_DOI_UOC_TINH, 0),
+                COALESCE(SP.SLTON, 0) - COALESCE(M.NET_AFTER_END, 0),
+                (COALESCE(SP.SLTON, 0) - COALESCE(M.NET_AFTER_END, 0))
+                    * COALESCE(SP.GIANHAP, 0)
+            FROM dbo.SAN_PHAM SP
+            LEFT JOIN MovementSummary M ON M.MASP = SP.MASP
+            WHERE COALESCE(SP.IS_DELETED, 0) = 0 OR M.MASP IS NOT NULL
+              {search_sql}
+            ORDER BY SP.TENSP, SP.MASP
+        """, (start_date, end_date, *search_params))
+
+    def stock_card_report(self, start_date, end_date, keyword=""):
+        """Thẻ kho theo chứng từ với tồn chạy được tái dựng từ SLTON hiện tại."""
+        search_sql = ""
+        search_params = []
+        if keyword:
+            search_sql = " AND (SP.MASP LIKE ? OR SP.TENSP LIKE ?)"
+            search_params = [f"%{keyword}%", f"%{keyword}%"]
+        return self._fetch_all(f"""
+            WITH Bounds AS (
+                SELECT CONVERT(date, ?) AS START_DATE,
+                       DATEADD(day, 1, CONVERT(date, ?)) AS END_EXCLUSIVE
+            ),
+            Movements AS (
+                SELECT CT.MASP, PN.NGAYNHAP AS NGAY, PN.MAPN AS CHUNG_TU,
+                    N'Nhập nhà cung cấp' AS LOAI,
+                    SUM(COALESCE(CT.SOLUONG, 0)) AS SL_NHAP,
+                    CAST(0 AS BIGINT) AS SL_XUAT
+                FROM dbo.PHIEU_NHAP PN
+                INNER JOIN dbo.CHI_TIET_PHIEU_NHAP CT ON CT.MAPN = PN.MAPN
+                WHERE ISNULL(PN.TRANGTHAI, 1) = 1
+                GROUP BY CT.MASP, PN.NGAYNHAP, PN.MAPN
+
+                UNION ALL
+                SELECT CT.MASP, HD.NGAYLAP, HD.MAHD, N'Bán hàng',
+                    CAST(0 AS BIGINT), SUM(COALESCE(CT.SOLUONG, 0))
+                FROM dbo.HOA_DON HD
+                INNER JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
+                WHERE HD.TRANGTHAI = 1
+                GROUP BY CT.MASP, HD.NGAYLAP, HD.MAHD
+
+                UNION ALL
+                SELECT CTDT.MASP, PDT.NGAY_DOI_TRA, PDT.MAPDT, N'Khách trả hàng nguyên vẹn',
+                    SUM(COALESCE(CTDT.SOLUONG, 0)), CAST(0 AS BIGINT)
+                FROM dbo.PHIEU_DOI_TRA PDT
+                INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT
+                WHERE CTDT.HINH_THUC_XU_LY = 0 AND CTDT.TINHTRANGHANG = 1
+                GROUP BY CTDT.MASP, PDT.NGAY_DOI_TRA, PDT.MAPDT
+
+                UNION ALL
+                SELECT CTDT.MASP, PDT.NGAY_DOI_TRA, PDT.MAPDT, N'Xuất hàng đổi',
+                    CAST(0 AS BIGINT), SUM(COALESCE(CTDT.SOLUONG, 0))
+                FROM dbo.PHIEU_DOI_TRA PDT
+                INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT
+                WHERE CTDT.HINH_THUC_XU_LY = 1
+                GROUP BY CTDT.MASP, PDT.NGAY_DOI_TRA, PDT.MAPDT
+            ),
+            Opening AS (
+                SELECT SP.MASP,
+                    COALESCE(SP.SLTON, 0) - COALESCE(SUM(
+                        CASE WHEN M.NGAY >= B.START_DATE
+                            THEN M.SL_NHAP - M.SL_XUAT ELSE 0 END
+                    ), 0) AS TON_DAU
+                FROM dbo.SAN_PHAM SP
+                CROSS JOIN Bounds B
+                LEFT JOIN Movements M ON M.MASP = SP.MASP
+                GROUP BY SP.MASP, SP.SLTON
+            ),
+            PeriodMovements AS (
+                SELECT M.MASP, M.NGAY, M.CHUNG_TU, M.LOAI, M.SL_NHAP, M.SL_XUAT
+                FROM Movements M CROSS JOIN Bounds B
+                WHERE M.NGAY >= B.START_DATE AND M.NGAY < B.END_EXCLUSIVE
+            )
+            SELECT P.NGAY, P.LOAI, P.CHUNG_TU, P.MASP,
+                COALESCE(SP.TENSP, N''), P.SL_NHAP, P.SL_XUAT,
+                O.TON_DAU + SUM(P.SL_NHAP - P.SL_XUAT) OVER (
+                    PARTITION BY P.MASP ORDER BY P.NGAY, P.CHUNG_TU, P.LOAI
+                    ROWS UNBOUNDED PRECEDING
+                ) AS TON_SAU_GIAO_DICH
+            FROM PeriodMovements P
+            INNER JOIN Opening O ON O.MASP = P.MASP
+            LEFT JOIN dbo.SAN_PHAM SP ON SP.MASP = P.MASP
+            WHERE 1 = 1 {search_sql}
+            ORDER BY P.MASP, P.NGAY, P.CHUNG_TU, P.LOAI
+        """, (start_date, end_date, *search_params))
