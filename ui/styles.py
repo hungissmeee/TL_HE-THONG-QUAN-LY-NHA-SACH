@@ -158,8 +158,8 @@ MAIN_WINDOW_STYLESHEET = """
                 border: 1px solid #39465A;
             }
 
-            /* Mac dinh: nut phu (secondary). */
-            QPushButton:not(#navButton):not(#passwordButton):not(#logoutButton):not(#primaryButton):not(#dangerButton) {
+            /* Mac dinh: nut phu (secondary). Dung selector co ban de Qt nhan dien. */
+            QPushButton {
                 background-color: #34445A;
                 color: #E5E7EB;
                 border: 1px solid #46546A;
@@ -168,7 +168,7 @@ MAIN_WINDOW_STYLESHEET = """
                 min-height: 18px;
             }
 
-            QPushButton:not(#navButton):not(#passwordButton):not(#logoutButton):not(#primaryButton):not(#dangerButton):hover {
+            QPushButton:hover {
                 background-color: #465B75;
                 border-color: #60758F;
             }
@@ -481,12 +481,8 @@ MAIN_WINDOW_STYLESHEET = """
                 padding: 5px 7px;
             }
 
-            /* Trạng thái hover/disabled chỉ áp dụng cho nút phụ. */
-            QPushButton:not(#navButton):not(#passwordButton):not(#logoutButton):not(#primaryButton):not(#dangerButton):hover {
-                border-color: #60758F;
-            }
-
-            QPushButton:not(#navButton):not(#passwordButton):not(#logoutButton):disabled {
+            /* Trạng thái disabled áp dụng chung, các nút đặc biệt có selector riêng bên dưới. */
+            QPushButton:disabled {
                 background-color: #293442;
                 color: #8291A5;
                 border: 1px solid #344256;
