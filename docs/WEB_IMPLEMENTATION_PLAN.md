@@ -17,13 +17,14 @@
 
 ## 2. Hiện trạng mã nguồn đã kiểm tra
 
-- Ứng dụng hiện tại dùng Python, PySide6 và `pyodbc`; `requirements.txt` hiện chỉ khai báo hai thư viện này.
-- `main.py` khởi tạo một đối tượng `Database`; `database/connection.py` quản lý kết nối SQL Server và có các thao tác tài khoản/role.
-- Các trang nghiệp vụ trong `ui/` đang chứa cả giao diện lẫn truy vấn SQL. Ví dụ: trang sản phẩm, hóa đơn, phiếu nhập và báo cáo có các hàm tải dữ liệu và xử lý trực tiếp trên kết nối.
-- `ui/main_windows.py` định nghĩa nhóm trang và quyền hiển thị theo vai trò; `ui/permissions.py` có hàm phân quyền trang, trong đó tài khoản admin được phép truy cập toàn bộ trang.
+- Ứng dụng Desktop hiện tại dùng Python, PySide6 và `pyodbc`; `requirements.txt` khai báo các thư viện chạy ứng dụng.
+- `main.py` khởi tạo đối tượng `Database`; `database/connection.py` quản lý kết nối SQL Server và các thao tác tài khoản/role ở cấp SQL Server.
+- Mỗi phân hệ trong `core/` hiện được tổ chức theo feature: `xu_ly_du_lieu.py` là Service xử lý/kiểm tra nghiệp vụ; `truy_van_sql.py` là Repository chứa truy vấn SQL và transaction.
+- Các trang trong `ui/` chủ yếu phụ trách giao diện và gọi Service. Các kiểm tra quyền theo trạng thái mới nhất của chứng từ được đưa về tầng dữ liệu thay vì tự viết SQL trong màn hình.
+- Các đường dẫn `core/repositories/` và `core/services/` cũ được giữ làm wrapper tương thích; code mới nên import trực tiếp từ package phân hệ.
+- `ui/main_windows.py` khởi tạo cửa sổ và các trang; `ui/sidebar_navigation.py` phụ trách nhóm menu, điều hướng và quyền hiển thị. Giao diện nhân viên được chia thành package danh sách và chi tiết.
 - Database dùng các SQL Server Login/Database User và các role như `rl_QuanLy`, `rl_ThuNgan`, `rl_NhanVienKho`, `rl_KeToan`. Tài khoản admin có quyền rộng để quản trị.
-- Do giao diện và truy vấn đang gắn với nhau, cần tạo tầng nghiệp vụ/dữ liệu dùng chung trước khi thêm API. Không chuyển nguyên file trong `ui/` sang Backend.
-
+- Tầng Service/Repository hiện có thể được tái sử dụng khi phát triển Backend, nhưng Backend vẫn cần lớp xác thực, phân quyền theo từng request và quản lý kết nối riêng; không dùng trực tiếp các lớp PySide6 hoặc chia sẻ một kết nối Desktop toàn cục cho nhiều request.
 ## 3. Kiến trúc mục tiêu
 
 ```text
