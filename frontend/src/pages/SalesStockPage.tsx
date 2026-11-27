@@ -242,7 +242,6 @@ function ImportsPage() {
         </Form>
       )}
     </Modal>
-    </Modal>
     <Modal title="Chi tiết phiếu nhập" open={detailOpen} onCancel={() => setDetailOpen(false)} footer={<Button onClick={() => setDetailOpen(false)}>Đóng</Button>} width={820} className="desktop-transaction-modal">
       {!detail ? <Spin /> : <>
         <Card size="small" title="Thông tin phiếu nhập" className="desktop-form-section">
@@ -275,7 +274,6 @@ function ImportsPage() {
           </Descriptions>
         </Card>
       </>}
-    </Modal>
     </Modal>
   </div>;
 }
