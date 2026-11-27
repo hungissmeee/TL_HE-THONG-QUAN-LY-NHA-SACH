@@ -32,6 +32,8 @@ from ui.table_sort import (
 )
 from .dung_chung import MONEY_QUANT, Decimal, ROUND_HALF_UP, money, as_decimal, date_text, time_text
 from ui.formatters import format_report_date
+from core.repositories.hoa_don_repository import HoaDonRepository
+from core.services.hoa_don_service import HoaDonService
 
 
 class InvoiceDetailDialog(QDialog):
@@ -39,6 +41,7 @@ class InvoiceDetailDialog(QDialog):
     def __init__(self, db, invoice_code, parent=None, on_cancel=None):
         super().__init__(parent)
         self.db = db
+        self.service = HoaDonService(HoaDonRepository(db))
         self.invoice_code = invoice_code
         self.on_cancel = on_cancel
         self.setWindowTitle(f"Chi tiết hóa đơn {invoice_code}")
@@ -48,73 +51,21 @@ class InvoiceDetailDialog(QDialog):
         self._build_ui()
 
     def _load_invoice(self):
-        conn = self.db.get_connection()
-        cursor = conn.cursor()
-        try:
-            cursor.execute("""
-                SELECT
-                    HD.MAHD, HD.NGAYLAP, HD.TIENKHACHDUA,
-                    HD.TRANGTHAI, HD.MANV, NV.TENNV, NV.VAITRO,
-                    HD.MACA, C.SOCA, C.NGAYLAM, C.TGMO, C.TGDONG,
-                    HD.MAKM, KM.TENKM, KM.TYLEGIAM
-                FROM dbo.HOA_DON HD
-                LEFT JOIN dbo.NHAN_VIEN NV ON NV.MANV = HD.MANV
-                LEFT JOIN dbo.CA_LAM_VIEC C ON C.MACA = HD.MACA
-                LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
-                WHERE HD.MAHD = ?
-            """, self.invoice_code)
-            row = cursor.fetchone()
-            if row is None:
-                raise RuntimeError("Không tìm thấy hóa đơn.")
-
-            header = {
-                "mahd": row[0],
-                "ngaylap": row[1],
-                "cash": as_decimal(row[2]),
-                "status": row[3],
-                "manv": row[4],
-                "tennv": row[5],
-                "vaitro": row[6],
-                "maca": row[7],
-                "soca": row[8],
-                "ngaylam": row[9],
-                "tgmo": row[10],
-                "tgdong": row[11],
-                "makm": row[12],
-                "tenkm": row[13],
-                "discount_rate": as_decimal(row[14]),
-            }
-
-            cursor.execute("""
-                SELECT CT.MASP, SP.TENSP, SP.DVT,
-                       CT.DONGIA, CT.SOLUONG, CT.VAT
-                FROM dbo.CHI_TIET_HOA_DON CT
-                LEFT JOIN dbo.SAN_PHAM SP ON SP.MASP = CT.MASP
-                WHERE CT.MAHD = ?
-                ORDER BY CT.MASP
-            """, self.invoice_code)
-
-            items = []
-            for item in cursor.fetchall():
-                price = as_decimal(item[3])
-                quantity = int(item[4] or 0)
-                vat = as_decimal(item[5])
-                # DONGIA đã gồm VAT: không tính thêm VAT vào thành tiền.
-                line_total = (price * quantity).quantize(
-                    MONEY_QUANT, rounding=ROUND_HALF_UP
-                )
-                items.append({
-                    "masp": item[0],
-                    "tensp": item[1] or "(Sản phẩm đã ngừng lưu thông)",
-                    "dvt": item[2],
-                    "price": price,
-                    "quantity": quantity,
-                    "vat": vat,
-                    "line_total": line_total,
-                })
-            return header, items
-        finally:
-            cursor.close()
+        data = self.service.get_invoice_detail(self.invoice_code)
+        header = data["header"]
+        header["cash"] = as_decimal(header.get("cash"))
+        header["discount_rate"] = as_decimal(header.get("discount_rate"))
+        items = []
+        for source in data["items"]:
+            item = dict(source)
+            item["price"] = as_decimal(item.get("price"))
+            item["quantity"] = int(item.get("quantity") or 0)
+            item["vat"] = as_decimal(item.get("vat"))
+            item["line_total"] = (item["price"] * item["quantity"]).quantize(
+                MONEY_QUANT, rounding=ROUND_HALF_UP
+            )
+            items.append(item)
+        return header, items
 
     def _totals(self):
         # Tổng tiền hàng đã bao gồm VAT.
