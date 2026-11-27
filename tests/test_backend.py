@@ -93,11 +93,11 @@ class BackendConfigurationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             env_file = Path(directory) / ".env"
             env_file.write_text(
-                "BOOKHUB_WEB_ENV=test\\n"
-                "BOOKHUB_WEB_SQL_SERVER=sql.example.local\\n"
-                "BOOKHUB_WEB_SQL_DATABASE=BOOKHUB_TEST\\n"
-                "BOOKHUB_WEB_SQL_USERNAME=web_user\\n"
-                "BOOKHUB_WEB_SQL_PASSWORD=local_secret\\n",
+                "BOOKHUB_WEB_ENV=test\n"
+                "BOOKHUB_WEB_SQL_SERVER=sql.example.local\n"
+                "BOOKHUB_WEB_SQL_DATABASE=BOOKHUB_TEST\n"
+                "BOOKHUB_WEB_SQL_USERNAME=web_user\n"
+                "BOOKHUB_WEB_SQL_PASSWORD=local_secret\n",
                 encoding="utf-8",
             )
             with patch.dict(os.environ, {}, clear=True):
