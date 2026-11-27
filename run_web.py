@@ -82,10 +82,21 @@ def _find_npm() -> str:
 
 
 def _npm_command(npm_path: str, arguments: list[str]) -> list[str]:
-    """Tạo lệnh npm tương thích với file .cmd trên Windows."""
+    """Tạo lệnh npm tương thích với npm.cmd và đường dẫn có dấu cách trên Windows."""
     if os.name == "nt":
-        command_line = subprocess.list2cmdline([npm_path, *arguments])
-        return [os.environ.get("COMSPEC", "cmd.exe"), "/d", "/c", command_line]
+        # cmd.exe xử lý chuỗi bắt đầu bằng dấu ngoặc kép theo quy tắc đặc biệt.
+        # Dùng CALL trước đường dẫn đã quote để cmd không hiểu nhầm đường dẫn
+        # "C:\\Program Files\\...\\npm.cmd" thành chuỗi tiêu đề của /c.
+        npm_executable = subprocess.list2cmdline([npm_path])
+        command_arguments = subprocess.list2cmdline(arguments)
+        command_line = f"call {npm_executable} {command_arguments}".rstrip()
+        return [
+            os.environ.get("COMSPEC", "cmd.exe"),
+            "/d",
+            "/s",
+            "/c",
+            command_line,
+        ]
     return [npm_path, *arguments]
 
 
