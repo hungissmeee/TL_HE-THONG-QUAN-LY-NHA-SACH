@@ -31,6 +31,8 @@ from ui.table_sort import (
     prepare_sortable_table,
 )
 from .dung_chung import Decimal, money, as_decimal, date_text
+from core.repositories.phieu_nhap_repository import PhieuNhapRepository
+from core.services.phieu_nhap_service import PhieuNhapService
 
 
 class ImportDetailDialog(QDialog):
@@ -40,6 +42,7 @@ class ImportDetailDialog(QDialog):
     def __init__(self, db, import_code, parent=None, on_cancel=None):
         super().__init__(parent)
         self.db = db
+        self.service = PhieuNhapService(PhieuNhapRepository(db))
         self.import_code = import_code
         self.on_cancel = on_cancel
         self.header = None
@@ -50,50 +53,22 @@ class ImportDetailDialog(QDialog):
         self._build_ui()
 
     def _load_import(self):
-        conn = self.db.get_connection()
-        cursor = conn.cursor()
-        try:
-            cursor.execute("""
-                SELECT
-                    PN.MAPN, PN.NGAYNHAP, PN.LOAIPHIEUNHAP, PN.SHDNCC,
-                    PN.TONGTRIGIA, PN.MANV, NV.TENNV,
-                    PN.MANCC, NCC.TENNCC, NCC.SDT, NCC.DIACHI, NCC.MST,
-                    PN.TRANGTHAI
-                FROM dbo.PHIEU_NHAP PN
-                LEFT JOIN dbo.NHAN_VIEN NV ON NV.MANV = PN.MANV
-                LEFT JOIN dbo.NHA_CUNG_CAP NCC ON NCC.MANCC = PN.MANCC
-                WHERE PN.MAPN = ?
-            """, self.import_code)
-            row = cursor.fetchone()
-            if row is None:
-                raise RuntimeError("Không tìm thấy phiếu nhập.")
-            self.header = {
-                "mapn": row[0], "ngaynhap": row[1], "loai": row[2],
-                "shdncc": row[3], "total": as_decimal(row[4]),
-                "manv": row[5], "tennv": row[6], "mancc": row[7],
-                "tenncc": row[8], "sdt": row[9], "diachi": row[10],
-                "mst": row[11], "status": int(row[12] or 0),
-            }
-
-            cursor.execute("""
-                SELECT CT.MASP, SP.TENSP, SP.DVT,
-                       CT.SOLUONG, CT.DONGIA, CT.VAT
-                FROM dbo.CHI_TIET_PHIEU_NHAP CT
-                LEFT JOIN dbo.SAN_PHAM SP ON SP.MASP = CT.MASP
-                WHERE CT.MAPN = ?
-                ORDER BY SP.TENSP, CT.MASP
-            """, self.import_code)
-            for detail in cursor.fetchall():
-                quantity = int(detail[3] or 0)
-                price = as_decimal(detail[4])
-                self.items.append({
-                    "masp": detail[0], "tensp": detail[1] or "",
-                    "dvt": detail[2] or "", "quantity": quantity,
-                    "price": price, "vat": as_decimal(detail[5]),
-                    "amount": price * quantity,
-                })
-        finally:
-            cursor.close()
+        data = self.service.get_import_detail(self.import_code)
+        self.header = data["header"]
+        self.header["total"] = as_decimal(self.header.get("total"))
+        self.header["status"] = int(self.header.get("status") or 0)
+        for detail in data["items"]:
+            quantity = int(detail.get("quantity") or 0)
+            price = as_decimal(detail.get("price"))
+            self.items.append({
+                "masp": detail.get("masp"),
+                "tensp": detail.get("tensp") or "",
+                "dvt": detail.get("dvt") or "",
+                "quantity": quantity,
+                "price": price,
+                "vat": as_decimal(detail.get("vat")),
+                "amount": price * quantity,
+            })
 
     def _build_ui(self):
         root = QVBoxLayout(self)
