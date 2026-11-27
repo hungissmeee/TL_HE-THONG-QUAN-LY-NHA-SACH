@@ -9,7 +9,7 @@ import {
   message,
   type FormProps,
 } from "antd";
-import { LockOutlined, ReadOutlined, UserOutlined } from "@ant-design/icons";
+import { LockOutlined, MoonOutlined, ReadOutlined, SunOutlined, UserOutlined } from "@ant-design/icons";
 
 import { ApiError } from "@/services/api";
 import { useAuth } from "@/features/auth/AuthContext";
@@ -21,7 +21,7 @@ interface LoginFormValues {
   password: string;
 }
 
-export function LoginPage() {
+export function LoginPage({ themeMode, onToggleTheme }: { themeMode: "light" | "dark"; onToggleTheme: () => void }) {
   const { login } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -46,12 +46,23 @@ export function LoginPage() {
   return (
     <main className="login-page">
       <section className="login-brand-panel">
-        <div className="brand-lockup">
-          <div className="brand-mark"><ReadOutlined /></div>
-          <div>
-            <div className="brand-name">HỆ THỐNG QUẢN LÝ</div>
-            <div className="brand-caption">NHÀ SÁCH</div>
+        <div className="login-brand-top">
+          <div className="brand-lockup">
+            <div className="brand-mark"><ReadOutlined /></div>
+            <div>
+              <div className="brand-name">HỆ THỐNG QUẢN LÝ</div>
+              <div className="brand-caption">NHÀ SÁCH</div>
+            </div>
           </div>
+          <Button
+            className="login-theme-toggle"
+            type="default"
+            ghost
+            icon={themeMode === "dark" ? <SunOutlined /> : <MoonOutlined />}
+            onClick={onToggleTheme}
+          >
+            {themeMode === "dark" ? "Giao diện sáng" : "Giao diện tối"}
+          </Button>
         </div>
 
         <div className="brand-message">
