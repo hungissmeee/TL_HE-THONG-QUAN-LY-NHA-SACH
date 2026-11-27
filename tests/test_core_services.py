@@ -1038,6 +1038,32 @@ class ReportServiceTests(unittest.TestCase):
             ("2026-01-01", "2026-01-31", "%book%", "%book%", "%book%"),
         )
 
+    def test_shift_report_binds_all_six_date_placeholders(self):
+        class CaptureRepository(BaoCaoRepository):
+            def __init__(self):
+                self.sql = ""
+                self.params = None
+
+            def _fetch_all(self, sql, params=()):
+                self.sql = sql
+                self.params = params
+                return []
+
+        repository = CaptureRepository()
+        repository.shift_report("2026-11-01", "2026-11-30")
+        self.assertEqual(repository.sql.count("?"), 6)
+        self.assertEqual(
+            repository.params,
+            (
+                "2026-11-01", "2026-11-30",
+                "2026-11-01", "2026-11-30",
+                "2026-11-01", "2026-11-30",
+            ),
+        )
+        self.assertIn("FROM dbo.CA_LAM_VIEC C", repository.sql)
+        self.assertIn("LEFT JOIN Sales S ON S.MACA = C.MACA", repository.sql)
+        self.assertIn("LEFT JOIN Returns R ON R.MACA = C.MACA", repository.sql)
+
     def test_employee_report_does_not_multiply_return_header_amounts(self):
         class CaptureRepository(BaoCaoRepository):
             def __init__(self):
