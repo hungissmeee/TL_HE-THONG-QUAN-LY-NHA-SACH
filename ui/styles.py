@@ -481,12 +481,19 @@ MAIN_WINDOW_STYLESHEET = """
                 padding: 5px 7px;
             }
 
-            /* Trạng thái nút được thống nhất; không làm mất màu riêng của nút nguy hiểm. */
-            QPushButton:not(#navButton):not(#passwordButton):not(#logoutButton):hover {
-                border: 1px solid #60758F;
+            /* Trạng thái hover/disabled chỉ áp dụng cho nút phụ. */
+            QPushButton:not(#navButton):not(#passwordButton):not(#logoutButton):not([buttonRole="primary"]):not([buttonRole="danger"]):hover {
+                border-color: #60758F;
             }
 
             QPushButton:not(#navButton):not(#passwordButton):not(#logoutButton):disabled {
+                background-color: #293442;
+                color: #8291A5;
+                border: 1px solid #344256;
+            }
+
+            QPushButton[buttonRole="primary"]:disabled,
+            QPushButton[buttonRole="danger"]:disabled {
                 background-color: #293442;
                 color: #8291A5;
                 border: 1px solid #344256;
