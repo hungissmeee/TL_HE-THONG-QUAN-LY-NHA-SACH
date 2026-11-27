@@ -38,6 +38,7 @@ class OverviewReportPage(ReportBasePage):
             ],
             section_title="Kết quả bán hàng",
             section_description="Các khoản thu và hoàn trong khoảng thời gian đang chọn.",
+            primary_key="net",
         )
 
         # Nhóm chứng từ và nhập hàng được tách riêng để tránh trộn với doanh thu.
