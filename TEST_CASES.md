@@ -146,6 +146,14 @@ Tài liệu này là danh sách kiểm thử chức năng (manual/acceptance tes
 | BC-06 | P1 | Kế toán/Admin | Lọc báo cáo tồn kho theo tất cả/sắp hết/hết hàng, ngưỡng và từ khóa. | Danh sách, trạng thái và giá trị tồn được tính đúng theo SLTON và GIANHAP. |
 | BC-07 | P1 | Kế toán/Admin | Đổi cách sắp xếp và tìm sản phẩm trong báo cáo sản phẩm. | Xếp hạng, số lượng bán, doanh thu sau khuyến mãi và tồn kho hiển thị đúng. |
 | BC-08 | P1 | Kế toán/Admin | Xuất CSV từng bảng báo cáo và mở bằng Excel. | Tệp CSV có tiêu đề, đủ dòng/cột, nội dung tiếng Việt và số liệu không bị mất. |
+| BC-09 | P0 | Kế toán/Admin | Xem báo cáo hóa đơn có hóa đơn đã phát sinh hoàn tiền và đổi sản phẩm. | Số phiếu đổi trả, SL hoàn tiền, SL đổi hàng, tiền hoàn và doanh thu sau hoàn khớp tất cả phiếu đổi trả gắn với từng hóa đơn; hóa đơn hủy không tạo doanh thu. |
+| BC-10 | P0 | Kế toán/Admin | Chọn kỳ báo cáo doanh thu có hóa đơn và phiếu hoàn phát sinh ở những ngày khác nhau. | Doanh thu được nhóm theo ngày lập hóa đơn; tiền hoàn theo ngày lập phiếu đổi trả; doanh thu sau hoàn trong kỳ bằng doanh thu bán hàng trừ tiền hoàn phát sinh trong kỳ. |
+| BC-11 | P1 | Kế toán/Admin | Đối chiếu báo cáo đổi trả có cả hoàn tiền, đổi sản phẩm, hàng nguyên vẹn và hàng hỏng. | Các nhóm số lượng được tách đúng theo HINH_THUC_XU_LY và TINHTRANGHANG; chỉ tiền hoàn thực tế được cộng vào tổng tiền hoàn. |
+| BC-12 | P1 | Kế toán/Admin | Lọc báo cáo sản phẩm có bán hàng và có phiếu hoàn trong kỳ. | Doanh thu sau hoàn theo từng mã sản phẩm bằng doanh thu sau khuyến mãi trừ tiền hoàn của dòng hoàn tiền; đổi hàng không bị tính thành tiền hoàn. |
+| BC-13 | P1 | Kế toán/Admin | Đối chiếu bảng hiệu quả khuyến mãi và bảng nhập theo nhà cung cấp. | Số hóa đơn, tiền giảm, tiền hoàn và doanh thu theo chương trình khớp hóa đơn nguồn; số phiếu, lượng nhập và trị giá theo NCC chỉ tính phiếu nhập còn hiệu lực. |
+| BC-14 | P1 | Quản lý/Kế toán/Admin | Xem báo cáo ca làm việc có ca đã kết thúc nhưng chưa chốt và ca đã chốt tiền. | Trạng thái kết thúc ca tách biệt trạng thái chốt tiền; lượt đăng ký được tính theo số lượt LAMCA; tiền cuối ca không bị gọi nhầm là doanh thu. |
+| BC-15 | P1 | Kế toán/Admin | Lọc báo cáo tồn kho theo trạng thái, ngưỡng và từ khóa. | KPI đầu trang dùng đúng cùng tập sản phẩm với bảng chi tiết sau khi áp dụng bộ lọc. |
+
 
 ## 11. Điều hướng và giao diện dùng chung
 
