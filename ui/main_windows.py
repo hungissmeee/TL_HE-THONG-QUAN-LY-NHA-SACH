@@ -94,16 +94,15 @@ class MainWindow(SidebarNavigationMixin, QMainWindow):
                 "expanded": False,
             },
             {
+                "key": "report_center",
+                "title": "TRUNG TÂM BÁO CÁO",
+                "standalone_page": "report_center",
+            },
+            {
                 "key": "people",
                 "title": "QUẢN LÝ NHÂN SỰ",
                 "pages": ["employees", "shifts"],
                 "expanded": True,
-            },
-            {
-                "key": "reports",
-                "title": "BÁO CÁO",
-                "pages": ["report_center"],
-                "expanded": False,
             },
         ]
 
@@ -231,7 +230,11 @@ class MainWindow(SidebarNavigationMixin, QMainWindow):
         all_page_keys = [
             key
             for group in self.sidebar_group_config
-            for key in group["pages"]
+            for key in group.get("pages", [])
+        ] + [
+            group["standalone_page"]
+            for group in self.sidebar_group_config
+            if group.get("standalone_page")
         ]
         self.allowed_pages = allowed_pages_for_user(
             self.db.username,
