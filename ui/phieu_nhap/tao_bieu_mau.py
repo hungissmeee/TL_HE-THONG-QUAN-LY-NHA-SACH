@@ -448,6 +448,7 @@ class CreateImportDialog(QDialog):
             "supplier_code": supplier_code,
             "supplier_invoice": self.supplier_invoice_input.text().strip() or None,
             "employee_code": self.employee.get("manv"),
+            "is_admin": self.is_admin,
             "import_type": self.import_type_combo.currentText(),
             "items": [
                 {
