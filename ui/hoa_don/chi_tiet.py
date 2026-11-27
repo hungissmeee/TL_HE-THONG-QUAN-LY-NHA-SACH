@@ -222,7 +222,7 @@ class InvoiceDetailDialog(QDialog):
         buttons.addStretch()
         if self.on_cancel is not None and self.header["status"] == 1:
             cancel_button = QPushButton("Hủy hóa đơn")
-            cancel_button.setProperty("buttonRole", "danger")
+            cancel_button.setObjectName("dangerButton")
             cancel_button.clicked.connect(self.cancel_invoice)
             buttons.addWidget(cancel_button)
 
