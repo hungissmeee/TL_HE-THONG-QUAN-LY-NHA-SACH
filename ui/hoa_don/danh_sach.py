@@ -282,6 +282,7 @@ class InvoiceWindow(QWidget):
             self, "Xác nhận hủy hóa đơn",
             f"Bạn có chắc chắn muốn hủy hóa đơn {invoice_code}?\n\n"
             "Toàn bộ số lượng sản phẩm sẽ được hoàn lại kho. "
+            "Sản phẩm đã xóa mềm (nếu có) sẽ được khôi phục về trạng thái hoạt động. "
             "Hóa đơn đã phát sinh đổi trả không thể hủy.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
@@ -295,7 +296,8 @@ class InvoiceWindow(QWidget):
             )
             QMessageBox.information(
                 self, "Hủy hóa đơn thành công",
-                f"Đã hủy hóa đơn {invoice_code} và hoàn toàn bộ sản phẩm về kho."
+                f"Đã hủy hóa đơn {invoice_code} và hoàn toàn bộ sản phẩm về kho. "
+                "Sản phẩm đã xóa mềm được khôi phục trạng thái hoạt động."
             )
             self.load_invoices()
         except Exception as error:
