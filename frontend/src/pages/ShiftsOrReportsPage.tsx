@@ -7,7 +7,7 @@ import {
 import { DeleteOutlined, PlusOutlined, ReloadOutlined, TeamOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
 import { ApiError } from "@/services/api";
-import { operationsApi, type DataRow } from "@/features/operations/operationsApi";
+import { operationsApi, type Row as DataRow } from "@/features/operations/operationsApi";
 import { useAuth } from "@/features/auth/AuthContext";
 
 const { Title, Text } = Typography;
