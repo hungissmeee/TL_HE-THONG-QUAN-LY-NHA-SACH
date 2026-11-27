@@ -402,7 +402,6 @@ class CreateInvoiceDialog(QDialog):
         return value.quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
 
     @staticmethod
-    @staticmethod
     def _assert_cart_prices_unchanged(cursor, cart, promotion_code, expected_discount_rate):
         return HoaDonRepository.assert_cart_prices_unchanged(
             cursor, cart, promotion_code, expected_discount_rate
