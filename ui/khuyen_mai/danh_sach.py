@@ -146,6 +146,7 @@ class PromotionWindow(QWidget):
         header.addStretch()
 
         self.add_button = QPushButton("+ Thêm khuyến mãi")
+        self.add_button.setProperty("buttonRole", "primary")
         self.add_button.clicked.connect(self.add_promotion)
         header.addWidget(self.add_button)
 
