@@ -48,6 +48,8 @@ class ProductWindow(QWidget):
     def setup_ui(self):
         """Tạo thanh tìm kiếm, bảng sản phẩm và các nút thao tác."""
         root = QVBoxLayout(self)
+        root.setContentsMargins(4, 4, 4, 4)
+        root.setSpacing(10)
 
         top = QHBoxLayout()
         title = QLabel("DANH SÁCH SẢN PHẨM")
