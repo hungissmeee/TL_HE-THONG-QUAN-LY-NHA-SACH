@@ -211,7 +211,7 @@ class ReturnRepository:
             cursor.execute("""
                 SELECT CT.MASP,
                        COALESCE(SP.TENSP, N'(Sản phẩm không còn trong danh mục)'),
-                       CT.SOLUONG, CT.DONGIAHOAN, CT.VAT,
+                       CT.SOLUONG, CT.TONGTIENHOAN, CT.VAT,
                        CT.TINHTRANGHANG, CT.HINH_THUC_XU_LY
                 FROM dbo.CHI_TIET_DOI_TRA CT
                 LEFT JOIN dbo.SAN_PHAM SP ON SP.MASP = CT.MASP
