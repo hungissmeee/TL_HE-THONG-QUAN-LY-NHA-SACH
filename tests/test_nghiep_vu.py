@@ -226,10 +226,18 @@ class ReturnDialogWidgetTests(unittest.TestCase):
         combo.close()
 
     def test_return_table_reserves_width_for_quantity_spinbox(self):
-        from PySide6.QtWidgets import QHeaderView, QTableWidget
+        from PySide6.QtWidgets import QHeaderView
+        from ui.product_table import ProductTableWidget
 
-        table = QTableWidget(0, 9)
-        CreateReturnDialog._configure_items_table(table)
+        table = ProductTableWidget(
+            [
+                "Mã SP", "Tên sản phẩm", "Đã mua", "Đã xử lý",
+                "Còn được xử lý", "Số lượng", "Tình trạng hàng",
+                "Hình thức xử lý", "Tiền hoàn"
+            ],
+            stretch_column=1,
+            fixed_column_widths={5: 100},
+        )
 
         self.assertEqual(
             table.horizontalHeader().sectionResizeMode(5),
@@ -240,6 +248,7 @@ class ReturnDialogWidgetTests(unittest.TestCase):
             table.horizontalHeader().sectionResizeMode(1),
             QHeaderView.ResizeMode.Stretch,
         )
+        self.assertFalse(table.isSortingEnabled())
         table.close()
 
     def test_return_quantity_editor_row_matches_invoice_cart_height(self):
