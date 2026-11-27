@@ -343,13 +343,6 @@ export function ProductsPage() {
         render: (value: string | null) => value || "—",
       },
       {
-        title: "ISBN",
-        dataIndex: "isbn",
-        key: "isbn",
-        width: 145,
-        render: (value: string | null | undefined) => value || "—",
-      },
-      {
         title: "Thao tác",
         key: "actions",
         width: canManage ? 190 : 100,
@@ -582,25 +575,6 @@ export function ProductsPage() {
                 <Descriptions.Item label="Giá bán">{formatMoney(selectedProduct.giaban)}</Descriptions.Item>
                 <Descriptions.Item label="Số lượng tồn">{formatNumber(selectedProduct.slton)}</Descriptions.Item>
                 <Descriptions.Item label="VAT (%)">{formatNumber(selectedProduct.vat)}</Descriptions.Item>
-              </Descriptions>
-            </Card>
-            <Card size="small" title={selectedProduct.loai === "Sách" ? "Thông tin sách" : "Thông tin sản phẩm khác"} className="desktop-form-section">
-              <Descriptions bordered column={1} size="small">
-                {selectedProduct.loai === "Sách" ? (
-                  <>
-                    <Descriptions.Item label="ISBN">{selectedProduct.isbn || "—"}</Descriptions.Item>
-                    <Descriptions.Item label="Năm xuất bản">{selectedProduct.namxb ?? "—"}</Descriptions.Item>
-                    <Descriptions.Item label="Nhà xuất bản">{selectedProduct.ten_nxb || "—"}</Descriptions.Item>
-                    <Descriptions.Item label="Tác giả">{selectedProduct.authors?.join(", ") || "Chưa có thông tin"}</Descriptions.Item>
-                    <Descriptions.Item label="Thể loại">{selectedProduct.genres?.join(", ") || "Chưa có thông tin"}</Descriptions.Item>
-                  </>
-                ) : (
-                  <>
-                    <Descriptions.Item label="Ngày sản xuất">{displayDate(selectedProduct.ngaysx)}</Descriptions.Item>
-                    <Descriptions.Item label="Thương hiệu">{selectedProduct.brand_name || "—"}</Descriptions.Item>
-                    <Descriptions.Item label="Xuất xứ">{selectedProduct.brand_origin || "—"}</Descriptions.Item>
-                  </>
-                )}
               </Descriptions>
             </Card>
           </>
