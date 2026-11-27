@@ -1,11 +1,8 @@
 """Service nghiệp vụ đổi trả dùng chung cho Desktop và Backend."""
 
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
-
 from core.doi_tra.repository import ReturnRepository
+from core.doi_tra.calculation import calculate_invoice_refund
 
-
-MONEY_QUANT = Decimal("0.01")
 
 
 class ReturnService:
@@ -117,17 +114,8 @@ class ReturnService:
         )
 
     @staticmethod
-    def calculate_refund(lines):
-        """Hàm thuần hỗ trợ test và hiển thị số tiền hoàn dự kiến."""
-        total = Decimal("0.00")
-        for line in lines:
-            try:
-                price = Decimal(str(line["net_price"]))
-                quantity = int(line["quantity"])
-            except (KeyError, TypeError, ValueError, InvalidOperation):
-                raise ValueError("Dữ liệu tính tiền hoàn không hợp lệ.")
-            if not price.is_finite() or price < 0 or quantity < 0:
-                raise ValueError("Đơn giá hoặc số lượng hoàn không hợp lệ.")
-            if int(line.get("action", 0)) == 0:
-                total += price * quantity
-        return total.quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
+    def calculate_invoice_refund(invoice_items, selected_items, discount_rate):
+        """Tính tiền hoàn bằng chênh lệch hai tổng hóa đơn sau giảm giá."""
+        return calculate_invoice_refund(
+            invoice_items, selected_items, discount_rate
+        )
