@@ -225,6 +225,7 @@ class CreateImportDialog(QDialog):
         actions.addStretch()
         self.save_button = QPushButton("Lưu phiếu nhập")
         self.save_button.setProperty("buttonRole", "primary")
+        self.save_button.setObjectName("primaryButton")
         self.save_button.clicked.connect(self.save_import)
         close_button = QPushButton("Đóng")
         close_button.clicked.connect(self.reject)
