@@ -493,7 +493,7 @@ export function ProductsPage() {
         okText={editingCode ? "Lưu thay đổi" : "Thêm sản phẩm"}
         cancelText="Hủy"
         confirmLoading={saving}
-        width={820}
+        width={680}
         destroyOnClose
         className="product-form-modal"
       >
@@ -502,131 +502,59 @@ export function ProductsPage() {
         ) : (
           <Form<ProductFormValues>
             form={form}
-            layout="vertical"
+            className="desktop-dialog-form product-desktop-form"
+            layout="horizontal"
+            labelCol={{ xs: { span: 24 }, sm: { span: 7 } }}
+            wrapperCol={{ xs: { span: 24 }, sm: { span: 17 } }}
             onFinish={(values) => void saveProduct(values)}
             initialValues={{ vat: 0, giaban: 0, product_type: "book" }}
           >
-            <Row gutter={16}>
-              <Col xs={24} md={12}>
-                <Form.Item label="Mã sản phẩm">
-                  <Input value={editingCode || previewCode} readOnly />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="product_type" label="Loại sản phẩm" rules={[{ required: true }]}>
-                  <Select
-                    disabled={Boolean(editingCode)}
-                    options={[
-                      { value: "book", label: "Sách" },
-                      { value: "other", label: "Sản phẩm khác" },
-                    ]}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={24}>
-                <Form.Item name="tensp" label="Tên sản phẩm" rules={[{ required: true, whitespace: true, message: "Vui lòng nhập tên sản phẩm." }, { max: 150 }]}>
-                  <Input maxLength={150} placeholder="Nhập tên sản phẩm" />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="barcode" label="Mã vạch">
-                  <Input maxLength={50} placeholder="Quét hoặc nhập mã vạch" />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="dvt" label="Đơn vị tính" rules={[{ required: true, whitespace: true, message: "Vui lòng nhập đơn vị tính." }, { max: 30 }]}>
-                  <Input maxLength={30} placeholder="Quyển, Cái, Chiếc..." />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="giaban" label="Giá bán" rules={[{ required: true, message: "Vui lòng nhập giá bán." }]}>
-                  <InputNumber min={0} precision={2} style={{ width: "100%" }} />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="vat" label="VAT (%)" rules={[{ required: true, message: "Vui lòng nhập VAT." }]}>
-                  <InputNumber min={0} max={100} precision={2} style={{ width: "100%" }} />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item label="Giá nhập (tự động)">
-                  <Input value={editingCode ? "Tính từ phiếu nhập" : "Tự động cập nhật"} readOnly />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item label="Số lượng tồn (tự động)">
-                  <Input value={editingCode ? "Quản lý theo giao dịch kho" : "Cập nhật khi nhập hàng"} readOnly />
-                </Form.Item>
-              </Col>
-            </Row>
-
+            <Form.Item name="product_type" label="Loại sản phẩm" rules={[{ required: true }]}>
+              <Select
+                disabled={Boolean(editingCode)}
+                options={[{ value: "book", label: "Sách" }, { value: "other", label: "Sản phẩm khác" }]}
+              />
+            </Form.Item>
+            <Card size="small" title="Thông tin chung" className="desktop-form-section">
+              <Form.Item label="Mã sản phẩm"><Input value={editingCode || previewCode} readOnly /></Form.Item>
+              <Form.Item name="tensp" label="Tên sản phẩm" rules={[{ required: true, whitespace: true, message: "Vui lòng nhập tên sản phẩm." }, { max: 150 }]}>
+                <Input maxLength={150} placeholder="Nhập tên sản phẩm" />
+              </Form.Item>
+              <Form.Item name="barcode" label="Mã vạch"><Input maxLength={50} placeholder="Quét hoặc nhập mã vạch" /></Form.Item>
+              <Form.Item name="dvt" label="Đơn vị tính" rules={[{ required: true, whitespace: true, message: "Vui lòng nhập đơn vị tính." }, { max: 30 }]}>
+                <Input maxLength={30} placeholder="Quyển, Cái, Chiếc..." />
+              </Form.Item>
+              <Form.Item label="Giá nhập (tự động)"><Input value={editingCode ? "Tính từ phiếu nhập" : "Tự động cập nhật"} readOnly /></Form.Item>
+              <Form.Item name="giaban" label="Giá bán" rules={[{ required: true, message: "Vui lòng nhập giá bán." }]}>
+                <InputNumber min={0} precision={2} style={{ width: "100%" }} />
+              </Form.Item>
+              <Form.Item label="Số lượng tồn (tự động)"><Input value={editingCode ? "Quản lý theo giao dịch kho" : "Cập nhật khi nhập hàng"} readOnly /></Form.Item>
+              <Form.Item name="vat" label="VAT (%)" rules={[{ required: true, message: "Vui lòng nhập VAT." }]}>
+                <InputNumber min={0} max={100} precision={2} style={{ width: "100%" }} />
+              </Form.Item>
+              <Alert type="info" showIcon message="Giá nhập bình quân và số lượng tồn được hệ thống tự cập nhật từ phiếu nhập, hóa đơn và đổi trả; không chỉnh sửa tại biểu mẫu sản phẩm." />
+            </Card>
             <Form.Item noStyle shouldUpdate={(previous, current) => previous.product_type !== current.product_type}>
               {({ getFieldValue }) => getFieldValue("product_type") === "book" ? (
-                <Card size="small" title="Thông tin sách" className="product-subform">
-                  <Row gutter={16}>
-                    <Col xs={24} md={12}>
-                      <Form.Item name="isbn" label="ISBN">
-                        <Input maxLength={20} placeholder="Nhập mã ISBN" />
-                      </Form.Item>
-                    </Col>
-                    <Col xs={24} md={12}>
-                      <Form.Item name="namxb" label="Năm xuất bản">
-                        <InputNumber min={0} max={9999} precision={0} style={{ width: "100%" }} />
-                      </Form.Item>
-                    </Col>
-                    <Col span={24}>
-                      <Form.Item name="manxb" label="Nhà xuất bản" rules={[{ required: true, message: "Vui lòng chọn nhà xuất bản." }]}>
-                        <Select
-                          showSearch
-                          optionFilterProp="label"
-                          placeholder="Tìm mã hoặc tên nhà xuất bản"
-                          options={lookups ? lookupOptions(lookups.publishers) : []}
-                        />
-                      </Form.Item>
-                    </Col>
-                    <Col span={24}>
-                      <Form.Item name="authors" label="Tác giả">
-                        <Select
-                          mode="multiple"
-                          showSearch
-                          optionFilterProp="label"
-                          placeholder="Tìm và chọn tác giả"
-                          options={lookups ? lookupOptions(lookups.authors) : []}
-                        />
-                      </Form.Item>
-                    </Col>
-                    <Col span={24}>
-                      <Form.Item name="genres" label="Thể loại">
-                        <Select
-                          mode="multiple"
-                          showSearch
-                          optionFilterProp="label"
-                          placeholder="Tìm và chọn thể loại"
-                          options={lookups ? lookupOptions(lookups.genres) : []}
-                        />
-                      </Form.Item>
-                    </Col>
-                  </Row>
+                <Card size="small" title="Thông tin sách" className="desktop-form-section">
+                  <Form.Item name="isbn" label="ISBN"><Input maxLength={20} placeholder="Nhập mã ISBN" /></Form.Item>
+                  <Form.Item name="namxb" label="Năm xuất bản"><InputNumber min={0} max={9999} precision={0} style={{ width: "100%" }} /></Form.Item>
+                  <Form.Item name="manxb" label="Nhà xuất bản" rules={[{ required: true, message: "Vui lòng chọn nhà xuất bản." }]}>
+                    <Select showSearch optionFilterProp="label" placeholder="Tìm mã hoặc tên nhà xuất bản" options={lookups ? lookupOptions(lookups.publishers) : []} />
+                  </Form.Item>
+                  <Form.Item name="authors" label="Tác giả">
+                    <Select mode="multiple" showSearch optionFilterProp="label" maxTagCount="responsive" placeholder="Tìm và chọn tác giả" options={lookups ? lookupOptions(lookups.authors) : []} />
+                  </Form.Item>
+                  <Form.Item name="genres" label="Thể loại">
+                    <Select mode="multiple" showSearch optionFilterProp="label" maxTagCount="responsive" placeholder="Tìm và chọn thể loại" options={lookups ? lookupOptions(lookups.genres) : []} />
+                  </Form.Item>
                 </Card>
               ) : (
-                <Card size="small" title="Thông tin sản phẩm khác" className="product-subform">
-                  <Row gutter={16}>
-                    <Col xs={24} md={12}>
-                      <Form.Item name="ngaysx" label="Ngày sản xuất">
-                        <DatePicker format="DD/MM/YYYY" style={{ width: "100%" }} />
-                      </Form.Item>
-                    </Col>
-                    <Col xs={24} md={12}>
-                      <Form.Item name="math" label="Thương hiệu" rules={[{ required: true, message: "Vui lòng chọn thương hiệu." }]}>
-                        <Select
-                          showSearch
-                          optionFilterProp="label"
-                          placeholder="Tìm mã hoặc tên thương hiệu"
-                          options={lookups ? lookupOptions(lookups.brands) : []}
-                        />
-                      </Form.Item>
-                    </Col>
-                  </Row>
+                <Card size="small" title="Thông tin sản phẩm khác" className="desktop-form-section">
+                  <Form.Item name="ngaysx" label="Ngày sản xuất"><DatePicker format="DD/MM/YYYY" style={{ width: "100%" }} /></Form.Item>
+                  <Form.Item name="math" label="Thương hiệu" rules={[{ required: true, message: "Vui lòng chọn thương hiệu." }]}>
+                    <Select showSearch optionFilterProp="label" placeholder="Tìm mã hoặc tên thương hiệu" options={lookups ? lookupOptions(lookups.brands) : []} />
+                  </Form.Item>
                 </Card>
               )}
             </Form.Item>
@@ -644,32 +572,40 @@ export function ProductsPage() {
         {detailLoading ? (
           <div className="product-modal-loading"><Spin /></div>
         ) : selectedProduct ? (
-          <Descriptions bordered column={2} size="small">
-            <Descriptions.Item label="Mã sản phẩm">{selectedProduct.masp}</Descriptions.Item>
-            <Descriptions.Item label="Loại sản phẩm">{selectedProduct.loai}</Descriptions.Item>
-            <Descriptions.Item label="Tên sản phẩm" span={2}>{selectedProduct.tensp}</Descriptions.Item>
-            <Descriptions.Item label="Mã vạch">{selectedProduct.barcode || "—"}</Descriptions.Item>
-            <Descriptions.Item label="ISBN">{selectedProduct.isbn || "—"}</Descriptions.Item>
-            <Descriptions.Item label="Đơn vị tính">{selectedProduct.dvt || "—"}</Descriptions.Item>
-            <Descriptions.Item label="Năm xuất bản">{selectedProduct.namxb ?? "—"}</Descriptions.Item>
-            <Descriptions.Item label="Giá nhập">{formatMoney(selectedProduct.gianhap)}</Descriptions.Item>
-            <Descriptions.Item label="Giá bán">{formatMoney(selectedProduct.giaban)}</Descriptions.Item>
-            <Descriptions.Item label="Số lượng tồn">{formatNumber(selectedProduct.slton)}</Descriptions.Item>
-            <Descriptions.Item label="VAT">{formatNumber(selectedProduct.vat)}%</Descriptions.Item>
-            {selectedProduct.loai === "Sách" ? (
-              <>
-                <Descriptions.Item label="Nhà xuất bản">{selectedProduct.ten_nxb || "—"}</Descriptions.Item>
-                <Descriptions.Item label="Tác giả" span={2}>{selectedProduct.authors?.join(", ") || "—"}</Descriptions.Item>
-                <Descriptions.Item label="Thể loại" span={2}>{selectedProduct.genres?.join(", ") || "—"}</Descriptions.Item>
-              </>
-            ) : (
-              <>
-                <Descriptions.Item label="Ngày sản xuất">{displayDate(selectedProduct.ngaysx)}</Descriptions.Item>
-                <Descriptions.Item label="Thương hiệu">{selectedProduct.brand_name || "—"}</Descriptions.Item>
-                <Descriptions.Item label="Xuất xứ">{selectedProduct.brand_origin || "—"}</Descriptions.Item>
-              </>
-            )}
-          </Descriptions>
+          <>
+            <Card size="small" title="Thông tin chung" className="desktop-form-section">
+              <Descriptions bordered column={1} size="small">
+                <Descriptions.Item label="Mã sản phẩm">{selectedProduct.masp}</Descriptions.Item>
+                <Descriptions.Item label="Mã vạch">{selectedProduct.barcode || "Chưa có"}</Descriptions.Item>
+                <Descriptions.Item label="Tên sản phẩm">{selectedProduct.tensp}</Descriptions.Item>
+                <Descriptions.Item label="Loại sản phẩm">{selectedProduct.loai}</Descriptions.Item>
+                <Descriptions.Item label="Đơn vị tính">{selectedProduct.dvt || "—"}</Descriptions.Item>
+                <Descriptions.Item label="Giá nhập">{formatMoney(selectedProduct.gianhap)}</Descriptions.Item>
+                <Descriptions.Item label="Giá bán">{formatMoney(selectedProduct.giaban)}</Descriptions.Item>
+                <Descriptions.Item label="Số lượng tồn">{formatNumber(selectedProduct.slton)}</Descriptions.Item>
+                <Descriptions.Item label="VAT (%)">{formatNumber(selectedProduct.vat)}</Descriptions.Item>
+              </Descriptions>
+            </Card>
+            <Card size="small" title={selectedProduct.loai === "Sách" ? "Thông tin sách" : "Thông tin sản phẩm khác"} className="desktop-form-section">
+              <Descriptions bordered column={1} size="small">
+                {selectedProduct.loai === "Sách" ? (
+                  <>
+                    <Descriptions.Item label="ISBN">{selectedProduct.isbn || "—"}</Descriptions.Item>
+                    <Descriptions.Item label="Năm xuất bản">{selectedProduct.namxb ?? "—"}</Descriptions.Item>
+                    <Descriptions.Item label="Nhà xuất bản">{selectedProduct.ten_nxb || "—"}</Descriptions.Item>
+                    <Descriptions.Item label="Tác giả">{selectedProduct.authors?.join(", ") || "Chưa có thông tin"}</Descriptions.Item>
+                    <Descriptions.Item label="Thể loại">{selectedProduct.genres?.join(", ") || "Chưa có thông tin"}</Descriptions.Item>
+                  </>
+                ) : (
+                  <>
+                    <Descriptions.Item label="Ngày sản xuất">{displayDate(selectedProduct.ngaysx)}</Descriptions.Item>
+                    <Descriptions.Item label="Thương hiệu">{selectedProduct.brand_name || "—"}</Descriptions.Item>
+                    <Descriptions.Item label="Xuất xứ">{selectedProduct.brand_origin || "—"}</Descriptions.Item>
+                  </>
+                )}
+              </Descriptions>
+            </Card>
+          </>
         ) : (
           <Alert type="warning" message="Không có dữ liệu chi tiết." />
         )}
