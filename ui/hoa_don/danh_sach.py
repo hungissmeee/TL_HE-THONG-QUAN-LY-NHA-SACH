@@ -430,7 +430,7 @@ class InvoiceWindow(QWidget):
             # Phiếu đổi trả cũng thay đổi tồn kho. Khóa hóa đơn ở trên khiến
             # thao tác tạo phiếu đổi trả và hủy hóa đơn được tuần tự hóa.
             cursor.execute("""
-                SELECT TOP (1) MAPDT
+                SELECT TOP (1) MAHD
                 FROM dbo.PHIEU_DOI_TRA WITH (UPDLOCK, HOLDLOCK)
                 WHERE MAHD = ?
             """, invoice_code)
