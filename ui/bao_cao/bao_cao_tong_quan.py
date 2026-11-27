@@ -24,7 +24,7 @@ class OverviewReportPage(ReportBasePage):
         self.add_stat_cards(
             [
                 (
-                    "revenue", "Doanh thu bán hàng", "0 đ",
+                    "revenue", "Doanh số bán hàng", "0 đ",
                     "Tổng tiền hóa đơn hợp lệ sau khuyến mãi", "positive",
                 ),
                 (
@@ -66,9 +66,9 @@ class OverviewReportPage(ReportBasePage):
         self.content_layout.addWidget(trend_title)
 
         self.trend_chart = ReportLineChart(
-            "Doanh thu theo ngày phát sinh",
+            "Doanh số theo ngày bán",
             [
-                ("Doanh thu bán hàng", 0, "#60A5FA"),
+                ("Doanh số bán hàng", 0, "#60A5FA"),
                 ("Chênh lệch bán hàng và hoàn trong ngày", 1, "#34D399"),
             ],
         )
