@@ -129,19 +129,19 @@ function ShiftsPage() {
         <Col xs={24} md={8}><Card bordered={false}><Statistic title="Ca đang diễn ra" value={Number(summary?.active_shifts || 0)} /></Card></Col>
         <Col xs={24} md={8}><Card bordered={false}><Statistic title="Nhân viên đang làm" value={Number(summary?.active_employees || 0)} /></Card></Col>
         <Col xs={24} md={8}><Card bordered={false}><Statistic title="Tổng ca hôm nay" value={Number(summary?.today_shifts || 0)} /></Card></Col>
-      </Row
+      </Row>
       <Card bordered={false} className="operation-card">
         <div className="operation-list-heading"><Title level={4}>Ca đang diễn ra</Title><Button icon={<ReloadOutlined />} onClick={() => void load()}>Làm mới</Button></div>
-        <Table<Row> rowKey="maca" columns={managerColumns} dataSource={current} loading={loading} pagination={false} locale={{ emptyText: "Hiện không có ca đang diễn ra." }} />
+        <Table<DataRow> rowKey="maca" columns={managerColumns} dataSource={current} loading={loading} pagination={false} locale={{ emptyText: "Hiện không có ca đang diễn ra." }} />
       </Card>
       <Card bordered={false} className="operation-card">
         <div className="operation-toolbar"><Title level={4}>Lịch sử ca</Title><Select value={period} style={{ width: 180 }} options={[{ value: "all", label: "Tất cả" }, { value: "today", label: "Hôm nay" }, { value: "7days", label: "7 ngày gần nhất" }, { value: "30days", label: "30 ngày gần nhất" }]} onChange={setPeriod} /></div>
-        <Table<Row> rowKey="maca" columns={managerColumns} dataSource={history} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }} />
+        <Table<DataRow> rowKey="maca" columns={managerColumns} dataSource={history} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }} />
       </Card>
     </> : <Card bordered={false} className="operation-card">
       <Alert type="info" showIcon message={isAccountant ? "Kế toán có thể đăng ký ca đang diễn ra và ghi tiền cuối ca sau khi ca kết thúc." : "Chỉ đăng ký được ca đang diễn ra; không thể đăng ký trùng ca."} />
       <div className="operation-list-heading"><Title level={4}>Ca của bạn</Title><Button icon={<ReloadOutlined />} onClick={() => void load()}>Làm mới</Button></div>
-      <Table<Row> rowKey="maca" columns={employeeColumns} dataSource={mine} loading={loading} pagination={false} locale={{ emptyText: "Hiện không có ca phù hợp để đăng ký hoặc chốt." }} />
+      <Table<DataRow> rowKey="maca" columns={employeeColumns} dataSource={mine} loading={loading} pagination={false} locale={{ emptyText: "Hiện không có ca phù hợp để đăng ký hoặc chốt." }} />
     </Card>}
     <Modal title="Tạo ca làm việc" open={openCreate} onCancel={() => setOpenCreate(false)} onOk={() => createForm.submit()} okText="Tạo ca" cancelText="Hủy" confirmLoading={createSaving}>
       <Form form={createForm} layout="vertical" onFinish={(v) => void createShift(v)}>
@@ -152,7 +152,7 @@ function ShiftsPage() {
       </Form>
     </Modal>
     <Modal title={rosterTitle} open={rosterOpen} onCancel={() => setRosterOpen(false)} footer={<Button onClick={() => setRosterOpen(false)}>Đóng</Button>}>
-      <Table<Row> rowKey="manv" pagination={false} dataSource={roster} columns={[
+      <Table<DataRow> rowKey="manv" pagination={false} dataSource={roster} columns={[
         { title: "Mã NV", dataIndex: "manv", key: "manv" }, { title: "Họ tên", dataIndex: "tennv", key: "tennv" },
         { title: "Vai trò", dataIndex: "vaitro", key: "vaitro" }, { title: "SĐT", dataIndex: "sdt", key: "sdt" },
       ]} />
@@ -260,14 +260,14 @@ function ReportsPage({ reportType }: { reportType: string }) {
         </Row}
         {reportType === "report_overview" ? <>
           <Title level={4}>Doanh thu theo ngày</Title>
-          <Table<Row> rowKey={(r) => String(r.ngay)} dataSource={result?.trend || []} columns={makeColumns(result?.trend || [])} pagination={{ pageSize: 8 }} />
+          <Table<DataRow> rowKey={(r) => String(r.ngay)} dataSource={result?.trend || []} columns={makeColumns(result?.trend || [])} pagination={{ pageSize: 8 }} />
           <Title level={4}>Top sản phẩm</Title>
-          <Table<Row> rowKey="masp" dataSource={result?.top_products || []} columns={makeColumns(result?.top_products || [])} pagination={false} />
+          <Table<DataRow> rowKey="masp" dataSource={result?.top_products || []} columns={makeColumns(result?.top_products || [])} pagination={false} />
         </> : <>
-          <Table<Row> rowKey={(r, index) => String(r.mahd || r.mapn || r.mapdt || r.masp || r.maca || r.ky || index)} dataSource={items} columns={makeColumns(items)} loading={loading} pagination={{ pageSize: 15, showSizeChanger: true, pageSizeOptions: [10, 15, 30, 50] }} locale={{ emptyText: "Không có dữ liệu trong khoảng thời gian đã chọn." }} scroll={{ x: 1250 }} />
+          <Table<DataRow> rowKey={(r, index) => String(r.mahd || r.mapn || r.mapdt || r.masp || r.maca || r.ky || index)} dataSource={items} columns={makeColumns(items)} loading={loading} pagination={{ pageSize: 15, showSizeChanger: true, pageSizeOptions: [10, 15, 30, 50] }} locale={{ emptyText: "Không có dữ liệu trong khoảng thời gian đã chọn." }} scroll={{ x: 1250 }} />
           {reportType === "report_import" && Boolean(result?.suppliers?.length) && <>
             <Title level={4}>Tổng hợp theo nhà cung cấp</Title>
-            <Table<Row> rowKey="mancc" dataSource={result?.suppliers || []} columns={makeColumns(result?.suppliers || [])} pagination={{ pageSize: 8 }} />
+            <Table<DataRow> rowKey="mancc" dataSource={result?.suppliers || []} columns={makeColumns(result?.suppliers || [])} pagination={{ pageSize: 8 }} />
           </>}
         </>}
       </>}
