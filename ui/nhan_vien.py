@@ -416,6 +416,7 @@ class EmployeeWindow(QWidget):
         button_layout = QHBoxLayout()
 
         save_button = QPushButton("Tạo tài khoản")
+        save_button.setProperty("buttonRole", "primary")
         save_button.clicked.connect(self.create_employee)
 
         back_button = QPushButton("Quay lại")
