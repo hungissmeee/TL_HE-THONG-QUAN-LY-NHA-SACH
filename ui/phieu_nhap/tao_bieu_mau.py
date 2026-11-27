@@ -432,7 +432,7 @@ class CreateImportDialog(QDialog):
                 price.setLocale(QLocale.c())
                 price.setGroupSeparatorShown(False)
                 price.setDecimals(2)
-                price.setRange(0.01, 999999999999.99)
+                price.setRange(0, 999999999999.99)
                 price.setSuffix(" đ")
                 price.setValue(float(item["price"]))
                 price.setMinimumHeight(34)
@@ -543,6 +543,19 @@ class CreateImportDialog(QDialog):
         if not self.cart:
             QMessageBox.warning(
                 self, "Chưa có sản phẩm", "Phiếu nhập chưa có sản phẩm nào."
+            )
+            return
+
+        invalid_prices = [
+            item["tensp"] for item in self.cart.values()
+            if as_decimal(item["price"]) <= 0
+        ]
+        if invalid_prices:
+            QMessageBox.warning(
+                self,
+                "Đơn giá chưa hợp lệ",
+                "Vui lòng nhập đơn giá lớn hơn 0 cho:\n"
+                + "\n".join(invalid_prices[:10]),
             )
             return
 
