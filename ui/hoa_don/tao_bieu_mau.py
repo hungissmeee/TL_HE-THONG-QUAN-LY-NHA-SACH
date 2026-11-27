@@ -1,12 +1,13 @@
 """CreateInvoiceDialog: thành phần giao diện nghiệp vụ hóa đơn."""
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QStringListModel
 from PySide6.QtWidgets import (
     QDialog,
     QLabel,
     QPushButton,
     QLineEdit,
     QComboBox,
+    QCompleter,
     QVBoxLayout,
     QHBoxLayout,
     QFormLayout,
@@ -146,45 +147,53 @@ class CreateInvoiceDialog(QDialog):
         info_form.addRow("Khuyến mãi:", self.promotion_combo)
         root.addWidget(info)
 
-        products_group = QGroupBox("Chọn sản phẩm")
+        products_group = QGroupBox("Thêm sản phẩm")
         products_layout = QVBoxLayout(products_group)
         search_row = QHBoxLayout()
+
         self.product_search = QLineEdit()
-        self.product_search.setPlaceholderText("Tìm theo mã hoặc tên sản phẩm...")
-        self.product_search.textChanged.connect(self.search_products)
-        self.quantity_input = QSpinBox()
-        self.quantity_input.setRange(1, 999999)
-        self.quantity_input.setValue(1)
-        self.add_product_button = QPushButton("Thêm vào hóa đơn")
+        self.product_search.setPlaceholderText(
+            "Nhập mã hoặc tên sản phẩm, sau đó chọn gợi ý..."
+        )
+        self.product_search.setMinimumHeight(42)
+        self.product_suggestion_model = QStringListModel(self)
+        self.product_completer = QCompleter(self.product_suggestion_model, self)
+        self.product_completer.setCaseSensitivity(
+            Qt.CaseSensitivity.CaseInsensitive
+        )
+        self.product_completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        self.product_completer.setCompletionMode(
+            QCompleter.CompletionMode.PopupCompletion
+        )
+        self.product_completer.setMaxVisibleItems(12)
+        self.product_search.setCompleter(self.product_completer)
+        self.product_completer.activated.connect(
+            self.add_completed_product
+        )
+        self.product_search.returnPressed.connect(self.add_selected_product)
+
+        self.add_product_button = QPushButton("Thêm")
+        self.add_product_button.setMinimumHeight(42)
         self.add_product_button.clicked.connect(self.add_selected_product)
         search_row.addWidget(self.product_search, 1)
-        search_row.addWidget(QLabel("Số lượng:"))
-        search_row.addWidget(self.quantity_input)
         search_row.addWidget(self.add_product_button)
         products_layout.addLayout(search_row)
 
-        self.product_table = QTableWidget(0, 6)
-        self.product_table.setHorizontalHeaderLabels([
-            "Mã SP", "Tên sản phẩm", "ĐVT", "Giá bán (đã gồm VAT)",
-            "Tồn kho", "VAT (%)"
-        ])
-        self._configure_table(
-            self.product_table,
-            stretch_column=1,
-            default_sort_column=1
+        search_hint = QLabel(
+            "Chọn một kết quả gợi ý hoặc nhập chính xác mã sản phẩm rồi nhấn Enter. "
+            "Số lượng được điều chỉnh ngay trong giỏ hàng."
         )
-        self.product_table.cellDoubleClicked.connect(
-            lambda *_: self.add_selected_product()
-        )
-        products_layout.addWidget(self.product_table)
-        root.addWidget(products_group, 2)
+        search_hint.setWordWrap(True)
+        search_hint.setStyleSheet("color: #AAB7C8; font-size: 11px;")
+        products_layout.addWidget(search_hint)
+        root.addWidget(products_group)
 
-        cart_group = QGroupBox("Sản phẩm trong hóa đơn")
+        cart_group = QGroupBox("Giỏ hàng")
         cart_layout = QVBoxLayout(cart_group)
-        self.cart_table = QTableWidget(0, 7)
+        self.cart_table = QTableWidget(0, 6)
         self.cart_table.setHorizontalHeaderLabels([
-            "Mã SP", "Tên sản phẩm", "SL", "Đơn giá (đã gồm VAT)",
-            "VAT (%)", "Thành tiền", ""
+            "Mã SP", "Tên sản phẩm", "Số lượng",
+            "Đơn giá (đã gồm VAT)", "VAT (%)", "Thành tiền"
         ])
         self._configure_table(
             self.cart_table,
@@ -195,11 +204,11 @@ class CreateInvoiceDialog(QDialog):
 
         remove_row = QHBoxLayout()
         remove_row.addStretch()
-        self.remove_item_button = QPushButton("Bỏ sản phẩm đã chọn")
+        self.remove_item_button = QPushButton("Bỏ sản phẩm khỏi giỏ")
         self.remove_item_button.clicked.connect(self.remove_selected_cart_item)
         remove_row.addWidget(self.remove_item_button)
         cart_layout.addLayout(remove_row)
-        root.addWidget(cart_group, 2)
+        root.addWidget(cart_group, 3)
 
         bottom = QHBoxLayout()
         totals_group = QGroupBox("Thanh toán")
@@ -290,117 +299,160 @@ class CreateInvoiceDialog(QDialog):
             cursor.close()
 
     def search_products(self, *_):
-        """Tìm sản phẩm theo từ khóa và cập nhật danh sách kết quả."""
+        """Tải các sản phẩm còn hàng và tạo danh sách gợi ý cho ô tìm kiếm."""
         conn = self.db.get_connection()
+        if conn is None:
+            raise RuntimeError("Chưa có kết nối SQL Server.")
         cursor = conn.cursor()
-        keyword = self.product_search.text().strip()
         try:
             cursor.execute("""
                 SELECT MASP, TENSP, DVT, GIABAN, SLTON, VAT
                 FROM dbo.SAN_PHAM
                 WHERE ISNULL(IS_DELETED, 0) = 0
                   AND ISNULL(SLTON, 0) > 0
-                  AND (MASP LIKE ? OR TENSP LIKE ?)
-                ORDER BY TENSP
-            """, (f"%{keyword}%", f"%{keyword}%"))
-            rows = cursor.fetchall()
-
-            pause_table_sorting(self.product_table)
-
-            self.product_table.setRowCount(0)
+                ORDER BY TENSP, MASP
+            """)
             self.products = {}
-
-            for row_index, row in enumerate(rows):
+            suggestions = []
+            for row in cursor.fetchall():
                 masp, tensp, dvt, price, stock, vat = row
-                self.products[masp] = {
+                masp = str(masp)
+                product = {
                     "masp": masp,
-                    "tensp": tensp,
-                    "dvt": dvt,
+                    "tensp": str(tensp or ""),
+                    "dvt": str(dvt or ""),
                     "price": as_decimal(price),
                     "stock": int(stock or 0),
                     "vat": as_decimal(vat),
                 }
-                self.product_table.insertRow(row_index)
-                values = [
-                    masp, tensp, dvt, money(price), stock, money(vat)
-                ]
-                for col, value in enumerate(values):
-                    self._set_cell(
-                        self.product_table, row_index, col, value,
-                        masp if col == 0 else None
-                    )
+                self.products[masp] = product
+                suggestions.append(
+                    f"{masp} | {product['tensp']} | "
+                    f"Tồn: {product['stock']} | Giá: {money(price)}"
+                )
+            self.product_suggestion_model.setStringList(suggestions)
         except Exception as error:
             QMessageBox.critical(self, "Lỗi tải sản phẩm", str(error))
         finally:
-            resume_table_sorting(self.product_table)
             cursor.close()
 
-    def add_selected_product(self):
-        """Thêm sản phẩm đang chọn vào giỏ hàng hoặc tăng số lượng nếu đã có."""
-        row = self.product_table.currentRow()
-        if row < 0:
+    def _add_product_to_cart(self, masp):
+        """Thêm một sản phẩm vào giỏ; thêm lại cùng mã sẽ tăng số lượng một đơn vị."""
+        product = self.products.get(str(masp))
+        if product is None:
             QMessageBox.information(
-                self, "Thông báo", "Vui lòng chọn sản phẩm."
+                self, "Không tìm thấy sản phẩm",
+                "Sản phẩm không còn trong danh sách kinh doanh."
             )
             return
 
-        item = self.product_table.item(row, 0)
-        if item is None:
-            return
-
-        masp = item.text()
-        product = self.products.get(masp)
-        if not product:
-            return
-
-        quantity = self.quantity_input.value()
-        current_quantity = self.cart.get(masp, {}).get("quantity", 0)
-        if current_quantity + quantity > product["stock"]:
+        current_quantity = int(
+            self.cart.get(masp, {}).get("quantity", 0)
+        )
+        if current_quantity + 1 > product["stock"]:
             QMessageBox.warning(
                 self, "Không đủ tồn kho",
-                f"Sản phẩm {masp} chỉ còn {product['stock']} sản phẩm."
+                f"{product['tensp']} chỉ còn {product['stock']} sản phẩm."
             )
             return
 
         if masp in self.cart:
-            self.cart[masp]["quantity"] += quantity
+            self.cart[masp]["quantity"] += 1
         else:
-            self.cart[masp] = {**product, "quantity": quantity}
+            self.cart[masp] = {**product, "quantity": 1}
 
         self._refresh_cart()
         self.update_totals()
+        self.product_search.clear()
+        self.product_search.setFocus()
+
+    def add_completed_product(self, completion):
+        """Thêm sản phẩm khi người dùng chọn một gợi ý trong ô tìm kiếm."""
+        masp = str(completion or "").split(" | ", 1)[0].strip()
+        if masp:
+            self._add_product_to_cart(masp)
+
+    def add_selected_product(self):
+        """Thêm theo mã hoặc tên nhập chính xác trong ô tìm kiếm."""
+        keyword = self.product_search.text().strip().casefold()
+        if not keyword:
+            return
+
+        exact = [
+            code for code, product in self.products.items()
+            if keyword in {
+                code.casefold(),
+                product["tensp"].casefold(),
+                f"{code} | {product['tensp']}".casefold(),
+            }
+        ]
+        if len(exact) == 1:
+            self._add_product_to_cart(exact[0])
+            return
+
+        matches = [
+            code for code, product in self.products.items()
+            if keyword in code.casefold() or keyword in product["tensp"].casefold()
+        ]
+        if len(matches) == 1:
+            self._add_product_to_cart(matches[0])
+        elif matches:
+            QMessageBox.information(
+                self, "Chọn sản phẩm",
+                "Có nhiều sản phẩm phù hợp. Hãy chọn một kết quả trong danh sách gợi ý."
+            )
+            self.product_search.setFocus()
+        else:
+            QMessageBox.information(
+                self, "Không tìm thấy",
+                "Không có sản phẩm còn hàng phù hợp với từ khóa."
+            )
 
     def _refresh_cart(self):
-        """Cập nhật các dòng trong bảng giỏ hàng theo trạng thái hiện tại."""
+        """Cập nhật giỏ hàng với bộ điều chỉnh số lượng ngay trên từng dòng."""
         pause_table_sorting(self.cart_table)
-
         try:
             self.cart_table.setRowCount(0)
-
             for row_index, (masp, item) in enumerate(self.cart.items()):
-                # GIABAN đã gồm VAT nên thành tiền chỉ là đơn giá nhân số lượng.
                 line_total = item["price"] * item["quantity"]
-
-                values = [
-                    masp,
-                    item["tensp"],
-                    item["quantity"],
-                    money(item["price"]),
-                    money(item["vat"]),
-                    money(line_total),
-                    "Bỏ",
-                ]
-
                 self.cart_table.insertRow(row_index)
 
-                for col, value in enumerate(values):
-                    self._set_cell(
-                        self.cart_table, row_index, col, value,
-                        masp if col == 6 else None
-                    )
+                self._set_cell(self.cart_table, row_index, 0, masp)
+                self._set_cell(self.cart_table, row_index, 1, item["tensp"])
+                self._set_cell(self.cart_table, row_index, 3, money(item["price"]))
+                self._set_cell(self.cart_table, row_index, 4, money(item["vat"]))
+                self._set_cell(self.cart_table, row_index, 5, money(line_total))
 
+                quantity = QSpinBox(self.cart_table)
+                quantity.setRange(1, max(1, int(item["stock"])))
+                quantity.setValue(int(item["quantity"]))
+                quantity.setMinimumHeight(34)
+                quantity.valueChanged.connect(
+                    lambda value, code=masp: self._update_cart_quantity(code, value)
+                )
+                self.cart_table.setCellWidget(row_index, 2, quantity)
+                self.cart_table.setRowHeight(row_index, 42)
         finally:
             resume_table_sorting(self.cart_table)
+
+    def _update_cart_quantity(self, masp, quantity):
+        """Đồng bộ số lượng ở giỏ và cập nhật thành tiền, tổng thanh toán."""
+        item = self.cart.get(masp)
+        if item is None:
+            return
+        quantity = int(quantity)
+        if quantity < 1 or quantity > int(item["stock"]):
+            return
+        item["quantity"] = quantity
+
+        for row in range(self.cart_table.rowCount()):
+            code_item = self.cart_table.item(row, 0)
+            if code_item and code_item.text() == masp:
+                amount_item = self.cart_table.item(row, 5)
+                if amount_item is not None:
+                    amount_item.setText(money(item["price"] * quantity))
+                break
+        self.update_totals()
 
     def remove_selected_cart_item(self):
         """Xóa sản phẩm đang chọn khỏi giỏ hàng."""
