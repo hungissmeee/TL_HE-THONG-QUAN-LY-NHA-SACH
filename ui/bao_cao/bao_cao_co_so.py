@@ -13,6 +13,8 @@ from PySide6.QtWidgets import (
 )
 
 from ui.calendar_utils import configure_date_edit_calendar
+from core.repositories.bao_cao_repository import BaoCaoRepository
+from core.services.bao_cao_service import BaoCaoService
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
     prepare_sortable_table,
@@ -170,6 +172,7 @@ class ReportBasePage(QWidget):
         """Khởi tạo cấu hình bộ lọc, bảng dữ liệu và các thành phần dùng chung của báo cáo."""
         super().__init__(parent)
         self.db = db
+        self.service = BaoCaoService(BaoCaoRepository(db))
         self.use_date_filter = use_date_filter
         self.export_tables = {}
         self.kpi_labels = {}
@@ -263,22 +266,11 @@ class ReportBasePage(QWidget):
         return start.toString("yyyy-MM-dd"), end.toString("yyyy-MM-dd")
 
     def fetch_all(self, sql, params=()):
-        """Thực thi truy vấn và trả về toàn bộ dòng dữ liệu."""
-        connection = self.db.get_connection()
-        if connection is None:
-            raise RuntimeError("Chưa có kết nối SQL Server.")
-
-        cursor = connection.cursor()
-        try:
-            cursor.execute(sql, params)
-            return cursor.fetchall()
-        finally:
-            cursor.close()
+        """Tương thích cho báo cáo mở rộng; SQL chỉ được chạy qua Repository."""
+        return self.service.fetch_all(sql, params)
 
     def fetch_one(self, sql, params=()):
-        """Thực thi truy vấn và trả về một dòng dữ liệu đầu tiên."""
-        rows = self.fetch_all(sql, params)
-        return rows[0] if rows else None
+        return self.service.fetch_one(sql, params)
 
     def make_table(self, headers, min_height=190):
         """Tạo bảng báo cáo với tiêu đề và quy tắc sắp xếp."""
