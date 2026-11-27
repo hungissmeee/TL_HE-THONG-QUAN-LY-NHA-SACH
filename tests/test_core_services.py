@@ -848,70 +848,53 @@ class FakeReportRepository(BaoCaoRepository):
     def __init__(self):
         self.calls = []
 
-    def overview_summary(self, start, end):
-        self.calls.append(("overview_summary", start, end))
-        return (1, 0, Decimal("100"))
+    def employees(self):
+        self.calls.append(("employees",))
+        return [("NV01", "Thu ngân 1")]
 
-    def overview_refunds(self, start, end):
-        self.calls.append(("overview_refunds", start, end))
-        return (Decimal("10"),)
-
-    def overview_imports(self, start, end):
-        self.calls.append(("overview_imports", start, end))
-        return (Decimal("50"),)
-
-    def overview_trend(self, start, end):
-        self.calls.append(("overview_trend", start, end))
+    def daily_sales_report(self, start, end, employee=None, keyword=""):
+        self.calls.append(("daily_sales_report", start, end, employee, keyword))
         return []
 
-    def overview_top_products(self, start, end):
-        self.calls.append(("overview_top_products", start, end))
+    def sales_by_period_report(self, start, end, period="day"):
+        self.calls.append(("sales_by_period_report", start, end, period))
         return []
 
-    def revenue_by_period(self, start, end, period):
-        self.calls.append(("revenue_by_period", start, end, period))
+    def sales_by_employee_report(self, start, end, keyword=""):
+        self.calls.append(("sales_by_employee_report", start, end, keyword))
         return []
 
-    def promotion_effectiveness(self, start, end):
-        self.calls.append(("promotion_effectiveness", start, end))
+    def sales_by_product_report(self, start, end, keyword=""):
+        self.calls.append(("sales_by_product_report", start, end, keyword))
         return []
 
-    def invoice_report(self, start, end):
-        self.calls.append(("invoice_report", start, end))
+    def promotion_report(self, start, end, keyword=""):
+        self.calls.append(("promotion_report", start, end, keyword))
         return []
 
-    def import_report(self, start, end):
-        self.calls.append(("import_report", start, end))
-        return {"imports": [], "suppliers": [], "products": []}
-
-    def employee_sales_report(self, start, end):
-        self.calls.append(("employee_sales_report", start, end))
+    def return_detail_report(self, start, end, keyword=""):
+        self.calls.append(("return_detail_report", start, end, keyword))
         return []
 
-    def return_report(self, start, end):
-        self.calls.append(("return_report", start, end))
+    def import_detail_report(self, start, end, keyword=""):
+        self.calls.append(("import_detail_report", start, end, keyword))
         return []
 
-    def inventory_report(self, threshold, status, keyword=""):
-        self.calls.append(("inventory_report", threshold, status, keyword))
-        return {"summary": (0, 0, 0, Decimal("0")), "rows": []}
-
-    def product_report(self, start, end, sort, keyword=""):
-        self.calls.append(("product_report", start, end, sort, keyword))
+    def import_supplier_report(self, start, end, keyword=""):
+        self.calls.append(("import_supplier_report", start, end, keyword))
         return []
 
-    def product_report_summary(self, start, end):
-        self.calls.append(("product_report_summary", start, end))
-        return {
-            "sold": 10,
-            "refund_quantity": 2,
-            "exchange_quantity": 1,
-            "intact_quantity": 2,
-            "damaged_quantity": 1,
-            "gross_revenue": Decimal("1000.00"),
-            "refund_amount": Decimal("150.00"),
-            "net_revenue": Decimal("850.00"),
-        }
+    def current_inventory_report(self, threshold, status="all", keyword=""):
+        self.calls.append(("current_inventory_report", threshold, status, keyword))
+        return []
+
+    def stock_movement_report(self, start, end, keyword=""):
+        self.calls.append(("stock_movement_report", start, end, keyword))
+        return []
+
+    def stock_card_report(self, start, end, keyword=""):
+        self.calls.append(("stock_card_report", start, end, keyword))
+        return []
 
     def shift_report(self, start, end):
         self.calls.append(("shift_report", start, end))
@@ -923,256 +906,159 @@ class ReportServiceTests(unittest.TestCase):
         self.repository = FakeReportRepository()
         self.service = BaoCaoService(self.repository)
 
-    def test_report_service_exposes_only_named_report_operations(self):
+    def test_service_exposes_defined_report_methods(self):
+        for method in (
+            "daily_sales_report", "sales_by_period_report",
+            "sales_by_employee_report", "sales_by_product_report",
+            "promotion_report", "return_detail_report",
+            "import_detail_report", "import_supplier_report",
+            "current_inventory_report", "stock_movement_report",
+            "stock_card_report", "shift_report",
+        ):
+            self.assertTrue(callable(getattr(self.service, method)))
         self.assertFalse(hasattr(self.service, "fetch_all"))
         self.assertFalse(hasattr(self.service, "fetch_one"))
-        self.assertTrue(callable(self.service.overview_summary))
-        self.assertTrue(callable(self.service.inventory_report))
-
-    def test_report_repository_exposes_only_public_fetch_helpers(self):
-        import inspect
-        from core.bao_cao.repository import BaoCaoRepository
-
-        source = inspect.getsource(BaoCaoRepository)
-        self.assertIn("def _fetch_all(", source)
-        self.assertIn("def _fetch_one(", source)
-        self.assertNotIn("\n    def fetch_all(", source)
-        self.assertNotIn("\n    def fetch_one(", source)
 
     def test_report_service_validates_date_range(self):
         with self.assertRaisesRegex(ValueError, "không được lớn hơn"):
-            self.service.invoice_report("2026-12-02", "2026-12-01")
+            self.service.daily_sales_report("2026-12-02", "2026-12-01")
 
     def test_report_service_rejects_invalid_date(self):
         with self.assertRaisesRegex(ValueError, "không hợp lệ"):
             self.service.shift_report("today", "2026-12-01")
 
-    def test_overview_report_methods_delegate_with_normalized_dates(self):
-        self.service.overview_summary("2026-11-01", "2026-11-27")
-        self.service.overview_refunds("2026-11-01", "2026-11-27")
-        self.service.overview_imports("2026-11-01", "2026-11-27")
-        self.service.overview_trend("2026-11-01", "2026-11-27")
-        self.service.overview_top_products("2026-11-01", "2026-11-27")
+    def test_daily_sales_passes_employee_and_keyword_filters(self):
+        self.service.daily_sales_report(
+            "2026-11-01", "2026-11-30", "NV01", "HD001"
+        )
         self.assertEqual(
-            [call[0] for call in self.repository.calls],
+            self.repository.calls[-1],
+            ("daily_sales_report", "2026-11-01", "2026-11-30", "NV01", "HD001"),
+        )
+
+    def test_period_report_accepts_only_supported_periods(self):
+        for period in ("day", "month", "year"):
+            self.service.sales_by_period_report("2026-01-01", "2026-01-31", period)
+        self.assertEqual(
+            self.repository.calls[-3:],
             [
-                "overview_summary", "overview_refunds", "overview_imports",
-                "overview_trend", "overview_top_products",
+                ("sales_by_period_report", "2026-01-01", "2026-01-31", "day"),
+                ("sales_by_period_report", "2026-01-01", "2026-01-31", "month"),
+                ("sales_by_period_report", "2026-01-01", "2026-01-31", "year"),
             ],
         )
-
-    def test_revenue_service_accepts_supported_periods(self):
-        for period in ("day", "month", "year"):
-            self.service.revenue_by_period("2026-01-01", "2026-01-31", period)
-        self.assertEqual(
-            [call[3] for call in self.repository.calls],
-            ["day", "month", "year"],
-        )
-
-    def test_revenue_service_rejects_untrusted_period_value(self):
-        with self.assertRaisesRegex(ValueError, "Kiểu tổng hợp"):
-            self.service.revenue_by_period(
+        with self.assertRaisesRegex(ValueError, "thời gian"):
+            self.service.sales_by_period_report(
                 "2026-01-01", "2026-01-31", "day; DROP TABLE HOA_DON"
             )
 
-    def test_inventory_service_validates_threshold_and_status(self):
-        self.service.inventory_report(10, "low", "SP")
-        self.assertEqual(
-            self.repository.calls[-1],
-            ("inventory_report", 10, "low", "SP"),
-        )
-        with self.assertRaises(ValueError):
-            self.service.inventory_report(0, "low")
-        with self.assertRaises(ValueError):
-            self.service.inventory_report(5, "unknown")
-
-    def test_inventory_report_summary_is_not_narrowed_by_status_filter(self):
-        class CaptureRepository(BaoCaoRepository):
-            def __init__(self):
-                self.calls = []
-
-            def _fetch_one(self, sql, params=()):
-                self.calls.append(("summary", sql, params))
-                return (10, 2, 1, Decimal("1234.00"))
-
-            def _fetch_all(self, sql, params=()):
-                self.calls.append(("rows", sql, params))
-                return []
-
-        repository = CaptureRepository()
-        result = repository.inventory_report(5, "low", "book")
-
-        self.assertEqual(result["summary"], (10, 2, 1, Decimal("1234.00")))
-        summary_call, rows_call = repository.calls
-        self.assertEqual(summary_call[0], "summary")
-        self.assertNotIn("SLTON", summary_call[1].split("WHERE", 1)[-1].split("AND", 1)[0])
-        self.assertEqual(summary_call[2], (5, "%book%", "%book%"))
-        self.assertIn("SLTON", rows_call[1])
-        self.assertEqual(rows_call[2], (5, "%book%", "%book%", 5))
-
-    def test_product_report_sql_does_not_read_removed_refund_unit_price(self):
-        class CaptureRepository(BaoCaoRepository):
-            def __init__(self):
-                self.sql = None
-                self.params = None
-
-            def _fetch_all(self, sql, params=()):
-                self.sql = sql
-                self.params = params
-                return []
-
-        repository = CaptureRepository()
-        repository.product_report(
-            "2026-11-01", "2026-11-30", "refund_desc", "SP"
-        )
-
-        self.assertNotIn("DONGIAHOAN", repository.sql)
-        self.assertNotIn("TIEN_HOAN", repository.sql)
-        self.assertIn("SL_HOAN_TIEN", repository.sql)
-        self.assertIn("SL_DOI_HANG", repository.sql)
-        self.assertEqual(
-            repository.params,
-            (
-                "2026-11-01", "2026-11-30",
-                "2026-11-01", "2026-11-30",
-                "2026-11-01", "2026-11-30",
-                "%SP%", "%SP%",
-            ),
-        )
-
-    def test_product_report_summary_service_delegates_with_validated_dates(self):
-        result = self.service.product_report_summary("2026-01-01", "2026-01-31")
-
-        self.assertEqual(
-            self.repository.calls[-1],
-            ("product_report_summary", "2026-01-01", "2026-01-31"),
-        )
-        self.assertEqual(result["net_revenue"], Decimal("850.00"))
-
-    def test_product_report_summary_sql_uses_voucher_level_refund_total(self):
-        class CaptureRepository(BaoCaoRepository):
-            def __init__(self):
-                self.sql = None
-                self.params = None
-
-            def _fetch_one(self, sql, params=()):
-                self.sql = sql
-                self.params = params
-                return (
-                    10, 2, 1, 2, 1,
-                    Decimal("1000.00"), Decimal("150.00"), Decimal("850.00"),
-                )
-
-        repository = CaptureRepository()
-        result = repository.product_report_summary("2026-01-01", "2026-01-31")
-
-        self.assertIn("ROUND(TIEN_HANG * TYLEGIAM / 100.0, 2)", repository.sql)
-        self.assertIn("SUM(PDT.TONG_TIEN_HOAN)", repository.sql)
-        self.assertNotIn("DONGIAHOAN", repository.sql)
-        self.assertEqual(
-            repository.params,
-            (
-                "2026-01-01", "2026-01-31",
-                "2026-01-01", "2026-01-31",
-                "2026-01-01", "2026-01-31",
-                "2026-01-01", "2026-01-31",
-            ),
-        )
-        self.assertEqual(result["sold"], 10)
-        self.assertEqual(result["refund_quantity"], 2)
-        self.assertEqual(result["exchange_quantity"], 1)
-        self.assertEqual(result["net_revenue"], Decimal("850.00"))
-
-    def test_product_report_service_validates_sort_whitelist(self):
-        self.service.product_report(
-            "2026-01-01", "2026-01-31", "quantity_desc", "book"
-        )
-        self.assertEqual(
-            self.repository.calls[-1],
-            ("product_report", "2026-01-01", "2026-01-31", "quantity_desc", "book"),
-        )
-        with self.assertRaisesRegex(ValueError, "sắp xếp"):
-            self.service.product_report(
-                "2026-01-01", "2026-01-31", "MASP DESC; DROP TABLE SAN_PHAM"
+    def test_keyword_length_is_limited(self):
+        with self.assertRaisesRegex(ValueError, "100 ký tự"):
+            self.service.sales_by_product_report(
+                "2026-01-01", "2026-01-31", "x" * 101
             )
 
-    def test_employee_sales_report_delegates_with_validated_dates(self):
-        self.service.employee_sales_report("2026-01-01", "2026-01-31")
+    def test_current_inventory_validates_threshold_and_status(self):
+        self.service.current_inventory_report(10, "low", "book")
         self.assertEqual(
             self.repository.calls[-1],
-            ("employee_sales_report", "2026-01-01", "2026-01-31"),
+            ("current_inventory_report", 10, "low", "book"),
         )
+        with self.assertRaises(ValueError):
+            self.service.current_inventory_report(0, "low")
+        with self.assertRaises(ValueError):
+            self.service.current_inventory_report(5, "unknown")
 
-    def test_employee_sales_report_sql_does_not_multiply_return_header_amounts(self):
-        class CaptureRepository(BaoCaoRepository):
-            def __init__(self):
-                self.sql = None
-                self.params = None
-
-            def _fetch_all(self, sql, params=()):
-                self.sql = sql
-                self.params = params
-                return []
-
-        repository = CaptureRepository()
-        repository.employee_sales_report("2026-01-01", "2026-01-31")
-
-        self.assertIn("ReturnHeadersByEmployee AS", repository.sql)
-        self.assertIn("ReturnLinesByEmployee AS", repository.sql)
-        self.assertIn("SUM(COALESCE(PDT.TONG_TIEN_HOAN, 0))", repository.sql)
-        self.assertEqual(
-            repository.params,
-            ("2026-01-01", "2026-01-31", "2026-01-01", "2026-01-31",
-             "2026-01-01", "2026-01-31"),
-        )
-
-    def test_shift_report_counts_actual_invoices_not_aggregate_row(self):
-        class CaptureRepository(BaoCaoRepository):
-            def __init__(self):
-                self.sql = None
-                self.params = None
-
-            def _fetch_all(self, sql, params=()):
-                self.sql = sql
-                self.params = params
-                return []
-
-        repository = CaptureRepository()
-        repository.shift_report("2026-01-01", "2026-01-31")
-
-        self.assertIn("COUNT(H.MAHD) AS SO_HD", repository.sql)
-        self.assertNotIn("COUNT(*) AS SO_HD", repository.sql)
-        self.assertEqual(repository.params, ("2026-01-01", "2026-01-31"))
-
-    def test_shift_report_sql_uses_invoice_level_discount_rounding(self):
-        class CaptureRepository(BaoCaoRepository):
-            def __init__(self):
-                self.sql = None
-                self.params = None
-
-            def _fetch_all(self, sql, params=()):
-                self.sql = sql
-                self.params = params
-                return []
-
-        repository = CaptureRepository()
-        repository.shift_report("2026-01-01", "2026-01-31")
-
-        self.assertIn(
-            "H.TIEN_HANG - ROUND(H.TIEN_HANG * H.TYLEGIAM / 100.0, 2)",
-            repository.sql,
-        )
-        self.assertIn("C.TMCUOICA", repository.sql)
-        self.assertEqual(repository.params, ("2026-01-01", "2026-01-31"))
-
-    def test_invoice_import_return_and_shift_reports_delegate(self):
-        self.service.invoice_report("2026-01-01", "2026-01-31")
-        self.service.import_report("2026-01-01", "2026-01-31")
-        self.service.return_report("2026-01-01", "2026-01-31")
+    def test_stock_and_shift_reports_delegate_with_validated_dates(self):
+        self.service.stock_movement_report("2026-01-01", "2026-01-31", "SP")
+        self.service.stock_card_report("2026-01-01", "2026-01-31", "SP")
         self.service.shift_report("2026-01-01", "2026-01-31")
         self.assertEqual(
-            [call[0] for call in self.repository.calls],
-            ["invoice_report", "import_report", "return_report", "shift_report"],
+            self.repository.calls[-3:],
+            [
+                ("stock_movement_report", "2026-01-01", "2026-01-31", "SP"),
+                ("stock_card_report", "2026-01-01", "2026-01-31", "SP"),
+                ("shift_report", "2026-01-01", "2026-01-31"),
+            ],
+        )
+
+    def test_report_repository_exposes_only_private_fetch_helpers(self):
+        import inspect
+        source = inspect.getsource(BaoCaoRepository)
+        self.assertIn("def _fetch_all(", source)
+        self.assertIn("def _fetch_one(", source)
+        self.assertNotIn("\\n    def fetch_all(", source)
+        self.assertNotIn("\\n    def fetch_one(", source)
+
+    def test_daily_sales_sql_uses_invoice_level_refund_total_and_outer_alias(self):
+        class CaptureRepository(BaoCaoRepository):
+            def __init__(self):
+                self.sql = ""
+                self.params = None
+
+            def _fetch_all(self, sql, params=()):
+                self.sql = sql
+                self.params = params
+                return []
+
+        repository = CaptureRepository()
+        repository.daily_sales_report(
+            "2026-01-01", "2026-01-31", "NV01", "HD"
+        )
+        self.assertIn("ReturnHeaders AS", repository.sql)
+        self.assertIn("I.TENNV LIKE ?", repository.sql)
+        self.assertNotIn("NV.TENNV LIKE ?", repository.sql)
+        self.assertIn("PDT.TONG_TIEN_HOAN", repository.sql)
+        self.assertEqual(
+            repository.params,
+            ("2026-01-01", "2026-01-31", "NV01", "NV01",
+             "%HD%", "%HD%", "%HD%", "%HD%"),
+        )
+
+    def test_stock_movement_opening_balance_uses_movements_from_start_date(self):
+        class CaptureRepository(BaoCaoRepository):
+            def __init__(self):
+                self.sql = ""
+                self.params = None
+
+            def _fetch_all(self, sql, params=()):
+                self.sql = sql
+                self.params = params
+                return []
+
+        repository = CaptureRepository()
+        repository.stock_movement_report(
+            "2026-01-01", "2026-01-31", "book"
+        )
+        self.assertIn("M.NGAY >= B.START_DATE", repository.sql)
+        self.assertIn("NET_FROM_START", repository.sql)
+        self.assertNotIn("DONGIAHOAN", repository.sql)
+        self.assertEqual(
+            repository.params,
+            ("2026-01-01", "2026-01-31", "%book%", "%book%", "%book%"),
+        )
+
+    def test_employee_report_does_not_multiply_return_header_amounts(self):
+        class CaptureRepository(BaoCaoRepository):
+            def __init__(self):
+                self.sql = ""
+                self.params = None
+
+            def _fetch_all(self, sql, params=()):
+                self.sql = sql
+                self.params = params
+                return []
+
+        repository = CaptureRepository()
+        repository.sales_by_employee_report("2026-01-01", "2026-01-31")
+        self.assertIn("ReturnHeaders AS", repository.sql)
+        self.assertIn("ReturnLines AS", repository.sql)
+        self.assertIn("SUM(COALESCE(TONG_TIEN_HOAN, 0))", repository.sql)
+        self.assertEqual(
+            repository.params,
+            ("2026-01-01", "2026-01-31",
+             "2026-01-01", "2026-01-31",
+             "2026-01-01", "2026-01-31"),
         )
 
 
