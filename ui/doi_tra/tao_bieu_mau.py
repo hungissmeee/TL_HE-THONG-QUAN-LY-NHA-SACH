@@ -243,7 +243,10 @@ class CreateReturnDialog(QDialog):
             self.row_controls[masp] = {
                 "row": row, "quantity": quantity, "remaining": remaining,
                 "condition": condition, "action": action,
-                "net_price": product["net_price"],
+                "line_total_after_discount": product["line_total_after_discount"],
+                "purchased": product["purchased"],
+                "refunded_quantity": product["refunded_quantity"],
+                "refunded_amount": product["refunded_amount"],
             }
             quantity.valueChanged.connect(self.update_totals)
             condition.currentIndexChanged.connect(self.update_totals)
@@ -266,8 +269,15 @@ class CreateReturnDialog(QDialog):
                 amount_item.setText("Chỉ đổi hàng đã hỏng")
                 continue
 
-            amount = controls["net_price"] * quantity if action == 0 else Decimal("0")
-            amount = amount.quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
+            amount = Decimal("0.00")
+            if action == 0 and quantity > 0:
+                amount = self.service.calculate_line_refund(
+                    controls["line_total_after_discount"],
+                    controls["purchased"],
+                    controls["refunded_quantity"],
+                    controls["refunded_amount"],
+                    quantity,
+                )
             total += amount
             amount_item.setText(money(amount))
         self.total_label.setText(f"Tổng tiền hoàn: {money(total)} đ")
