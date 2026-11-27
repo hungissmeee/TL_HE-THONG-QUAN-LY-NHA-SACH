@@ -160,7 +160,7 @@ function ReturnsPage() {
         <Input.Search className="operation-search" allowClear value={keyword} placeholder="Mã phiếu, hóa đơn, nhân viên, lý do..." onChange={(e) => setKeyword(e.target.value)} onSearch={(v) => setKeyword(v.trim())} enterButton="Tìm kiếm" />
         <Button icon={<ReloadOutlined />} onClick={() => void load()}>Làm mới</Button>
       </div>
-      <Table<Row> rowKey="mapdt" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }} />
+      <Table<DataRow> rowKey="mapdt" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }} />
     </Card>
     <Modal title="Lập phiếu đổi trả" open={open} onCancel={() => setOpen(false)} onOk={() => void create()} okText="Lập phiếu" cancelText="Hủy" confirmLoading={saving} width={1000} destroyOnClose>
       <Form layout="vertical">
@@ -184,7 +184,7 @@ function ReturnsPage() {
           <Descriptions.Item label="Hóa đơn gốc">{String(detail.header.mahd)}</Descriptions.Item><Descriptions.Item label="Nhân viên">{String(detail.header.tennv)}</Descriptions.Item>
           <Descriptions.Item label="Lý do" span={2}>{String(detail.header.reason)}</Descriptions.Item><Descriptions.Item label="Tổng tiền hoàn">{money(detail.header.refund)}</Descriptions.Item>
         </Descriptions>
-        <Table<Row> rowKey="masp" pagination={false} dataSource={detail.items} columns={[
+        <Table<DataRow> rowKey="masp" pagination={false} dataSource={detail.items} columns={[
           { title: "Mã SP", dataIndex: "masp", key: "masp" }, { title: "Sản phẩm", dataIndex: "tensp", key: "tensp" },
           { title: "SL", dataIndex: "quantity", key: "quantity" }, { title: "Đơn giá hoàn", dataIndex: "unit_refund", key: "unit_refund", render: money },
           { title: "Tình trạng", dataIndex: "condition", key: "condition" }, { title: "Hình thức", dataIndex: "action", key: "action" },
@@ -239,7 +239,7 @@ function EmployeesPage() {
         <Input.Search className="operation-search" allowClear value={keyword} placeholder="Tìm mã nhân viên hoặc họ tên..." onChange={(e) => setKeyword(e.target.value)} onSearch={(v) => setKeyword(v.trim())} enterButton="Tìm kiếm" />
         <Button icon={<ReloadOutlined />} onClick={() => void load()}>Làm mới</Button>
       </div>
-      <Table<Row> rowKey="manv" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }} />
+      <Table<DataRow> rowKey="manv" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }} />
     </Card>
     <Modal title={employee ? "Cập nhật nhân viên " + String(employee.manv) : "Nhân viên"} open={Boolean(employee)} onCancel={() => setEmployee(null)} onOk={() => form.submit()} okText="Lưu thay đổi" cancelText="Hủy">
       <Form form={form} layout="vertical" onFinish={(v) => void save(v)}>
