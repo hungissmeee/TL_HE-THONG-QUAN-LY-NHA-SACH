@@ -56,6 +56,7 @@ class ProductDetailDialog(QDialog):
         common_group = QGroupBox("Thông tin chung")
         common_form = QFormLayout(common_group)
         self.add_info(common_form, "Mã sản phẩm:", p.get("masp"))
+        self.add_info(common_form, "Mã vạch:", p.get("barcode") or "Chưa có")
         self.add_info(common_form, "Tên sản phẩm:", p.get("tensp"))
         self.add_info(common_form, "Loại sản phẩm:", p.get("loai"))
         self.add_info(common_form, "Đơn vị tính:", p.get("dvt"))
