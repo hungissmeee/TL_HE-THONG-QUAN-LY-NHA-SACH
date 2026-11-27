@@ -16,17 +16,7 @@ from ui.nhan_vien import EmployeeWindow
 from ui.danh_muc import CatalogPage
 from ui.ca_lam_viec import ShiftWindow
 from ui.hoa_don import InvoiceWindow
-from ui.bao_cao import (
-    OverviewReportPage,
-    RevenueReportPage,
-    InvoiceReportPage,
-    ImportReportPage,
-    ReturnReportPage,
-    InventoryReportPage,
-    ProductReportPage,
-    ShiftReportPage,
-)
-from ui.bao_cao.bao_cao_co_so import ReportBasePage
+from ui.bao_cao import ReportCenterPage
 from ui.permissions import allowed_pages_for_user
 from ui.phieu_nhap import ImportWindow
 from ui.nha_cung_cap import SupplierWindow
@@ -42,9 +32,7 @@ class MainWindow(SidebarNavigationMixin, QMainWindow):
         "Quản lý": (
             "home", "products", "suppliers", "imports", "invoices",
             "returns", "promotions", "authors", "genres", "publishers", "brands",
-            "shifts", "report_overview", "report_revenue",
-            "report_invoice", "report_import", "report_return",
-            "report_inventory", "report_product", "report_shifts",
+            "shifts", "report_center",
         ),
         "Thu ngân": (
             "home", "products", "invoices", "shifts",
@@ -55,9 +43,7 @@ class MainWindow(SidebarNavigationMixin, QMainWindow):
         ),
         "Kế toán": (
             "home", "products", "suppliers", "imports", "invoices",
-            "shifts", "report_overview", "report_revenue",
-            "report_invoice", "report_import", "report_return",
-            "report_inventory", "report_product", "report_shifts",
+            "shifts", "report_center",
         ),
     }
 
@@ -116,16 +102,7 @@ class MainWindow(SidebarNavigationMixin, QMainWindow):
             {
                 "key": "reports",
                 "title": "BÁO CÁO",
-                "pages": [
-                    "report_overview",
-                    "report_revenue",
-                    "report_invoice",
-                    "report_import",
-                    "report_return",
-                    "report_inventory",
-                    "report_product",
-                    "report_shifts",
-                ],
+                "pages": ["report_center"],
                 "expanded": False,
             },
         ]
@@ -295,36 +272,8 @@ class MainWindow(SidebarNavigationMixin, QMainWindow):
             "invoices", "Hóa đơn", lambda: InvoiceWindow(self.db)
         )
         add_allowed_page(
-            "report_overview", "Tổng quan",
-            lambda: OverviewReportPage(self.db)
-        )
-        add_allowed_page(
-            "report_revenue", "Doanh thu",
-            lambda: RevenueReportPage(self.db)
-        )
-        add_allowed_page(
-            "report_invoice", "Báo cáo hóa đơn",
-            lambda: InvoiceReportPage(self.db)
-        )
-        add_allowed_page(
-            "report_import", "Báo cáo nhập hàng",
-            lambda: ImportReportPage(self.db)
-        )
-        add_allowed_page(
-            "report_return", "Báo cáo đổi trả",
-            lambda: ReturnReportPage(self.db)
-        )
-        add_allowed_page(
-            "report_inventory", "Báo cáo tồn kho",
-            lambda: InventoryReportPage(self.db)
-        )
-        add_allowed_page(
-            "report_product", "Báo cáo sản phẩm",
-            lambda: ProductReportPage(self.db)
-        )
-        add_allowed_page(
-            "report_shifts", "Báo cáo ca làm việc",
-            lambda: ShiftReportPage(self.db)
+            "report_center", "Trung tâm báo cáo",
+            lambda: ReportCenterPage(self.db)
         )
         add_allowed_page(
             "imports", "Phiếu nhập", lambda: ImportWindow(self.db)
@@ -375,7 +324,7 @@ class MainWindow(SidebarNavigationMixin, QMainWindow):
                 page.refresh_manager_view()
             else:
                 page.refresh_employee_view()
-        elif isinstance(page, ReportBasePage):
+        elif isinstance(page, ReportCenterPage):
             page.refresh_data()
 
     # ==================================================
