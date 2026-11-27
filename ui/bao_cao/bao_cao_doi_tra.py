@@ -22,7 +22,7 @@ class ReturnReportPage(ReportBasePage):
              "Tổng số lượng hàng được ghi nhận đổi/trả", "warning"),
             ("amount", "Tổng tiền đã hoàn", "0 đ",
              "Tổng tiền hoàn trên các phiếu đổi trả", "primary"),
-        ])
+        ], primary_key="amount")
         self.table = self.make_table([
             "Mã phiếu đổi trả", "Ngày đổi trả", "Mã hóa đơn",
             "Nhân viên", "Lý do", "Số lượng hoàn", "Tiền hoàn"
