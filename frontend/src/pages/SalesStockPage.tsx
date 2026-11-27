@@ -377,12 +377,8 @@ function InvoicesPage() {
     {
       title: "ĐVT",
       key: "unit",
-      width: 90,
-      render: (_: unknown, line) => (
-        <span style={{ whiteSpace: "nowrap" }}>
-          {lookup?.products.find((product) => product.masp === line.product_code)?.dvt || "—"}
-        </span>
-      ),
+      className: "invoice-cart-unit-column",
+      render: (_: unknown, line) => lookup?.products.find((product) => product.masp === line.product_code)?.dvt || "—",
     },
     {
       title: "Số lượng",
@@ -525,12 +521,14 @@ function InvoicesPage() {
 
           <Card size="small" title="Giỏ hàng" className="desktop-form-section">
             <Table<CartLine>
+              className="invoice-cart-table"
               rowKey="product_code"
               columns={cartColumns}
               dataSource={cart}
               pagination={false}
+              tableLayout="auto"
               locale={{ emptyText: "Chưa có sản phẩm trong giỏ." }}
-              scroll={{ x: 850 }}
+              scroll={{ x: "max-content" }}
             />
           </Card>
 
