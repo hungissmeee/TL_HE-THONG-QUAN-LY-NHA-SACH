@@ -111,7 +111,7 @@ function ImportsPage() {
         <Input.Search className="operation-search" allowClear value={keyword} placeholder="Mã phiếu, nhà cung cấp, nhân viên..." onChange={(e) => setKeyword(e.target.value)} onSearch={(v) => setKeyword(v.trim())} enterButton="Tìm kiếm" />
         <Button icon={<ReloadOutlined />} onClick={() => void load()}>Làm mới</Button>
       </div>
-      <Table<DataRow> rowKey="mapn" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }} / scroll={{ x: "max-content" }} tableLayout="auto">
+      <Table<DataRow> rowKey="mapn" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }}  scroll={{ x: "max-content" }} tableLayout="auto" />
     </Card>
     <Modal
       title="Lập phiếu nhập kho"
@@ -272,7 +272,7 @@ function ImportsPage() {
             { title: "Đơn giá nhập", dataIndex: "price", key: "price", align: "right", render: money, width: 135 },
             { title: "VAT (%)", dataIndex: "vat", key: "vat", align: "right", render: (v: unknown) => String(v ?? 0) + "%", width: 85 },
             { title: "Thành tiền", key: "amount", align: "right", render: (_: unknown, row: DataRow) => money(Number(row.price || 0) * Number(row.quantity || 0)), width: 140 },
-          ]} / scroll={{ x: "max-content" }} tableLayout="auto">
+          ]}  scroll={{ x: "max-content" }} tableLayout="auto" />
         </Card>
         <Card size="small" title="Tổng giá trị" className="desktop-form-section">
           <Descriptions bordered size="small" column={1}>
@@ -456,7 +456,7 @@ function InvoicesPage() {
         <Input.Search className="operation-search" allowClear value={keyword} placeholder="Mã hóa đơn, nhân viên, sản phẩm, ca..." onChange={(e) => setKeyword(e.target.value)} onSearch={(v) => setKeyword(v.trim())} enterButton="Tìm kiếm" />
         <Button icon={<ReloadOutlined />} onClick={() => void load()}>Làm mới</Button>
       </div>
-      <Table<DataRow> rowKey="mahd" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }} / scroll={{ x: "max-content" }} tableLayout="auto">
+      <Table<DataRow> rowKey="mahd" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }}  scroll={{ x: "max-content" }} tableLayout="auto" />
     </Card>
     <Modal
       title="Lập hóa đơn bán hàng"
@@ -580,7 +580,7 @@ function InvoicesPage() {
             { title: "Số lượng", dataIndex: "quantity", key: "quantity", align: "right", width: 85 },
             { title: "VAT (%)", dataIndex: "vat", key: "vat", align: "right", render: (value: unknown) => String(value ?? 0) + "%", width: 85 },
             { title: "Thành tiền", key: "amount", align: "right", render: (_: unknown, item: DataRow) => money(Number(item.price || 0) * Number(item.quantity || 0)), width: 140 },
-          ]} / scroll={{ x: "max-content" }} tableLayout="auto">
+          ]}  scroll={{ x: "max-content" }} tableLayout="auto" />
         </Card>
         <Card size="small" title="Thanh toán" className="desktop-form-section transaction-total-card">
           <Descriptions bordered size="small" column={1}>
