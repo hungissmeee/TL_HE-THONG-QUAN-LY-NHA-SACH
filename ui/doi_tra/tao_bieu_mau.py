@@ -358,7 +358,9 @@ class CreateReturnDialog(QDialog):
                 )
                 self.table.setCellWidget(row, 7, action)
 
-                self.table.setRowHeight(row, 44)
+                # Bảng đổi trả có thêm ba cột điều khiển và stylesheet ô
+                # có padding dọc; chừa thêm khoảng trống để nút không chạm mép.
+                self.table.setRowHeight(row, 50)
                 self.row_controls[masp] = {
                     "row": row,
                     "quantity": quantity,
