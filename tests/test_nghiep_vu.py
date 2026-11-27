@@ -17,6 +17,8 @@ from database.connection import Database
 from ui.table_sort import (
     SORT_ROLE,
     SortableTableWidgetItem,
+    DEFAULT_MIN_SECTION_SIZE,
+    set_table_minimum_section_size,
     prepare_sortable_table,
     pause_table_sorting,
     resume_table_sorting,
@@ -93,6 +95,20 @@ class NativeQtControlStyleTests(unittest.TestCase):
             table.horizontalHeader().minimumSectionSize(),
             DEFAULT_MIN_SECTION_SIZE,
         )
+        table.close()
+
+    def test_minimum_section_size_helper_applies_to_manual_tables(self):
+        from PySide6.QtWidgets import QTableWidget
+
+        table = QTableWidget(0, 7)
+        set_table_minimum_section_size(table)
+
+        self.assertEqual(
+            table.horizontalHeader().minimumSectionSize(),
+            DEFAULT_MIN_SECTION_SIZE,
+        )
+        set_table_minimum_section_size(table, 105)
+        self.assertEqual(table.horizontalHeader().minimumSectionSize(), 105)
         table.close()
 
     def test_sortable_table_minimum_column_width_can_be_overridden(self):

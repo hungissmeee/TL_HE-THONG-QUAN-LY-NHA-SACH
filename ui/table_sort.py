@@ -115,6 +115,18 @@ class SortableTableWidgetItem(QTableWidgetItem):
         return left < right
 
 
+def set_table_minimum_section_size(
+    table,
+    minimum_section_size=DEFAULT_MIN_SECTION_SIZE
+):
+    """Đặt chiều rộng tối thiểu cho mọi cột của bảng."""
+    if minimum_section_size is None:
+        return
+    table.horizontalHeader().setMinimumSectionSize(
+        max(0, int(minimum_section_size))
+    )
+
+
 def prepare_sortable_table(
     table,
     default_column=0,
@@ -129,8 +141,7 @@ def prepare_sortable_table(
     column = max(0, min(default_column, table.columnCount() - 1))
 
     header = table.horizontalHeader()
-    if minimum_section_size is not None:
-        header.setMinimumSectionSize(max(0, int(minimum_section_size)))
+    set_table_minimum_section_size(table, minimum_section_size)
     header.setSectionsClickable(True)
     header.setSortIndicatorShown(True)
 

@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
 
 from .dung_chung import MONEY_QUANT, as_decimal, date_text, money
 from ui.permissions import is_admin_account
-from ui.table_sort import DEFAULT_MIN_SECTION_SIZE
+from ui.table_sort import set_table_minimum_section_size
 
 
 class CreateReturnDialog(QDialog):
@@ -167,7 +167,7 @@ class CreateReturnDialog(QDialog):
         table.verticalHeader().setVisible(False)
 
         header = table.horizontalHeader()
-        header.setMinimumSectionSize(DEFAULT_MIN_SECTION_SIZE)
+        set_table_minimum_section_size(table)
         header.setSectionResizeMode(
             QHeaderView.ResizeMode.ResizeToContents
         )

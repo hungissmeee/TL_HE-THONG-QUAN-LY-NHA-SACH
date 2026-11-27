@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
     QHeaderView, QAbstractItemView,
 )
 from .dung_chung import date_text, money
+from ui.table_sort import set_table_minimum_section_size
 
 
 class ReturnDetailDialog(QDialog):
@@ -111,6 +112,7 @@ class ReturnDetailDialog(QDialog):
         self.table.setAlternatingRowColors(True)
         self.table.verticalHeader().setVisible(False)
         header = self.table.horizontalHeader()
+        set_table_minimum_section_size(self.table)
         header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
 
