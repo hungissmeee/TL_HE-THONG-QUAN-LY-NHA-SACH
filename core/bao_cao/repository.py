@@ -38,8 +38,8 @@ class BaoCaoRepository:
             params.append(employee_code)
         if keyword:
             search_sql = """
-                AND (HD.MAHD LIKE ? OR I.TENNV LIKE ?
-                     OR HD.MANV LIKE ? OR CONVERT(nvarchar(20), HD.MACA) LIKE ?)
+                AND (I.MAHD LIKE ? OR I.TENNV LIKE ?
+                     OR I.MANV LIKE ? OR CONVERT(nvarchar(20), I.MACA) LIKE ?)
             """
             params.extend([f"%{keyword}%"] * 4)
         return self._fetch_all(f"""
