@@ -12,7 +12,9 @@ from PySide6.QtWidgets import QApplication, QTableWidget, QComboBox, QDateEdit, 
 from PySide6.QtGui import QPalette
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QCompleter
-from ui.styles import MAIN_WINDOW_STYLESHEET, apply_app_palette
+from ui.styles import (
+    MAIN_WINDOW_STYLESHEET, apply_app_palette, configure_app_theme,
+)
 from ui.calendar_utils import configure_date_edit_calendar
 
 from database.connection import Database
@@ -90,6 +92,27 @@ class NativeQtControlStyleTests(unittest.TestCase):
         for selector in forbidden_overrides:
             with self.subTest(selector=selector):
                 self.assertNotIn(selector, MAIN_WINDOW_STYLESHEET)
+
+    def test_application_theme_is_applied_before_login_window(self):
+        original_palette = _APP.palette()
+        original_stylesheet = _APP.styleSheet()
+        try:
+            _APP.setStyleSheet("")
+            configure_app_theme(_APP)
+
+            self.assertEqual(_APP.styleSheet(), MAIN_WINDOW_STYLESHEET)
+            palette = _APP.palette()
+            self.assertEqual(
+                palette.color(QPalette.ColorRole.Base).name(),
+                "#263448",
+            )
+            self.assertEqual(
+                palette.color(QPalette.ColorRole.Window).name(),
+                "#171b24",
+            )
+        finally:
+            _APP.setPalette(original_palette)
+            _APP.setStyleSheet(original_stylesheet)
 
     def test_sortable_tables_have_a_minimum_column_width(self):
         from PySide6.QtWidgets import QHeaderView, QTableWidget
