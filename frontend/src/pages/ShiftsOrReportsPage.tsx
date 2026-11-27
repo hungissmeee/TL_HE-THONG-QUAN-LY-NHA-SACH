@@ -344,8 +344,8 @@ const REPORT_COUNT_FIELDS = new Set([
 
 function reportPeriodText(value: unknown) {
   const raw = String(value ?? "");
-  if (/^\\d{4}-\\d{2}$/.test(raw)) return "Tháng " + raw.slice(5, 7) + "/" + raw.slice(0, 4);
-  if (/^\\d{4}$/.test(raw)) return "Năm " + raw;
+  if (/^\d{4}-\d{2}$/.test(raw)) return "Tháng " + raw.slice(5, 7) + "/" + raw.slice(0, 4);
+  if (/^\d{4}$/.test(raw)) return "Năm " + raw;
   return raw || "—";
 }
 
@@ -365,10 +365,10 @@ function cellRender(key: string, value: unknown) {
     return <Tag color={color}>{status}</Tag>;
   }
   if (typeof value === "boolean") return <Tag color={value ? "success" : "default"}>{value ? "Có" : "Không"}</Tag>;
+  if (key === "xep_hang") return "Hạng " + String(Number(value).toLocaleString("vi-VN"));
   if (REPORT_COUNT_FIELDS.has(key) && typeof value === "number") return value.toLocaleString("vi-VN");
   if (typeof value === "number") return value.toLocaleString("vi-VN");
-  if (key === "ca" && /^\\d+$/.test(String(value))) return "Ca " + String(value);
-  if (key === "xep_hang") return "Hạng " + String(value);
+  if (key === "ca" && /^\d+$/.test(String(value))) return "Ca " + String(value);
   return String(value);
 }
 
@@ -411,7 +411,9 @@ function ReportsPage({ reportType }: { reportType: string }) {
   function makeColumns(items: DataRow[]): TableColumnsType<DataRow> {
     if (!items.length) return [];
     return Object.keys(items[0]).map((key) => ({
-      title: REPORT_COLUMN_LABELS[key] || key.replace(/_/g, " "),
+      title: key === "trangthai"
+        ? reportType === "report_inventory" ? "Tình trạng tồn kho" : reportType === "report_shifts" ? "Trạng thái ca" : "Trạng thái hóa đơn"
+        : REPORT_COLUMN_LABELS[key] || key.replace(/_/g, " "),
       dataIndex: key,
       key,
       width: reportColumnWidth(key),
