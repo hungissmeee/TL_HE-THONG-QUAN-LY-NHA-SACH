@@ -320,7 +320,8 @@ class BaoCaoRepository:
         """, (start_date, end_date))
 
     def import_report(self, start_date, end_date):
-        rows = self._fetch_all("""
+        """Báo cáo nhập hàng theo chứng từ, nhà cung cấp và sản phẩm."""
+        imports = self._fetch_all("""
             SELECT PN.MAPN, PN.NGAYNHAP,
                 COALESCE(PN.LOAIPHIEUNHAP, N''),
                 COALESCE(NCC.TENNCC, PN.MANCC, N''),
@@ -340,6 +341,7 @@ class BaoCaoRepository:
               AND ISNULL(PN.TRANGTHAI, 1) = 1
             ORDER BY PN.NGAYNHAP DESC, PN.MAPN DESC
         """, (start_date, end_date))
+
         suppliers = self._fetch_all("""
             SELECT
                 PN.MANCC,
@@ -360,7 +362,25 @@ class BaoCaoRepository:
             GROUP BY PN.MANCC, NCC.TENNCC, NCC.SDT
             ORDER BY SUM(PN.TONGTRIGIA) DESC, NCC.TENNCC
         """, (start_date, end_date))
-        return {"imports": rows, "suppliers": suppliers}
+
+        products = self._fetch_all("""
+            SELECT
+                CT.MASP,
+                COALESCE(SP.TENSP, N''),
+                COUNT(DISTINCT PN.MAPN) AS SO_PHIEU_NHAP,
+                SUM(COALESCE(CT.SOLUONG, 0)) AS SL_NHAP,
+                SUM(COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0))
+                    AS GIA_TRI_NHAP
+            FROM dbo.PHIEU_NHAP PN
+            INNER JOIN dbo.CHI_TIET_PHIEU_NHAP CT ON CT.MAPN = PN.MAPN
+            LEFT JOIN dbo.SAN_PHAM SP ON SP.MASP = CT.MASP
+            WHERE PN.NGAYNHAP >= CONVERT(date, ?)
+              AND PN.NGAYNHAP < DATEADD(day, 1, CONVERT(date, ?))
+              AND ISNULL(PN.TRANGTHAI, 1) = 1
+            GROUP BY CT.MASP, SP.TENSP
+            ORDER BY SL_NHAP DESC, SP.TENSP
+        """, (start_date, end_date))
+        return {"imports": imports, "suppliers": suppliers, "products": products}
 
     def return_report(self, start_date, end_date):
         return self._fetch_all("""
@@ -438,14 +458,10 @@ class BaoCaoRepository:
         return {"summary": summary, "rows": rows}
 
     def product_report(self, start_date, end_date, sort, keyword=""):
-        """Báo cáo số lượng bán, hoàn, đổi và tình trạng hàng theo sản phẩm."""
+        """Báo cáo số lượng nhập, bán, hoàn, đổi và tồn kho theo sản phẩm."""
         order_options = {
-            "quantity_desc": (
-                "COALESCE(S.SL_BAN, 0) DESC, SP.TENSP ASC"
-            ),
-            "quantity_asc": (
-                "COALESCE(S.SL_BAN, 0) ASC, SP.TENSP ASC"
-            ),
+            "quantity_desc": "COALESCE(S.SL_BAN, 0) DESC, SP.TENSP ASC",
+            "quantity_asc": "COALESCE(S.SL_BAN, 0) ASC, SP.TENSP ASC",
             "refund_desc": (
                 "COALESCE(R.SL_HOAN_TIEN, 0) DESC, "
                 "COALESCE(S.SL_BAN, 0) DESC, SP.TENSP ASC"
@@ -469,6 +485,16 @@ class BaoCaoRepository:
                   AND HD.NGAYLAP < DATEADD(day, 1, CONVERT(date, ?))
                 GROUP BY CT.MASP
             ),
+            Purchases AS (
+                SELECT CT.MASP,
+                    SUM(COALESCE(CT.SOLUONG, 0)) AS SL_NHAP
+                FROM dbo.PHIEU_NHAP PN
+                INNER JOIN dbo.CHI_TIET_PHIEU_NHAP CT ON CT.MAPN = PN.MAPN
+                WHERE ISNULL(PN.TRANGTHAI, 1) = 1
+                  AND PN.NGAYNHAP >= CONVERT(date, ?)
+                  AND PN.NGAYNHAP < DATEADD(day, 1, CONVERT(date, ?))
+                GROUP BY CT.MASP
+            ),
             Returns AS (
                 SELECT CTDT.MASP,
                     SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 0
@@ -488,19 +514,27 @@ class BaoCaoRepository:
             SELECT
                 ROW_NUMBER() OVER (ORDER BY {order_sql}) AS XEP_HANG,
                 SP.MASP, COALESCE(SP.TENSP, N''),
-                COALESCE(S.SO_HD, 0), COALESCE(S.SL_BAN, 0),
+                COALESCE(S.SO_HD, 0), COALESCE(P.SL_NHAP, 0),
+                COALESCE(S.SL_BAN, 0),
                 COALESCE(R.SL_HOAN_TIEN, 0), COALESCE(R.SL_DOI_HANG, 0),
                 COALESCE(R.SL_NGUYEN_VEN, 0), COALESCE(R.SL_HANG_HONG, 0),
                 COALESCE(SP.SLTON, 0)
             FROM dbo.SAN_PHAM SP
             LEFT JOIN Sales S ON S.MASP = SP.MASP
+            LEFT JOIN Purchases P ON P.MASP = SP.MASP
             LEFT JOIN Returns R ON R.MASP = SP.MASP
-            WHERE COALESCE(SP.IS_DELETED, 0) = 0
+            WHERE (
+                COALESCE(SP.IS_DELETED, 0) = 0
+                OR S.MASP IS NOT NULL OR P.MASP IS NOT NULL OR R.MASP IS NOT NULL
+            )
             {filter_sql}
             ORDER BY {order_sql}
         """
         return self._fetch_all(sql, (
-            start_date, end_date, start_date, end_date, *search_params
+            start_date, end_date,
+            start_date, end_date,
+            start_date, end_date,
+            *search_params
         ))
 
     def product_report_summary(self, start_date, end_date):
