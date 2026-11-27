@@ -88,7 +88,7 @@ class ShiftReportPage(ReportBasePage):
               AND C.NGAYLAM < DATEADD(day, 1, CONVERT(date, ?))
             GROUP BY
                 C.MACA, C.NGAYLAM, C.SOCA, C.TGMO, C.TGDONG,
-                C.TMDAUCA, C.TMCUOICA, T.END_AT
+                C.TMDAUCA, C.TMCUOICA, T.START_AT, T.END_AT
             ORDER BY C.NGAYLAM DESC, C.SOCA, C.MACA
         """
         rows = self.fetch_all(sql, (start_date, end_date))
