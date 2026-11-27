@@ -1,4 +1,273 @@
-"""Bảng màu và stylesheet chung cho giao diện BookHub."""
+"""Bảng màu, kiểu vẽ điều khiển và tiện ích giao diện dùng chung cho BookHub."""
+
+from PySide6.QtCore import QPoint, QSize, Qt
+from PySide6.QtGui import QColor, QIcon, QPainter, QPixmap, QPolygon
+from PySide6.QtWidgets import (
+    QApplication,
+    QCalendarWidget,
+    QDateEdit,
+    QDateTimeEdit,
+    QProxyStyle,
+    QStyle,
+    QToolButton,
+)
+
+
+class BookHubProxyStyle(QProxyStyle):
+    """Vẽ mũi tên điều khiển bằng tam giác thật, không phụ thuộc theme hệ điều hành."""
+
+    _ARROW_DIRECTIONS = {
+        QStyle.PrimitiveElement.PE_IndicatorArrowDown: "down",
+        QStyle.PrimitiveElement.PE_IndicatorArrowLeft: "left",
+        QStyle.PrimitiveElement.PE_IndicatorArrowRight: "right",
+        QStyle.PrimitiveElement.PE_IndicatorArrowUp: "up",
+        QStyle.PrimitiveElement.PE_IndicatorSpinUp: "up",
+        QStyle.PrimitiveElement.PE_IndicatorSpinDown: "down",
+    }
+
+    def drawPrimitive(self, element, option, painter, widget=None):
+        direction = self._ARROW_DIRECTIONS.get(element)
+        if direction is None or not option.rect.isValid():
+            return super().drawPrimitive(element, option, painter, widget)
+
+        rect = option.rect
+        center_x = rect.center().x()
+        center_y = rect.center().y()
+
+        if element in (
+            QStyle.PrimitiveElement.PE_IndicatorSpinUp,
+            QStyle.PrimitiveElement.PE_IndicatorSpinDown,
+        ):
+            half_width, half_height = 4, 3
+        else:
+            half_width, half_height = 5, 4
+
+        if direction == "down":
+            points = [
+                QPoint(center_x - half_width, center_y - half_height),
+                QPoint(center_x + half_width, center_y - half_height),
+                QPoint(center_x, center_y + half_height),
+            ]
+        elif direction == "up":
+            points = [
+                QPoint(center_x - half_width, center_y + half_height),
+                QPoint(center_x + half_width, center_y + half_height),
+                QPoint(center_x, center_y - half_height),
+            ]
+        elif direction == "left":
+            points = [
+                QPoint(center_x + half_height, center_y - half_width),
+                QPoint(center_x + half_height, center_y + half_width),
+                QPoint(center_x - half_height, center_y),
+            ]
+        else:
+            points = [
+                QPoint(center_x - half_height, center_y - half_width),
+                QPoint(center_x - half_height, center_y + half_width),
+                QPoint(center_x + half_height, center_y),
+            ]
+
+        enabled = bool(option.state & QStyle.StateFlag.State_Enabled)
+        color = QColor("#E5E7EB" if enabled else "#8291A5")
+
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(color)
+        painter.drawPolygon(QPolygon(points))
+        painter.restore()
+
+
+def install_bookhub_style(app=None):
+    """Cài proxy style trước khi tạo form để mũi tên đồng nhất trên Windows/Linux."""
+    app = app or QApplication.instance()
+    if app is None:
+        return
+    if not isinstance(app.style(), BookHubProxyStyle):
+        app.setStyle(BookHubProxyStyle())
+
+
+def _make_triangle_icon(direction, color="#E5E7EB"):
+    """Tạo icon tam giác cho hai nút chuyển tháng của lịch."""
+    pixmap = QPixmap(18, 18)
+    pixmap.fill(Qt.GlobalColor.transparent)
+
+    center = 9
+    half_width = 4
+    half_height = 5
+    if direction == "left":
+        points = [
+            QPoint(center + half_height, center - half_width),
+            QPoint(center + half_height, center + half_width),
+            QPoint(center - half_height, center),
+        ]
+    else:
+        points = [
+            QPoint(center - half_height, center - half_width),
+            QPoint(center - half_height, center + half_width),
+            QPoint(center + half_height, center),
+        ]
+
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+    painter.setPen(Qt.PenStyle.NoPen)
+    painter.setBrush(QColor(color))
+    painter.drawPolygon(QPolygon(points))
+    painter.end()
+    return QIcon(pixmap)
+
+
+CALENDAR_STYLESHEET = """
+    QCalendarWidget {
+        background-color: #202938;
+        color: #E5E7EB;
+        border: 1px solid #46546A;
+    }
+
+    QCalendarWidget QWidget#qt_calendar_navigationbar {
+        background-color: #29374B;
+        color: #E5E7EB;
+        min-height: 40px;
+        padding: 4px;
+    }
+
+    QCalendarWidget QToolButton {
+        color: #E5E7EB;
+        background-color: transparent;
+        border: 1px solid transparent;
+        border-radius: 4px;
+        min-height: 28px;
+        padding: 3px 6px;
+        font-weight: 600;
+        text-align: center;
+    }
+
+    QCalendarWidget QToolButton:hover {
+        background-color: #3B526E;
+        border-color: #60758F;
+    }
+
+    QCalendarWidget QToolButton#qt_calendar_prevmonth,
+    QCalendarWidget QToolButton#qt_calendar_nextmonth {
+        min-width: 32px;
+        max-width: 32px;
+        min-height: 30px;
+        max-height: 30px;
+        padding: 2px;
+    }
+
+    QCalendarWidget QToolButton#qt_calendar_monthbutton {
+        min-width: 104px;
+        max-width: 124px;
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+
+    QCalendarWidget QToolButton#qt_calendar_yearbutton {
+        min-width: 66px;
+        max-width: 78px;
+        padding-left: 6px;
+        padding-right: 6px;
+    }
+
+    /* Ẩn menu-indicator mặc định vì nó chèn lên chữ tên tháng/năm. */
+    QCalendarWidget QToolButton#qt_calendar_monthbutton::menu-indicator,
+    QCalendarWidget QToolButton#qt_calendar_yearbutton::menu-indicator {
+        image: none;
+        width: 0px;
+        subcontrol-position: right center;
+    }
+
+    QCalendarWidget QMenu {
+        background-color: #202938;
+        color: #E5E7EB;
+        border: 1px solid #46546A;
+        padding: 4px;
+    }
+
+    QCalendarWidget QMenu::item {
+        padding: 5px 18px;
+        border-radius: 3px;
+    }
+
+    QCalendarWidget QMenu::item:selected {
+        background-color: #3B526E;
+        color: #FFFFFF;
+    }
+
+    QCalendarWidget QSpinBox {
+        min-width: 72px;
+        min-height: 28px;
+        padding-right: 26px;
+    }
+
+    QCalendarWidget QAbstractItemView {
+        background-color: #202938;
+        color: #E5E7EB;
+        selection-background-color: #2563EB;
+        selection-color: #FFFFFF;
+        outline: none;
+    }
+
+    QCalendarWidget QAbstractItemView:disabled {
+        color: #64748B;
+    }
+"""
+
+
+def configure_date_edit(date_edit):
+    """Căn chỉnh lịch popup của QDateEdit/QDateTimeEdit dùng trong toàn hệ thống."""
+    if isinstance(date_edit, QDateTimeEdit):
+        date_edit.setMinimumWidth(180)
+    elif isinstance(date_edit, QDateEdit):
+        date_edit.setMinimumWidth(148)
+
+    date_edit.setCalendarPopup(True)
+    calendar = date_edit.calendarWidget()
+    if calendar is None:
+        return
+
+    calendar.setMinimumWidth(320)
+    calendar.setStyleSheet(CALENDAR_STYLESHEET)
+
+    previous_button = calendar.findChild(
+        QToolButton, "qt_calendar_prevmonth"
+    )
+    next_button = calendar.findChild(
+        QToolButton, "qt_calendar_nextmonth"
+    )
+    if previous_button is not None:
+        previous_button.setText("")
+        previous_button.setIcon(_make_triangle_icon("left"))
+        previous_button.setIconSize(QSize(14, 14))
+        previous_button.setToolButtonStyle(
+            Qt.ToolButtonStyle.ToolButtonIconOnly
+        )
+        previous_button.setAccessibleName("Tháng trước")
+
+    if next_button is not None:
+        next_button.setText("")
+        next_button.setIcon(_make_triangle_icon("right"))
+        next_button.setIconSize(QSize(14, 14))
+        next_button.setToolButtonStyle(
+            Qt.ToolButtonStyle.ToolButtonIconOnly
+        )
+        next_button.setAccessibleName("Tháng sau")
+
+    month_button = calendar.findChild(
+        QToolButton, "qt_calendar_monthbutton"
+    )
+    if month_button is not None:
+        month_button.setMinimumWidth(104)
+        month_button.setMinimumHeight(30)
+
+    year_button = calendar.findChild(
+        QToolButton, "qt_calendar_yearbutton"
+    )
+    if year_button is not None:
+        year_button.setMinimumWidth(66)
+        year_button.setMinimumHeight(30)
+
 
 MAIN_WINDOW_STYLESHEET = """
             QMainWindow {
@@ -295,16 +564,7 @@ MAIN_WINDOW_STYLESHEET = """
                 background-color: #465B75;
             }
 
-            QComboBox::down-arrow {
-                image: none;
-                subcontrol-origin: content;
-                subcontrol-position: center;
-                width: 0px;
-                height: 0px;
-                border-left: 5px solid transparent;
-                border-right: 5px solid transparent;
-                border-top: 6px solid #E5E7EB;
-            }
+            /* QProxyStyle vẽ mũi tên tam giác; không dựng bằng border QSS. */
 
             QComboBox QAbstractItemView {
                 background-color: #202938;
@@ -346,17 +606,7 @@ MAIN_WINDOW_STYLESHEET = """
                 background-color: #465B75;
             }
 
-            QDateEdit::down-arrow,
-            QDateTimeEdit::down-arrow {
-                image: none;
-                subcontrol-origin: content;
-                subcontrol-position: center;
-                width: 0px;
-                height: 0px;
-                border-left: 5px solid transparent;
-                border-right: 5px solid transparent;
-                border-top: 6px solid #E5E7EB;
-            }
+            /* Nút lịch dùng mũi tên do BookHubProxyStyle vẽ. */
 
             /* Chừa vùng nhập cho hai nút của SpinBox. */
             QSpinBox,
@@ -396,40 +646,7 @@ MAIN_WINDOW_STYLESHEET = """
                 background-color: #465B75;
             }
 
-            /* Tam giác hướng lên/xuống, đặt giữa từng nút. */
-            QSpinBox::up-arrow,
-            QDoubleSpinBox::up-arrow {
-                image: none;
-                subcontrol-origin: content;
-                subcontrol-position: center;
-                width: 0px;
-                height: 0px;
-                border-left: 4px solid transparent;
-                border-right: 4px solid transparent;
-                border-bottom: 5px solid #E5E7EB;
-            }
-
-            QSpinBox::down-arrow,
-            QDoubleSpinBox::down-arrow {
-                image: none;
-                subcontrol-origin: content;
-                subcontrol-position: center;
-                width: 0px;
-                height: 0px;
-                border-left: 4px solid transparent;
-                border-right: 4px solid transparent;
-                border-top: 5px solid #E5E7EB;
-            }
-
-            QSpinBox:disabled::up-arrow,
-            QDoubleSpinBox:disabled::up-arrow {
-                border-bottom-color: #8291A5;
-            }
-
-            QSpinBox:disabled::down-arrow,
-            QDoubleSpinBox:disabled::down-arrow {
-                border-top-color: #8291A5;
-            }
+            /* Mũi tên SpinBox được BookHubProxyStyle vẽ trực tiếp. */
 
             QCheckBox,
             QRadioButton {
