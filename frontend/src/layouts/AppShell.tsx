@@ -4,6 +4,8 @@ import {
   Button,
   Card,
   Form,
+  Grid,
+  Drawer,
   Input,
   Layout,
   Menu,
@@ -25,6 +27,9 @@ import {
   HomeOutlined,
   LockOutlined,
   LogoutOutlined,
+  MenuOutlined,
+  MoonOutlined,
+  SunOutlined,
   ShopOutlined,
   TagsOutlined,
   TeamOutlined,
@@ -176,8 +181,11 @@ function Dashboard({ name, role }: { name: string; role: string }) {
   );
 }
 
-export function AppShell() {
+export function AppShell({ themeMode, onToggleTheme }: { themeMode: "light" | "dark"; onToggleTheme: () => void }) {
   const { user, logout } = useAuth();
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.lg;
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [pageKey, setPageKey] = useState<PageKey>("home");
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [passwordSaving, setPasswordSaving] = useState(false);
@@ -202,6 +210,11 @@ export function AppShell() {
   }, [permittedPages]);
 
   const pageTitle = PAGE_TITLES[pageKey] || "Trang chủ";
+
+  function selectPage(key: string) {
+    setPageKey(key as PageKey);
+    setMobileNavOpen(false);
+  }
 
   async function submitPasswordChange(values: ChangePasswordFormValues) {
     setPasswordSaving(true);
@@ -232,7 +245,7 @@ export function AppShell() {
   return (
     <>
     <Layout className="app-layout">
-      <Sider className="app-sider" width={235} breakpoint="lg" collapsedWidth={72} theme="dark">
+      {!isMobile && <Sider className="app-sider" width={235} theme={themeMode}>
         <div className="sidebar-brand">
           <div className="sidebar-brand-mark"><BookOutlined /></div>
           <div className="sidebar-brand-text">HỆ THỐNG QUẢN LÝ<small>NHÀ SÁCH</small></div>
@@ -241,10 +254,10 @@ export function AppShell() {
         <Menu
           className="app-menu"
           mode="inline"
-          theme="dark"
+          theme={themeMode}
           selectedKeys={[pageKey]}
           items={menuItems}
-          onClick={({ key }) => setPageKey(key as PageKey)}
+          onClick={({ key }) => selectPage(key)}
         />
 
         <div className="sidebar-account">
@@ -262,12 +275,71 @@ export function AppShell() {
             Đăng xuất
           </Button>
         </div>
-      </Sider>
+      </Sider>}
+
+      <Drawer
+        className="mobile-navigation-drawer"
+        open={isMobile && mobileNavOpen}
+        onClose={() => setMobileNavOpen(false)}
+        placement="left"
+        width={300}
+        title={null}
+        styles={{ body: { padding: 0 } }}
+      >
+        <div className="mobile-drawer-inner">
+          <div className="sidebar-brand">
+            <div className="sidebar-brand-mark"><BookOutlined /></div>
+            <div className="sidebar-brand-text">HỆ THỐNG QUẢN LÝ<small>NHÀ SÁCH</small></div>
+          </div>
+          <Menu
+            className="app-menu mobile-app-menu"
+            mode="inline"
+            theme={themeMode}
+            selectedKeys={[pageKey]}
+            items={menuItems}
+            onClick={({ key }) => selectPage(key)}
+          />
+          <div className="sidebar-account mobile-sidebar-account">
+            <div className="sidebar-user">
+              <Avatar icon={<UserOutlined />} />
+              <div className="sidebar-user-meta">
+                <Text className="sidebar-user-name">{user?.full_name || user?.employee_code}</Text>
+                <Text className="sidebar-user-role">{user?.employee_code} · {user?.role}</Text>
+              </div>
+            </div>
+            <Button className="sidebar-password" type="text" icon={<LockOutlined />} block onClick={() => { setMobileNavOpen(false); setPasswordOpen(true); }}>
+              Đổi mật khẩu
+            </Button>
+            <Button className="sidebar-logout" type="text" icon={<LogoutOutlined />} block onClick={logout}>
+              Đăng xuất
+            </Button>
+          </div>
+        </div>
+      </Drawer>
 
       <Layout className="app-main">
         <Header className="app-header">
-          <div className="header-title">{pageTitle}</div>
+          <div className="header-leading">
+            {isMobile && <Button
+              className="mobile-menu-button"
+              type="text"
+              icon={<MenuOutlined />}
+              aria-label="Mở menu điều hướng"
+              onClick={() => setMobileNavOpen(true)}
+            />}
+            <div className="header-title">{pageTitle}</div>
+          </div>
           <Space className="header-actions" size={12}>
+            <Button
+              className="theme-toggle-button"
+              type="default"
+              icon={themeMode === "dark" ? <SunOutlined /> : <MoonOutlined />}
+              aria-label={themeMode === "dark" ? "Chuyển sang giao diện sáng" : "Chuyển sang giao diện tối"}
+              title={themeMode === "dark" ? "Chuyển sang giao diện sáng" : "Chuyển sang giao diện tối"}
+              onClick={onToggleTheme}
+            >
+              <span className="theme-toggle-label">{themeMode === "dark" ? "Giao diện sáng" : "Giao diện tối"}</span>
+            </Button>
             <Tag color="blue">{user?.role}</Tag>
             <Avatar size="small" icon={<UserOutlined />} />
             <Text className="header-user">{user?.full_name || user?.employee_code}</Text>
