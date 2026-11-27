@@ -7,7 +7,7 @@ import {
 import { EyeOutlined, PlusOutlined, ReloadOutlined, StopOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
 import { ApiError } from "@/services/api";
-import { operationsApi, type ImportLookup, type InvoiceLookup, type DataRow } from "@/features/operations/operationsApi";
+import { operationsApi, type ImportLookup, type InvoiceLookup, type Row as DataRow } from "@/features/operations/operationsApi";
 import { useAuth } from "@/features/auth/AuthContext";
 
 const { Title, Text } = Typography;
