@@ -479,3 +479,10 @@ MAIN_WINDOW_STYLESHEET = """
                 background-color: #C94444;
             }
 """
+
+
+
+def configure_app_theme(app):
+    """Áp dụng theme chung trước khi tạo bất kỳ cửa sổ nào của ứng dụng."""
+    apply_app_palette(app)
+    app.setStyleSheet(MAIN_WINDOW_STYLESHEET)
