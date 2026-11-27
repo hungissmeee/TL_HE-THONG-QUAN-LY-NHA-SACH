@@ -147,6 +147,7 @@ class CreateReturnDialog(QDialog):
         bottom.addWidget(self.total_label)
         bottom.addStretch()
         self.save_button = QPushButton("Lưu phiếu đổi trả")
+        self.save_button.setProperty("buttonRole", "primary")
         self.save_button.clicked.connect(self.save_return)
         close_button = QPushButton("Đóng")
         close_button.clicked.connect(self.reject)
