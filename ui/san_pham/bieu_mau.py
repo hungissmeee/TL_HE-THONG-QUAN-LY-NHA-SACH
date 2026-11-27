@@ -31,6 +31,8 @@ from PySide6.QtWidgets import (
     QScrollArea,
 )
 from .bo_chon import SearchableSingleSelect, SearchableMultiSelect
+from core.repositories.san_pham_repository import SanPhamRepository
+from core.services.san_pham_service import SanPhamService
 
 
 class ProductFormDialog(QDialog):
@@ -41,6 +43,7 @@ class ProductFormDialog(QDialog):
         """Khởi tạo biểu mẫu sản phẩm và chọn chế độ thêm mới hoặc chỉnh sửa."""
         super().__init__(parent)
         self.db = db
+        self.service = SanPhamService(SanPhamRepository(db))
         self.product_code = product_code
         self.is_edit = product_code is not None
         self.existing = None
@@ -60,109 +63,17 @@ class ProductFormDialog(QDialog):
         else:
             self.refresh_product_code_preview()
 
-    def _next_product_code(self, cursor, lock_table=False):
-        """
-        Tạo mã dạng SP001, SP002... dựa trên hậu tố số lớn nhất.
-        Không lọc IS_DELETED nên mã của sản phẩm đã xóa vẫn được tính.
-        Khi lưu thật, khóa bảng trong transaction để tránh hai người
-        cùng nhận một mã nếu tạo sản phẩm đồng thời.
-        """
-        table_hint = " WITH (TABLOCKX, HOLDLOCK)" if lock_table else ""
-        cursor.execute(f"""
-            SELECT COALESCE(
-                MAX(TRY_CONVERT(BIGINT, SUBSTRING(MASP, 3, 18))),
-                0
-            )
-            FROM dbo.SAN_PHAM{table_hint}
-            WHERE UPPER(LEFT(MASP, 2)) = 'SP'
-              AND TRY_CONVERT(BIGINT, SUBSTRING(MASP, 3, 18)) IS NOT NULL
-        """)
-        last_number = cursor.fetchone()[0] or 0
-        next_number = int(last_number) + 1
-        code = f"SP{next_number:03d}"
-        if len(code) > 20:
-            raise ValueError("Đã vượt giới hạn độ dài mã sản phẩm (20 ký tự).")
-        return code
-
     def refresh_product_code_preview(self):
-        """Hiển thị trước mã kế tiếp; mã sẽ được tính lại lúc lưu."""
-        conn = self.db.get_connection()
-        if conn is None:
-            self.masp.setText("")
-            return
-
-        cursor = None
         try:
-            cursor = conn.cursor()
-            code = self._next_product_code(cursor, lock_table=False)
-            self.masp.setText(code)
-            # Kết thúc transaction đọc preview nếu driver đang dùng autocommit off.
-            conn.commit()
-        except Exception as e:
-            conn.rollback()
-            self.masp.setText("Không tạo được mã")
-            QMessageBox.warning(
-                self,
-                "Không thể tạo mã sản phẩm",
-                f"Không lấy được mã sản phẩm tự động.\n{e}"
-            )
-        finally:
-            if cursor is not None:
-                cursor.close()
+            self.masp.setText(self.service.preview_next_product_code())
+        except Exception as error:
+            self.masp.setText('Không tạo được mã')
+            QMessageBox.warning(self, 'Không thể tạo mã sản phẩm', str(error))
 
     def load_existing_product(self):
-        """Tải thông tin sản phẩm cần chỉnh sửa."""
-        cursor = None
-        try:
-            cursor = self.db.get_connection().cursor()
-            cursor.execute("""
-                SELECT
-                    SP.MASP, SP.TENSP, SP.DVT, SP.GIANHAP,
-                    SP.GIABAN, SP.SLTON, SP.VAT,
-                    CASE
-                        WHEN S.MASP IS NOT NULL THEN N'Sách'
-                        WHEN SPK.MASP IS NOT NULL THEN N'Sản phẩm khác'
-                        ELSE N'Chưa phân loại'
-                    END AS LOAI,
-                    S.ISBN, S.NAMXB, S.MANXB,
-                    SPK.NGAYSX, SPK.MATH,
-                    SP.BARCODE
-                FROM dbo.SAN_PHAM SP
-                LEFT JOIN dbo.SACH S ON S.MASP = SP.MASP
-                LEFT JOIN dbo.SAN_PHAM_KHAC SPK ON SPK.MASP = SP.MASP
-                WHERE SP.MASP = ?
-                  AND ISNULL(SP.IS_DELETED, 0) = 0
-            """, self.product_code)
-            row = cursor.fetchone()
-            if row is None:
-                raise Exception("Không tìm thấy sản phẩm cần chỉnh sửa!")
-            if row[7] == "Chưa phân loại":
-                raise Exception("Sản phẩm chưa được phân loại thành sách hoặc sản phẩm khác, không thể chỉnh sửa bằng form này.")
-
-            self.existing = {
-                "masp": row[0], "tensp": row[1], "dvt": row[2],
-                "gianhap": row[3], "giaban": row[4], "slton": row[5],
-                "vat": row[6], "loai": row[7], "isbn": row[8],
-                "namxb": row[9], "manxb": row[10],
-                "ngaysx": row[11], "math": row[12],
-                "barcode": row[13]
-            }
-
-            cursor.execute(
-                "SELECT MATG FROM dbo.THUOC_TG WHERE MASP = ?",
-                self.product_code
-            )
-            self.selected_author_codes = {r[0] for r in cursor.fetchall()}
-
-            cursor.execute(
-                "SELECT MATL FROM dbo.THUOC_TL WHERE MASP = ?",
-                self.product_code
-            )
-            self.selected_genre_codes = {r[0] for r in cursor.fetchall()}
-
-        finally:
-            if cursor is not None:
-                cursor.close()
+        self.existing = self.service.get_product_for_edit(self.product_code)
+        self.selected_author_codes = set(self.existing.get('selected_author_codes', set()))
+        self.selected_genre_codes = set(self.existing.get('selected_genre_codes', set()))
 
     def setup_ui(self):
         """Tạo các trường thông tin chung và trường riêng theo loại sản phẩm."""
@@ -365,107 +276,17 @@ class ProductFormDialog(QDialog):
                 combo.setCurrentIndex(index)
 
     def load_lookup_data(self):
-        """Tải danh mục đang hoạt động; giữ mục đã xóa nếu đang gắn với sản phẩm cũ."""
-        conn = self.db.get_connection()
-        if conn is None:
-            raise Exception("Chưa có kết nối database!")
-
-        cursor = conn.cursor()
-        try:
-            selected_publisher = (
-                self.existing.get("manxb")
-                if self.is_edit and self.existing["loai"] == "Sách"
-                else None
-            )
-            selected_brand = (
-                self.existing.get("math")
-                if self.is_edit and self.existing["loai"] == "Sản phẩm khác"
-                else None
-            )
-
-            # Nhà xuất bản: chọn một bằng tìm kiếm.
-            if selected_publisher is None:
-                cursor.execute("""
-                    SELECT MANXB, TENNXB, ISNULL(IS_DELETED, 0)
-                    FROM dbo.NHA_XUAT_BAN
-                    WHERE ISNULL(IS_DELETED, 0) = 0
-                    ORDER BY TENNXB
-                """)
-            else:
-                cursor.execute("""
-                    SELECT MANXB, TENNXB, ISNULL(IS_DELETED, 0)
-                    FROM dbo.NHA_XUAT_BAN
-                    WHERE ISNULL(IS_DELETED, 0) = 0 OR MANXB = ?
-                    ORDER BY TENNXB
-                """, selected_publisher)
-            self.publisher_combo.set_options(
-                cursor.fetchall(), selected_publisher
-            )
-
-            # Tác giả: tìm kiếm và chọn nhiều.
-            selected_authors = self.selected_author_codes if self.is_edit else set()
-            if selected_authors:
-                placeholders = ",".join("?" for _ in selected_authors)
-                cursor.execute(f"""
-                    SELECT MATG, TENTG, ISNULL(IS_DELETED, 0)
-                    FROM dbo.TAC_GIA
-                    WHERE ISNULL(IS_DELETED, 0) = 0
-                       OR MATG IN ({placeholders})
-                    ORDER BY TENTG
-                """, tuple(selected_authors))
-            else:
-                cursor.execute("""
-                    SELECT MATG, TENTG, ISNULL(IS_DELETED, 0)
-                    FROM dbo.TAC_GIA
-                    WHERE ISNULL(IS_DELETED, 0) = 0
-                    ORDER BY TENTG
-                """)
-            self.authors_list.set_options(
-                cursor.fetchall(), selected_authors
-            )
-
-            # Thể loại: tìm kiếm và chọn nhiều.
-            selected_genres = self.selected_genre_codes if self.is_edit else set()
-            if selected_genres:
-                placeholders = ",".join("?" for _ in selected_genres)
-                cursor.execute(f"""
-                    SELECT MATL, TENTL, ISNULL(IS_DELETED, 0)
-                    FROM dbo.THE_LOAI
-                    WHERE ISNULL(IS_DELETED, 0) = 0
-                       OR MATL IN ({placeholders})
-                    ORDER BY TENTL
-                """, tuple(selected_genres))
-            else:
-                cursor.execute("""
-                    SELECT MATL, TENTL, ISNULL(IS_DELETED, 0)
-                    FROM dbo.THE_LOAI
-                    WHERE ISNULL(IS_DELETED, 0) = 0
-                    ORDER BY TENTL
-                """)
-            self.genres_list.set_options(
-                cursor.fetchall(), selected_genres
-            )
-
-            # Thương hiệu: chọn một bằng tìm kiếm.
-            if selected_brand is None:
-                cursor.execute("""
-                    SELECT MATH, TENTH, ISNULL(IS_DELETED, 0)
-                    FROM dbo.THUONG_HIEU
-                    WHERE ISNULL(IS_DELETED, 0) = 0
-                    ORDER BY TENTH
-                """)
-            else:
-                cursor.execute("""
-                    SELECT MATH, TENTH, ISNULL(IS_DELETED, 0)
-                    FROM dbo.THUONG_HIEU
-                    WHERE ISNULL(IS_DELETED, 0) = 0 OR MATH = ?
-                    ORDER BY TENTH
-                """, selected_brand)
-            self.brand_combo.set_options(
-                cursor.fetchall(), selected_brand
-            )
-        finally:
-            cursor.close()
+        selected_publisher = self.existing.get('manxb') if self.is_edit and self.existing['loai'] == 'Sách' else None
+        selected_brand = self.existing.get('math') if self.is_edit and self.existing['loai'] == 'Sản phẩm khác' else None
+        data = self.service.get_lookup_data(
+            selected_publisher=selected_publisher, selected_brand=selected_brand,
+            selected_authors=self.selected_author_codes if self.is_edit else set(),
+            selected_genres=self.selected_genre_codes if self.is_edit else set(),
+        )
+        self.publisher_combo.set_options(data['publishers'], selected_publisher)
+        self.authors_list.set_options(data['authors'], self.selected_author_codes if self.is_edit else set())
+        self.genres_list.set_options(data['genres'], self.selected_genre_codes if self.is_edit else set())
+        self.brand_combo.set_options(data['brands'], selected_brand)
 
     def populate_form(self):
         """Đưa dữ liệu sản phẩm hiện có lên các trường nhập."""
@@ -502,6 +323,54 @@ class ProductFormDialog(QDialog):
         if result < 0:
             raise ValueError(f"{field_name} không được âm!")
         return result
+
+    def save_product(self):
+        tensp = self.tensp.text().strip()
+        dvt = self.dvt.text().strip()
+        if not tensp or not dvt:
+            QMessageBox.warning(self, 'Thiếu thông tin', 'Vui lòng nhập tên sản phẩm và đơn vị tính.')
+            return
+        if not self.giaban.text().strip():
+            QMessageBox.warning(self, 'Thiếu thông tin', 'Vui lòng nhập giá bán.')
+            self.giaban.setFocus()
+            return
+        try:
+            giaban = self.parse_decimal(self.giaban.text(), 'Giá bán')
+            vat = self.parse_decimal(self.vat.text() or '0', 'VAT')
+            namxb_text = self.namxb.text().strip()
+            namxb = int(namxb_text) if namxb_text else None
+        except (ValueError, InvalidOperation) as error:
+            QMessageBox.warning(self, 'Dữ liệu không hợp lệ', str(error))
+            return
+        product_type = self.type_combo.currentData()
+        if product_type == 'book' and self.publisher_combo.currentData() is None:
+            QMessageBox.warning(self, 'Thiếu thông tin', 'Vui lòng chọn nhà xuất bản.')
+            return
+        if product_type == 'other' and self.brand_combo.currentData() is None:
+            QMessageBox.warning(self, 'Thiếu thông tin', 'Vui lòng chọn thương hiệu.')
+            return
+        payload = {
+            'tensp': tensp, 'dvt': dvt, 'giaban': giaban, 'vat': vat,
+            'barcode': self.barcode.text().strip() or None,
+            'product_type': product_type,
+            'isbn': self.isbn.text().strip() or None, 'namxb': namxb,
+            'manxb': self.publisher_combo.currentData(),
+            'authors': self.authors_list.checked_codes(),
+            'genres': self.genres_list.checked_codes(),
+            'ngaysx': self.ngaysx.date().toPython(),
+            'math': self.brand_combo.currentData(),
+        }
+        try:
+            code = self.service.save_product(payload, product_code=self.product_code)
+            self.masp.setText(code)
+            message = f'Đã cập nhật sản phẩm {code} thành công!' if self.is_edit else f'Đã thêm sản phẩm thành công!\\nMã sản phẩm: {code}'
+            QMessageBox.information(self, 'Thành công', message)
+            self.accept()
+        except Exception as error:
+            QMessageBox.critical(
+                self, 'Lỗi cập nhật sản phẩm' if self.is_edit else 'Lỗi thêm sản phẩm',
+                str(error)
+            )
 
     def save_product(self):
         """Kiểm tra dữ liệu rồi thêm mới hoặc cập nhật sản phẩm trong SQL Server."""
