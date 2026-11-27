@@ -207,26 +207,6 @@ class CreateInvoiceDialog(QDialog):
             stretch_column=1,
             default_sort_column=0
         )
-        self.cart_table.setHorizontalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAsNeeded
-        )
-        self.cart_table.setHorizontalScrollMode(
-            QAbstractItemView.ScrollMode.ScrollPerPixel
-        )
-        cart_header = self.cart_table.horizontalHeader()
-        cart_widths = {
-            0: 85,   # Mã sản phẩm
-            2: 100,  # Số lượng
-            3: 190,  # Đơn giá
-            4: 80,   # VAT
-            5: 125,  # Thành tiền
-            6: 75,   # Thao tác
-        }
-        for column, width in cart_widths.items():
-            cart_header.setSectionResizeMode(
-                column, QHeaderView.ResizeMode.Fixed
-            )
-            self.cart_table.setColumnWidth(column, width)
         cart_layout.addWidget(self.cart_table)
         root.addWidget(cart_group, 3)
 
@@ -452,7 +432,6 @@ class CreateInvoiceDialog(QDialog):
                 quantity.setRange(1, max(1, int(item["stock"])))
                 quantity.setValue(int(item["quantity"]))
                 quantity.setMinimumHeight(34)
-                quantity.setMinimumWidth(90)
                 quantity.valueChanged.connect(
                     lambda value, code=masp: self._update_cart_quantity(code, value)
                 )
@@ -460,7 +439,6 @@ class CreateInvoiceDialog(QDialog):
 
                 remove_button = QPushButton("Bỏ")
                 remove_button.setObjectName("dangerButton")
-                remove_button.setMinimumSize(58, 30)
                 remove_button.clicked.connect(
                     lambda _checked=False, product_code=masp:
                     self._remove_cart_item(product_code)
