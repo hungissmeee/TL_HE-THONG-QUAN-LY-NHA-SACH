@@ -31,6 +31,7 @@ from ui.table_sort import (
     prepare_sortable_table,
 )
 from .dung_chung import MONEY_QUANT, Decimal, ROUND_HALF_UP, money, as_decimal, date_text, time_text
+from ui.formatters import format_report_date
 
 
 class InvoiceDetailDialog(QDialog):
@@ -140,7 +141,7 @@ class InvoiceDetailDialog(QDialog):
         form = QFormLayout(info)
         shift_text = (
             f"Ca {self.header['soca']} | Mã ca: {self.header['maca']} | "
-            f"{date_text(self.header['ngaylam'])} | "
+            f"{format_report_date(self.header['ngaylam'], include_time=False)} | "
             f"{time_text(self.header['tgmo'])} - {time_text(self.header['tgdong'])}"
         ) if self.header["maca"] is not None else "Không có thông tin ca"
 
@@ -250,7 +251,7 @@ class InvoiceDetailDialog(QDialog):
 
         shift_text = (
             f"Ca {h['soca']} | Mã ca: {h['maca']}<br>"
-            f"Ngày ca: {date_text(h['ngaylam'])}<br>"
+            f"Ngày ca: {format_report_date(h['ngaylam'], include_time=False)}<br>"
             f"Giờ ca: {time_text(h['tgmo'])} - {time_text(h['tgdong'])}"
         ) if h["maca"] is not None else "Không có thông tin ca"
         status_text = "ĐÃ HỦY" if h["status"] == 0 else (
