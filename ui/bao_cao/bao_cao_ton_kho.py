@@ -6,8 +6,7 @@ from ui.bao_cao.bao_cao_co_so import ReportBasePage, money_text, number_text
 
 
 class InventoryReportPage(ReportBasePage):
-    """Thống kê số lượng và giá trị tồn kho."""
-    """Báo cáo số lượng và giá trị hàng tồn kho."""
+    """Báo cáo số lượng, tình trạng và giá trị tồn kho ước tính."""
     def __init__(self, db, parent=None):
         super().__init__(
             db,
