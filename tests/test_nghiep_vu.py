@@ -153,15 +153,24 @@ class ProductListColumnTests(unittest.TestCase):
         self.assertIn("Mã vạch", PRODUCT_TABLE_HEADERS)
         self.assertIn("Loại sản phẩm", PRODUCT_TABLE_HEADERS)
 
-    def test_isbn_remains_a_search_field_and_a_book_detail_field(self):
+    def test_isbn_remains_searchable_and_visible_in_book_details(self):
+        import inspect
         from ui.san_pham.danh_sach import ProductWindow
         from ui.san_pham.chi_tiet import ProductDetailDialog
 
-        # ISBN stays in the search SQL, but is not selected for the main list.
-        source = ProductWindow.load_products.__code__
-        self.assertIsNotNone(source)
-        detail_source = ProductDetailDialog.setup_ui.__code__
-        self.assertIsNotNone(detail_source)
+        list_source = inspect.getsource(ProductWindow.load_products)
+        detail_source = inspect.getsource(ProductDetailDialog.setup_ui)
+
+        # ISBN is kept only in the search predicate, not in the list SELECT.
+        list_query = list_source.split("query = \"\"\"", 1)[1].split(
+            '"""', 1
+        )[0]
+        self.assertIn("S2.ISBN LIKE ?", list_source)
+        self.assertNotIn("S.ISBN", list_query)
+
+        # Book-specific attributes are still shown after opening details.
+        self.assertIn("SELECT S.ISBN, S.NAMXB, NXB.TENNXB", detail_source)
+        self.assertIn('"ISBN:"', detail_source)
 
 
 class ProductTableWidgetTests(unittest.TestCase):
