@@ -1,12 +1,13 @@
 """Kiểm thử launcher chạy đồng thời Backend và Frontend."""
 
 import os
+import subprocess
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
 from backend.config import ConfigurationError
-from run_web import NpmRuntime, _npm_command, load_frontend_options
+from run_web import NpmRuntime, _find_npm, _npm_command, load_frontend_options
 
 
 class WebLauncherTests(unittest.TestCase):
@@ -90,6 +91,17 @@ class WebLauncherTests(unittest.TestCase):
             "--port", "5173",
             "--strictPort",
         ])
+
+    @unittest.skipUnless(os.name == "nt", "Chỉ chạy trên Windows CI.")
+    def test_windows_detects_npm_cli_and_executes_it_through_node(self):
+        runtime = _find_npm()
+        result = subprocess.run(
+            _npm_command(runtime, ["--version"]),
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        self.assertTrue(result.stdout.strip())
 
     def test_npm_command_accepts_standard_npm_runtime_on_linux(self):
         runtime = NpmRuntime(("/usr/bin/npm",))
