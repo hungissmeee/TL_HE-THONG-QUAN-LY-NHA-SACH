@@ -22,6 +22,8 @@ from ui.product_table import ProductTableWidget
 from .dung_chung import MONEY_QUANT, Decimal, InvalidOperation, ROUND_HALF_UP, money, as_decimal, date_text, time_text
 from ui.permissions import is_admin_account
 from ui.san_pham.tim_kiem import find_matching_product_codes
+from core.repositories.hoa_don_repository import HoaDonRepository
+from core.services.hoa_don_service import HoaDonService
 
 
 class CreateInvoiceDialog(QDialog):
@@ -30,6 +32,7 @@ class CreateInvoiceDialog(QDialog):
     def __init__(self, db, parent=None):
         super().__init__(parent)
         self.db = db
+        self.service = HoaDonService(HoaDonRepository(db))
         self.username = (getattr(db, "username", "") or "").strip()
         self.is_admin = is_admin_account(self.username)
         self.employee = None
@@ -50,64 +53,11 @@ class CreateInvoiceDialog(QDialog):
         self.update_totals()
 
     def _load_employee_and_active_shift(self):
-        """Lấy thông tin nhân viên đăng nhập và ca làm việc đang hoạt động."""
-        conn = self.db.get_connection()
-        if conn is None:
-            raise RuntimeError("Chưa có kết nối SQL Server.")
-
-        cursor = conn.cursor()
-        try:
-            if self.is_admin:
-                cursor.execute("""
-                    SELECT MANV, TENNV, VAITRO
-                    FROM dbo.NHAN_VIEN
-                    WHERE MANV = ?
-                """, self.username)
-                row = cursor.fetchone()
-                self.employee = {
-                    "manv": row[0] if row else None,
-                    "tennv": (row[1] or row[0]) if row else "Admin",
-                    "vaitro": row[2] if row else "Quản trị hệ thống",
-                }
-                # Admin không bị ràng buộc bởi đăng ký ca; MACA có thể để NULL.
-                self.active_shift = None
-                return
-
-            cursor.execute("""
-                SELECT TOP 1
-                    NV.MANV, NV.TENNV, NV.VAITRO,
-                    C.MACA, C.SOCA, C.NGAYLAM, C.TGMO, C.TGDONG
-                FROM dbo.NHAN_VIEN NV
-                INNER JOIN dbo.LAMCA L ON L.MANV = NV.MANV
-                INNER JOIN dbo.CA_LAM_VIEC C ON C.MACA = L.MACA
-                WHERE NV.MANV = ?
-                  AND CAST(C.NGAYLAM AS date) = CAST(SYSDATETIME() AS date)
-                  AND CAST(SYSDATETIME() AS time) >= C.TGMO
-                  AND CAST(SYSDATETIME() AS time) < C.TGDONG
-                  AND C.TMCUOICA IS NULL
-                ORDER BY C.SOCA
-            """, self.username)
-            row = cursor.fetchone()
-            if row is None:
-                raise RuntimeError(
-                    "Bạn chưa đăng ký ca đang diễn ra.\n"
-                    "Chỉ nhân viên thuộc ca hiện tại mới được lập hóa đơn."
-                )
-
-            self.employee = {
-                "manv": row[0],
-                "tennv": row[1],
-                "vaitro": row[2],
-            }
-            self.active_shift = {
-                "maca": row[3],
-                "soca": row[4],
-                "ngaylam": row[5],
-                "tgmo": row[6],
-                "tgdong": row[7],
-            }
-        finally:
-            cursor.close()
+        data = self.service.get_employee_and_active_shift(
+            self.username, is_admin=self.is_admin
+        )
+        self.employee = data["employee"]
+        self.active_shift = data["active_shift"]
 
     def _build_ui(self):
         """Tạo các trường nhập, bảng sản phẩm, giỏ hàng và khu vực thanh toán."""
@@ -235,70 +185,32 @@ class CreateInvoiceDialog(QDialog):
         table.setItem(row, column, item)
 
     def _load_promotions(self):
-        """Tải các chương trình khuyến mãi còn hiệu lực để áp dụng cho hóa đơn."""
-        conn = self.db.get_connection()
-        cursor = conn.cursor()
-        try:
-            cursor.execute("""
-                SELECT MAKM, TENKM, TYLEGIAM
-                FROM dbo.CHUONG_TRINH_KM
-                WHERE NGAYBD <= SYSDATETIME()
-                  AND NGAYKT >= SYSDATETIME()
-                  AND ISNULL(IS_DELETED, 0) = 0
-                ORDER BY TENKM
-            """)
-            for row in cursor.fetchall():
-                self.promotion_combo.addItem(
-                    f"{row[1]} ({row[2]}%)", row[0]
-                )
-                self.promotions[row[0]] = as_decimal(row[2])
-        finally:
-            cursor.close()
+        for code, name, rate in self.service.list_active_promotions():
+            self.promotion_combo.addItem(f"{name} ({rate}%)", code)
+            self.promotions[code] = as_decimal(rate)
 
     def search_products(self, *_):
-        """Tải các sản phẩm còn hàng và tạo danh sách gợi ý cho ô tìm kiếm."""
-        conn = self.db.get_connection()
-        if conn is None:
-            raise RuntimeError("Chưa có kết nối SQL Server.")
-        cursor = conn.cursor()
-        try:
-            cursor.execute("""
-                SELECT
-                    SP.MASP, SP.TENSP, SP.DVT, SP.GIABAN,
-                    SP.SLTON, SP.VAT, SP.BARCODE, S.ISBN
-                FROM dbo.SAN_PHAM SP
-                LEFT JOIN dbo.SACH S ON S.MASP = SP.MASP
-                WHERE ISNULL(SP.IS_DELETED, 0) = 0
-                  AND ISNULL(SP.SLTON, 0) > 0
-                ORDER BY SP.TENSP, SP.MASP
-            """)
-            self.products = {}
-            suggestions = []
-            for row in cursor.fetchall():
-                masp, tensp, dvt, price, stock, vat, barcode, isbn = row
-                masp = str(masp)
-                product = {
-                    "masp": masp,
-                    "tensp": str(tensp or ""),
-                    "dvt": str(dvt or ""),
-                    "price": as_decimal(price),
-                    "stock": int(stock or 0),
-                    "vat": as_decimal(vat),
-                    "barcode": str(barcode or "").strip(),
-                    "isbn": str(isbn or "").strip(),
-                }
-                self.products[masp] = product
-                suggestions.append(
-                    f"{masp} | {product['tensp']} | "
-                    f"Mã vạch: {product['barcode'] or '—'} | "
-                    f"ISBN: {product['isbn'] or '—'} | "
-                    f"Tồn: {product['stock']} | Giá: {money(price)}"
-                )
-            self.product_suggestion_model.setStringList(suggestions)
-        except Exception as error:
-            QMessageBox.critical(self, "Lỗi tải sản phẩm", str(error))
-        finally:
-            cursor.close()
+        products = self.service.list_available_products()
+        self.products = {}
+        suggestions = []
+        for product in products:
+            code = str(product["masp"])
+            product["masp"] = code
+            product["tensp"] = str(product["tensp"] or "")
+            product["dvt"] = str(product["dvt"] or "")
+            product["price"] = as_decimal(product["price"])
+            product["stock"] = int(product["stock"] or 0)
+            product["vat"] = as_decimal(product["vat"])
+            product["barcode"] = str(product["barcode"] or "").strip()
+            product["isbn"] = str(product["isbn"] or "").strip()
+            self.products[code] = product
+            suggestions.append(
+                f"{code} | {product['tensp']} | "
+                f"Mã vạch: {product['barcode'] or '—'} | "
+                f"ISBN: {product['isbn'] or '—'} | "
+                f"Tồn: {product['stock']} | Giá: {money(product['price'])}"
+            )
+        self.product_suggestion_model.setStringList(suggestions)
 
     def _add_product_to_cart(self, masp):
         """Thêm một sản phẩm vào giỏ; thêm lại cùng mã sẽ tăng số lượng một đơn vị."""
@@ -490,203 +402,46 @@ class CreateInvoiceDialog(QDialog):
         return value.quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
 
     @staticmethod
-    def _assert_cart_prices_unchanged(
-        cursor, cart, promotion_code, expected_discount_rate
-    ):
-        """Chặn lưu hóa đơn với giá, VAT hoặc khuyến mãi đã thay đổi khi form đang mở."""
-        for product_code, item in cart.items():
-            cursor.execute("""
-                SELECT GIABAN, VAT
-                FROM dbo.SAN_PHAM WITH (UPDLOCK, HOLDLOCK)
-                WHERE MASP = ?
-                  AND ISNULL(IS_DELETED, 0) = 0
-            """, product_code)
-            current = cursor.fetchone()
-            if current is None:
-                raise RuntimeError(
-                    f"Sản phẩm {product_code} đã bị xóa hoặc ngừng kinh doanh."
-                )
-
-            if (
-                as_decimal(current[0]) != as_decimal(item["price"])
-                or as_decimal(current[1]) != as_decimal(item["vat"])
-            ):
-                raise RuntimeError(
-                    f"Giá bán hoặc VAT của sản phẩm {product_code} đã thay đổi "
-                    "trong lúc lập hóa đơn. Hãy đóng biểu mẫu và lập lại hóa đơn."
-                )
-
-        if promotion_code:
-            cursor.execute("""
-                SELECT TYLEGIAM
-                FROM dbo.CHUONG_TRINH_KM WITH (UPDLOCK, HOLDLOCK)
-                WHERE MAKM = ?
-                  AND NGAYBD <= SYSDATETIME()
-                  AND NGAYKT >= SYSDATETIME()
-                  AND ISNULL(IS_DELETED, 0) = 0
-            """, promotion_code)
-            promotion = cursor.fetchone()
-            if (
-                promotion is None
-                or as_decimal(promotion[0]) != as_decimal(expected_discount_rate)
-            ):
-                raise RuntimeError(
-                    "Chương trình khuyến mãi đã hết hạn hoặc thay đổi tỷ lệ giảm. "
-                    "Hãy tải lại biểu mẫu trước khi thanh toán."
-                )
+    @staticmethod
+    def _assert_cart_prices_unchanged(cursor, cart, promotion_code, expected_discount_rate):
+        return HoaDonRepository.assert_cart_prices_unchanged(
+            cursor, cart, promotion_code, expected_discount_rate
+        )
 
     @staticmethod
     def _assert_active_shift(cursor, employee, shift):
-        """Xác thực lại nhân viên và ca ngay trong transaction lưu hóa đơn."""
-        employee_code = (employee or {}).get("manv")
-        shift_code = (shift or {}).get("maca")
-        if not employee_code or shift_code is None:
-            raise RuntimeError(
-                "Không xác định được nhân viên hoặc ca làm việc hiện tại."
-            )
-
-        cursor.execute("""
-            SELECT TOP (1) C.MACA
-            FROM dbo.NHAN_VIEN NV WITH (UPDLOCK, HOLDLOCK)
-            INNER JOIN dbo.LAMCA L WITH (UPDLOCK, HOLDLOCK)
-                ON L.MANV = NV.MANV
-            INNER JOIN dbo.CA_LAM_VIEC C WITH (UPDLOCK, HOLDLOCK)
-                ON C.MACA = L.MACA
-            WHERE NV.MANV = ?
-              AND C.MACA = ?
-              AND CAST(C.NGAYLAM AS date) = CAST(SYSDATETIME() AS date)
-              AND CAST(SYSDATETIME() AS time) >= C.TGMO
-              AND CAST(SYSDATETIME() AS time) < C.TGDONG
-              AND C.TMCUOICA IS NULL
-        """, employee_code, shift_code)
-
-        if cursor.fetchone() is None:
-            raise RuntimeError(
-                "Ca làm việc của bạn đã kết thúc, đã được chốt hoặc "
-                "không còn đăng ký hiệu lực. Hóa đơn chưa được lưu."
-            )
+        return HoaDonRepository.assert_active_shift(cursor, employee, shift)
 
     def save_invoice(self):
-        """Kiểm tra giỏ hàng, ca làm việc và thanh toán trước khi ghi hóa đơn cùng chi tiết vào SQL Server."""
         if not self.cart:
-            QMessageBox.warning(
-                self, "Thông báo", "Hóa đơn chưa có sản phẩm."
-            )
+            QMessageBox.warning(self, "Thông báo", "Hóa đơn chưa có sản phẩm.")
             return
-
         try:
             cash = self._parse_cash(self.cash_input.text())
-        except ValueError as error:
-            QMessageBox.warning(
-                self, "Thông tin chưa hợp lệ", str(error)
-            )
-            return
-
-        _, _, total = self._calculate_totals()
-        if cash < total:
-            QMessageBox.warning(
-                self, "Chưa đủ tiền",
-                f"Khách cần trả {money(total)} nhưng mới đưa {money(cash)}."
-            )
-            return
-
-        conn = self.db.get_connection()
-        if conn is None:
-            QMessageBox.warning(
-                self, "Thông báo", "Chưa có kết nối database."
-            )
-            return
-
-        cursor = conn.cursor()
-        invoice_code = None
-        try:
-            # Admin được phép lập hóa đơn mà không cần đăng ký ca.
-            # Các tài khoản khác phải còn thuộc đúng ca tại thời điểm bấm Lưu.
-            if not self.is_admin:
-                self._assert_active_shift(
-                    cursor, self.employee, self.active_shift
-                )
-
-            # Recheck giá, VAT và khuyến mãi để tránh áp dụng dữ liệu đã cũ.
             promotion_code = self.promotion_combo.currentData()
-            expected_discount_rate = self.promotions.get(
-                promotion_code, Decimal("0")
+            payload = {
+                "employee": self.employee,
+                "active_shift": self.active_shift,
+                "cart": self.cart,
+                "promotion_code": promotion_code,
+                "discount_rate": self.promotions.get(promotion_code, Decimal("0")),
+                "cash": cash,
+            }
+            invoice_code = self.service.create_invoice(
+                payload, is_admin=self.is_admin
             )
-            self._assert_cart_prices_unchanged(
-                cursor, self.cart, promotion_code, expected_discount_rate
-            )
-
-            # Khóa bảng trong transaction để hạn chế sinh trùng mã hóa đơn.
-            cursor.execute("""
-                SELECT COALESCE(
-                    MAX(TRY_CONVERT(BIGINT, SUBSTRING(MAHD, 3, 18))), 0
-                )
-                FROM dbo.HOA_DON WITH (TABLOCKX, HOLDLOCK)
-                WHERE UPPER(LEFT(MAHD, 2)) = 'HD'
-                  AND TRY_CONVERT(BIGINT, SUBSTRING(MAHD, 3, 18)) IS NOT NULL
-            """)
-            last_number = int(cursor.fetchone()[0] or 0)
-            invoice_code = f"HD{last_number + 1:06d}"
-
-            promotion_code = self.promotion_combo.currentData()
-            shift = self.active_shift
-            # Hóa đơn mới mặc định TRANGTHAI = 1 (đã thanh toán/có hiệu lực).
-            cursor.execute("""
-                INSERT INTO dbo.HOA_DON
-                    (MAHD, NGAYLAP, TIENKHACHDUA,
-                     TRANGTHAI, MANV, MAKM, MACA)
-                VALUES (?, SYSDATETIME(), ?, 1, ?, ?, ?)
-            """, (
-                invoice_code, cash, self.employee["manv"],
-                promotion_code, shift["maca"] if shift else None
-            ))
-
-            for masp, item in self.cart.items():
-                # Trừ tồn kho có điều kiện để không bán vượt số lượng tồn.
-                cursor.execute("""
-                    UPDATE dbo.SAN_PHAM
-                    SET SLTON = SLTON - ?
-                    WHERE MASP = ?
-                      AND ISNULL(IS_DELETED, 0) = 0
-                      AND SLTON >= ?
-                """, (
-                    item["quantity"], masp, item["quantity"]
-                ))
-                if cursor.rowcount != 1:
-                    raise RuntimeError(
-                        f"Sản phẩm {masp} không còn đủ tồn kho. "
-                        "Hóa đơn chưa được lưu."
-                    )
-
-                # Lưu đơn giá đã gồm VAT và thuế suất tại thời điểm bán.
-                cursor.execute("""
-                    INSERT INTO dbo.CHI_TIET_HOA_DON
-                        (MAHD, MASP, DONGIA, SOLUONG, VAT)
-                    VALUES (?, ?, ?, ?, ?)
-                """, (
-                    invoice_code, masp, item["price"],
-                    item["quantity"], item["vat"]
-                ))
-
-            conn.commit()
+            _, _, total = self._calculate_totals()
             self.saved_invoice_code = invoice_code
             QMessageBox.information(
                 self, "Thành công",
-                f"Đã tạo hóa đơn {invoice_code}.\n"
+                f"Đã tạo hóa đơn {invoice_code}.\\n"
                 f"Tiền thừa: {money(cash - total)}"
             )
             self.accept()
-
+        except (ValueError, PermissionError) as error:
+            QMessageBox.warning(self, "Thông tin chưa hợp lệ", str(error))
         except Exception as error:
-            conn.rollback()
             QMessageBox.critical(
                 self, "Không thể tạo hóa đơn",
-                f"{error}\n\nCác thay đổi trong giao dịch đã được hoàn tác."
+                f"{error}\\n\\nCác thay đổi trong giao dịch đã được hoàn tác."
             )
-        finally:
-            cursor.close()
-
-
-
-
-
