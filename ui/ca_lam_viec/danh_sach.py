@@ -237,25 +237,14 @@ class ShiftWindow(QWidget):
         root.addWidget(self.employee_total_label)
 
     def refresh_employee_view(self):
-        """Làm mới danh sách ca có thể đăng ký của nhân viên."""
-        conn = self.db.get_connection()
-        if conn is None:
-            QMessageBox.warning(self, "Thông báo", "Chưa có kết nối database!")
-            return
-
-        cursor = conn.cursor()
         try:
-            cursor.execute("SELECT SYSDATETIME()")
-            server_now = cursor.fetchone()[0]
+            server_now = self.service.get_server_time()
             self.employee_server_time_label.setText(
                 "Giờ SQL Server: " + server_now.strftime("%d/%m/%Y %H:%M:%S")
             )
         except Exception as error:
             self._show_db_error("Không lấy được thời gian SQL Server", error)
             return
-        finally:
-            cursor.close()
-
         self.load_employee_shifts()
 
     def load_employee_shifts(self):
