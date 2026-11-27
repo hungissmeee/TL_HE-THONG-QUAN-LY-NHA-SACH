@@ -169,7 +169,7 @@ function CatalogPage({ catalogType }: { catalogType: string }) {
           />
         </div>
         <Table<Row>
-          rowKey={(record) => String(record[data?.fields[0]?.key || ""] || "")>
+          rowKey={(record) => String(record[data?.fields[0]?.key || ""] || "")}
           columns={columns}
           dataSource={data?.items || []}
           loading={loading}
