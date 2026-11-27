@@ -102,6 +102,124 @@ class SanPhamRepository:
         finally:
             cursor.close()
 
+    def list_products_page(
+        self, keyword="", product_type="all", page=1, page_size=20,
+        sort_by="masp", sort_order="asc",
+    ):
+        """Tìm kiếm, lọc và phân trang sản phẩm ngay tại SQL Server."""
+        sort_columns = {
+            "masp": "SP.MASP",
+            "tensp": "SP.TENSP",
+            "loai": "LOAI",
+            "dvt": "SP.DVT",
+            "gianhap": "SP.GIANHAP",
+            "giaban": "SP.GIABAN",
+            "slton": "SP.SLTON",
+            "vat": "SP.VAT",
+            "barcode": "SP.BARCODE",
+        }
+        sort_column = sort_columns.get(str(sort_by or "").casefold(), "SP.MASP")
+        sort_direction = "DESC" if str(sort_order or "").casefold() == "desc" else "ASC"
+
+        filters = ["ISNULL(SP.IS_DELETED, 0) = 0"]
+        params = []
+        if product_type == "book":
+            filters.append("S.MASP IS NOT NULL")
+        elif product_type == "other":
+            filters.append("SPK.MASP IS NOT NULL")
+        elif product_type == "unclassified":
+            filters.append("S.MASP IS NULL AND SPK.MASP IS NULL")
+
+        keyword = str(keyword or "").strip()
+        if keyword:
+            filters.append("""
+                (
+                    SP.MASP LIKE ? OR SP.TENSP LIKE ?
+                    OR SP.BARCODE LIKE ? OR SP.DVT LIKE ?
+                    OR (
+                        CASE
+                            WHEN S.MASP IS NOT NULL THEN N'Sách'
+                            WHEN SPK.MASP IS NOT NULL THEN N'Sản phẩm khác'
+                            ELSE N'Chưa phân loại'
+                        END
+                    ) LIKE ?
+                    OR EXISTS (
+                        SELECT 1
+                        FROM dbo.SACH S2
+                        LEFT JOIN dbo.NHA_XUAT_BAN NXB ON NXB.MANXB = S2.MANXB
+                        WHERE S2.MASP = SP.MASP
+                          AND (S2.ISBN LIKE ? OR NXB.MANXB LIKE ? OR NXB.TENNXB LIKE ?)
+                    )
+                    OR EXISTS (
+                        SELECT 1
+                        FROM dbo.THUOC_TG TTG
+                        JOIN dbo.TAC_GIA TG ON TG.MATG = TTG.MATG
+                        WHERE TTG.MASP = SP.MASP
+                          AND (TG.MATG LIKE ? OR TG.TENTG LIKE ?)
+                    )
+                    OR EXISTS (
+                        SELECT 1
+                        FROM dbo.THUOC_TL TTL
+                        JOIN dbo.THE_LOAI TL ON TL.MATL = TTL.MATL
+                        WHERE TTL.MASP = SP.MASP
+                          AND (TL.MATL LIKE ? OR TL.TENTL LIKE ?)
+                    )
+                    OR EXISTS (
+                        SELECT 1
+                        FROM dbo.SAN_PHAM_KHAC SPK2
+                        LEFT JOIN dbo.THUONG_HIEU TH ON TH.MATH = SPK2.MATH
+                        WHERE SPK2.MASP = SP.MASP
+                          AND (TH.MATH LIKE ? OR TH.TENTH LIKE ? OR TH.XUATXU LIKE ?)
+                    )
+                )
+            """)
+            params.extend([f"%{keyword}%"] * 15)
+
+        from_sql = """
+            FROM dbo.SAN_PHAM SP
+            LEFT JOIN dbo.SACH S ON S.MASP = SP.MASP
+            LEFT JOIN dbo.SAN_PHAM_KHAC SPK ON SPK.MASP = SP.MASP
+        """
+        where_sql = " WHERE " + " AND ".join(filters)
+        conn = self._connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                "SELECT COUNT_BIG(1) " + from_sql + where_sql,
+                *params,
+            )
+            total = int(cursor.fetchone()[0] or 0)
+
+            offset = (int(page) - 1) * int(page_size)
+            cursor.execute(
+                """
+                SELECT
+                    SP.MASP, SP.TENSP,
+                    CASE
+                        WHEN S.MASP IS NOT NULL THEN N'Sách'
+                        WHEN SPK.MASP IS NOT NULL THEN N'Sản phẩm khác'
+                        ELSE N'Chưa phân loại'
+                    END AS LOAI,
+                    SP.DVT, SP.GIANHAP, SP.GIABAN, SP.SLTON, SP.VAT,
+                    SP.BARCODE, S.ISBN
+                """
+                + from_sql
+                + where_sql
+                + f" ORDER BY {sort_column} {sort_direction}, SP.MASP ASC"
+                + " OFFSET ? ROWS FETCH NEXT ? ROWS ONLY",
+                *params,
+                offset,
+                int(page_size),
+            )
+            items = []
+            for row in cursor.fetchall():
+                product = self._product_dict(row[:9])
+                product["isbn"] = row[9]
+                items.append(product)
+            return {"items": items, "total": total}
+        finally:
+            cursor.close()
+
     def get_product(self, product_code):
         """Lấy thông tin chung sản phẩm đang hoạt động theo mã."""
         conn = self._connection()
