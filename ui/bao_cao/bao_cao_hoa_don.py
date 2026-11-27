@@ -24,7 +24,7 @@ class InvoiceReportPage(ReportBasePage):
              "Không được tính vào doanh thu", "negative"),
             ("revenue", "Doanh thu được ghi nhận", "0 đ",
              "Tổng thành tiền của hóa đơn hợp lệ", "primary"),
-        ])
+        ], primary_key="revenue")
         self.table = self.make_table([
             "Mã hóa đơn", "Ngày lập", "Nhân viên", "Mã ca",
             "Tiền hàng", "Tỷ lệ giảm", "Tiền giảm", "Thành tiền",
