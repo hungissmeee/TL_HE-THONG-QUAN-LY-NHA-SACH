@@ -21,6 +21,8 @@ function usePeriod() {
   return { period, setPeriod };
 }
 
+type ImportCartLine = { product_code: string; quantity: number; price: number; vat: number };
+
 function ImportsPage() {
   const { user } = useAuth();
   const canWrite = ["admin", "rl_QuanLy", "rl_NhanVienKho"].includes(user?.role_code || "");
@@ -30,16 +32,16 @@ function ImportsPage() {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [lookups, setLookups] = useState<ImportLookup | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<string>();
+  const [cart, setCart] = useState<ImportCartLine[]>([]);
   const [detail, setDetail] = useState<{ header: DataRow; items: DataRow[] } | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form] = Form.useForm();
-  const watchedImportItems = Form.useWatch("items", form) as DataRow[] | undefined;
-  const importTotal = (watchedImportItems || []).reduce(
-    (sum, item) => sum + Number(item?.price || 0) * Number(item?.quantity || 0),
-    0,
-  );
+
+  const importTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const importQuantity = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -50,45 +52,197 @@ function ImportsPage() {
   useEffect(() => { void load(); }, [load]);
 
   async function openAdd() {
-    setOpen(true); setFormLoading(true); setLookups(null); form.resetFields();
+    setOpen(true);
+    setFormLoading(true);
+    setLookups(null);
+    setSelectedProduct(undefined);
+    setCart([]);
+    form.resetFields();
+    form.setFieldsValue({ import_type: "Nhập hàng", supplier_invoice: "" });
     try {
       setLookups(await operationsApi.importLookups());
-      form.setFieldsValue({ import_type: "Nhập hàng", items: [{ quantity: 1, vat: 0 }] });
-    } catch (e) { setOpen(false); message.error(err(e)); }
-    finally { setFormLoading(false); }
+    } catch (e) {
+      setOpen(false);
+      message.error(err(e));
+    } finally {
+      setFormLoading(false);
+    }
   }
 
   async function showDetail(code: string) {
-    setDetailOpen(true); setDetail(null);
+    setDetailOpen(true);
+    setDetail(null);
     try { setDetail(await operationsApi.importDetail(code)); }
     catch (e) { setDetailOpen(false); message.error(err(e)); }
   }
 
+  function addLine() {
+    if (!lookups || !selectedProduct) {
+      message.info("Hãy chọn sản phẩm trước khi thêm vào phiếu nhập.");
+      return;
+    }
+    const product = lookups.products.find((item) => item.masp === selectedProduct);
+    if (!product) return;
+
+    const existing = cart.some((line) => line.product_code === selectedProduct);
+    if (existing) {
+      setCart((current) => current.map((line) => line.product_code === selectedProduct
+        ? { ...line, quantity: line.quantity + 1 }
+        : line));
+      message.info("Sản phẩm đã có trong phiếu; số lượng được tăng thêm 1.");
+    } else {
+      setCart((current) => [...current, {
+        product_code: product.masp,
+        quantity: 1,
+        price: Number(product.price || 0),
+        vat: Number(product.vat || 0),
+      }]);
+    }
+    setSelectedProduct(undefined);
+  }
+
+  function updateLine(code: string, patch: Partial<ImportCartLine>) {
+    setCart((current) => current.map((line) => (
+      line.product_code === code ? { ...line, ...patch } : line
+    )));
+  }
+
   async function save(values: DataRow) {
-    const items = Array.isArray(values.items) ? values.items as DataRow[] : [];
-    const seenProducts = new Set<string>();
-    for (const item of items) {
-      const code = String(item?.product_code || "").trim();
-      if (!code) continue;
-      if (seenProducts.has(code)) {
-        message.error(`Sản phẩm ${code} chỉ được xuất hiện một lần trong phiếu nhập.`);
+    if (!cart.length) {
+      message.warning("Phiếu nhập chưa có sản phẩm.");
+      return;
+    }
+    for (const line of cart) {
+      if (!Number.isInteger(line.quantity) || line.quantity <= 0) {
+        message.warning("Số lượng mỗi sản phẩm phải là số nguyên lớn hơn 0.");
         return;
       }
-      seenProducts.add(code);
+      if (!Number.isFinite(line.price) || line.price <= 0) {
+        const product = lookups?.products.find((item) => item.masp === line.product_code);
+        message.warning("Vui lòng nhập đơn giá lớn hơn 0 cho " + (product?.tensp || line.product_code) + ".");
+        return;
+      }
+      if (!Number.isFinite(line.vat) || line.vat < 0 || line.vat > 100) {
+        message.warning("VAT phải nằm trong khoảng từ 0 đến 100%.");
+        return;
+      }
     }
 
     setSaving(true);
     try {
-      const result = await operationsApi.createImport(values);
+      const payload = {
+        ...values,
+        supplier_invoice: String(values.supplier_invoice || "").trim() || null,
+        items: cart.map((line) => ({ ...line })),
+      };
+      const result = await operationsApi.createImport(payload);
       message.success("Đã lập phiếu nhập " + String(result.code || "") + ".");
-      setOpen(false); await load();
-    } catch (e) { message.error(err(e)); } finally { setSaving(false); }
+      setOpen(false);
+      await load();
+    } catch (e) {
+      message.error(err(e));
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function cancel(code: string) {
-    try { await operationsApi.cancelImport(code); message.success("Đã hủy phiếu nhập và hoàn tác tồn kho."); await load(); }
-    catch (e) { message.error(err(e)); }
+    try {
+      await operationsApi.cancelImport(code);
+      message.success("Đã hủy phiếu nhập và hoàn tác tồn kho.");
+      await load();
+    } catch (e) { message.error(err(e)); }
   }
+
+  const importCartColumns: TableColumnsType<ImportCartLine> = [
+    { title: "Mã SP", dataIndex: "product_code", key: "product_code", width: 105 },
+    {
+      title: "Tên sản phẩm",
+      key: "product_name",
+      width: 240,
+      render: (_: unknown, line) => lookups?.products.find((product) => product.masp === line.product_code)?.tensp || line.product_code,
+    },
+    {
+      title: "ĐVT",
+      key: "unit",
+      width: 75,
+      render: (_: unknown, line) => lookups?.products.find((product) => product.masp === line.product_code)?.dvt || "—",
+    },
+    {
+      title: "Tồn hiện tại",
+      key: "stock",
+      width: 110,
+      align: "right",
+      render: (_: unknown, line) => Number(lookups?.products.find((product) => product.masp === line.product_code)?.stock || 0).toLocaleString("vi-VN"),
+    },
+    {
+      title: "Số lượng nhập",
+      key: "quantity",
+      width: 135,
+      render: (_: unknown, line) => (
+        <InputNumber
+          min={1}
+          max={1000000}
+          precision={0}
+          value={line.quantity}
+          onChange={(value) => updateLine(line.product_code, { quantity: Number(value || 1) })}
+          style={{ width: "100%" }}
+        />
+      ),
+    },
+    {
+      title: "Đơn giá nhập",
+      key: "price",
+      width: 155,
+      align: "right",
+      render: (_: unknown, line) => (
+        <InputNumber
+          min={0.01}
+          precision={2}
+          value={line.price}
+          onChange={(value) => updateLine(line.product_code, { price: Number(value ?? 0) })}
+          style={{ width: "100%" }}
+        />
+      ),
+    },
+    {
+      title: "VAT (%)",
+      key: "vat",
+      width: 100,
+      align: "right",
+      render: (_: unknown, line) => (
+        <InputNumber
+          min={0}
+          max={100}
+          precision={2}
+          value={line.vat}
+          onChange={(value) => updateLine(line.product_code, { vat: Number(value ?? 0) })}
+          style={{ width: "100%" }}
+        />
+      ),
+    },
+    {
+      title: "Thành tiền",
+      key: "amount",
+      width: 150,
+      align: "right",
+      render: (_: unknown, line) => money(line.price * line.quantity),
+    },
+    {
+      title: "Thao tác",
+      key: "remove",
+      width: 75,
+      render: (_: unknown, line) => (
+        <Button
+          danger
+          type="text"
+          icon={<StopOutlined />}
+          aria-label="Xóa sản phẩm khỏi phiếu nhập"
+          onClick={() => setCart((current) => current.filter((item) => item.product_code !== line.product_code))}
+        />
+      ),
+    },
+  ];
 
   const columns: TableColumnsType<DataRow> = [
     { title: "Mã phiếu", dataIndex: "mapn", key: "mapn", width: 125, sorter: tableSorter<DataRow>("mapn") },
@@ -112,7 +266,7 @@ function ImportsPage() {
         <Input.Search className="operation-search" allowClear value={keyword} placeholder="Mã phiếu, nhà cung cấp, nhân viên..." onChange={(e) => setKeyword(e.target.value)} onSearch={(v) => setKeyword(v.trim())} enterButton="Tìm kiếm" />
         <Button icon={<ReloadOutlined />} onClick={() => void load()}>Làm mới</Button>
       </div>
-      <Table<DataRow> rowKey="mapn" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }}  scroll={{ x: "max-content" }} tableLayout="auto" />
+      <Table<DataRow> rowKey="mapn" columns={columns} dataSource={rows} loading={loading} pagination={{ defaultPageSize: 10, showSizeChanger: true, pageSizeOptions: [10, 20, 50, 100] }} scroll={{ x: "max-content" }} tableLayout="auto" />
     </Card>
     <Modal
       title="Lập phiếu nhập kho"
@@ -122,7 +276,7 @@ function ImportsPage() {
       okText="Lập phiếu nhập"
       cancelText="Hủy"
       confirmLoading={saving}
-      width={960}
+      width={1040}
       destroyOnClose
       className="desktop-transaction-modal"
     >
@@ -130,123 +284,104 @@ function ImportsPage() {
         <Form
           form={form}
           className="desktop-dialog-form"
-          layout="horizontal"
-          labelCol={{ xs: { span: 24 }, sm: { span: 8 } }}
-          wrapperCol={{ xs: { span: 24 }, sm: { span: 16 } }}
-          onFinish={(v) => void save(v)}
+          layout="vertical"
+          onFinish={(values) => void save(values)}
         >
           <Card size="small" title="Thông tin phiếu nhập" className="desktop-form-section">
-            <Form.Item label="Nhân viên lập">
-              <Input
-                readOnly
-                value={(user?.full_name || "Nhân viên") + " (" + (user?.employee_code || "Tài khoản hệ thống") + ")"}
-              />
-            </Form.Item>
-            <Form.Item name="supplier_code" label="Nhà cung cấp" rules={[{ required: true, message: "Vui lòng chọn nhà cung cấp." }]}>
+            <Descriptions bordered size="small" column={{ xs: 1, sm: 2 }}>
+              <Descriptions.Item label="Nhân viên lập">
+                {(user?.full_name || "Nhân viên") + " (" + (user?.employee_code || "Tài khoản hệ thống") + ")"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Số dòng sản phẩm">
+                {cart.length.toLocaleString("vi-VN")}
+              </Descriptions.Item>
+            </Descriptions>
+            <Row gutter={16}>
+              <Col xs={24} md={12}>
+                <Form.Item name="supplier_code" label="Nhà cung cấp" rules={[{ required: true, message: "Vui lòng chọn nhà cung cấp." }]}>
+                  <Select
+                    showSearch
+                    optionFilterProp="label"
+                    placeholder="Tìm mã hoặc tên nhà cung cấp"
+                    options={lookups.suppliers.map((supplier) => ({
+                      value: supplier.code,
+                      label: supplier.code + " - " + supplier.name,
+                    }))}
+                  />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="import_type" label="Loại phiếu nhập" rules={[{ required: true, message: "Vui lòng chọn loại phiếu nhập." }]}>
+                  <Select options={[
+                    { value: "Nhập hàng", label: "Nhập hàng" },
+                    { value: "Nhập bổ sung", label: "Nhập bổ sung" },
+                    { value: "Nhập điều chỉnh", label: "Nhập điều chỉnh" },
+                  ]} />
+                </Form.Item>
+              </Col>
+              <Col xs={24}>
+                <Form.Item name="supplier_invoice" label="Số hóa đơn/chứng từ nhà cung cấp">
+                  <Input maxLength={50} placeholder="Nhập số hóa đơn hoặc chứng từ (không bắt buộc)" />
+                </Form.Item>
+              </Col>
+            </Row>
+          </Card>
+
+          <Card size="small" title="Thêm sản phẩm" className="desktop-form-section">
+            <div className="transaction-product-search">
               <Select
+                allowClear
                 showSearch
                 optionFilterProp="label"
-                placeholder="Tìm mã hoặc tên nhà cung cấp"
-                options={lookups.suppliers.map((supplier) => ({
-                  value: supplier.code,
-                  label: supplier.code + " - " + supplier.name,
+                style={{ flex: 1, minWidth: 0 }}
+                placeholder="Quét hoặc tìm mã vạch / ISBN / mã / tên sản phẩm"
+                value={selectedProduct}
+                onChange={setSelectedProduct}
+                options={lookups.products.map((product) => ({
+                  value: product.masp,
+                  label: product.masp + " · " + product.tensp
+                    + " · " + [product.barcode ? "Barcode " + product.barcode : "", product.isbn ? "ISBN " + product.isbn : ""].filter(Boolean).join(" · ")
+                    + " · Tồn " + Number(product.stock || 0).toLocaleString("vi-VN"),
                 }))}
               />
-            </Form.Item>
-            <Form.Item name="import_type" label="Loại phiếu nhập" rules={[{ required: true }]}>
-              <Select options={[
-                { value: "Nhập hàng", label: "Nhập hàng" },
-                { value: "Nhập bổ sung", label: "Nhập bổ sung" },
-                { value: "Nhập điều chỉnh", label: "Nhập điều chỉnh" },
-              ]} />
-            </Form.Item>
-            <Form.Item name="supplier_invoice" label="Số HĐ nhà cung cấp">
-              <Input maxLength={50} placeholder="Số hóa đơn/chứng từ của nhà cung cấp (nếu có)" />
-            </Form.Item>
+              <Button type="primary" icon={<PlusOutlined />} onClick={addLine} disabled={!selectedProduct}>
+                Thêm vào phiếu
+              </Button>
+            </div>
+            <Text type="secondary">Đơn giá được gợi ý theo giá nhập hiện tại và có thể chỉnh sửa theo chứng từ thực tế.</Text>
           </Card>
 
           <Card size="small" title="Sản phẩm trong phiếu nhập" className="desktop-form-section">
-            <Form.List name="items">
-              {(fields, { add, remove }) => (
-                <>
-                  <div className="operation-list-heading">
-                    <Text type="secondary">Thêm sản phẩm, số lượng và đơn giá nhập vào phiếu</Text>
-                    <Button size="small" icon={<PlusOutlined />} onClick={() => add({ quantity: 1, vat: 0 })}>
-                      Thêm dòng
-                    </Button>
-                  </div>
-                  {fields.map((field) => (
-                    <Row gutter={10} align="middle" key={field.key} className="transaction-line-row">
-                      <Col xs={24} md={10}>
-                        <Form.Item name={[field.name, "product_code"]} label="Sản phẩm" rules={[{ required: true }]}>
-                          <Select
-                            showSearch
-                            optionFilterProp="label"
-                            placeholder="Chọn sản phẩm"
-                            options={lookups.products.map((product) => ({
-                              value: product.masp,
-                              label: product.masp + " - " + product.tensp + " · Tồn " + product.stock,
-                            }))}
-                            onChange={(value) => {
-                              const product = lookups.products.find((item) => item.masp === value);
-                              if (product) {
-                                const items = form.getFieldValue("items") || [];
-                                items[field.name] = {
-                                  ...items[field.name],
-                                  price: Number(product.price || 0),
-                                  vat: Number(product.vat || 0),
-                                  quantity: items[field.name]?.quantity || 1,
-                                };
-                                form.setFieldsValue({ items });
-                              }
-                            }}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={8} md={4}>
-                        <Form.Item name={[field.name, "quantity"]} label="Số lượng" rules={[{ required: true }]}>
-                          <InputNumber min={1} precision={0} style={{ width: "100%" }} />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={10} md={5}>
-                        <Form.Item name={[field.name, "price"]} label="Đơn giá nhập" rules={[{ required: true }]}>
-                          <InputNumber min={0.01} precision={2} style={{ width: "100%" }} />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={4} md={3}>
-                        <Form.Item name={[field.name, "vat"]} label="VAT (%)">
-                          <InputNumber min={0} max={100} precision={2} style={{ width: "100%" }} />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={2} md={2}>
-                        <Button
-                          className="transaction-line-remove"
-                          danger
-                          type="text"
-                          icon={<StopOutlined />}
-                          aria-label="Xóa dòng sản phẩm"
-                          onClick={() => remove(field.name)}
-                        />
-                      </Col>
-                    </Row>
-                  ))}
-                </>
-              )}
-            </Form.List>
-            <Alert
-              type="info"
-              showIcon
-              message="Giá nhập bình quân và tồn kho được cập nhật tự động trong cùng giao dịch khi lập phiếu."
+            <Table<ImportCartLine>
+              className="invoice-cart-table"
+              rowKey="product_code"
+              columns={importCartColumns}
+              dataSource={cart}
+              pagination={false}
+              tableLayout="auto"
+              locale={{ emptyText: "Chưa có sản phẩm. Hãy tìm và thêm sản phẩm ở phía trên." }}
+              scroll={{ x: "max-content" }}
             />
           </Card>
 
-          <Card size="small" title="Tổng giá trị phiếu nhập" className="desktop-form-section transaction-total-card">
-            <Descriptions bordered size="small" column={1}>
-              <Descriptions.Item label="Tổng tiền hàng (đã gồm VAT)">
+          <Card size="small" title="Tổng kết phiếu nhập" className="desktop-form-section transaction-total-card">
+            <Descriptions bordered size="small" column={{ xs: 1, sm: 2 }}>
+              <Descriptions.Item label="Số loại sản phẩm">
+                {cart.length.toLocaleString("vi-VN")}
+              </Descriptions.Item>
+              <Descriptions.Item label="Tổng số lượng nhập">
+                {importQuantity.toLocaleString("vi-VN")}
+              </Descriptions.Item>
+              <Descriptions.Item label="Tổng trị giá phiếu">
                 <Text strong className="transaction-total-value">{money(importTotal)}</Text>
               </Descriptions.Item>
             </Descriptions>
-            <Text type="secondary">VAT được lưu để tham chiếu; không cộng lại vào đơn giá.</Text>
+            <Alert
+              className="operation-info"
+              type="info"
+              showIcon
+              message="Giá nhập bình quân và tồn kho được cập nhật tự động khi lập phiếu. VAT được lưu theo từng sản phẩm để tham chiếu; đơn giá nhập không được cộng VAT thêm lần nữa."
+            />
           </Card>
         </Form>
       )}
@@ -286,6 +421,7 @@ function ImportsPage() {
     </Modal>
   </div>;
 }
+
 
 type CartLine = { product_code: string; quantity: number };
 const NO_PROMOTION = "__NO_PROMOTION__";
@@ -457,7 +593,7 @@ function InvoicesPage() {
         <Input.Search className="operation-search" allowClear value={keyword} placeholder="Mã hóa đơn, nhân viên, sản phẩm, ca..." onChange={(e) => setKeyword(e.target.value)} onSearch={(v) => setKeyword(v.trim())} enterButton="Tìm kiếm" />
         <Button icon={<ReloadOutlined />} onClick={() => void load()}>Làm mới</Button>
       </div>
-      <Table<DataRow> rowKey="mahd" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }}  scroll={{ x: "max-content" }} tableLayout="auto" />
+      <Table<DataRow> rowKey="mahd" columns={columns} dataSource={rows} loading={loading} pagination={{ defaultPageSize: 10, showSizeChanger: true, pageSizeOptions: [10, 20, 50, 100] }}  scroll={{ x: "max-content" }} tableLayout="auto" />
     </Card>
     <Modal
       title="Lập hóa đơn bán hàng"

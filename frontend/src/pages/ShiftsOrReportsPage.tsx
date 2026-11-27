@@ -156,7 +156,7 @@ function ShiftsPage() {
       </Card>
       <Card bordered={false} className="operation-card">
         <div className="operation-toolbar"><Title level={4}>Lịch sử ca</Title><Select value={period} style={{ width: 180 }} options={[{ value: "all", label: "Tất cả" }, { value: "today", label: "Hôm nay" }, { value: "7days", label: "7 ngày gần nhất" }, { value: "30days", label: "30 ngày gần nhất" }]} onChange={setPeriod} /></div>
-        <Table<DataRow> rowKey="maca" columns={managerColumns} dataSource={history} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }}  scroll={{ x: "max-content" }} tableLayout="auto" />
+        <Table<DataRow> rowKey="maca" columns={managerColumns} dataSource={history} loading={loading} pagination={{ defaultPageSize: 10, showSizeChanger: true, pageSizeOptions: [10, 20, 50, 100] }}  scroll={{ x: "max-content" }} tableLayout="auto" />
       </Card>
     </> : <Card bordered={false} className="operation-card">
       <Alert type="info" showIcon message={isAccountant ? "Kế toán có thể đăng ký ca đang diễn ra và ghi tiền cuối ca sau khi ca kết thúc." : "Chỉ đăng ký được ca đang diễn ra; không thể đăng ký trùng ca."} />
@@ -495,16 +495,16 @@ function ReportsPage({ reportType }: { reportType: string }) {
         {reportType === "report_overview" ? <>
           <Title level={4} className="report-table-section-title">Doanh thu theo ngày</Title>
           <Text className="muted-text">Số liệu dưới đây được gom theo từng ngày trong khoảng thời gian đã chọn.</Text>
-          <Table<DataRow> className="report-data-table" rowKey={(r) => String(r.ngay)} dataSource={result?.trend || []} columns={makeColumns(result?.trend || [])} pagination={{ pageSize: 8 }} scroll={{ x: "max-content" }} tableLayout="auto" />
+          <Table<DataRow> className="report-data-table" rowKey={(r) => String(r.ngay)} dataSource={result?.trend || []} columns={makeColumns(result?.trend || [])} pagination={{ defaultPageSize: 8 }} scroll={{ x: "max-content" }} tableLayout="auto" />
           <Title level={4} className="report-table-section-title">Sản phẩm bán chạy</Title>
           <Table<DataRow> className="report-data-table" rowKey="masp" dataSource={result?.top_products || []} columns={makeColumns(result?.top_products || [])} pagination={false} scroll={{ x: "max-content" }} tableLayout="auto" />
         </> : <>
           <Alert className="report-table-hint" type="info" showIcon message="Các cột được hiển thị đầy đủ. Kéo thanh cuộn ngang bên dưới bảng để xem các thông tin nằm bên phải." />
           <Title level={4} className="report-table-section-title">{reportType === "report_invoice" ? "Chi tiết từng hóa đơn" : reportType === "report_import" ? "Danh sách phiếu nhập" : reportType === "report_return" ? "Danh sách phiếu đổi trả" : reportType === "report_inventory" ? "Danh sách sản phẩm trong kho" : reportType === "report_product" ? "Hiệu quả bán hàng theo sản phẩm" : reportType === "report_revenue" ? "Chi tiết doanh thu theo kỳ" : "Danh sách ca làm việc"}</Title>
-          <Table<DataRow> className="report-data-table" rowKey={(r, index) => String(r.mahd || r.mapn || r.mapdt || r.masp || r.maca || r.ky || index)} dataSource={items} columns={makeColumns(items)} loading={loading} pagination={{ pageSize: 15, showSizeChanger: true, pageSizeOptions: [10, 15, 30, 50] }} locale={{ emptyText: "Không có dữ liệu trong khoảng thời gian đã chọn." }} scroll={{ x: "max-content" }} tableLayout="auto" />
+          <Table<DataRow> className="report-data-table" rowKey={(r, index) => String(r.mahd || r.mapn || r.mapdt || r.masp || r.maca || r.ky || index)} dataSource={items} columns={makeColumns(items)} loading={loading} pagination={{ defaultPageSize: 15, showSizeChanger: true, pageSizeOptions: [10, 15, 30, 50] }} locale={{ emptyText: "Không có dữ liệu trong khoảng thời gian đã chọn." }} scroll={{ x: "max-content" }} tableLayout="auto" />
           {reportType === "report_import" && Boolean(result?.suppliers?.length) && <>
             <Title level={4} className="report-table-section-title">Tổng hợp theo nhà cung cấp</Title>
-            <Table<DataRow> className="report-data-table" rowKey="mancc" dataSource={result?.suppliers || []} columns={makeColumns(result?.suppliers || [])} pagination={{ pageSize: 8 }} scroll={{ x: "max-content" }} tableLayout="auto" />
+            <Table<DataRow> className="report-data-table" rowKey="mancc" dataSource={result?.suppliers || []} columns={makeColumns(result?.suppliers || [])} pagination={{ defaultPageSize: 8 }} scroll={{ x: "max-content" }} tableLayout="auto" />
           </>}
         </>}
       </>}
