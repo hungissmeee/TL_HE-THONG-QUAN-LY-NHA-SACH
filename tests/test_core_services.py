@@ -16,6 +16,8 @@ from core.repositories.doi_tra_repository import ReturnRepository
 from core.services.doi_tra_service import ReturnService
 from core.repositories.nhan_vien_repository import NhanVienRepository
 from core.services.nhan_vien_service import NhanVienService
+from core.repositories.ca_lam_viec_repository import CaLamViecRepository
+from core.services.ca_lam_viec_service import CaLamViecService
 
 
 class FakeProductRepository(SanPhamRepository):
@@ -538,6 +540,110 @@ class EmployeeServiceTests(unittest.TestCase):
     def test_delete_account_normalizes_code(self):
         self.service.delete_account(" NV003 ")
         self.assertEqual(self.repository.deleted, "NV003")
+
+
+
+class FakeShiftRepository(CaLamViecRepository):
+    def __init__(self):
+        self.created = None
+        self.registered = None
+        self.closed = None
+        self.deleted = None
+        self.period = None
+
+    def create_shift(self, values):
+        self.created = values
+        return 12
+
+    def register_current_shift(self, shift_id, username):
+        self.registered = (shift_id, username)
+        return True
+
+    def record_closing_cash(self, shift_id, username, amount):
+        self.closed = (shift_id, username, amount)
+        return True
+
+    def list_shift_history(self, period="all"):
+        self.period = period
+        return []
+
+    def delete_shift(self, shift_id):
+        self.deleted = shift_id
+        return True
+
+
+class ShiftServiceTests(unittest.TestCase):
+    def setUp(self):
+        self.repository = FakeShiftRepository()
+        self.service = CaLamViecService(self.repository)
+
+    def test_create_shift_uses_fixed_schedule_and_decimal_cash(self):
+        shift_id = self.service.create_shift({
+            "soca": 2, "ngaylam": "2026-11-28", "tmdauca": "500000"
+        })
+        self.assertEqual(shift_id, 12)
+        self.assertEqual(self.repository.created["tgmo"], "12:00:00")
+        self.assertEqual(self.repository.created["tgdong"], "17:00:00")
+        self.assertEqual(self.repository.created["tmdauca"], Decimal("500000.00"))
+
+    def test_create_shift_rejects_unknown_shift_number(self):
+        with self.assertRaisesRegex(ValueError, "ca 1"):
+            self.service.create_shift({
+                "soca": 4, "ngaylam": "2026-11-28", "tmdauca": "0"
+            })
+
+    def test_create_shift_rejects_invalid_date(self):
+        with self.assertRaisesRegex(ValueError, "Ngày làm"):
+            self.service.create_shift({
+                "soca": 1, "ngaylam": "not-a-date", "tmdauca": "0"
+            })
+
+    def test_cash_parser_accepts_zero_and_formats_decimal(self):
+        self.assertEqual(
+            self.service.parse_cash("0", "tiền đầu ca"), Decimal("0.00")
+        )
+
+    def test_cash_parser_rejects_negative_and_non_finite(self):
+        for amount in ("-1", "NaN", "Infinity"):
+            with self.subTest(amount=amount):
+                with self.assertRaises(ValueError):
+                    self.service.parse_cash(amount, "tiền cuối ca")
+
+    def test_cash_parser_rejects_value_above_sql_decimal(self):
+        with self.assertRaisesRegex(ValueError, "giới hạn"):
+            self.service.parse_cash("10000000000000", "tiền đầu ca")
+
+    def test_register_shift_normalizes_identifier(self):
+        self.service.register_current_shift(" 12 ", "NV001")
+        self.assertEqual(self.repository.registered, (12, "NV001"))
+
+    def test_record_closing_cash_uses_decimal(self):
+        self.service.record_closing_cash(12, "NV002", "1234.5")
+        self.assertEqual(
+            self.repository.closed, (12, "NV002", Decimal("1234.50"))
+        )
+
+    def test_history_rejects_unknown_period(self):
+        with self.assertRaisesRegex(ValueError, "khoảng thời gian"):
+            self.service.list_shift_history("forever")
+
+    def test_history_passes_supported_period(self):
+        self.service.list_shift_history("7days")
+        self.assertEqual(self.repository.period, "7days")
+
+    def test_delete_shift_requires_manager(self):
+        with self.assertRaises(PermissionError):
+            self.service.delete_shift(12, is_manager=False)
+
+    def test_delete_shift_delegates_for_manager(self):
+        self.assertTrue(self.service.delete_shift("12", is_manager=True))
+        self.assertEqual(self.repository.deleted, 12)
+
+    def test_shift_id_must_be_positive_integer(self):
+        for shift_id in (0, -1, "invalid"):
+            with self.subTest(shift_id=shift_id):
+                with self.assertRaises(ValueError):
+                    self.service.register_current_shift(shift_id, "NV001")
 
 
 
