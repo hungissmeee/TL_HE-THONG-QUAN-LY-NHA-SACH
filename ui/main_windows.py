@@ -94,9 +94,10 @@ class MainWindow(SidebarNavigationMixin, QMainWindow):
                 "expanded": False,
             },
             {
-                "key": "report_center",
-                "title": "TRUNG TÂM BÁO CÁO",
-                "standalone_page": "report_center",
+                "key": "reports",
+                "title": "BÁO CÁO",
+                "pages": ["report_center"],
+                "expanded": False,
             },
             {
                 "key": "people",
