@@ -35,10 +35,11 @@ class PhieuNhapService:
         payload = dict(data or {})
         supplier = str(payload.get("supplier_code") or "").strip()
         employee = str(payload.get("employee_code") or "").strip()
+        is_admin = bool(payload.get("is_admin"))
         import_type = str(payload.get("import_type") or "").strip()
         if not supplier:
             raise ValueError("Vui lòng chọn nhà cung cấp đang hoạt động.")
-        if not employee:
+        if not employee and not is_admin:
             raise ValueError("Không xác định được nhân viên lập phiếu.")
         if not import_type:
             raise ValueError("Vui lòng chọn loại phiếu nhập.")
@@ -82,7 +83,7 @@ class PhieuNhapService:
         payload = {
             "supplier_code": supplier,
             "supplier_invoice": invoice,
-            "employee_code": employee,
+            "employee_code": employee or None,
             "import_type": import_type,
             "items": items,
             "total": total.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
