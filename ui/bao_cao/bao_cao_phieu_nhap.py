@@ -21,8 +21,8 @@ class ImportReportPage(ReportBasePage):
             ("quantity", "Số lượng sản phẩm nhập", "0",
              "Tổng số lượng ở các dòng chi tiết", "positive"),
             ("amount", "Tổng trị giá nhập", "0 đ",
-             "Tổng giá trị ghi trên phiếu nhập", "violet"),
-        ])
+             "Tổng giá trị ghi trên phiếu nhập còn hiệu lực", "violet"),
+        ], primary_key="amount")
         self.table = self.make_table([
             "Mã phiếu nhập", "Ngày nhập", "Loại phiếu", "Nhà cung cấp",
             "Số HĐ nhà cung cấp", "Nhân viên lập", "Số lượng nhập", "Tổng trị giá"
