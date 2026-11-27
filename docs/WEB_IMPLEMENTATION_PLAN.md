@@ -196,7 +196,7 @@ Chưa tự ý thêm module khách hàng/đăng ký khách hàng vì phạm vi hi
 - [x] Bổ sung kiểm thử service sản phẩm, nhà cung cấp, phiếu nhập, hóa đơn và đổi trả bằng repository giả; kiểm tra cú pháp và toàn bộ unit test qua GitHub Actions (133 test đạt).
 - [ ] Chạy kiểm thử tích hợp trên SQL Server thử nghiệm và kiểm tra thủ công các luồng Desktop trên Windows.
 
-**Ghi chú tiến độ:** Đã tách sản phẩm, danh mục, nhà cung cấp, phiếu nhập, hóa đơn và đổi trả. Các phân hệ ca làm việc, nhân viên, khuyến mãi độc lập và báo cáo vẫn cần được tách. GitHub Actions đã chạy thành công 133 unit test; chưa nghiệm thu tích hợp SQL Server thật hoặc kiểm tra thủ công Desktop trên Windows.
+**Ghi chú tiến độ:** Đã tách sản phẩm, danh mục, nhà cung cấp, phiếu nhập, hóa đơn, đổi trả và phần lớn nghiệp vụ hồ sơ/tài khoản nhân viên. Ca làm việc, khuyến mãi độc lập và báo cáo vẫn cần được tách. Nhân viên đã có Repository/Service và Desktop dùng Service; thao tác SQL Login vẫn được giữ sau cổng Admin, chưa mở thành API Web. GitHub Actions đang kiểm thử phiên bản mới; chưa nghiệm thu tích hợp SQL Server thật hoặc kiểm tra thủ công Desktop trên Windows.
 
 **Kết quả:** Desktop vẫn chạy, Backend có thể tái sử dụng cùng service/repository.
 
@@ -242,7 +242,8 @@ Chưa tự ý thêm module khách hàng/đăng ký khách hàng vì phạm vi hi
 
 ### Giai đoạn 6 — Nhân sự, ca và báo cáo
 
-- [ ] Nhân viên, tài khoản và quyền Admin.
+- [x] Tách Repository/Service cho hồ sơ nhân viên, tạo tài khoản, đọc quyền, đổi vai trò, bật/tắt và xóa SQL Login; Desktop gọi Service.
+- [ ] Thiết kế xác thực Web, phiên đăng nhập và RBAC phía Backend; không tái sử dụng quyền UI làm ranh giới bảo mật.
 - [ ] Ca làm việc và các quy tắc thời gian/xóa ca/chốt ca.
 - [ ] Khuyến mãi.
 - [ ] Các báo cáo hiện có, bộ lọc và xuất CSV.
