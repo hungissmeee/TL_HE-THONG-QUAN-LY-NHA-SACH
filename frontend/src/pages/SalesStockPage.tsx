@@ -8,6 +8,7 @@ import { EyeOutlined, PlusOutlined, ReloadOutlined, StopOutlined } from "@ant-de
 import dayjs, { type Dayjs } from "dayjs";
 import { ApiError } from "@/services/api";
 import { operationsApi, type ImportLookup, type InvoiceLookup, type Row as DataRow } from "@/features/operations/operationsApi";
+import { tableSorter } from "@/services/tableSort";
 import { useAuth } from "@/features/auth/AuthContext";
 
 const { Title, Text } = Typography;
@@ -90,13 +91,13 @@ function ImportsPage() {
   }
 
   const columns: TableColumnsType<DataRow> = [
-    { title: "Mã phiếu", dataIndex: "mapn", key: "mapn", width: 125 },
-    { title: "Ngày nhập", dataIndex: "ngaynhap", key: "ngaynhap", width: 170, render: dt },
-    { title: "Nhà cung cấp", dataIndex: "tenncc", key: "tenncc" },
-    { title: "Nhân viên", dataIndex: "tennv", key: "tennv", width: 160 },
-    { title: "Số HĐ NCC", dataIndex: "shdncc", key: "shdncc", width: 120 },
-    { title: "Tổng trị giá", dataIndex: "tongtrigia", key: "tongtrigia", width: 145, align: "right", render: money },
-    { title: "Trạng thái", dataIndex: "trangthai", key: "status", width: 120, render: (v: boolean) => <Tag color={v ? "success" : "default"}>{v ? "Có hiệu lực" : "Đã hủy"}</Tag> },
+    { title: "Mã phiếu", dataIndex: "mapn", key: "mapn", width: 125, sorter: tableSorter<DataRow>("mapn") },
+    { title: "Ngày nhập", dataIndex: "ngaynhap", key: "ngaynhap", width: 170, sorter: tableSorter<DataRow>("ngaynhap"), render: dt },
+    { title: "Nhà cung cấp", dataIndex: "tenncc", key: "tenncc", sorter: tableSorter<DataRow>("tenncc") },
+    { title: "Nhân viên", dataIndex: "tennv", key: "tennv", width: 160, sorter: tableSorter<DataRow>("tennv") },
+    { title: "Số HĐ NCC", dataIndex: "shdncc", key: "shdncc", width: 120, sorter: tableSorter<DataRow>("shdncc") },
+    { title: "Tổng trị giá", dataIndex: "tongtrigia", key: "tongtrigia", width: 145, align: "right", sorter: tableSorter<DataRow>("tongtrigia"), render: money },
+    { title: "Trạng thái", dataIndex: "trangthai", key: "status", width: 120, sorter: tableSorter<DataRow>("trangthai"), render: (v: boolean) => <Tag color={v ? "success" : "default"}>{v ? "Có hiệu lực" : "Đã hủy"}</Tag> },
     { title: "Thao tác", key: "actions", width: 175, render: (_: unknown, row: DataRow) => <Space>
       <Button size="small" icon={<EyeOutlined />} onClick={() => void showDetail(String(row.mapn))}>Chi tiết</Button>
       {canWrite && Boolean(row.trangthai) && <Popconfirm title="Hủy phiếu nhập?" description="Tồn kho sẽ được hoàn tác nếu hiện còn đủ số lượng." okText="Hủy phiếu" cancelText="Đóng" onConfirm={() => void cancel(String(row.mapn))}><Button size="small" danger icon={<StopOutlined />} /></Popconfirm>}
@@ -435,13 +436,13 @@ function InvoicesPage() {
   const detailChange = Math.max(detailCash - detailTotal, 0);
 
   const columns: TableColumnsType<DataRow> = [
-    { title: "Mã hóa đơn", dataIndex: "mahd", key: "mahd", width: 140 },
-    { title: "Ngày lập", dataIndex: "ngaylap", key: "ngaylap", width: 170, render: dt },
-    { title: "Nhân viên", dataIndex: "tennv", key: "tennv" },
-    { title: "Ca", dataIndex: "soca", key: "soca", width: 65, render: (v: unknown) => v ? "Ca " + String(v) : "—" },
-    { title: "Tổng tiền", dataIndex: "tongtien", key: "tongtien", width: 150, align: "right", render: money },
-    { title: "Tiền khách đưa", dataIndex: "tienkhachdua", key: "tienkhachdua", width: 155, align: "right", render: money },
-    { title: "Trạng thái", dataIndex: "trangthai", key: "status", width: 110, render: (v: boolean) => <Tag color={v ? "success" : "default"}>{v ? "Có hiệu lực" : "Đã hủy"}</Tag> },
+    { title: "Mã hóa đơn", dataIndex: "mahd", key: "mahd", width: 140, sorter: tableSorter<DataRow>("mahd") },
+    { title: "Ngày lập", dataIndex: "ngaylap", key: "ngaylap", width: 170, sorter: tableSorter<DataRow>("ngaylap"), render: dt },
+    { title: "Nhân viên", dataIndex: "tennv", key: "tennv", sorter: tableSorter<DataRow>("tennv") },
+    { title: "Ca", dataIndex: "soca", key: "soca", width: 65, sorter: tableSorter<DataRow>("soca"), render: (v: unknown) => v ? "Ca " + String(v) : "—" },
+    { title: "Tổng tiền", dataIndex: "tongtien", key: "tongtien", width: 150, align: "right", sorter: tableSorter<DataRow>("tongtien"), render: money },
+    { title: "Tiền khách đưa", dataIndex: "tienkhachdua", key: "tienkhachdua", width: 155, align: "right", sorter: tableSorter<DataRow>("tienkhachdua"), render: money },
+    { title: "Trạng thái", dataIndex: "trangthai", key: "status", width: 110, sorter: tableSorter<DataRow>("trangthai"), render: (v: boolean) => <Tag color={v ? "success" : "default"}>{v ? "Có hiệu lực" : "Đã hủy"}</Tag> },
     { title: "Thao tác", key: "actions", width: 190, render: (_: unknown, row: DataRow) => <Space>
       <Button size="small" icon={<EyeOutlined />} onClick={() => void showDetail(String(row.mahd))}>Chi tiết</Button>
       {canCreate && Boolean(row.trangthai) && <Popconfirm title="Hủy hóa đơn?" description="Hóa đơn đã có phiếu đổi trả không thể hủy." okText="Hủy hóa đơn" cancelText="Đóng" onConfirm={() => void cancel(String(row.mahd))}><Button danger size="small" icon={<StopOutlined />} /></Popconfirm>}

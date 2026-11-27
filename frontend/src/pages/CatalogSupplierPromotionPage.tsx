@@ -32,6 +32,7 @@ import {
   type CatalogData,
   type Row,
 } from "@/features/operations/operationsApi";
+import { tableSorter } from "@/services/tableSort";
 
 const { Title, Text } = Typography;
 
@@ -125,6 +126,7 @@ function CatalogPage({ catalogType }: { catalogType: string }) {
     title: field.label,
     dataIndex: field.key,
     key: field.key,
+    sorter: tableSorter<Row>(field.key),
 
   }));
   if (data) {
@@ -293,13 +295,14 @@ function SuppliersPage() {
   }
 
   const columns = [
-    { title: "Mã NCC", dataIndex: "mancc", key: "mancc", width: 120 },
-    { title: "Tên nhà cung cấp", dataIndex: "tenncc", key: "tenncc" },
-    { title: "Số điện thoại", dataIndex: "sdt", key: "sdt", width: 140 },
-    { title: "Mã số thuế", dataIndex: "mst", key: "mst", width: 150 },
-    { title: "Địa chỉ", dataIndex: "diachi", key: "diachi" },
+    { title: "Mã NCC", dataIndex: "mancc", key: "mancc", width: 120, sorter: tableSorter<Row>("mancc") },
+    { title: "Tên nhà cung cấp", dataIndex: "tenncc", key: "tenncc", sorter: tableSorter<Row>("tenncc") },
+    { title: "Số điện thoại", dataIndex: "sdt", key: "sdt", width: 140, sorter: tableSorter<Row>("sdt") },
+    { title: "Mã số thuế", dataIndex: "mst", key: "mst", width: 150, sorter: tableSorter<Row>("mst") },
+    { title: "Địa chỉ", dataIndex: "diachi", key: "diachi", sorter: tableSorter<Row>("diachi") },
     {
       title: "Trạng thái", dataIndex: "is_deleted", key: "status", width: 140,
+      sorter: tableSorter<Row>("is_deleted"),
       render: (value: boolean) => <Tag color={value ? "default" : "success"}>{value ? "Ngừng hoạt động" : "Đang hoạt động"}</Tag>,
     },
     {
@@ -433,13 +436,14 @@ function PromotionsPage() {
   }
 
   const columns = [
-    { title: "Mã KM", dataIndex: "makm", key: "makm", width: 130 },
-    { title: "Tên chương trình", dataIndex: "tenkm", key: "tenkm" },
-    { title: "Tỷ lệ giảm", dataIndex: "tylegiam", key: "tylegiam", width: 120, render: (v: unknown) => Number(v || 0) + "%" },
-    { title: "Bắt đầu", dataIndex: "ngaybd", key: "ngaybd", width: 170, render: (v: string) => v ? dayjs(v).format("DD/MM/YYYY HH:mm") : "—" },
-    { title: "Kết thúc", dataIndex: "ngaykt", key: "ngaykt", width: 170, render: (v: string) => v ? dayjs(v).format("DD/MM/YYYY HH:mm") : "—" },
+    { title: "Mã KM", dataIndex: "makm", key: "makm", width: 130, sorter: tableSorter<Row>("makm") },
+    { title: "Tên chương trình", dataIndex: "tenkm", key: "tenkm", sorter: tableSorter<Row>("tenkm") },
+    { title: "Tỷ lệ giảm", dataIndex: "tylegiam", key: "tylegiam", width: 120, sorter: tableSorter<Row>("tylegiam"), render: (v: unknown) => Number(v || 0) + "%" },
+    { title: "Bắt đầu", dataIndex: "ngaybd", key: "ngaybd", width: 170, sorter: tableSorter<Row>("ngaybd"), render: (v: string) => v ? dayjs(v).format("DD/MM/YYYY HH:mm") : "—" },
+    { title: "Kết thúc", dataIndex: "ngaykt", key: "ngaykt", width: 170, sorter: tableSorter<Row>("ngaykt"), render: (v: string) => v ? dayjs(v).format("DD/MM/YYYY HH:mm") : "—" },
     {
       title: "Trạng thái", dataIndex: "status", key: "status", width: 145,
+      sorter: tableSorter<Row>("status"),
       render: (v: string, row: Row) => <Tag color={row.is_deleted ? "default" : v === "Đang áp dụng" ? "success" : "blue"}>{v}</Tag>,
     },
     {

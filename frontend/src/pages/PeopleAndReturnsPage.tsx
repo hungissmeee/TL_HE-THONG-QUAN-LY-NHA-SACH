@@ -12,6 +12,7 @@ import {
   type ReturnInvoiceItems,
   type Row as DataRow,
 } from "@/features/operations/operationsApi";
+import { tableSorter } from "@/services/tableSort";
 import { useAuth } from "@/features/auth/AuthContext";
 
 const { Title, Text } = Typography;
@@ -116,13 +117,13 @@ function ReturnsPage() {
   }
 
   const columns: TableColumnsType<DataRow> = [
-    { title: "Mã phiếu", dataIndex: "mapdt", key: "mapdt", width: 140 },
-    { title: "Ngày đổi trả", dataIndex: "ngay", key: "ngay", width: 175, render: dt },
-    { title: "Hóa đơn gốc", dataIndex: "mahd", key: "mahd", width: 140 },
-    { title: "Nhân viên", dataIndex: "tennv", key: "tennv", width: 150 },
-    { title: "Lý do", dataIndex: "lydo", key: "lydo" },
-    { title: "Số lượng", dataIndex: "tongsoluong", key: "tongsoluong", width: 100, align: "right" },
-    { title: "Tiền hoàn", dataIndex: "tonghoan", key: "tonghoan", width: 145, align: "right", render: money },
+    { title: "Mã phiếu", dataIndex: "mapdt", key: "mapdt", width: 140, sorter: tableSorter<DataRow>("mapdt") },
+    { title: "Ngày đổi trả", dataIndex: "ngay", key: "ngay", width: 175, sorter: tableSorter<DataRow>("ngay"), render: dt },
+    { title: "Hóa đơn gốc", dataIndex: "mahd", key: "mahd", width: 140, sorter: tableSorter<DataRow>("mahd") },
+    { title: "Nhân viên", dataIndex: "tennv", key: "tennv", width: 150, sorter: tableSorter<DataRow>("tennv") },
+    { title: "Lý do", dataIndex: "lydo", key: "lydo", sorter: tableSorter<DataRow>("lydo") },
+    { title: "Số lượng", dataIndex: "tongsoluong", key: "tongsoluong", width: 100, align: "right", sorter: tableSorter<DataRow>("tongsoluong") },
+    { title: "Tiền hoàn", dataIndex: "tonghoan", key: "tonghoan", width: 145, align: "right", sorter: tableSorter<DataRow>("tonghoan"), render: money },
     { title: "Thao tác", key: "actions", width: 155, render: (_: unknown, row: DataRow) => <Space>
       <Button size="small" icon={<EyeOutlined />} onClick={() => void showDetail(String(row.mapdt))}>Chi tiết</Button>
       {canManage && <Popconfirm title="Xóa phiếu đổi trả?" description="Hệ thống sẽ đảo biến động tồn kho. Nếu tồn hiện tại không đủ, thao tác bị từ chối." okText="Xóa" cancelText="Hủy" onConfirm={() => void remove(String(row.mapdt))}><Button size="small" danger icon={<DeleteOutlined />} /></Popconfirm>}
@@ -333,10 +334,10 @@ function EmployeesPage() {
   }
 
   const columns: TableColumnsType<DataRow> = [
-    { title: "Mã nhân viên", dataIndex: "manv", key: "manv", width: 145 },
-    { title: "Họ tên", dataIndex: "tennv", key: "tennv" },
-    { title: "Vai trò", dataIndex: "vaitro", key: "vaitro", width: 155 },
-    { title: "Số điện thoại", dataIndex: "sdt", key: "sdt", width: 150 },
+    { title: "Mã nhân viên", dataIndex: "manv", key: "manv", width: 145, sorter: tableSorter<DataRow>("manv") },
+    { title: "Họ tên", dataIndex: "tennv", key: "tennv", sorter: tableSorter<DataRow>("tennv") },
+    { title: "Vai trò", dataIndex: "vaitro", key: "vaitro", width: 155, sorter: tableSorter<DataRow>("vaitro") },
+    { title: "Số điện thoại", dataIndex: "sdt", key: "sdt", width: 150, sorter: tableSorter<DataRow>("sdt") },
     { title: "Thao tác", key: "actions", width: 100, render: (_: unknown, row: DataRow) => <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(row)}>Sửa</Button> },
   ];
 

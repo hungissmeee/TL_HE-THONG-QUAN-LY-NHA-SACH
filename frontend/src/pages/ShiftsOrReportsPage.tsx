@@ -8,6 +8,7 @@ import { DeleteOutlined, PlusOutlined, ReloadOutlined, TeamOutlined } from "@ant
 import dayjs, { type Dayjs } from "dayjs";
 import { ApiError } from "@/services/api";
 import { operationsApi, type Row as DataRow } from "@/features/operations/operationsApi";
+import { tableSorter } from "@/services/tableSort";
 import { useAuth } from "@/features/auth/AuthContext";
 
 const { Title, Text } = Typography;
@@ -101,14 +102,14 @@ function ShiftsPage() {
   }
 
   const managerColumns: TableColumnsType<DataRow> = [
-    { title: "Mã ca", dataIndex: "maca", key: "maca", width: 85 },
-    { title: "Ngày", dataIndex: "ngaylam", key: "ngaylam", width: 120, render: dateText },
-    { title: "Ca", dataIndex: "soca", key: "soca", width: 65, render: (v: unknown) => "Ca " + String(v) },
-    { title: "Giờ làm", key: "hours", width: 145, render: (_: unknown, row: DataRow) => String(row.tgmo || "").slice(0, 5) + " – " + String(row.tgdong || "").slice(0, 5) },
-    { title: "Nhân viên", dataIndex: "so_nhan_vien", key: "count", width: 100, align: "right" },
-    { title: "Tiền đầu ca", dataIndex: "tmdauca", key: "opening", width: 140, align: "right", render: money },
-    { title: "Tiền cuối ca", dataIndex: "tmcuoica", key: "closing", width: 140, align: "right", render: (v: unknown) => v === null ? "Chưa chốt" : money(v) },
-    { title: "Trạng thái", dataIndex: "trangthai", key: "status", width: 130, render: (v: string) => <Tag color={v === "Đang diễn ra" ? "success" : v === "Đã kết thúc" ? "default" : "blue"}>{v}</Tag> },
+    { title: "Mã ca", dataIndex: "maca", key: "maca", width: 85, sorter: tableSorter<DataRow>("maca") },
+    { title: "Ngày", dataIndex: "ngaylam", key: "ngaylam", width: 120, sorter: tableSorter<DataRow>("ngaylam"), render: dateText },
+    { title: "Ca", dataIndex: "soca", key: "soca", width: 65, sorter: tableSorter<DataRow>("soca"), render: (v: unknown) => "Ca " + String(v) },
+    { title: "Giờ làm", key: "hours", width: 145, sorter: tableSorter<DataRow>((row) => String(row.tgmo || "") + String(row.tgdong || "")), render: (_: unknown, row: DataRow) => String(row.tgmo || "").slice(0, 5) + " – " + String(row.tgdong || "").slice(0, 5) },
+    { title: "Nhân viên", dataIndex: "so_nhan_vien", key: "count", width: 100, align: "right", sorter: tableSorter<DataRow>("so_nhan_vien") },
+    { title: "Tiền đầu ca", dataIndex: "tmdauca", key: "opening", width: 140, align: "right", sorter: tableSorter<DataRow>("tmdauca"), render: money },
+    { title: "Tiền cuối ca", dataIndex: "tmcuoica", key: "closing", width: 140, align: "right", sorter: tableSorter<DataRow>("tmcuoica"), render: (v: unknown) => v === null ? "Chưa chốt" : money(v) },
+    { title: "Trạng thái", dataIndex: "trangthai", key: "status", width: 130, sorter: tableSorter<DataRow>("trangthai"), render: (v: string) => <Tag color={v === "Đang diễn ra" ? "success" : v === "Đã kết thúc" ? "default" : "blue"}>{v}</Tag> },
     { title: "Thao tác", key: "actions", width: 170, render: (_: unknown, row: DataRow) => <Space>
       <Button size="small" icon={<TeamOutlined />} onClick={() => void showRoster(Number(row.maca))}>Nhân viên</Button>
       {isManager && row.trangthai === "Sắp bắt đầu" && <Popconfirm title="Xóa ca này?" okText="Xóa" cancelText="Hủy" onConfirm={() => void deleteShift(Number(row.maca))}><Button size="small" danger icon={<DeleteOutlined />} /></Popconfirm>}
@@ -117,11 +118,11 @@ function ShiftsPage() {
   ];
 
   const currentColumns: TableColumnsType<DataRow> = [
-    { title: "Mã ca", dataIndex: "maca", key: "maca", width: 85 },
-    { title: "Ngày", dataIndex: "ngaylam", key: "ngaylam", width: 120, render: dateText },
-    { title: "Ca", dataIndex: "soca", key: "soca", width: 65, render: (v: unknown) => "Ca " + String(v) },
-    { title: "Giờ làm", key: "hours", width: 145, render: (_: unknown, row: DataRow) => String(row.tgmo || "").slice(0, 5) + " – " + String(row.tgdong || "").slice(0, 5) },
-    { title: "Nhân viên", dataIndex: "so_nhan_vien", key: "count", width: 100, align: "right" },
+    { title: "Mã ca", dataIndex: "maca", key: "maca", width: 85, sorter: tableSorter<DataRow>("maca") },
+    { title: "Ngày", dataIndex: "ngaylam", key: "ngaylam", width: 120, sorter: tableSorter<DataRow>("ngaylam"), render: dateText },
+    { title: "Ca", dataIndex: "soca", key: "soca", width: 65, sorter: tableSorter<DataRow>("soca"), render: (v: unknown) => "Ca " + String(v) },
+    { title: "Giờ làm", key: "hours", width: 145, sorter: tableSorter<DataRow>((row) => String(row.tgmo || "") + String(row.tgdong || "")), render: (_: unknown, row: DataRow) => String(row.tgmo || "").slice(0, 5) + " – " + String(row.tgdong || "").slice(0, 5) },
+    { title: "Nhân viên", dataIndex: "so_nhan_vien", key: "count", width: 100, align: "right", sorter: tableSorter<DataRow>("so_nhan_vien") },
     { title: "Trạng thái", key: "status", width: 130, render: () => <Tag color="success">Đang diễn ra</Tag> },
     { title: "Thao tác", key: "actions", width: 140, render: (_: unknown, row: DataRow) => (
       <Button size="small" icon={<TeamOutlined />} onClick={() => void showRoster(Number(row.maca))}>Nhân viên</Button>
@@ -129,12 +130,12 @@ function ShiftsPage() {
   ];
 
   const employeeColumns: TableColumnsType<DataRow> = [
-    { title: "Mã ca", dataIndex: "maca", key: "maca", width: 85 },
-    { title: "Ngày", dataIndex: "ngaylam", key: "ngaylam", width: 130, render: dateText },
-    { title: "Ca", dataIndex: "soca", key: "soca", width: 70, render: (v: unknown) => "Ca " + String(v) },
-    { title: "Giờ làm", key: "hours", width: 150, render: (_: unknown, row: DataRow) => String(row.tgmo || "").slice(0, 5) + " – " + String(row.tgdong || "").slice(0, 5) },
-    { title: "Số nhân viên", dataIndex: "so_nhan_vien", key: "count", width: 115 },
-    { title: "Trạng thái", key: "status", render: (_: unknown, row: DataRow) => <Tag color={Boolean(row.is_registered) ? "success" : "default"}>{Boolean(row.is_registered) ? "Đã đăng ký" : Boolean(row.is_ended) ? "Đã kết thúc" : "Chưa đăng ký"}</Tag> },
+    { title: "Mã ca", dataIndex: "maca", key: "maca", width: 85, sorter: tableSorter<DataRow>("maca") },
+    { title: "Ngày", dataIndex: "ngaylam", key: "ngaylam", width: 130, sorter: tableSorter<DataRow>("ngaylam"), render: dateText },
+    { title: "Ca", dataIndex: "soca", key: "soca", width: 70, sorter: tableSorter<DataRow>("soca"), render: (v: unknown) => "Ca " + String(v) },
+    { title: "Giờ làm", key: "hours", width: 150, sorter: tableSorter<DataRow>((row) => String(row.tgmo || "") + String(row.tgdong || "")), render: (_: unknown, row: DataRow) => String(row.tgmo || "").slice(0, 5) + " – " + String(row.tgdong || "").slice(0, 5) },
+    { title: "Số nhân viên", dataIndex: "so_nhan_vien", key: "count", width: 115, sorter: tableSorter<DataRow>("so_nhan_vien") },
+    { title: "Trạng thái", key: "status", sorter: tableSorter<DataRow>((row) => Boolean(row.is_registered) ? "Đã đăng ký" : Boolean(row.is_ended) ? "Đã kết thúc" : "Chưa đăng ký"), render: (_: unknown, row: DataRow) => <Tag color={Boolean(row.is_registered) ? "success" : "default"}>{Boolean(row.is_registered) ? "Đã đăng ký" : Boolean(row.is_ended) ? "Đã kết thúc" : "Chưa đăng ký"}</Tag> },
     { title: "Thao tác", key: "actions", width: 175, render: (_: unknown, row: DataRow) => <Space>
       {!Boolean(row.is_registered) && !Boolean(row.is_ended) && <Button size="small" type="primary" onClick={() => void registerShift(Number(row.maca))}>Đăng ký</Button>}
       {isAccountant && Boolean(row.is_ended) && row.tmcuoica === null && <Button size="small" onClick={() => { setClosingShift(row); setCash(null); }}>Ghi tiền cuối ca</Button>}
@@ -222,10 +223,10 @@ function ShiftsPage() {
     <Modal title={rosterTitle} open={rosterOpen} onCancel={() => setRosterOpen(false)} footer={<Button onClick={() => setRosterOpen(false)}>Đóng</Button>} width={720} className="desktop-transaction-modal">
       <Card size="small" title="Danh sách nhân viên trong ca" className="desktop-form-section">
         <Table<DataRow> rowKey="manv" pagination={false} dataSource={roster} columns={[
-          { title: "Mã NV", dataIndex: "manv", key: "manv", width: 100 },
-          { title: "Họ tên", dataIndex: "tennv", key: "tennv" },
-          { title: "Vai trò", dataIndex: "vaitro", key: "vaitro", width: 140 },
-          { title: "SĐT", dataIndex: "sdt", key: "sdt", width: 130 },
+          { title: "Mã NV", dataIndex: "manv", key: "manv", width: 100, sorter: tableSorter<DataRow>("manv") },
+          { title: "Họ tên", dataIndex: "tennv", key: "tennv", sorter: tableSorter<DataRow>("tennv") },
+          { title: "Vai trò", dataIndex: "vaitro", key: "vaitro", width: 140, sorter: tableSorter<DataRow>("vaitro") },
+          { title: "SĐT", dataIndex: "sdt", key: "sdt", width: 130, sorter: tableSorter<DataRow>("sdt") },
         ]}  scroll={{ x: "max-content" }} tableLayout="auto" />
       </Card>
     </Modal>
@@ -416,6 +417,7 @@ function ReportsPage({ reportType }: { reportType: string }) {
         : REPORT_COLUMN_LABELS[key] || key.replace(/_/g, " "),
       dataIndex: key,
       key,
+      sorter: tableSorter<DataRow>(key),
       width: reportColumnWidth(key),
       align: (REPORT_MONEY_FIELDS.has(key) || REPORT_COUNT_FIELDS.has(key) || REPORT_PERCENT_FIELDS.has(key)) ? "right" as const : "left" as const,
       render: (value: unknown) => cellRender(key, value),
