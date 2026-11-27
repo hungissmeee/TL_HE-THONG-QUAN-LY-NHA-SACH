@@ -273,8 +273,20 @@ function ReturnsPage() {
             { title: "Mã SP", dataIndex: "masp", key: "masp", width: 90 },
             { title: "Sản phẩm", dataIndex: "tensp", key: "tensp" },
             { title: "Số lượng", dataIndex: "quantity", key: "quantity", width: 90, align: "right" },
-            { title: "Tình trạng hàng", dataIndex: "condition", key: "condition", width: 135 },
-            { title: "Hình thức xử lý", dataIndex: "action", key: "action", width: 135 },
+            {
+              title: "Tình trạng hàng",
+              dataIndex: "condition",
+              key: "condition",
+              width: 135,
+              render: (value: unknown) => Number(value) === 1 ? "Còn nguyên vẹn" : "Đã hỏng",
+            },
+            {
+              title: "Hình thức xử lý",
+              dataIndex: "action",
+              key: "action",
+              width: 135,
+              render: (value: unknown) => Number(value) === 1 ? "Đổi cùng mã" : "Hoàn tiền",
+            },
             { title: "Đơn giá hoàn", dataIndex: "unit_refund", key: "unit_refund", render: money, align: "right" },
             { title: "Thành tiền hoàn", key: "amount", render: (_: unknown, item: DataRow) => money(Number(item.unit_refund || 0) * Number(item.quantity || 0)), align: "right" },
           ]} />
