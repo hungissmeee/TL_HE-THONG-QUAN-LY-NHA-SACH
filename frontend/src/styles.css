@@ -548,3 +548,19 @@ button, input { font: inherit; }
     max-height: 72vh;
   }
 }
+
+/* Giỏ hàng hóa đơn: để bảng tự lấy độ rộng theo nội dung từng cột. */
+.desktop-transaction-modal .invoice-cart-table .ant-table-content {
+  overflow-x: auto !important;
+  overflow-y: hidden;
+}
+
+.desktop-transaction-modal .invoice-cart-table table {
+  width: max-content !important;
+  min-width: 100%;
+  table-layout: auto !important;
+}
+
+.desktop-transaction-modal .invoice-cart-table .invoice-cart-unit-column {
+  white-space: nowrap;
+}
