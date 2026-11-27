@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
     QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QGridLayout,
     QFrame, QDateEdit, QTableWidget, QHeaderView,
     QAbstractItemView, QMessageBox, QFileDialog, QComboBox,
-    QSizePolicy,
+    QScrollArea, QSizePolicy,
 )
 
 from ui.table_sort import (
@@ -230,9 +230,22 @@ class ReportBasePage(QWidget):
         filter_layout.addWidget(self.export_button)
         root.addWidget(filter_frame)
 
-        self.content_layout = QVBoxLayout()
-        self.content_layout.setSpacing(10)
-        root.addLayout(self.content_layout, 1)
+        self.content_scroll = QScrollArea()
+        self.content_scroll.setWidgetResizable(True)
+        self.content_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.content_scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
+        self.content_scroll.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
+
+        self.content_container = QWidget()
+        self.content_layout = QVBoxLayout(self.content_container)
+        self.content_layout.setContentsMargins(0, 2, 4, 2)
+        self.content_layout.setSpacing(12)
+        self.content_scroll.setWidget(self.content_container)
+        root.addWidget(self.content_scroll, 1)
 
         self.status_label = QLabel("Chọn khoảng thời gian và nhấn Xem báo cáo.")
         self.status_label.setStyleSheet("color: #AAB7C8;")
