@@ -580,23 +580,30 @@ class ShiftServiceTests(unittest.TestCase):
     def test_create_shift_uses_fixed_schedule_and_decimal_cash(self):
         shift_id = self.service.create_shift({
             "soca": 2, "ngaylam": "2026-11-28", "tmdauca": "500000"
-        })
+        }, is_manager=True)
         self.assertEqual(shift_id, 12)
         self.assertEqual(self.repository.created["tgmo"], "12:00:00")
         self.assertEqual(self.repository.created["tgdong"], "17:00:00")
         self.assertEqual(self.repository.created["tmdauca"], Decimal("500000.00"))
 
+
+    def test_create_shift_requires_manager(self):
+        with self.assertRaises(PermissionError):
+            self.service.create_shift({
+                "soca": 1, "ngaylam": "2026-11-28", "tmdauca": "0"
+            })
+
     def test_create_shift_rejects_unknown_shift_number(self):
         with self.assertRaisesRegex(ValueError, "ca 1"):
             self.service.create_shift({
                 "soca": 4, "ngaylam": "2026-11-28", "tmdauca": "0"
-            })
+            }, is_manager=True)
 
     def test_create_shift_rejects_invalid_date(self):
         with self.assertRaisesRegex(ValueError, "Ngày làm"):
             self.service.create_shift({
                 "soca": 1, "ngaylam": "not-a-date", "tmdauca": "0"
-            })
+            }, is_manager=True)
 
     def test_cash_parser_accepts_zero_and_formats_decimal(self):
         self.assertEqual(
