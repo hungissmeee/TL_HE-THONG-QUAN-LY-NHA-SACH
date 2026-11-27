@@ -93,6 +93,28 @@ MAIN_WINDOW_STYLESHEET = """
                 font-weight: bold;
             }
 
+            QPushButton#reportCenterNavButton {
+                color: #FFFFFF;
+                background-color: #263D50;
+                border: 1px solid #3B627C;
+                border-radius: 6px;
+                padding: 10px 8px;
+                text-align: left;
+                font-size: 13px;
+                font-weight: bold;
+            }
+
+            QPushButton#reportCenterNavButton:hover {
+                background-color: #344F67;
+                border-color: #5B7E98;
+            }
+
+            QPushButton#reportCenterNavButton:checked {
+                background-color: #087E91;
+                border-color: #11A0B5;
+                color: white;
+            }
+
             QPushButton#passwordButton {
                 color: white;
                 background-color: #34445A;
