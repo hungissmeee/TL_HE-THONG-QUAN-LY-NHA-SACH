@@ -26,6 +26,7 @@ from ui.table_sort import (
 )
 from .dung_chung import MONEY_QUANT, Decimal, InvalidOperation, ROUND_HALF_UP, money, as_decimal, date_text, time_text
 from ui.permissions import is_admin_account
+from ui.san_pham.tim_kiem import find_matching_product_codes
 
 
 class CreateInvoiceDialog(QDialog):
@@ -391,46 +392,25 @@ class CreateInvoiceDialog(QDialog):
             self._add_product_to_cart(masp)
 
     def add_selected_product(self):
-        """Thêm theo mã hoặc tên nhập chính xác trong ô tìm kiếm."""
-        keyword = self.product_search.text().strip().casefold()
-        if not keyword:
-            return
-
-        exact = [
-            code for code, product in self.products.items()
-            if keyword in {
-                code.casefold(),
-                product["tensp"].casefold(),
-                product.get("barcode", "").casefold(),
-                product.get("isbn", "").casefold(),
-                f"{code} | {product['tensp']}".casefold(),
-            }
-        ]
-        if len(exact) == 1:
-            self._add_product_to_cart(exact[0])
-            return
-
-        matches = [
-            code for code, product in self.products.items()
-            if (
-                keyword in code.casefold()
-                or keyword in product["tensp"].casefold()
-                or keyword in product.get("barcode", "").casefold()
-                or keyword in product.get("isbn", "").casefold()
-            )
-        ]
+        """Thêm sản phẩm theo mã sản phẩm, mã vạch, ISBN hoặc tên."""
+        matches = find_matching_product_codes(
+            self.products,
+            self.product_search.text(),
+        )
         if len(matches) == 1:
             self._add_product_to_cart(matches[0])
         elif matches:
             QMessageBox.information(
-                self, "Chọn sản phẩm",
-                "Có nhiều sản phẩm phù hợp. Hãy chọn một kết quả trong danh sách gợi ý."
+                self,
+                "Chọn sản phẩm",
+                "Có nhiều sản phẩm phù hợp. Hãy chọn một kết quả trong danh sách gợi ý.",
             )
             self.product_search.setFocus()
         else:
             QMessageBox.information(
-                self, "Không tìm thấy",
-                "Không có sản phẩm còn hàng phù hợp với từ khóa."
+                self,
+                "Không tìm thấy",
+                "Không có sản phẩm còn hàng phù hợp với mã sản phẩm, mã vạch, ISBN hoặc tên.",
             )
 
     def _refresh_cart(self):
