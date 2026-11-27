@@ -7,7 +7,7 @@ import xlsxwriter
 from PySide6.QtCore import Qt, QDate
 from PySide6.QtWidgets import (
     QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
-    QTableWidget, QTableWidgetItem, QHeaderView,
+    QTableWidget, QTableWidgetItem, QHeaderView, QSizePolicy,
     QAbstractItemView, QDateEdit, QComboBox, QLineEdit, QSpinBox,
     QFrame, QFileDialog, QMessageBox,
 )
@@ -261,6 +261,7 @@ class ReportCenterPage(QWidget):
 
         self.right_panel = QWidget()
         self.right_panel.setObjectName("reportPaper")
+        self.right_panel.setMinimumSize(0, 0)
         self.right_panel.setStyleSheet("""
             QWidget#reportPaper { background: #171B24; }
             QLabel { color: #D6DEE9; background: transparent; }
@@ -269,16 +270,6 @@ class ReportCenterPage(QWidget):
             QLabel#reportPeriod { color: #D6DEE9; font-size: 11px; font-weight: 600; }
             QFrame#reportFilters {
                 background: #202938; border: 1px solid #39465A; border-radius: 5px;
-            }
-            QComboBox#reportCategoryCombo,
-            QComboBox#reportTypeCombo {
-                background: #263448; color: #E5E7EB;
-                border: 1px solid #46546A; border-radius: 5px;
-                padding: 7px 9px; min-height: 22px;
-            }
-            QComboBox#reportCategoryCombo:hover,
-            QComboBox#reportTypeCombo:hover {
-                border-color: #71839B;
             }
             QTableWidget#reportTable {
                 background: #202938; alternate-background-color: #263448;
@@ -299,15 +290,6 @@ class ReportCenterPage(QWidget):
                 background: #29374B; color: #E5E7EB; font-weight: 700;
                 border: 1px solid #39465A; padding: 7px 6px;
             }
-            QComboBox, QDateEdit, QSpinBox, QLineEdit {
-                background: #263448; color: #E5E7EB;
-                border: 1px solid #46546A; border-radius: 4px;
-                padding: 6px 7px; min-height: 20px;
-            }
-            QComboBox QAbstractItemView {
-                background: #202938; color: #E5E7EB;
-                selection-background-color: #3B526E;
-            }
             QToolTip {
                 color: #F3F4F6; background: #29374B;
                 border: 1px solid #536174;
@@ -326,7 +308,10 @@ class ReportCenterPage(QWidget):
 
         self.report_category_combo = QComboBox()
         self.report_category_combo.setObjectName("reportCategoryCombo")
-        self.report_category_combo.setMinimumWidth(175)
+        self.report_category_combo.setMinimumWidth(0)
+        self.report_category_combo.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
+        )
         self.report_category_combo.addItem("Bán hàng", "BÁO CÁO BÁN HÀNG")
         for group_name, _ in self.GROUPS[1:]:
             label = group_name.replace("BÁO CÁO ", "").title()
@@ -334,7 +319,10 @@ class ReportCenterPage(QWidget):
 
         self.report_combo = QComboBox()
         self.report_combo.setObjectName("reportTypeCombo")
-        self.report_combo.setMinimumWidth(230)
+        self.report_combo.setMinimumWidth(0)
+        self.report_combo.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
+        )
         for report_key, report_title in self.GROUPS[0][1]:
             self.report_combo.addItem(report_title, report_key)
 
@@ -405,7 +393,10 @@ class ReportCenterPage(QWidget):
         filter_layout.addWidget(self.period_combo)
 
         self.employee_combo = QComboBox()
-        self.employee_combo.setMinimumWidth(130)
+        self.employee_combo.setMinimumWidth(0)
+        self.employee_combo.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
+        )
         self.employee_combo.addItem("Tất cả nhân viên", "")
         filter_layout.addWidget(self.employee_combo)
 
@@ -424,7 +415,10 @@ class ReportCenterPage(QWidget):
 
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Tìm mã / tên / chứng từ...")
-        self.search_input.setMinimumWidth(160)
+        self.search_input.setMinimumWidth(0)
+        self.search_input.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
+        )
         filter_layout.addWidget(self.search_input, 1)
 
         self.view_button = QPushButton("Xem báo cáo")
@@ -446,6 +440,10 @@ class ReportCenterPage(QWidget):
         # nối liền nhau, không có khoảng cách như ba bảng độc lập.
         self.report_table_frame = QFrame()
         self.report_table_frame.setObjectName("reportTableFrame")
+        self.report_table_frame.setMinimumSize(0, 0)
+        self.report_table_frame.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
         self.report_table_frame.setStyleSheet(
             "QFrame#reportTableFrame { border: 1px solid #39465A; "
             "border-radius: 5px; background: #202938; }"
@@ -456,6 +454,10 @@ class ReportCenterPage(QWidget):
 
         self.group_header = QTableWidget(1, 0)
         self.group_header.setObjectName("reportGroupHeader")
+        self.group_header.setMinimumSize(0, 30)
+        self.group_header.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
+        )
         self.group_header.setFixedHeight(30)
         self.group_header.verticalHeader().setVisible(False)
         self.group_header.horizontalHeader().setVisible(False)
@@ -471,6 +473,10 @@ class ReportCenterPage(QWidget):
 
         self.table = QTableWidget(0, 0)
         self.table.setObjectName("reportTable")
+        self.table.setMinimumSize(0, 0)
+        self.table.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Expanding
+        )
         self.table.setAlternatingRowColors(True)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
@@ -487,6 +493,10 @@ class ReportCenterPage(QWidget):
 
         self.footer = QTableWidget(1, 0)
         self.footer.setObjectName("reportFooter")
+        self.footer.setMinimumSize(0, 32)
+        self.footer.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
+        )
         self.footer.setFixedHeight(32)
         self.footer.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.footer.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -795,9 +805,8 @@ class ReportCenterPage(QWidget):
             width = self.table.columnWidth(col)
             self.footer.setColumnWidth(col, width)
             self.group_header.setColumnWidth(col, width)
-        table_width = max(100, self.table.width())
-        self.footer.setFixedWidth(table_width)
-        self.group_header.setFixedWidth(table_width)
+        # Không đặt width cố định: footer và header nhóm phải co theo viewport.
+        # QSizePolicy.Ignored ngăn sizeHint tổng chiều rộng các cột ép cửa sổ rộng ra.
         self._sync_horizontal_scroll_range(
             0, self.table.horizontalScrollBar().maximum()
         )
@@ -814,11 +823,6 @@ class ReportCenterPage(QWidget):
     def _sync_horizontal_scroll(self, value):
         for target in (self.footer, self.group_header):
             target.horizontalScrollBar().setValue(value)
-
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        if hasattr(self, "table"):
-            self._sync_footer_widths()
 
     def export_xlsx(self):
         if not self.rows:
