@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  Alert,
   Button,
   Card,
   DatePicker,
@@ -37,11 +36,6 @@ const { Title, Text } = Typography;
 
 function errorText(error: unknown) {
   return error instanceof ApiError ? error.message : "Không thể hoàn tất yêu cầu.";
-}
-
-function money(value: unknown) {
-  const amount = Number(value ?? 0);
-  return Number.isFinite(amount) ? amount.toLocaleString("vi-VN") + " ₫" : "—";
 }
 
 function CatalogPage({ catalogType }: { catalogType: string }) {
