@@ -49,8 +49,8 @@ export function LoginPage() {
         <div className="brand-lockup">
           <div className="brand-mark"><ReadOutlined /></div>
           <div>
-            <div className="brand-name">BOOKHUB</div>
-            <div className="brand-caption">QUẢN LÝ NHÀ SÁCH</div>
+            <div className="brand-name">HỆ THỐNG QUẢN LÝ</div>
+            <div className="brand-caption">NHÀ SÁCH</div>
           </div>
         </div>
 
