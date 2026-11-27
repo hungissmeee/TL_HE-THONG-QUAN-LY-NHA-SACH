@@ -587,7 +587,8 @@ class CodeGenerationTests(unittest.TestCase):
     def test_supplier_code_uses_ncc_prefix_and_table_lock(self):
         cursor = FakeCursor(12)
 
-        code = SupplierFormDialog._next_code(cursor, lock_table=True)
+        from core.repositories.nha_cung_cap_repository import NhaCungCapRepository
+        code = NhaCungCapRepository._next_code(cursor, lock_table=True)
 
         self.assertEqual(code, "NCC013")
         self.assertIn("dbo.NHA_CUNG_CAP WITH (TABLOCKX, HOLDLOCK)", cursor.sql)
@@ -614,9 +615,8 @@ class CodeGenerationTests(unittest.TestCase):
     def test_import_code_uses_six_digit_suffix_and_table_lock(self):
         cursor = FakeCursor(12)
 
-        code = CreateImportDialog._next_import_code(
-            SimpleNamespace(), cursor
-        )
+        from core.repositories.phieu_nhap_repository import PhieuNhapRepository
+        code = PhieuNhapRepository._next_import_code(cursor)
 
         self.assertEqual(code, "PN000013")
         self.assertIn("dbo.PHIEU_NHAP WITH (TABLOCKX, HOLDLOCK)", cursor.sql)
