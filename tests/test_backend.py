@@ -18,7 +18,11 @@ from backend.database import (
     create_connection,
     create_employee_auth_connection,
 )
-from backend.authentication import authenticate_employee
+from backend.authentication import (
+    PasswordPolicyError,
+    authenticate_employee,
+    change_employee_password,
+)
 from backend.security import CurrentUser, create_access_token, require_roles
 from backend.dependencies import get_db_connection
 from backend.main import create_app
@@ -404,6 +408,43 @@ class BackendAuthenticationTests(unittest.TestCase):
             with self.assertRaises(DatabaseUnavailableError):
                 create_employee_auth_connection(make_settings(), "NV001", "password")
 
+    def test_change_employee_password_escapes_login_and_password_literals(self):
+        connection = FakeConnection()
+        with patch(
+            "backend.authentication.create_employee_auth_connection",
+            return_value=connection,
+        ):
+            change_employee_password(
+                make_settings(),
+                "NV]001",
+                "old'password",
+                "new'password",
+            )
+
+        sql = connection.fake_cursor.executed[0][0]
+        self.assertEqual(
+            sql,
+            "ALTER LOGIN [NV]]001] WITH PASSWORD = N'new''password' "
+            "OLD_PASSWORD = N'old''password'",
+        )
+        self.assertTrue(connection.autocommit)
+        self.assertTrue(connection.fake_cursor.closed)
+        self.assertTrue(connection.closed)
+
+    def test_change_employee_password_rejects_password_policy_failure(self):
+        connection = FakeConnection(
+            FakeCursor(error=pyodbc.Error("42000", "15118 password validation failed"))
+        )
+        with patch(
+            "backend.authentication.create_employee_auth_connection",
+            return_value=connection,
+        ):
+            with self.assertRaises(PasswordPolicyError):
+                change_employee_password(
+                    make_settings(), "NV001", "old-password", "weak-password"
+                )
+        self.assertTrue(connection.closed)
+
     def test_access_token_contains_employee_identity_and_expiration(self):
         user = CurrentUser(
             employee_code="NV001",
@@ -458,6 +499,67 @@ class BackendAuthenticationTests(unittest.TestCase):
         self.assertEqual(me.json()["employee_code"], "NV001")
         self.assertEqual(me.json()["role"], "Thu ngân")
 
+
+    def test_change_password_endpoint_updates_current_employee_login(self):
+        user = CurrentUser(
+            employee_code="NV001",
+            full_name="Nhân viên A",
+            role="Thu ngân",
+            role_code="rl_ThuNgan",
+        )
+        app = create_app()
+        with patch.dict(os.environ, self.env, clear=True):
+            token, _ = create_access_token(user)
+            with patch("backend.api.routes.auth.change_employee_password") as change:
+                response = TestClient(app).post(
+                    "/api/v1/auth/change-password",
+                    headers={"Authorization": f"Bearer {token}"},
+                    json={
+                        "current_password": "old-password",
+                        "new_password": "new-password-123",
+                    },
+                )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["message"], "Đổi mật khẩu thành công.")
+        change.assert_called_once()
+
+    def test_change_password_endpoint_keeps_session_when_current_password_is_wrong(self):
+        user = CurrentUser(
+            employee_code="NV001",
+            full_name="Nhân viên A",
+            role="Thu ngân",
+            role_code="rl_ThuNgan",
+        )
+        app = create_app()
+        with patch.dict(os.environ, self.env, clear=True):
+            token, _ = create_access_token(user)
+            with patch(
+                "backend.api.routes.auth.change_employee_password",
+                side_effect=AuthenticationRejectedError("private SQL detail"),
+            ):
+                response = TestClient(app).post(
+                    "/api/v1/auth/change-password",
+                    headers={"Authorization": f"Bearer {token}"},
+                    json={
+                        "current_password": "wrong-password",
+                        "new_password": "new-password-123",
+                    },
+                )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Mật khẩu hiện tại không đúng", response.json()["detail"])
+        self.assertNotIn("private SQL detail", response.text)
+
+    def test_change_password_requires_bearer_token(self):
+        response = TestClient(create_app()).post(
+            "/api/v1/auth/change-password",
+            json={
+                "current_password": "old-password",
+                "new_password": "new-password-123",
+            },
+        )
+        self.assertEqual(response.status_code, 401)
 
     def test_role_dependency_allows_configured_role(self):
         checker = require_roles("rl_ThuNgan")

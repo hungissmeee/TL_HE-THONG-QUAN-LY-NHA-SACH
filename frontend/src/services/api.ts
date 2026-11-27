@@ -105,6 +105,13 @@ export const authApi = {
     });
   },
 
+  changePassword(payload: { current_password: string; new_password: string }): Promise<{ message: string }> {
+    return apiRequest<{ message: string }>("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }, true);
+  },
+
   me(): Promise<EmployeeSummary> {
     return apiRequest<EmployeeSummary>("/auth/me", { method: "GET" }, true);
   },

@@ -213,3 +213,129 @@ button, input { font: inherit; }
   .operation-search { flex-basis: 100%; }
   .operation-list-heading { align-items: flex-start; flex-direction: column; }
 }
+
+
+
+/* Popup co giãn theo màn hình, tránh tràn ngang và thanh cuộn ngang không cần thiết. */
+.ant-modal-root .ant-modal {
+  max-width: calc(100vw - 32px);
+}
+
+.ant-modal-root .ant-modal-content {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.ant-modal-root .ant-modal-body {
+  min-width: 0;
+  max-width: 100%;
+  max-height: min(72vh, 780px);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.ant-modal-root .ant-modal-body > *,
+.ant-modal-root .ant-modal-body .ant-row,
+.ant-modal-root .ant-modal-body .ant-col,
+.ant-modal-root .ant-modal-body .ant-form,
+.ant-modal-root .ant-modal-body .ant-card {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ant-modal-root .ant-modal-body .ant-input,
+.ant-modal-root .ant-modal-body .ant-select,
+.ant-modal-root .ant-modal-body .ant-input-number,
+.ant-modal-root .ant-modal-body .ant-picker {
+  max-width: 100%;
+}
+
+.ant-modal-root .ant-modal-body .ant-descriptions,
+.ant-modal-root .ant-modal-body .ant-descriptions-view {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.ant-modal-root .ant-modal-body .ant-descriptions table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.ant-modal-root .ant-modal-body .ant-descriptions-item-label,
+.ant-modal-root .ant-modal-body .ant-descriptions-item-content {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.ant-modal-root .ant-modal-body .ant-table-wrapper {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.ant-modal-root .ant-modal-body .ant-table-content {
+  overflow-x: hidden !important;
+}
+
+.ant-modal-root .ant-modal-body .ant-table table {
+  width: 100% !important;
+  table-layout: fixed;
+}
+
+.ant-modal-root .ant-modal-body .ant-table-cell {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.header-actions {
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.header-change-password {
+  flex-shrink: 0;
+}
+
+.password-change-modal .ant-form-item {
+  margin-bottom: 18px;
+}
+
+@media (max-width: 760px) {
+  .ant-modal-root .ant-modal {
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px);
+    margin-inline: 12px;
+  }
+
+  .ant-modal-root .ant-modal-body {
+    padding: 16px;
+  }
+
+  .app-header {
+    gap: 8px;
+    padding-inline: 12px;
+  }
+
+  .header-actions {
+    gap: 6px !important;
+  }
+
+  .header-change-password {
+    padding-inline: 4px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 520px) {
+  .header-actions .ant-tag {
+    display: none;
+  }
+
+  .header-change-password {
+    font-size: 11px;
+  }
+}

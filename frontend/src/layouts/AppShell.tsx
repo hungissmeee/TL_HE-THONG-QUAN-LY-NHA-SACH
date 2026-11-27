@@ -3,8 +3,11 @@ import {
   Avatar,
   Button,
   Card,
+  Form,
+  Input,
   Layout,
   Menu,
+  Modal,
   Space,
   Tag,
   Typography,
@@ -19,6 +22,7 @@ import {
   FileDoneOutlined,
   GiftOutlined,
   HomeOutlined,
+  LockOutlined,
   LogoutOutlined,
   ShopOutlined,
   TagsOutlined,
@@ -27,6 +31,7 @@ import {
 } from "@ant-design/icons";
 
 import { useAuth } from "@/features/auth/AuthContext";
+import { ApiError, authApi } from "@/services/api";
 import { ProductsPage } from "@/pages/ProductsPage";
 import { CatalogSupplierPromotionPage } from "@/pages/CatalogSupplierPromotionPage";
 import { SalesStockPage } from "@/pages/SalesStockPage";
@@ -44,6 +49,12 @@ type PageKey =
   | "report_overview" | "report_revenue" | "report_invoice"
   | "report_import" | "report_return" | "report_inventory"
   | "report_product" | "report_shifts";
+
+interface ChangePasswordFormValues {
+  current_password: string;
+  new_password: string;
+  confirm_password: string;
+}
 
 interface NavigationItem {
   key: PageKey;
@@ -167,6 +178,9 @@ function Dashboard({ name, role }: { name: string; role: string }) {
 export function AppShell() {
   const { user, logout } = useAuth();
   const [pageKey, setPageKey] = useState<PageKey>("home");
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordForm] = Form.useForm<ChangePasswordFormValues>();
   const permittedPages = ROLE_PAGES[user?.role_code || ""] || [];
 
   const menuItems = useMemo<MenuProps["items"]>(() => {
@@ -188,7 +202,34 @@ export function AppShell() {
 
   const pageTitle = PAGE_TITLES[pageKey] || "Trang chủ";
 
+  async function submitPasswordChange(values: ChangePasswordFormValues) {
+    setPasswordSaving(true);
+    try {
+      const result = await authApi.changePassword({
+        current_password: values.current_password,
+        new_password: values.new_password,
+      });
+      message.success(result.message);
+      setPasswordOpen(false);
+      passwordForm.resetFields();
+    } catch (error) {
+      message.error(
+        error instanceof ApiError
+          ? error.message
+          : "Không thể đổi mật khẩu. Vui lòng thử lại.",
+      );
+    } finally {
+      setPasswordSaving(false);
+    }
+  }
+
+  function closePasswordDialog() {
+    setPasswordOpen(false);
+    passwordForm.resetFields();
+  }
+
   return (
+    <>
     <Layout className="app-layout">
       <Sider className="app-sider" width={248} breakpoint="lg" collapsedWidth={72} theme="dark">
         <div className="sidebar-brand">
@@ -222,8 +263,16 @@ export function AppShell() {
       <Layout className="app-main">
         <Header className="app-header">
           <div className="header-title">{pageTitle}</div>
-          <Space size={12}>
+          <Space className="header-actions" size={12}>
             <Tag color="blue">{user?.role}</Tag>
+            <Button
+              type="text"
+              className="header-change-password"
+              icon={<LockOutlined />}
+              onClick={() => setPasswordOpen(true)}
+            >
+              Đổi mật khẩu
+            </Button>
             <Avatar size="small" icon={<UserOutlined />} />
             <Text className="header-user">{user?.full_name || user?.employee_code}</Text>
           </Space>
@@ -256,5 +305,68 @@ export function AppShell() {
         </Content>
       </Layout>
     </Layout>
+
+    <Modal
+      title="Đổi mật khẩu"
+      open={passwordOpen}
+      onCancel={closePasswordDialog}
+      onOk={() => passwordForm.submit()}
+      okText="Đổi mật khẩu"
+      cancelText="Hủy"
+      confirmLoading={passwordSaving}
+      destroyOnClose
+      width={460}
+      className="password-change-modal"
+    >
+      <Form
+        form={passwordForm}
+        layout="vertical"
+        requiredMark={false}
+        onFinish={(values) => void submitPasswordChange(values)}
+      >
+        <Form.Item
+          name="current_password"
+          label="Mật khẩu hiện tại"
+          rules={[{ required: true, message: "Vui lòng nhập mật khẩu hiện tại." }]}
+        >
+          <Input.Password autoComplete="current-password" maxLength={128} />
+        </Form.Item>
+        <Form.Item
+          name="new_password"
+          label="Mật khẩu mới"
+          extra="Tối thiểu 8 ký tự; tối đa 128 ký tự."
+          rules={[
+            { required: true, message: "Vui lòng nhập mật khẩu mới." },
+            { min: 8, message: "Mật khẩu mới phải có ít nhất 8 ký tự." },
+            { max: 128, message: "Mật khẩu mới không được vượt quá 128 ký tự." },
+            {
+              validator: (_, value) =>
+                !value || value !== passwordForm.getFieldValue("current_password")
+                  ? Promise.resolve()
+                  : Promise.reject(new Error("Mật khẩu mới phải khác mật khẩu hiện tại.")),
+            },
+          ]}
+        >
+          <Input.Password autoComplete="new-password" maxLength={128} />
+        </Form.Item>
+        <Form.Item
+          name="confirm_password"
+          label="Xác nhận mật khẩu mới"
+          dependencies={["new_password"]}
+          rules={[
+            { required: true, message: "Vui lòng xác nhận mật khẩu mới." },
+            {
+              validator: (_, value) =>
+                !value || value === passwordForm.getFieldValue("new_password")
+                  ? Promise.resolve()
+                  : Promise.reject(new Error("Mật khẩu xác nhận không khớp.")),
+            },
+          ]}
+        >
+          <Input.Password autoComplete="new-password" maxLength={128} />
+        </Form.Item>
+      </Form>
+    </Modal>
+    </>
   );
 }

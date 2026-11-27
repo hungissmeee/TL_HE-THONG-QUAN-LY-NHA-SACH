@@ -5,7 +5,11 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-from backend.authentication import authenticate_employee
+from backend.authentication import (
+    PasswordPolicyError,
+    authenticate_employee,
+    change_employee_password,
+)
 from backend.config import ConfigurationError, load_settings
 from backend.database import AuthenticationRejectedError, DatabaseUnavailableError
 from backend.security import CurrentUser, create_access_token, get_current_user
@@ -17,6 +21,11 @@ router = APIRouter(prefix="/auth", tags=["authentication"])
 class LoginRequest(BaseModel):
     username: str = Field(min_length=1, max_length=20)
     password: str = Field(min_length=1, max_length=256)
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
 
 
 class EmployeeSummary(BaseModel):
@@ -86,6 +95,61 @@ def login(data: LoginRequest):
             role_code=current_user.role_code,
         ),
     )
+
+
+@router.post("/change-password", summary="Đổi mật khẩu SQL Server")
+def change_password(
+    data: ChangePasswordRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Cho nhân viên tự đổi mật khẩu SQL Login bằng mật khẩu hiện tại."""
+    if data.current_password == data.new_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mật khẩu mới phải khác mật khẩu hiện tại.",
+        )
+
+    try:
+        settings = load_settings()
+        change_employee_password(
+            settings,
+            current_user.employee_code,
+            data.current_password,
+            data.new_password,
+        )
+    except AuthenticationRejectedError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mật khẩu hiện tại không đúng.",
+        ) from None
+    except PasswordPolicyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from None
+    except ConfigurationError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Dịch vụ đổi mật khẩu chưa được cấu hình.",
+        ) from None
+    except DatabaseUnavailableError:
+        logger.error("SQL Server is unavailable during employee password change.")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Không thể kết nối dịch vụ cơ sở dữ liệu.",
+        ) from None
+    except RuntimeError:
+        # Không ghi câu lệnh SQL hoặc thông tin xác thực vào log.
+        logger.error(
+            "Employee SQL Server password change failed for %s.",
+            current_user.employee_code,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Không thể đổi mật khẩu lúc này. Vui lòng liên hệ quản trị viên.",
+        ) from None
+
+    return {"message": "Đổi mật khẩu thành công."}
 
 
 @router.get("/me", response_model=EmployeeSummary, summary="Thông tin phiên hiện tại")

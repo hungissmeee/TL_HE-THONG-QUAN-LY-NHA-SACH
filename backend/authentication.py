@@ -84,3 +84,56 @@ def authenticate_employee(settings: Settings, username: str, password: str) -> A
             connection.close()
         except Exception:
             pass
+
+
+
+class PasswordPolicyError(RuntimeError):
+    """Mật khẩu mới không đáp ứng chính sách mật khẩu SQL Server."""
+
+
+def change_employee_password(
+    settings: Settings,
+    employee_code: str,
+    current_password: str,
+    new_password: str,
+) -> None:
+    """Đổi mật khẩu SQL Login của chính nhân viên đang đăng nhập.
+
+    Kết nối bằng mật khẩu hiện tại để SQL Server xác thực người gọi. OLD_PASSWORD
+    cho phép principal tự đổi mật khẩu mà không cần ALTER ANY LOGIN.
+    """
+    connection = create_employee_auth_connection(
+        settings, employee_code, current_password
+    )
+    cursor = None
+    try:
+        # ALTER LOGIN là thao tác ở cấp máy chủ; chạy ở chế độ autocommit.
+        connection.autocommit = True
+        cursor = connection.cursor()
+
+        # SQL identifiers và string literals đều được escape trước khi ghép câu lệnh.
+        login_name = "[" + employee_code.replace("]", "]]") + "]"
+        escaped_new_password = new_password.replace("'", "''")
+        escaped_current_password = current_password.replace("'", "''")
+        cursor.execute(
+            f"ALTER LOGIN {login_name} "
+            f"WITH PASSWORD = N'{escaped_new_password}' "
+            f"OLD_PASSWORD = N'{escaped_current_password}'"
+        )
+    except pyodbc.Error as exc:
+        diagnostic = " ".join(str(part) for part in exc.args).casefold()
+        if "15118" in diagnostic or "password validation" in diagnostic or "complexity" in diagnostic:
+            raise PasswordPolicyError(
+                "Mật khẩu mới không đáp ứng chính sách mật khẩu của SQL Server."
+            ) from None
+        raise RuntimeError("SQL Server không thể cập nhật mật khẩu.") from exc
+    finally:
+        if cursor is not None:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+        try:
+            connection.close()
+        except Exception:
+            pass
