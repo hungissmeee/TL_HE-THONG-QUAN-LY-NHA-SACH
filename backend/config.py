@@ -107,7 +107,7 @@ def load_settings() -> Settings:
         raise ConfigurationError("BOOKHUB_WEB_SQL_ENCRYPT phải là yes hoặc no.")
 
     return Settings(
-        app_name=os.getenv("BOOKHUB_WEB_APP_NAME", "BookHub API").strip(),
+        app_name=os.getenv("BOOKHUB_WEB_APP_NAME", "Hệ thống quản lý nhà sách API").strip(),
         environment=environment,
         api_prefix=prefix,
         allowed_origins=origins,
