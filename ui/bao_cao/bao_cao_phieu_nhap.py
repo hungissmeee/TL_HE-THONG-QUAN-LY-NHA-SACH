@@ -1,5 +1,7 @@
 """Báo cáo phiếu nhập hàng."""
 
+from PySide6.QtWidgets import QLabel
+
 from ui.bao_cao.bao_cao_co_so import (
     ReportBasePage, money_text, number_text, date_text,
 )
