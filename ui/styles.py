@@ -51,6 +51,7 @@ def _make_triangle_icon(direction, color="#E5E7EB"):
 
 def build_calendar_stylesheet():
     """Tạo stylesheet lịch với icon file SVG cho nút tháng/năm."""
+    down_arrow = _icon_url("arrow-down.svg")
     return f"""
         QCalendarWidget {{
             background-color: #202938;
@@ -106,7 +107,7 @@ def build_calendar_stylesheet():
 
         QCalendarWidget QToolButton#qt_calendar_monthbutton::menu-indicator,
         QCalendarWidget QToolButton#qt_calendar_yearbutton::menu-indicator {{
-            image: url("{_icon_url("arrow-down.svg")}");
+            image: url("{down_arrow}");
             subcontrol-origin: padding;
             subcontrol-position: right center;
             width: 12px;
