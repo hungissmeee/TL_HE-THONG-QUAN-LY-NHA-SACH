@@ -250,7 +250,6 @@ class ReportCenterPage(QWidget):
         self._build_ui()
         self._load_employees()
         self._select_report("daily_sales")
-        self.refresh_data()
 
     def _build_ui(self):
         root = QHBoxLayout(self)
@@ -530,6 +529,7 @@ class ReportCenterPage(QWidget):
 
         groups = definition.get("group_headers", [])
         self.group_header.clear()
+        self.group_header.clearSpans()
         self.group_header.setColumnCount(len(headers))
         self.group_header.setRowCount(1)
         self.group_header.setHorizontalHeaderLabels([""] * len(headers))
