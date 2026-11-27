@@ -227,6 +227,8 @@ export function AppShell() {
         <Content className="app-content">
           {pageKey === "home" ? (
             <Dashboard name={user?.full_name || ""} role={user?.role || ""} />
+          ) : pageKey === "products" ? (
+            <ProductsPage />
           ) : (
             <Card className="coming-soon-card" bordered={false}>
               <div className="coming-soon-icon"><AppstoreOutlined /></div>
