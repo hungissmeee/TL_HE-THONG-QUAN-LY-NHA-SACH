@@ -66,6 +66,14 @@ class ProductWindow(QWidget):
         top.addWidget(refresh_button)
         root.addLayout(top)
 
+        description = QLabel(
+            "Tra cứu danh sách sản phẩm; nhấp đúp vào một dòng để xem chi tiết, "
+            "chỉnh sửa hoặc ngừng kinh doanh theo quyền được cấp."
+        )
+        description.setWordWrap(True)
+        description.setStyleSheet("color: #AAB7C8; font-size: 11px;")
+        root.addWidget(description)
+
         # Thanh tìm kiếm sản phẩm
         search_layout = QHBoxLayout()
 
