@@ -133,6 +133,12 @@ function ImportsPage() {
           onFinish={(v) => void save(v)}
         >
           <Card size="small" title="Thông tin phiếu nhập" className="desktop-form-section">
+            <Form.Item label="Nhân viên lập">
+              <Input
+                readOnly
+                value={(user?.full_name || "Nhân viên") + " (" + (user?.employee_code || "Tài khoản hệ thống") + ")"}
+              />
+            </Form.Item>
             <Form.Item name="supplier_code" label="Nhà cung cấp" rules={[{ required: true, message: "Vui lòng chọn nhà cung cấp." }]}>
               <Select
                 showSearch
