@@ -94,6 +94,7 @@ class ShiftWindow(QWidget):
         self.employee_role = self.service.get_employee_role(self.username)
         self.is_manager = self.is_admin or self.employee_role.casefold() == "quản lý"
 
+    @staticmethod
     def _format_date(value):
         """Định dạng ngày làm theo cách hiển thị thống nhất."""
         if value is None:
