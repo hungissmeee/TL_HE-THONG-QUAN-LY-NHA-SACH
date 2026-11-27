@@ -139,18 +139,7 @@ class ProductDetailDialog(QDialog):
 
         if self.can_delete:
             delete_button = QPushButton("Xóa sản phẩm")
-            delete_button.setStyleSheet("""
-                QPushButton {
-                    background-color: #A83232;
-                    color: white;
-                    border: none;
-                    border-radius: 6px;
-                    padding: 8px 14px;
-                }
-                QPushButton:hover {
-                    background-color: #C94444;
-                }
-            """)
+            delete_button.setProperty("buttonRole", "danger")
             delete_button.clicked.connect(self.delete_product)
             buttons.addWidget(delete_button)
 
