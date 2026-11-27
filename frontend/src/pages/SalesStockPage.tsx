@@ -82,7 +82,7 @@ function ImportsPage() {
     { title: "Trạng thái", dataIndex: "trangthai", key: "status", width: 120, render: (v: boolean) => <Tag color={v ? "success" : "default"}>{v ? "Có hiệu lực" : "Đã hủy"}</Tag> },
     { title: "Thao tác", key: "actions", width: 175, render: (_: unknown, row: DataRow) => <Space>
       <Button size="small" icon={<EyeOutlined />} onClick={() => void showDetail(String(row.mapn))}>Chi tiết</Button>
-      {canWrite && row.trangthai && <Popconfirm title="Hủy phiếu nhập?" description="Tồn kho sẽ được hoàn tác nếu hiện còn đủ số lượng." okText="Hủy phiếu" cancelText="Đóng" onConfirm={() => void cancel(String(row.mapn))}><Button size="small" danger icon={<StopOutlined />} /></Popconfirm>}
+      {canWrite && Boolean(row.trangthai) && <Popconfirm title="Hủy phiếu nhập?" description="Tồn kho sẽ được hoàn tác nếu hiện còn đủ số lượng." okText="Hủy phiếu" cancelText="Đóng" onConfirm={() => void cancel(String(row.mapn))}><Button size="small" danger icon={<StopOutlined />} /></Popconfirm>}
     </Space> },
   ];
 
@@ -238,7 +238,7 @@ function InvoicesPage() {
     { title: "Trạng thái", dataIndex: "trangthai", key: "status", width: 110, render: (v: boolean) => <Tag color={v ? "success" : "default"}>{v ? "Có hiệu lực" : "Đã hủy"}</Tag> },
     { title: "Thao tác", key: "actions", width: 190, render: (_: unknown, row: DataRow) => <Space>
       <Button size="small" icon={<EyeOutlined />} onClick={() => void showDetail(String(row.mahd))}>Chi tiết</Button>
-      {canCreate && row.trangthai && <Popconfirm title="Hủy hóa đơn?" description="Hóa đơn đã có phiếu đổi trả không thể hủy." okText="Hủy hóa đơn" cancelText="Đóng" onConfirm={() => void cancel(String(row.mahd))}><Button danger size="small" icon={<StopOutlined />} /></Popconfirm>}
+      {canCreate && Boolean(row.trangthai) && <Popconfirm title="Hủy hóa đơn?" description="Hóa đơn đã có phiếu đổi trả không thể hủy." okText="Hủy hóa đơn" cancelText="Đóng" onConfirm={() => void cancel(String(row.mahd))}><Button danger size="small" icon={<StopOutlined />} /></Popconfirm>}
     </Space> },
   ];
 
