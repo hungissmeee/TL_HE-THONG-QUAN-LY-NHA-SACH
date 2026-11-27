@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/web-app
+      - refactor-app
   pull_request:
     branches:
       - fix/refactor-business-logic-and-setup
