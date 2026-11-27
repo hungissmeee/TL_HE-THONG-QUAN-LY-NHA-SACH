@@ -27,6 +27,7 @@ import {
 } from "@ant-design/icons";
 
 import { useAuth } from "@/features/auth/AuthContext";
+import { ProductsPage } from "@/pages/ProductsPage";
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -124,7 +125,7 @@ function Dashboard({ name, role }: { name: string; role: string }) {
         <div>
           <Text className="eyebrow">TỔNG QUAN HỆ THỐNG</Text>
           <Title level={2}>Xin chào, {name || "bạn"}!</Title>
-          <Text className="muted-text">Bạn đã đăng nhập vào hệ thống quản lý nhà sách BookHub.</Text>
+          <Text className="muted-text">Bạn đã đăng nhập vào Hệ thống quản lý nhà sách.</Text>
         </div>
         <Tag color="blue">{role}</Tag>
       </div>
@@ -149,7 +150,7 @@ function Dashboard({ name, role }: { name: string; role: string }) {
         </Card>
       </div>
       <Card className="welcome-card" bordered={false}>
-        <Title level={4}>Bắt đầu với BookHub</Title>
+        <Title level={4}>Hệ thống quản lý nhà sách</Title>
         <Text className="muted-text">
           Khung điều hướng và phân quyền hiển thị đã sẵn sàng. Các trang nghiệp vụ
           sẽ được kết nối dữ liệu thật theo từng giai đoạn.
@@ -188,7 +189,7 @@ export function AppShell() {
       <Sider className="app-sider" width={248} breakpoint="lg" collapsedWidth={72} theme="dark">
         <div className="sidebar-brand">
           <div className="sidebar-brand-mark"><BookOutlined /></div>
-          <div className="sidebar-brand-text">BOOKHUB<small>QUẢN LÝ NHÀ SÁCH</small></div>
+          <div className="sidebar-brand-text">HỆ THỐNG QUẢN LÝ<small>NHÀ SÁCH</small></div>
         </div>
 
         <Menu
