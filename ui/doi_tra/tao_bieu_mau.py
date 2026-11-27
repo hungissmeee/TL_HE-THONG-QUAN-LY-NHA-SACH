@@ -286,7 +286,7 @@ class CreateReturnDialog(QDialog):
             )
             total = calculation["total_refund"]
             self.total_label.setText(f"Tổng tiền hoàn: {money(total)} đ")
-            self.save_button.setEnabled(bool(self.row_controls))
+            self.save_button.setEnabled(bool(selected))
         except ValueError as error:
             self.total_label.setText(f"Không thể tính tiền hoàn: {error}")
             self.save_button.setEnabled(False)
