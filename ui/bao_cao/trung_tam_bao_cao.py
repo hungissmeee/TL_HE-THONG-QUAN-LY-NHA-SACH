@@ -7,7 +7,7 @@ import xlsxwriter
 from PySide6.QtCore import Qt, QDate
 from PySide6.QtWidgets import (
     QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QTreeWidget,
-    QTreeWidgetItem, QTableWidget, QTableWidgetItem, QHeaderView,
+    QTreeWidgetItem, QTreeWidgetItemIterator, QTableWidget, QTableWidgetItem, QHeaderView,
     QAbstractItemView, QDateEdit, QComboBox, QLineEdit, QSpinBox,
     QFrame, QFileDialog, QMessageBox,
 )
@@ -344,14 +344,16 @@ class ReportCenterPage(QWidget):
         configure_date_edit_calendar(self.date_from)
         self.date_from.setDisplayFormat("dd/MM/yyyy")
         self.date_from.setDate(QDate(today.year(), today.month(), 1))
-        filter_layout.addWidget(QLabel("Từ"))
+        self.date_from_label = QLabel("Từ")
+        filter_layout.addWidget(self.date_from_label)
         filter_layout.addWidget(self.date_from)
 
         self.date_to = QDateEdit()
         configure_date_edit_calendar(self.date_to)
         self.date_to.setDisplayFormat("dd/MM/yyyy")
         self.date_to.setDate(today)
-        filter_layout.addWidget(QLabel("Đến"))
+        self.date_to_label = QLabel("Đến")
+        filter_layout.addWidget(self.date_to_label)
         filter_layout.addWidget(self.date_to)
 
         self.period_combo = QComboBox()
@@ -480,7 +482,10 @@ class ReportCenterPage(QWidget):
         self.description_label.setText(definition["description"])
 
         is_no_date = definition.get("no_date", False)
-        for widget in (self.preset_combo, self.date_from, self.date_to):
+        for widget in (
+            self.preset_combo, self.date_from_label, self.date_from,
+            self.date_to_label, self.date_to,
+        ):
             widget.setVisible(not is_no_date)
         self.period_combo.setVisible(bool(definition.get("period")))
         self.employee_combo.setVisible(bool(definition.get("employee")))
