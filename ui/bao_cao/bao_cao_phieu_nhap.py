@@ -51,30 +51,9 @@ class ImportReportPage(ReportBasePage):
 
     def load_report(self):
         start_date, end_date = self.date_parameters()
-        sql = """
-            SELECT
-                PN.MAPN,
-                PN.NGAYNHAP,
-                COALESCE(PN.LOAIPHIEUNHAP, N''),
-                COALESCE(NCC.TENNCC, PN.MANCC, N''),
-                COALESCE(PN.SHDNCC, N''),
-                COALESCE(NV.TENNV, PN.MANV, N''),
-                COALESCE(CT.TONG_SOLUONG, 0),
-                COALESCE(PN.TONGTRIGIA, 0)
-            FROM dbo.PHIEU_NHAP PN
-            LEFT JOIN dbo.NHA_CUNG_CAP NCC ON NCC.MANCC = PN.MANCC
-            LEFT JOIN dbo.NHAN_VIEN NV ON NV.MANV = PN.MANV
-            OUTER APPLY (
-                SELECT SUM(COALESCE(CTPN.SOLUONG, 0)) AS TONG_SOLUONG
-                FROM dbo.CHI_TIET_PHIEU_NHAP CTPN
-                WHERE CTPN.MAPN = PN.MAPN
-            ) CT
-            WHERE PN.NGAYNHAP >= CONVERT(date, ?)
-              AND PN.NGAYNHAP < DATEADD(day, 1, CONVERT(date, ?))
-              AND ISNULL(PN.TRANGTHAI, 1) = 1
-            ORDER BY PN.NGAYNHAP DESC, PN.MAPN DESC
-        """
-        rows = self.fetch_all(sql, (start_date, end_date))
+        data = self.service.import_report(start_date, end_date)
+        rows = data["imports"]
+        suppliers = data["suppliers"]
         quantity = sum(int(row[6] or 0) for row in rows)
         amount = sum((row[7] or 0) for row in rows)
 
@@ -89,39 +68,10 @@ class ImportReportPage(ReportBasePage):
             )
             for row in rows
         ])
-        supplier_sql = """
-            SELECT
-                PN.MANCC,
-                COALESCE(NCC.TENNCC, PN.MANCC, N'Không xác định'),
-                COALESCE(NCC.SDT, N''),
-                COUNT(DISTINCT PN.MAPN) AS SO_PHIEU,
-                COALESCE(SUM(CT.TONG_SOLUONG), 0) AS TONG_SOLUONG,
-                COALESCE(SUM(PN.TONGTRIGIA), 0) AS TONG_TRIGIA
-            FROM dbo.PHIEU_NHAP PN
-            LEFT JOIN dbo.NHA_CUNG_CAP NCC ON NCC.MANCC = PN.MANCC
-            OUTER APPLY (
-                SELECT SUM(COALESCE(CTPN.SOLUONG, 0)) AS TONG_SOLUONG
-                FROM dbo.CHI_TIET_PHIEU_NHAP CTPN
-                WHERE CTPN.MAPN = PN.MAPN
-            ) CT
-            WHERE PN.NGAYNHAP >= CONVERT(date, ?)
-              AND PN.NGAYNHAP < DATEADD(day, 1, CONVERT(date, ?))
-              AND ISNULL(PN.TRANGTHAI, 1) = 1
-            GROUP BY PN.MANCC, NCC.TENNCC, NCC.SDT
-            ORDER BY TONG_TRIGIA DESC, NCC.TENNCC
-        """
-        supplier_rows = self.fetch_all(
-            supplier_sql, (start_date, end_date)
-        )
         self.fill_table(self.supplier_table, [
             (
-                row[0] or "",
-                row[1],
-                row[2],
-                number_text(row[3]),
-                number_text(row[4]),
-                money_text(row[5]),
+                row[0] or "", row[1], row[2],
+                number_text(row[3]), number_text(row[4]), money_text(row[5]),
             )
-            for row in supplier_rows
+            for row in suppliers
         ])
-
