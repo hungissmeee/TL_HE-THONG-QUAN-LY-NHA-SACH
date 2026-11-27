@@ -1,6 +1,6 @@
 """CreateInvoiceDialog: thành phần giao diện nghiệp vụ hóa đơn."""
 
-from PySide6.QtCore import Qt, QStringListModel
+from PySide6.QtCore import Qt, QStringListModel, QTimer
 from PySide6.QtWidgets import (
     QDialog,
     QLabel,
@@ -353,6 +353,12 @@ class CreateInvoiceDialog(QDialog):
 
         self._refresh_cart()
         self.update_totals()
+        # QCompleter có thể ghi lại completion sau khi signal activated kết thúc.
+        # Đặt clear/focus vào lượt event kế tiếp để nội dung không bị điền lại.
+        QTimer.singleShot(0, self._reset_product_search)
+
+    def _reset_product_search(self):
+        """Xóa từ khóa sau khi QCompleter hoàn tất xử lý lựa chọn."""
         self.product_search.clear()
         self.product_search.setFocus()
 
