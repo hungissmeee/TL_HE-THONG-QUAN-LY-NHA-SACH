@@ -1,8 +1,11 @@
-# BookHub Web Backend
+# Hệ thống quản lý nhà sách - Backend
 
-Backend chạy độc lập với ứng dụng Desktop và hiện cung cấp hai endpoint health check:
+Backend chạy độc lập với ứng dụng Desktop. Các API hiện có gồm xác thực nhân viên, health check và phân hệ quản lý sản phẩm:
 
 - GET /api/v1/health/live: kiểm tra tiến trình FastAPI, không kết nối database.
+- GET /api/v1/products: danh sách, tìm kiếm, lọc, sắp xếp và phân trang sản phẩm.
+- GET /api/v1/products/{product_code}: xem chi tiết sản phẩm.
+- POST/PUT/DELETE /api/v1/products: thêm, sửa và xóa mềm sản phẩm (có kiểm tra quyền và tồn kho).
 - GET /api/v1/health/ready: mở kết nối SQL Server theo request và chạy SELECT 1.
 
 ## Cài đặt
@@ -76,3 +79,20 @@ Cấu hình host/port trong `.env` bằng `BOOKHUB_WEB_HOST`, `BOOKHUB_WEB_PORT`
 Launcher tự nạp `.env`, kiểm tra host/port/reload và khởi chạy Uvicorn. Khi dùng để phát triển, `reload=true` tự khởi động lại API khi mã nguồn thay đổi. Trong production phải đặt `BOOKHUB_WEB_RELOAD=false`.
 
 Muốn truy cập từ máy khác trong mạng LAN, bind --host 0.0.0.0 và cấu hình firewall/reverse proxy phù hợp. Không mở cổng SQL Server trực tiếp ra Internet. Chưa triển khai public trực tiếp Uvicorn; Internet cần reverse proxy HTTPS.
+
+
+## Chuẩn bị quyền SQL Server cho phân hệ sản phẩm
+
+Backend không dùng tài khoản SQL của nhân viên để truy vấn nghiệp vụ. Nhân viên đăng nhập để xác thực và nhận JWT; các API đọc/ghi dữ liệu bằng SQL Login dịch vụ được cấu hình ở `BOOKHUB_WEB_SQL_USERNAME` và `BOOKHUB_WEB_SQL_PASSWORD`.
+
+Với database `CSDLTEST`, thực hiện trên SQL Server Management Studio bằng tài khoản có quyền quản trị database:
+
+1. Đảm bảo SQL Login `bookhub_web_app` đã được tạo và mật khẩu trùng với `BOOKHUB_WEB_SQL_PASSWORD` trong `.env`. Đây là tài khoản dịch vụ riêng, không phải tài khoản đăng nhập nhân viên.
+2. Nếu database được tạo từ phiên bản schema cũ chưa có cột `SAN_PHAM.BARCODE`, sao lưu database rồi chạy `database/migrations/004_product_barcode.sql` trước. Migration này thêm cột và unique filtered index; cần xử lý mã vạch trùng nếu script báo lỗi.
+3. Chạy `database/migrations/005_bookhub_web_products_permissions.sql`. Script tạo role `rl_BookHubWeb`, ánh xạ user dịch vụ và cấp quyền giới hạn trên các bảng/cột dùng cho phân hệ sản phẩm. Không cấp `db_owner`, `db_datareader` hoặc `db_datawriter`.
+4. Kiểm tra `BOOKHUB_WEB_SQL_SERVER`, `BOOKHUB_WEB_SQL_DATABASE=CSDLTEST`, `BOOKHUB_WEB_SQL_USERNAME=bookhub_web_app` và mật khẩu trong `.env`, sau đó khởi động lại bằng `python run_web.py`.
+5. Đăng nhập bằng tài khoản nhân viên đã được cấp role. Mở mục **Sản phẩm** để kiểm tra dữ liệu.
+
+Quyền nghiệp vụ ở API: mọi vai trò nhân viên hợp lệ có thể xem/tìm kiếm sản phẩm; Quản lý, Nhân viên kho và admin mới được thêm, sửa hoặc xóa mềm. Sản phẩm chỉ được xóa mềm khi tồn kho bằng 0. Giá nhập và số lượng tồn không được sửa từ biểu mẫu sản phẩm vì do các giao dịch nhập/xuất kho cập nhật.
+
+Lưu ý: migration chỉ được lưu trong repository; cần tự chạy trên đúng SQL Server của bạn. CI kiểm tra API bằng dữ liệu giả, không thay thế việc xác nhận kết nối và quyền trên database thực tế.
