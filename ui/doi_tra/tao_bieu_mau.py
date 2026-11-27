@@ -4,10 +4,10 @@ from decimal import Decimal, ROUND_HALF_UP
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QDialog, QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
+    QDialog, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
     QFormLayout, QGroupBox, QComboBox, QCompleter, QLineEdit, QSpinBox,
-    QAbstractSpinBox, QTableWidget, QTableWidgetItem, QHeaderView,
-    QAbstractItemView, QMessageBox,
+    QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
+    QMessageBox,
 )
 
 from .dung_chung import MONEY_QUANT, as_decimal, date_text, money
@@ -328,49 +328,35 @@ class CreateReturnDialog(QDialog):
                 for column, value in enumerate(values):
                     self.table.setItem(row, column, QTableWidgetItem(str(value)))
 
-                # Dùng QSpinBox cùng cấu hình với ô số lượng trong hóa đơn.
-                # Không ép minimumWidth lên widget; độ rộng do cột bảng đảm nhiệm.
-                quantity = QSpinBox()
+                # Giữ nguyên mẫu dùng trong hóa đơn và phiếu nhập:
+                # tạo control với bảng làm parent, gắn trực tiếp vào cell,
+                # chiều cao control 34 px và chiều cao dòng 44 px.
+                quantity = QSpinBox(self.table)
                 quantity.setRange(0, remaining)
                 quantity.setValue(0)
-                quantity.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                quantity.setButtonSymbols(
-                    QAbstractSpinBox.ButtonSymbols.UpDownArrows
-                )
                 quantity.setMinimumHeight(34)
                 quantity.setToolTip(
                     f"Chỉ nhập số nguyên từ 0 đến {remaining}. "
                     f"Đơn vị tính: {data[2] or 'Không xác định'}"
                 )
+                self.table.setCellWidget(row, 5, quantity)
 
-                condition = QComboBox()
+                condition = QComboBox(self.table)
                 condition.addItem("Còn nguyên vẹn", 1)
                 condition.addItem("Đã hỏng", 0)
                 condition.setMinimumHeight(34)
-                condition.setMaxVisibleItems(5)
                 condition.setToolTip("Chọn tình trạng thực tế của hàng khách trả.")
+                self.table.setCellWidget(row, 6, condition)
 
-                action = QComboBox()
+                action = QComboBox(self.table)
                 action.addItem("Hoàn tiền", 0)
                 action.addItem("Đổi sản phẩm cùng mã", 1)
                 action.setMinimumHeight(34)
-                action.setMaxVisibleItems(5)
                 action.setToolTip(
                     "Chọn hoàn tiền hoặc đổi sản phẩm cùng mã. "
                     "Chỉ hàng đã hỏng mới được đổi."
                 )
-
-                # Đặt các điều khiển vào wrapper có lề nhỏ giống các ô nhập
-                # trong biểu mẫu khác, tránh sát/đè lên đường viền của cell.
-                for column, control in (
-                    (5, quantity), (6, condition), (7, action)
-                ):
-                    cell_widget = QWidget(self.table)
-                    cell_layout = QHBoxLayout(cell_widget)
-                    cell_layout.setContentsMargins(3, 2, 3, 2)
-                    cell_layout.setSpacing(0)
-                    cell_layout.addWidget(control)
-                    self.table.setCellWidget(row, column, cell_widget)
+                self.table.setCellWidget(row, 7, action)
 
                 self.table.setRowHeight(row, 44)
                 self.row_controls[masp] = {
