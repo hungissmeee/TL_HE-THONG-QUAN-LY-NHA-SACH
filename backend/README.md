@@ -29,8 +29,23 @@ Production phải dùng mã hóa SQL Server với chứng chỉ được tin c�
 
 Tệp `.env` thật đã được loại khỏi Git bởi `.gitignore`; không commit mật khẩu hoặc thông tin kết nối riêng vào repository.
 
-## Chạy phát triển
+## Khởi động Backend
 
-    uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
+1. Cài thư viện một lần:
+
+       python -m pip install -r requirements.txt
+
+2. Mở file `.env` và chỉnh các mục khởi động:
+
+       BOOKHUB_WEB_HOST=127.0.0.1
+       BOOKHUB_WEB_PORT=8000
+       BOOKHUB_WEB_RELOAD=true
+       BOOKHUB_WEB_LOG_LEVEL=info
+
+3. Chạy Backend bằng một lệnh duy nhất từ thư mục gốc:
+
+       python run_backend.py
+
+Launcher tự nạp `.env`, kiểm tra host/port/reload và khởi chạy Uvicorn. Khi dùng để phát triển, `reload=true` tự khởi động lại API khi mã nguồn thay đổi. Trong production phải đặt `BOOKHUB_WEB_RELOAD=false`.
 
 Muốn truy cập từ máy khác trong mạng LAN, bind --host 0.0.0.0 và cấu hình firewall/reverse proxy phù hợp. Không mở cổng SQL Server trực tiếp ra Internet. Chưa triển khai public trực tiếp Uvicorn; Internet cần reverse proxy HTTPS.
