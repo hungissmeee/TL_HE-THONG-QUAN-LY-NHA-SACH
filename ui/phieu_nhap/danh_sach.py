@@ -29,6 +29,8 @@ from ui.table_sort import (
 from .dung_chung import money, date_text
 from .tao_bieu_mau import CreateImportDialog
 from .chi_tiet import ImportDetailDialog
+from core.repositories.phieu_nhap_repository import PhieuNhapRepository
+from core.services.phieu_nhap_service import PhieuNhapService
 
 
 IMPORT_VIEW_ROLES = frozenset({"quản lý", "nhân viên kho", "kế toán"})
@@ -47,6 +49,7 @@ class ImportWindow(QWidget):
     def __init__(self, db):
         super().__init__()
         self.db = db
+        self.service = PhieuNhapService(PhieuNhapRepository(db))
         self.username = (getattr(db, "username", "") or "").strip()
         self.employee_role = self._get_employee_role()
         self.is_admin = self.username.casefold() == "admin"
@@ -69,22 +72,10 @@ class ImportWindow(QWidget):
         self._cancel_permission_timer.start()
 
     def _get_employee_role(self):
-        """Lấy vai trò nhân viên để xác định quyền lập và hủy phiếu nhập."""
-        if self.username.casefold() == "admin":
-            return "Quản lý"
-        conn = self.db.get_connection()
-        if conn is None:
-            return ""
-        cursor = conn.cursor()
         try:
-            cursor.execute(
-                "SELECT VAITRO FROM dbo.NHAN_VIEN WHERE MANV = ?",
-                self.username
-            )
-            row = cursor.fetchone()
-            return (row[0] or "").strip() if row else ""
-        finally:
-            cursor.close()
+            return self.service.get_employee(self.username, self.username.casefold() == "admin")["vaitro"]
+        except Exception:
+            return ""
 
     def _build_ui(self):
         """Tạo bộ lọc, bảng phiếu nhập và các nút thao tác."""
@@ -169,60 +160,25 @@ class ImportWindow(QWidget):
         self.load_imports()
 
     def load_imports(self):
-        """Truy vấn phiếu nhập theo bộ lọc và cập nhật bảng dữ liệu."""
         if not self.can_view:
-            return
-
-        conn = self.db.get_connection()
-        if conn is None:
-            QMessageBox.warning(self, "Thông báo", "Chưa có kết nối SQL Server.")
             return
         if self.from_date.date() > self.to_date.date():
             QMessageBox.warning(self, "Khoảng ngày không hợp lệ", "Ngày bắt đầu không được lớn hơn ngày kết thúc.")
             return
-
-        cursor = conn.cursor()
-        keyword = self.search_input.text().strip()
-        sql = """
-            SELECT
-                PN.MAPN, PN.NGAYNHAP, PN.MANV, NV.TENNV,
-                PN.MANCC, NCC.TENNCC, PN.LOAIPHIEUNHAP,
-                PN.SHDNCC, PN.TONGTRIGIA, ISNULL(PN.TRANGTHAI, 1)
-            FROM dbo.PHIEU_NHAP PN
-            LEFT JOIN dbo.NHAN_VIEN NV ON NV.MANV = PN.MANV
-            LEFT JOIN dbo.NHA_CUNG_CAP NCC ON NCC.MANCC = PN.MANCC
-            WHERE PN.NGAYNHAP >= ?
-              AND PN.NGAYNHAP < DATEADD(DAY, 1, CAST(? AS date))
-        """
-        params = [
-            self.from_date.date().toString("yyyy-MM-dd"),
-            self.to_date.date().toString("yyyy-MM-dd"),
-        ]
-        if keyword:
-            like = f"%{keyword}%"
-            sql += """ AND (
-                PN.MAPN LIKE ? OR PN.SHDNCC LIKE ? OR PN.MANV LIKE ?
-                OR NV.TENNV LIKE ? OR PN.MANCC LIKE ? OR NCC.TENNCC LIKE ?
-            )"""
-            params.extend([like] * 6)
-        sql += " ORDER BY PN.NGAYNHAP DESC, PN.MAPN DESC"
-
         try:
-            cursor.execute(sql, tuple(params))
-            rows = cursor.fetchall()
-
+            rows = self.service.list_imports(
+                self.from_date.date().toString("yyyy-MM-dd"),
+                self.to_date.date().toString("yyyy-MM-dd"),
+                self.search_input.text().strip(),
+            )
             pause_table_sorting(self.table)
-
             self.table.setRowCount(0)
             for index, row in enumerate(rows):
                 self.table.insertRow(index)
                 status = "Có hiệu lực" if int(row[9] or 0) == 1 else "Đã hủy"
                 supplier = f"{row[5] or ''} ({row[4] or ''})"
                 employee = f"{row[3] or ''} ({row[2] or ''})"
-                values = [
-                    row[0], date_text(row[1]), supplier, employee,
-                    row[6], row[7], money(row[8]), status
-                ]
+                values = [row[0], date_text(row[1]), supplier, employee, row[6], row[7], money(row[8]), status]
                 for column, value in enumerate(values):
                     item = QTableWidgetItem(str(value or ""))
                     if column == 0:
@@ -236,7 +192,6 @@ class ImportWindow(QWidget):
             QMessageBox.critical(self, "Lỗi tải phiếu nhập", str(error))
         finally:
             resume_table_sorting(self.table)
-            cursor.close()
 
     def update_action_buttons(self):
         """Xác định quyền hủy phiếu nhập đang chọn để truyền vào popup chi tiết."""
@@ -283,11 +238,8 @@ class ImportWindow(QWidget):
                     cursor.close()
 
     def cancel_selected_import(self):
-        """Kiểm tra quyền, trạng thái và thực hiện hủy phiếu nhập theo quy tắc tồn kho."""
         if not self.can_cancel:
-            QMessageBox.warning(
-                self, "Không có quyền", "Tài khoản của bạn không có quyền hủy phiếu nhập."
-            )
+            QMessageBox.warning(self, "Không có quyền", "Tài khoản của bạn không có quyền hủy phiếu nhập.")
             return
         row = self.table.currentRow()
         if row < 0:
@@ -301,109 +253,32 @@ class ImportWindow(QWidget):
             if owner.casefold() != self.username.casefold():
                 QMessageBox.warning(self, "Không có quyền", "Nhân viên kho chỉ được hủy phiếu do mình lập.")
                 return
-
         answer = QMessageBox.question(
             self, "Xác nhận hủy phiếu nhập",
-            f"Bạn có chắc chắn muốn hủy phiếu nhập {import_code}?\n\n"
-            "Hệ thống sẽ trừ lại số lượng đã nhập khỏi tồn kho.\n"
-            "Không thể hủy nếu tồn kho hiện tại không đủ số lượng để hoàn tác.\n"
-            "Phiếu nhập vẫn được giữ lại trong lịch sử với trạng thái Đã hủy.",
+            f"Bạn có chắc chắn muốn hủy phiếu nhập {import_code}?\\n\\n"
+            "Hệ thống sẽ trừ lại số lượng đã nhập khỏi tồn kho. "
+            "Phiếu vẫn được giữ lại trong lịch sử với trạng thái Đã hủy.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.No,
         )
         if answer != QMessageBox.StandardButton.Yes:
             return
-
-        conn = self.db.get_connection()
-        cursor = conn.cursor()
         try:
-            cursor.execute("""
-                SELECT TRANGTHAI, MANV,
-                       CASE WHEN NGAYNHAP >= DATEADD(MINUTE, -5, SYSDATETIME())
-                                  AND NGAYNHAP <= SYSDATETIME()
-                            THEN 1 ELSE 0 END
-                FROM dbo.PHIEU_NHAP WITH (UPDLOCK, HOLDLOCK)
-                WHERE MAPN = ?
-            """, import_code)
-            header = cursor.fetchone()
-            if header is None:
-                raise RuntimeError("Không tìm thấy phiếu nhập.")
-            if int(header[0] or 0) != 1:
-                raise RuntimeError("Phiếu nhập đã bị hủy trước đó.")
-
-            if self.is_warehouse and not (self.is_admin or self.is_manager):
-                if str(header[1] or "").casefold() != self.username.casefold():
-                    raise PermissionError("Nhân viên kho chỉ được hủy phiếu do mình lập.")
-                if int(header[2] or 0) != 1:
-                    raise PermissionError("Chỉ được hủy phiếu do mình lập trong vòng 5 phút.")
-
-            cursor.execute("""
-                SELECT MASP, SUM(ISNULL(SOLUONG, 0))
-                FROM dbo.CHI_TIET_PHIEU_NHAP WITH (UPDLOCK, HOLDLOCK)
-                WHERE MAPN = ?
-                GROUP BY MASP
-            """, import_code)
-            details = cursor.fetchall()
-            if not details:
-                raise RuntimeError("Phiếu nhập không có chi tiết sản phẩm.")
-
-            for detail in details:
-                product_code = str(detail[0])
-                quantity = int(detail[1] or 0)
-                if quantity <= 0:
-                    raise RuntimeError(f"Số lượng nhập của {product_code} không hợp lệ.")
-                cursor.execute("""
-                    UPDATE dbo.SAN_PHAM
-                    SET SLTON = SLTON - ?
-                    WHERE MASP = ? AND ISNULL(SLTON, 0) >= ?
-                """, quantity, product_code, quantity)
-                if cursor.rowcount != 1:
-                    raise RuntimeError(
-                        f"Không thể hủy phiếu vì tồn kho {product_code} không còn đủ "
-                        f"{quantity} sản phẩm để hoàn tác. Hãy kiểm tra các giao dịch liên quan."
-                    )
-
-            cursor.execute("""
-                UPDATE dbo.PHIEU_NHAP
-                SET TRANGTHAI = 0
-                WHERE MAPN = ? AND TRANGTHAI = 1
-            """, import_code)
-            if cursor.rowcount != 1:
-                raise RuntimeError("Không thể cập nhật trạng thái phiếu nhập.")
-
-            # Tính lại GIANHAP theo bình quân gia quyền của các phiếu nhập còn hiệu lực.
-            for detail in details:
-                product_code = str(detail[0])
-                cursor.execute("""
-                    UPDATE SP
-                    SET GIANHAP = CAST(COALESCE(T.AVG_COST, 0) AS DECIMAL(15, 2))
-                    FROM dbo.SAN_PHAM SP
-                    OUTER APPLY (
-                        SELECT SUM(CT.DONGIA * CT.SOLUONG)
-                               / NULLIF(SUM(CT.SOLUONG), 0) AS AVG_COST
-                        FROM dbo.CHI_TIET_PHIEU_NHAP CT
-                        INNER JOIN dbo.PHIEU_NHAP PN ON PN.MAPN = CT.MAPN
-                        WHERE CT.MASP = SP.MASP
-                          AND ISNULL(PN.TRANGTHAI, 1) = 1
-                    ) T
-                    WHERE SP.MASP = ?
-                """, product_code)
-
-            conn.commit()
+            self.service.cancel_import(
+                import_code, self.username, self.employee_role,
+                is_admin=self.is_admin,
+            )
             QMessageBox.information(
                 self, "Đã hủy phiếu nhập",
-                f"Phiếu {import_code} đã được hủy và tồn kho đã được hoàn tác."
+                f"Phiếu {import_code} đã được hủy và tồn kho đã được hoàn tác.",
             )
             self.load_imports()
         except Exception as error:
-            conn.rollback()
             QMessageBox.critical(
                 self, "Không thể hủy phiếu nhập",
-                f"{error}\n\nMọi thay đổi đã được hoàn tác."
+                f"{error}\\n\\nMọi thay đổi đã được hoàn tác.",
             )
             self.load_imports()
-        finally:
-            cursor.close()
 
     def open_selected_import(self):
         """Mở phiếu nhập đang được chọn."""
