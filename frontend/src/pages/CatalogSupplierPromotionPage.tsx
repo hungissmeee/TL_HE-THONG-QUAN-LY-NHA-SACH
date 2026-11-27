@@ -176,7 +176,7 @@ function CatalogPage({ catalogType }: { catalogType: string }) {
           loading={loading}
           pagination={{ pageSize: 10, showSizeChanger: true }}
           locale={{ emptyText: "Không có dữ liệu danh mục." }}
-        / scroll={{ x: "max-content" }} tableLayout="auto">
+         scroll={{ x: "max-content" }} tableLayout="auto" />
       </Card>
       <Modal
         title={editing ? "Chỉnh sửa danh mục" : data?.title || "Thêm danh mục"}
@@ -346,7 +346,7 @@ function SuppliersPage() {
             onChange={(value) => setShowInactive(value === "all")}
           />
         </div>
-        <Table<Row> rowKey="mancc" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }} / scroll={{ x: "max-content" }} tableLayout="auto">
+        <Table<Row> rowKey="mancc" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }}  scroll={{ x: "max-content" }} tableLayout="auto" />
       </Card>
       <Modal
         title={editing ? "Chỉnh sửa nhà cung cấp " + editing : "Thêm nhà cung cấp"}
@@ -472,7 +472,7 @@ function PromotionsPage() {
           <Input.Search className="operation-search" allowClear value={keyword} placeholder="Tìm mã hoặc tên chương trình..." onChange={(e) => setKeyword(e.target.value)} onSearch={(v) => setKeyword(v.trim())} enterButton="Tìm kiếm" />
           <Select value={showDeleted ? "all" : "active"} style={{ width: 190 }} options={[{ value: "active", label: "Đang sử dụng" }, { value: "all", label: "Bao gồm đã ngừng" }]} onChange={(v) => setShowDeleted(v === "all")} />
         </div>
-        <Table<Row> rowKey="makm" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }} / scroll={{ x: "max-content" }} tableLayout="auto">
+        <Table<Row> rowKey="makm" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }}  scroll={{ x: "max-content" }} tableLayout="auto" />
       </Card>
       <Modal title="Tạo chương trình khuyến mãi" open={open} onCancel={() => setOpen(false)} onOk={() => form.submit()} okText="Tạo chương trình" cancelText="Hủy" confirmLoading={saving} width={560} destroyOnClose className="desktop-entity-modal">
         <Form form={form} className="desktop-dialog-form" layout="horizontal" labelCol={{ xs: { span: 24 }, sm: { span: 8 } }} wrapperCol={{ xs: { span: 24 }, sm: { span: 16 } }} onFinish={(v) => void create(v)}>
