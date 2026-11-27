@@ -46,7 +46,17 @@ Cấu hình thêm trong `.env`:
 
 Tự tạo secret bằng trình tạo mật khẩu an toàn, tối thiểu 32 ký tự; không dùng ví dụ trên làm secret thật và tuyệt đối không commit `.env`. Access token hiện có thời hạn mặc định 30 phút. Khi triển khai qua Internet, toàn bộ đăng nhập và API phải chạy qua HTTPS. Không gửi mật khẩu SQL hoặc JWT qua URL, không lưu password nhân viên ở localStorage. JWT hiện là access token stateless: thay đổi role hoặc khóa tài khoản sẽ không thu hồi token đã cấp ngay lập tức; cần chờ token hết hạn (tối đa theo cấu hình) trong phiên bản hiện tại.
 
-## Khởi động Backend
+## Khởi động toàn bộ Web bằng một lệnh
+
+Tại thư mục gốc dự án, chạy:
+
+    python run_web.py
+
+Launcher tự kiểm tra Python dependencies, Node.js/npm, tự chạy `npm install` nếu thiếu thư viện Frontend, rồi khởi động Backend và Frontend đồng thời. Mặc định mở giao diện tại `http://127.0.0.1:5173`; API tại `http://127.0.0.1:8000`. Nhấn `Ctrl+C` một lần để dừng cả hai máy chủ.
+
+Cấu hình host/port trong `.env` bằng `BOOKHUB_WEB_HOST`, `BOOKHUB_WEB_PORT`, `BOOKHUB_WEB_FRONTEND_HOST` và `BOOKHUB_WEB_FRONTEND_PORT`. Cần cài Node.js bản LTS và cài dependencies Python (`python -m pip install -r requirements.txt`) trước lần chạy đầu; launcher sẽ báo rõ nếu thiếu. Máy chủ SQL Server và Microsoft ODBC Driver cũng phải sẵn sàng.
+
+## Khởi động riêng Backend (tuỳ chọn)
 
 1. Cài thư viện một lần:
 
@@ -59,9 +69,7 @@ Tự tạo secret bằng trình tạo mật khẩu an toàn, tối thiểu 32 k�
        BOOKHUB_WEB_RELOAD=true
        BOOKHUB_WEB_LOG_LEVEL=info
 
-3. Chạy Backend bằng một lệnh duy nhất từ thư mục gốc:
-
-       python run_backend.py
+3. Chạy riêng Backend (không cần Frontend) bằng:
 
 Launcher tự nạp `.env`, kiểm tra host/port/reload và khởi chạy Uvicorn. Khi dùng để phát triển, `reload=true` tự khởi động lại API khi mã nguồn thay đổi. Trong production phải đặt `BOOKHUB_WEB_RELOAD=false`.
 
