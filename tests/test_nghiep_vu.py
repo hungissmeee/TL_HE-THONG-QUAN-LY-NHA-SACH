@@ -600,11 +600,11 @@ class DatabasePermissionScriptTests(unittest.TestCase):
 
         self.assertRegex(
             script,
-            r"GRANT UPDATE ON dbo\\.SAN_PHAM \\([^;]*\\bBARCODE\\b[^;]*\\) TO rl_QuanLy;",
+            r"GRANT UPDATE ON dbo\.SAN_PHAM \([^;]*\bBARCODE\b[^;]*\) TO rl_QuanLy;",
         )
         self.assertRegex(
             script,
-            r"GRANT UPDATE ON dbo\\.SAN_PHAM \\([^;]*\\bBARCODE\\b[^;]*\\) TO rl_NhanVienKho;",
+            r"GRANT UPDATE ON dbo\.SAN_PHAM \([^;]*\bBARCODE\b[^;]*\) TO rl_NhanVienKho;",
         )
         self.assertIn("CREATE UNIQUE INDEX UX_SAN_PHAM_BARCODE", script)
         self.assertIn("WHERE BARCODE IS NOT NULL AND BARCODE <> ''", script)
