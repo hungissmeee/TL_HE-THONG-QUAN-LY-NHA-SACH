@@ -188,11 +188,13 @@ Chưa tự ý thêm module khách hàng/đăng ký khách hàng vì phạm vi hi
 
 ### Giai đoạn 1 — Tách nghiệp vụ khỏi PySide6
 
-- [ ] Rà soát từng màn hình để lập danh sách truy vấn và quy tắc nghiệp vụ.
-- [ ] Tạo Repository và Service theo từng phân hệ, bắt đầu từ sản phẩm/danh mục.
-- [ ] Chuyển Desktop gọi Service mới mà không đổi giao diện hoặc hành vi.
-- [ ] Bổ sung kiểm thử đơn vị cho tính tiền, khuyến mãi, tồn kho, hủy chứng từ và phân quyền.
-- [ ] Giữ SQL có tham số; chuẩn hóa transaction và vòng đời kết nối.
+- [x] Rà soát các luồng sản phẩm và danh mục; ghi nhận truy vấn, quy tắc mã tự sinh, xóa mềm, kiểm tra tồn và liên kết sách.
+- [x] Tạo Repository và Service dùng chung cho sản phẩm và bốn nhóm danh mục.
+- [x] Chuyển Desktop gọi Service mới ở danh sách/chi tiết/form sản phẩm và các màn hình danh mục.
+- [ ] Bổ sung kiểm thử tự động với fake connection cho Repository/Service; sau đó chạy test tích hợp trên SQL Server thử nghiệm.
+- [x] Giữ SQL có tham số; transaction thêm/sửa/xóa sản phẩm và danh mục nằm trong Repository.
+
+**Ghi chú tiến độ:** Đây là đợt refactor đầu tiên cho sản phẩm và danh mục. Chưa chuyển toàn bộ các phân hệ khác; cần chạy kiểm thử trên môi trường Windows có PySide6, ODBC Driver và SQL Server trước khi coi mốc này là nghiệm thu.
 
 **Kết quả:** Desktop vẫn chạy, Backend có thể tái sử dụng cùng service/repository.
 
