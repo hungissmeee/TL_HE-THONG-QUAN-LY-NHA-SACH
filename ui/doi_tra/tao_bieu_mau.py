@@ -346,6 +346,10 @@ class CreateReturnDialog(QDialog):
                 condition.currentIndexChanged.connect(self.update_totals)
                 action.currentIndexChanged.connect(self.update_totals)
 
+                # Giống giỏ hàng hóa đơn/phiếu nhập: hàng cao 44 px để
+                # QSpinBox, QComboBox và nội dung không bị cắt theo chiều dọc.
+                self.table.setRowHeight(row, 44)
+
             self.save_button.setEnabled(bool(self.row_controls))
             self.update_totals()
         finally:

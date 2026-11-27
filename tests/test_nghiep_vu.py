@@ -132,19 +132,25 @@ class ReturnDialogWidgetTests(unittest.TestCase):
         )
         combo.close()
 
-    def test_return_quantity_editor_is_native_spinbox_with_bounded_range(self):
-        from PySide6.QtWidgets import QSpinBox
+    def test_return_quantity_editor_row_matches_invoice_cart_height(self):
+        from PySide6.QtWidgets import QSpinBox, QTableWidget
 
-        quantity = QSpinBox()
+        table = QTableWidget(1, 1)
+        quantity = QSpinBox(table)
         quantity.setRange(0, 5)
         quantity.setValue(3)
         quantity.setMinimumHeight(34)
+        table.setCellWidget(0, 0, quantity)
+
+        # Hóa đơn và phiếu nhập đều dành 44 px cho mỗi hàng có widget.
+        table.setRowHeight(0, 44)
 
         self.assertEqual(quantity.value(), 3)
         self.assertEqual(quantity.minimum(), 0)
         self.assertEqual(quantity.maximum(), 5)
-        self.assertGreaterEqual(quantity.minimumHeight(), 34)
-        quantity.close()
+        self.assertEqual(table.rowHeight(0), 44)
+        self.assertGreaterEqual(table.rowHeight(0), quantity.minimumHeight())
+        table.close()
 
 
 class DatabaseUtilityTests(unittest.TestCase):
