@@ -34,6 +34,11 @@ function ImportsPage() {
   const [formLoading, setFormLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form] = Form.useForm();
+  const watchedImportItems = Form.useWatch("items", form) as DataRow[] | undefined;
+  const importTotal = (watchedImportItems || []).reduce(
+    (sum, item) => sum + Number(item?.price || 0) * Number(item?.quantity || 0),
+    0,
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -108,52 +113,169 @@ function ImportsPage() {
       </div>
       <Table<DataRow> rowKey="mapn" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }} />
     </Card>
-    <Modal title="Lập phiếu nhập kho" open={open} onCancel={() => setOpen(false)} onOk={() => form.submit()} okText="Lập phiếu nhập" cancelText="Hủy" confirmLoading={saving} width={920} destroyOnClose>
-      {formLoading || !lookups ? <div className="product-modal-loading"><Spin /></div> : <Form form={form} layout="vertical" onFinish={(v) => void save(v)}>
-        <Row gutter={16}>
-          <Col xs={24} md={12}><Form.Item name="supplier_code" label="Nhà cung cấp" rules={[{ required: true }]}><Select showSearch optionFilterProp="label" options={lookups.suppliers.map((s) => ({ value: s.code, label: s.code + " - " + s.name }))} /></Form.Item></Col>
-          <Col xs={24} md={12}><Form.Item name="import_type" label="Loại phiếu nhập" rules={[{ required: true }]}><Select options={[{ value: "Nhập hàng", label: "Nhập hàng" }, { value: "Nhập bổ sung", label: "Nhập bổ sung" }, { value: "Nhập điều chỉnh", label: "Nhập điều chỉnh" }]} /></Form.Item></Col>
-          <Col span={24}><Form.Item name="supplier_invoice" label="Số hóa đơn nhà cung cấp"><Input maxLength={50} /></Form.Item></Col>
-        </Row>
-        <Form.List name="items">
-          {(fields, { add, remove }) => <>
-            <div className="operation-list-heading"><Text strong>Chi tiết sản phẩm</Text><Button size="small" icon={<PlusOutlined />} onClick={() => add({ quantity: 1, vat: 0 })}>Thêm dòng</Button></div>
-            {fields.map((field) => <Row gutter={10} align="middle" key={field.key}>
-              <Col xs={24} md={11}><Form.Item name={[field.name, "product_code"]} rules={[{ required: true }]}><Select showSearch optionFilterProp="label" placeholder="Chọn sản phẩm" options={lookups.products.map((p) => ({ value: p.masp, label: p.masp + " - " + p.tensp + " · Tồn " + p.stock }))} onChange={(v) => {
-                const p = lookups.products.find((item) => item.masp === v);
-                if (p) {
-                  const items = form.getFieldValue("items") || [];
-                  items[field.name] = { ...items[field.name], price: Number(p.price || 0), vat: Number(p.vat || 0), quantity: items[field.name]?.quantity || 1 };
-                  form.setFieldsValue({ items });
-                }
-              }} /></Form.Item></Col>
-              <Col xs={8} md={4}><Form.Item name={[field.name, "quantity"]} rules={[{ required: true }]}><InputNumber min={1} precision={0} style={{ width: "100%" }} placeholder="SL" /></Form.Item></Col>
-              <Col xs={8} md={4}><Form.Item name={[field.name, "price"]} rules={[{ required: true }]}><InputNumber min={0.01} precision={2} style={{ width: "100%" }} placeholder="Đơn giá" /></Form.Item></Col>
-              <Col xs={5} md={3}><Form.Item name={[field.name, "vat"]}><InputNumber min={0} max={100} precision={2} style={{ width: "100%" }} placeholder="VAT" /></Form.Item></Col>
-              <Col xs={3} md={2}><Button danger type="text" icon={<StopOutlined />} onClick={() => remove(field.name)} /></Col>
-            </Row>)}
-          </>}
-        </Form.List>
-        <Alert type="info" showIcon message="Giá nhập bình quân và tồn kho được cập nhật tự động trong cùng giao dịch khi lập phiếu." />
-      </Form>}
+    <Modal
+      title="Lập phiếu nhập kho"
+      open={open}
+      onCancel={() => setOpen(false)}
+      onOk={() => form.submit()}
+      okText="Lập phiếu nhập"
+      cancelText="Hủy"
+      confirmLoading={saving}
+      width={960}
+      destroyOnClose
+      className="desktop-transaction-modal"
+    >
+      {formLoading || !lookups ? <div className="product-modal-loading"><Spin /></div> : (
+        <Form
+          form={form}
+          className="desktop-dialog-form"
+          layout="vertical"
+          onFinish={(v) => void save(v)}
+        >
+          <Card size="small" title="Thông tin phiếu nhập" className="desktop-form-section">
+            <Form.Item name="supplier_code" label="Nhà cung cấp" rules={[{ required: true, message: "Vui lòng chọn nhà cung cấp." }]}>
+              <Select
+                showSearch
+                optionFilterProp="label"
+                placeholder="Tìm mã hoặc tên nhà cung cấp"
+                options={lookups.suppliers.map((supplier) => ({
+                  value: supplier.code,
+                  label: supplier.code + " - " + supplier.name,
+                }))}
+              />
+            </Form.Item>
+            <Form.Item name="import_type" label="Loại phiếu nhập" rules={[{ required: true }]}>
+              <Select options={[
+                { value: "Nhập hàng", label: "Nhập hàng" },
+                { value: "Nhập bổ sung", label: "Nhập bổ sung" },
+                { value: "Nhập điều chỉnh", label: "Nhập điều chỉnh" },
+              ]} />
+            </Form.Item>
+            <Form.Item name="supplier_invoice" label="Số HĐ nhà cung cấp">
+              <Input maxLength={50} placeholder="Số hóa đơn/chứng từ của nhà cung cấp (nếu có)" />
+            </Form.Item>
+          </Card>
+
+          <Card size="small" title="Sản phẩm trong phiếu nhập" className="desktop-form-section">
+            <Form.List name="items">
+              {(fields, { add, remove }) => (
+                <>
+                  <div className="operation-list-heading">
+                    <Text type="secondary">Thêm sản phẩm, số lượng và đơn giá nhập vào phiếu</Text>
+                    <Button size="small" icon={<PlusOutlined />} onClick={() => add({ quantity: 1, vat: 0 })}>
+                      Thêm dòng
+                    </Button>
+                  </div>
+                  {fields.map((field) => (
+                    <Row gutter={10} align="middle" key={field.key} className="transaction-line-row">
+                      <Col xs={24} md={10}>
+                        <Form.Item name={[field.name, "product_code"]} label="Sản phẩm" rules={[{ required: true }]}>
+                          <Select
+                            showSearch
+                            optionFilterProp="label"
+                            placeholder="Chọn sản phẩm"
+                            options={lookups.products.map((product) => ({
+                              value: product.masp,
+                              label: product.masp + " - " + product.tensp + " · Tồn " + product.stock,
+                            }))}
+                            onChange={(value) => {
+                              const product = lookups.products.find((item) => item.masp === value);
+                              if (product) {
+                                const items = form.getFieldValue("items") || [];
+                                items[field.name] = {
+                                  ...items[field.name],
+                                  price: Number(product.price || 0),
+                                  vat: Number(product.vat || 0),
+                                  quantity: items[field.name]?.quantity || 1,
+                                };
+                                form.setFieldsValue({ items });
+                              }
+                            }}
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={8} md={4}>
+                        <Form.Item name={[field.name, "quantity"]} label="Số lượng" rules={[{ required: true }]}>
+                          <InputNumber min={1} precision={0} style={{ width: "100%" }} />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={10} md={5}>
+                        <Form.Item name={[field.name, "price"]} label="Đơn giá nhập" rules={[{ required: true }]}>
+                          <InputNumber min={0.01} precision={2} style={{ width: "100%" }} />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={4} md={3}>
+                        <Form.Item name={[field.name, "vat"]} label="VAT (%)">
+                          <InputNumber min={0} max={100} precision={2} style={{ width: "100%" }} />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={2} md={2}>
+                        <Button
+                          className="transaction-line-remove"
+                          danger
+                          type="text"
+                          icon={<StopOutlined />}
+                          aria-label="Xóa dòng sản phẩm"
+                          onClick={() => remove(field.name)}
+                        />
+                      </Col>
+                    </Row>
+                  ))}
+                </>
+              )}
+            </Form.List>
+            <Alert
+              type="info"
+              showIcon
+              message="Giá nhập bình quân và tồn kho được cập nhật tự động trong cùng giao dịch khi lập phiếu."
+            />
+          </Card>
+
+          <Card size="small" title="Tổng giá trị phiếu nhập" className="desktop-form-section transaction-total-card">
+            <Descriptions bordered size="small" column={1}>
+              <Descriptions.Item label="Tổng tiền hàng (đã gồm VAT)">
+                <Text strong className="transaction-total-value">{money(importTotal)}</Text>
+              </Descriptions.Item>
+            </Descriptions>
+            <Text type="secondary">VAT được lưu để tham chiếu; không cộng lại vào đơn giá.</Text>
+          </Card>
+        </Form>
+      )}
     </Modal>
-    <Modal title="Chi tiết phiếu nhập" open={detailOpen} onCancel={() => setDetailOpen(false)} footer={<Button onClick={() => setDetailOpen(false)}>Đóng</Button>} width={820}>
+    </Modal>
+    <Modal title="Chi tiết phiếu nhập" open={detailOpen} onCancel={() => setDetailOpen(false)} footer={<Button onClick={() => setDetailOpen(false)}>Đóng</Button>} width={820} className="desktop-transaction-modal">
       {!detail ? <Spin /> : <>
-        <Descriptions bordered size="small" column={2}>
-          <Descriptions.Item label="Mã phiếu">{String(detail.header.mapn)}</Descriptions.Item>
-          <Descriptions.Item label="Ngày nhập">{dt(detail.header.ngaynhap)}</Descriptions.Item>
-          <Descriptions.Item label="Nhà cung cấp">{String(detail.header.tenncc || detail.header.mancc)}</Descriptions.Item>
-          <Descriptions.Item label="Nhân viên">{String(detail.header.tennv || detail.header.manv || "—")}</Descriptions.Item>
-          <Descriptions.Item label="Số HĐ NCC">{String(detail.header.shdncc || "—")}</Descriptions.Item>
-          <Descriptions.Item label="Tổng trị giá">{money(detail.header.total)}</Descriptions.Item>
-          <Descriptions.Item label="Trạng thái">{Number(detail.header.status) ? "Có hiệu lực" : "Đã hủy"}</Descriptions.Item>
-        </Descriptions>
-        <Table<DataRow> className="detail-table" rowKey="masp" pagination={false} dataSource={detail.items} columns={[
-          { title: "Mã SP", dataIndex: "masp", key: "masp" }, { title: "Tên sản phẩm", dataIndex: "tensp", key: "tensp" },
-          { title: "SL", dataIndex: "quantity", key: "quantity", align: "right" }, { title: "Đơn giá", dataIndex: "price", key: "price", align: "right", render: money },
-          { title: "VAT", dataIndex: "vat", key: "vat", align: "right", render: (v: unknown) => String(v) + "%" },
-        ]} />
+        <Card size="small" title="Thông tin phiếu nhập" className="desktop-form-section">
+          <Descriptions bordered size="small" column={1}>
+            <Descriptions.Item label="Mã phiếu nhập">{String(detail.header.mapn)}</Descriptions.Item>
+            <Descriptions.Item label="Ngày nhập">{dt(detail.header.ngaynhap)}</Descriptions.Item>
+            <Descriptions.Item label="Loại phiếu">{String(detail.header.loai || "—")}</Descriptions.Item>
+            <Descriptions.Item label="Nhà cung cấp">{String(detail.header.tenncc || detail.header.mancc || "—")}</Descriptions.Item>
+            <Descriptions.Item label="Số HĐ nhà cung cấp">{String(detail.header.shdncc || "Không có")}</Descriptions.Item>
+            <Descriptions.Item label="Nhân viên lập">{String(detail.header.tennv || detail.header.manv || "—")}</Descriptions.Item>
+            <Descriptions.Item label="Trạng thái">{Number(detail.header.status) ? "Có hiệu lực" : "Đã hủy"}</Descriptions.Item>
+          </Descriptions>
+        </Card>
+        <Card size="small" title="Chi tiết sản phẩm" className="desktop-form-section">
+          <Table<DataRow> className="detail-table" rowKey="masp" pagination={false} dataSource={detail.items} columns={[
+            { title: "Mã SP", dataIndex: "masp", key: "masp", width: 90 },
+            { title: "Tên sản phẩm", dataIndex: "tensp", key: "tensp" },
+            { title: "ĐVT", dataIndex: "dvt", key: "dvt", width: 70 },
+            { title: "Số lượng", dataIndex: "quantity", key: "quantity", align: "right", width: 90 },
+            { title: "Đơn giá nhập", dataIndex: "price", key: "price", align: "right", render: money, width: 135 },
+            { title: "VAT (%)", dataIndex: "vat", key: "vat", align: "right", render: (v: unknown) => String(v ?? 0) + "%", width: 85 },
+            { title: "Thành tiền", key: "amount", align: "right", render: (_: unknown, row: DataRow) => money(Number(row.price || 0) * Number(row.quantity || 0)), width: 140 },
+          ]} />
+        </Card>
+        <Card size="small" title="Tổng giá trị" className="desktop-form-section">
+          <Descriptions bordered size="small" column={1}>
+            <Descriptions.Item label="Tổng tiền hàng (đã gồm VAT)">
+              <Text strong className="transaction-total-value">{money(detail.header.total)}</Text>
+            </Descriptions.Item>
+          </Descriptions>
+        </Card>
       </>}
+    </Modal>
     </Modal>
   </div>;
 }
