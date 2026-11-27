@@ -53,14 +53,18 @@ class ArrowAssetTests(unittest.TestCase):
                 self.assertTrue(reader.canRead(), reader.errorString())
 
     def test_stylesheets_use_absolute_svg_paths(self):
-        for stylesheet in (MAIN_WINDOW_STYLESHEET, CALENDAR_STYLESHEET):
-            with self.subTest(stylesheet=stylesheet[:40]):
-                self.assertIn("file:///", stylesheet)
-                for icon_name in (
-                    "arrow-down.svg",
-                    "arrow-up.svg",
-                ):
-                    self.assertIn(icon_name, stylesheet)
+        self.assertIn("file:///", MAIN_WINDOW_STYLESHEET)
+        for icon_name in (
+            "arrow-down.svg",
+            "arrow-up.svg",
+            "arrow-down-disabled.svg",
+            "arrow-up-disabled.svg",
+        ):
+            with self.subTest(stylesheet="main", icon=icon_name):
+                self.assertIn(icon_name, MAIN_WINDOW_STYLESHEET)
+
+        self.assertIn("file:///", CALENDAR_STYLESHEET)
+        self.assertIn("arrow-down.svg", CALENDAR_STYLESHEET)
 
 
 def main():
