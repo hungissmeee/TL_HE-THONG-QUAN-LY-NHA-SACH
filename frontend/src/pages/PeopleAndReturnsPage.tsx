@@ -120,7 +120,7 @@ function ReturnsPage() {
     { title: "Ngày đổi trả", dataIndex: "ngay", key: "ngay", width: 175, render: dt },
     { title: "Hóa đơn gốc", dataIndex: "mahd", key: "mahd", width: 140 },
     { title: "Nhân viên", dataIndex: "tennv", key: "tennv", width: 150 },
-    { title: "Lý do", dataIndex: "lydo", key: "lydo", ellipsis: true },
+    { title: "Lý do", dataIndex: "lydo", key: "lydo" },
     { title: "Số lượng", dataIndex: "tongsoluong", key: "tongsoluong", width: 100, align: "right" },
     { title: "Tiền hoàn", dataIndex: "tonghoan", key: "tonghoan", width: 145, align: "right", render: money },
     { title: "Thao tác", key: "actions", width: 155, render: (_: unknown, row: DataRow) => <Space>
@@ -166,7 +166,7 @@ function ReturnsPage() {
         <Input.Search className="operation-search" allowClear value={keyword} placeholder="Mã phiếu, hóa đơn, nhân viên, lý do..." onChange={(e) => setKeyword(e.target.value)} onSearch={(v) => setKeyword(v.trim())} enterButton="Tìm kiếm" />
         <Button icon={<ReloadOutlined />} onClick={() => void load()}>Làm mới</Button>
       </div>
-      <Table<DataRow> rowKey="mapdt" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }} />
+      <Table<DataRow> rowKey="mapdt" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }} / scroll={{ x: "max-content" }} tableLayout="auto">
     </Card>
     <Modal
       title="Lập phiếu đổi trả"
@@ -230,8 +230,8 @@ function ReturnsPage() {
             pagination={false}
             dataSource={invoiceData.items}
             columns={returnColumns}
-            scroll={{ x: 900 }}
-          />
+            scroll={{ x: "max-content" }}
+          / tableLayout="auto">
         ) : (
           <Text type="secondary">Chọn hóa đơn gốc để hiển thị danh sách sản phẩm.</Text>
         )}
@@ -289,7 +289,7 @@ function ReturnsPage() {
             },
             { title: "Đơn giá hoàn", dataIndex: "unit_refund", key: "unit_refund", render: money, align: "right" },
             { title: "Thành tiền hoàn", key: "amount", render: (_: unknown, item: DataRow) => money(Number(item.unit_refund || 0) * Number(item.quantity || 0)), align: "right" },
-          ]} />
+          ]} / scroll={{ x: "max-content" }} tableLayout="auto">
         </Card>
         <Card size="small" title="Tổng kết" className="desktop-form-section transaction-total-card">
           <Descriptions bordered size="small" column={1}>
@@ -348,7 +348,7 @@ function EmployeesPage() {
         <Input.Search className="operation-search" allowClear value={keyword} placeholder="Tìm mã nhân viên hoặc họ tên..." onChange={(e) => setKeyword(e.target.value)} onSearch={(v) => setKeyword(v.trim())} enterButton="Tìm kiếm" />
         <Button icon={<ReloadOutlined />} onClick={() => void load()}>Làm mới</Button>
       </div>
-      <Table<DataRow> rowKey="manv" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }} />
+      <Table<DataRow> rowKey="manv" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }} / scroll={{ x: "max-content" }} tableLayout="auto">
     </Card>
     <Modal title={employee ? "Cập nhật nhân viên " + String(employee.manv) : "Nhân viên"} open={Boolean(employee)} onCancel={() => setEmployee(null)} onOk={() => form.submit()} okText="Lưu thay đổi" cancelText="Hủy" width={560} className="desktop-entity-modal">
       <Form form={form} className="desktop-dialog-form" layout="horizontal" labelCol={{ xs: { span: 24 }, sm: { span: 8 } }} wrapperCol={{ xs: { span: 24 }, sm: { span: 16 } }} onFinish={(v) => void save(v)}>
