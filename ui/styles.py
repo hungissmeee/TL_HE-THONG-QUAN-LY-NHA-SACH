@@ -274,20 +274,29 @@ MAIN_WINDOW_STYLESHEET = """
                 border-color: #344256;
             }
 
+            /* Nút xổ xuống của ComboBox: vẽ mũi tên bằng QSS, không phụ thuộc asset. */
             QComboBox::drop-down {
                 subcontrol-origin: padding;
                 subcontrol-position: top right;
                 width: 28px;
                 border: none;
-                border-left: 1px solid #39465A;
+                border-left: 1px solid #46546A;
                 border-top-right-radius: 5px;
                 border-bottom-right-radius: 5px;
-                background-color: transparent;
+                background-color: #34445A;
+            }
+
+            QComboBox::drop-down:hover {
+                background-color: #465B75;
             }
 
             QComboBox::down-arrow {
-                width: 9px;
-                height: 9px;
+                image: none;
+                width: 0px;
+                height: 0px;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-top: 6px solid #E5E7EB;
             }
 
             QComboBox QAbstractItemView {
@@ -300,11 +309,27 @@ MAIN_WINDOW_STYLESHEET = """
                 padding: 3px;
             }
 
-            QAbstractSpinBox::up-button,
-            QAbstractSpinBox::down-button {
-                width: 18px;
-                background-color: #34445A;
+            /* Hai nút tăng/giảm của SpinBox được tách và định vị rõ ràng. */
+            QAbstractSpinBox::up-button {
+                subcontrol-origin: border;
+                subcontrol-position: top right;
+                width: 20px;
                 border: none;
+                border-left: 1px solid #46546A;
+                border-bottom: 1px solid #46546A;
+                border-top-right-radius: 4px;
+                background-color: #34445A;
+            }
+
+            QAbstractSpinBox::down-button {
+                subcontrol-origin: border;
+                subcontrol-position: bottom right;
+                width: 20px;
+                border: none;
+                border-left: 1px solid #46546A;
+                border-top: 1px solid #46546A;
+                border-bottom-right-radius: 4px;
+                background-color: #34445A;
             }
 
             QAbstractSpinBox::up-button:hover,
@@ -312,10 +337,30 @@ MAIN_WINDOW_STYLESHEET = """
                 background-color: #465B75;
             }
 
-            QAbstractSpinBox::up-arrow,
+            QAbstractSpinBox::up-arrow {
+                image: none;
+                width: 0px;
+                height: 0px;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-bottom: 5px solid #E5E7EB;
+            }
+
             QAbstractSpinBox::down-arrow {
-                width: 8px;
-                height: 8px;
+                image: none;
+                width: 0px;
+                height: 0px;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 5px solid #E5E7EB;
+            }
+
+            QAbstractSpinBox:disabled::up-arrow {
+                border-bottom-color: #8291A5;
+            }
+
+            QAbstractSpinBox:disabled::down-arrow {
+                border-top-color: #8291A5;
             }
 
             QCheckBox,
