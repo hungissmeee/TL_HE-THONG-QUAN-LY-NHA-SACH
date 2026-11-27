@@ -251,13 +251,13 @@ function ReportsPage({ reportType }: { reportType: string }) {
           <Col xs={24} md={8}><Card bordered={false}><Statistic title="Hóa đơn đã hủy" value={Number(result.summary.hoa_don_da_huy || 0)} /></Card></Col>
           <Col xs={24} md={8}><Card bordered={false}><Statistic title="Giá trị nhập" value={Number(result.summary.gia_tri_nhap || 0)} suffix="₫" formatter={(v) => Number(v).toLocaleString("vi-VN")} /></Card></Col>
           <Col xs={24} md={8}><Card bordered={false}><Statistic title="Doanh thu sau hoàn" value={Number(result.summary.doanh_thu || 0) - Number(result.summary.tien_hoan || 0)} suffix="₫" formatter={(v) => Number(v).toLocaleString("vi-VN")} /></Card></Col>
-        </Row}
+        </Row>}
         {reportType === "report_inventory" && result?.summary && <Row gutter={[14, 14]} className="operation-stats">
           <Col xs={24} md={8}><Card bordered={false}><Statistic title="Tổng sản phẩm" value={Number(result.summary.total_products || 0)} /></Card></Col>
           <Col xs={24} md={8}><Card bordered={false}><Statistic title="Sắp hết hàng" value={Number(result.summary.low_stock || 0)} /></Card></Col>
           <Col xs={24} md={8}><Card bordered={false}><Statistic title="Hết hàng" value={Number(result.summary.out_of_stock || 0)} /></Card></Col>
           <Col xs={24} md={8}><Card bordered={false}><Statistic title="Giá trị tồn kho" value={Number(result.summary.inventory_value || 0)} suffix="₫" formatter={(v) => Number(v).toLocaleString("vi-VN")} /></Card></Col>
-        </Row}
+        </Row>}
         {reportType === "report_overview" ? <>
           <Title level={4}>Doanh thu theo ngày</Title>
           <Table<DataRow> rowKey={(r) => String(r.ngay)} dataSource={result?.trend || []} columns={makeColumns(result?.trend || [])} pagination={{ pageSize: 8 }} />
