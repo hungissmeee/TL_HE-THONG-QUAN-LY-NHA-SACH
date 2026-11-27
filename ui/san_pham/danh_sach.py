@@ -71,7 +71,7 @@ class ProductWindow(QWidget):
 
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText(
-            "Tìm theo mã, tên, ISBN, tác giả, thể loại, NXB hoặc thương hiệu..."
+            "Tìm theo mã, mã vạch, tên, ISBN, tác giả, thể loại, NXB hoặc thương hiệu..."
         )
         self.search_input.returnPressed.connect(self.load_products)
 
