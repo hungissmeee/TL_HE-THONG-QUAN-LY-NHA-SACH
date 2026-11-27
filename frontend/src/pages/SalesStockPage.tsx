@@ -72,7 +72,7 @@ function ImportsPage() {
     catch (e) { message.error(err(e)); }
   }
 
-  const columns: TableColumnsType<Row> = [
+  const columns: TableColumnsType<DataRow> = [
     { title: "Mã phiếu", dataIndex: "mapn", key: "mapn", width: 125 },
     { title: "Ngày nhập", dataIndex: "ngaynhap", key: "ngaynhap", width: 170, render: dt },
     { title: "Nhà cung cấp", dataIndex: "tenncc", key: "tenncc", ellipsis: true },
@@ -228,7 +228,7 @@ function InvoicesPage() {
     { title: "", key: "remove", width: 60, render: (_: unknown, line) => <Button danger type="text" icon={<StopOutlined />} onClick={() => setCart((list) => list.filter((x) => x.product_code !== line.product_code))} /> },
   ];
 
-  const columns: TableColumnsType<Row> = [
+  const columns: TableColumnsType<DataRow> = [
     { title: "Mã hóa đơn", dataIndex: "mahd", key: "mahd", width: 140 },
     { title: "Ngày lập", dataIndex: "ngaylap", key: "ngaylap", width: 170, render: dt },
     { title: "Nhân viên", dataIndex: "tennv", key: "tennv" },
