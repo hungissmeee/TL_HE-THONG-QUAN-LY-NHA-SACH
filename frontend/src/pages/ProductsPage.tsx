@@ -287,7 +287,7 @@ export function ProductsPage() {
         key: "tensp",
         width: 240,
         sorter: true,
-        ellipsis: true,
+
       },
       {
         title: "Loại",
@@ -458,10 +458,10 @@ export function ProductsPage() {
           onRow={(record) => ({
             onDoubleClick: () => void openDetail(record.masp),
           })}
-          scroll={{ x: 1450 }}
+          scroll={{ x: "max-content" }}
           size="middle"
           locale={{ emptyText: "Không tìm thấy sản phẩm phù hợp." }}
-        />
+        / tableLayout="auto">
 
         <div className="products-table-footer">
           <Text className="muted-text">Tổng số sản phẩm: {total.toLocaleString("vi-VN")}</Text>
