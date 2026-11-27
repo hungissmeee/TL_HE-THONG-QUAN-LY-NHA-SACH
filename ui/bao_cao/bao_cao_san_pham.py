@@ -13,7 +13,7 @@ class ProductReportPage(ReportBasePage):
             db,
             "Báo cáo sản phẩm",
             "Bảng tập trung vào số lượng bán, hoàn tiền, đổi hàng và tình trạng hàng trả. "
-            "Tổng thu sau hoàn được tính chung cho toàn kỳ, không phân bổ xuống từng sản phẩm.",
+            "Doanh số sau hoàn được tính chung cho toàn kỳ, không phân bổ xuống từng sản phẩm.",
             True,
             parent,
         )
@@ -42,8 +42,8 @@ class ProductReportPage(ReportBasePage):
              "Hàng trả lại còn nguyên vẹn", "positive"),
             ("damaged", "Số lượng hàng hỏng", "0",
              "Hàng trả lại được ghi nhận đã hỏng", "negative"),
-            ("net", "TỔNG THU SAU HOÀN", "0 đ",
-             "Doanh thu hóa đơn hợp lệ trừ tổng tiền hoàn trong kỳ", "primary"),
+            ("net", "DOANH SỐ SAU HOÀN", "0 đ",
+             "Doanh số hóa đơn hợp lệ trừ tiền hoàn phát sinh trong kỳ", "primary"),
         ], primary_key="net")
 
         self.table = self.make_table([
