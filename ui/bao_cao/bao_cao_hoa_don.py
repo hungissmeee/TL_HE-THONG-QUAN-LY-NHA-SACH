@@ -11,7 +11,7 @@ class InvoiceReportPage(ReportBasePage):
         super().__init__(
             db,
             "Báo cáo hóa đơn",
-            "Đối chiếu doanh thu từng hóa đơn, phiếu đổi trả liên quan, tiền đã hoàn và doanh thu còn lại. Hóa đơn hủy vẫn được giữ để tra cứu.",
+            "Tiền hoàn và số lượng đổi/trả được cộng lũy kế theo hóa đơn gốc, không phụ thuộc ngày lập phiếu đổi trả. Hóa đơn hủy vẫn được giữ để tra cứu.",
             True,
             parent,
         )
