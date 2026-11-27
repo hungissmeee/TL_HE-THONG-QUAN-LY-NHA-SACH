@@ -404,8 +404,8 @@ class ReportCenterPage(QWidget):
 
         self.group_header = QTableWidget(1, 0)
         self.group_header.setFixedHeight(30)
-        self.group_header.setVerticalHeaderHidden(True)
-        self.group_header.setHorizontalHeaderHidden(True)
+        self.group_header.verticalHeader().setVisible(False)
+        self.group_header.horizontalHeader().setVisible(False)
         self.group_header.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.group_header.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.group_header.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -432,8 +432,8 @@ class ReportCenterPage(QWidget):
         self.footer.setFixedHeight(32)
         self.footer.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.footer.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.footer.setVerticalHeaderHidden(True)
-        self.footer.setHorizontalHeaderHidden(True)
+        self.footer.verticalHeader().setVisible(False)
+        self.footer.horizontalHeader().setVisible(False)
         self.footer.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.footer.setStyleSheet("""
             QTableWidget {
