@@ -1,6 +1,6 @@
 """CreateImportDialog: thành phần giao diện nghiệp vụ phiếu nhập."""
 
-from PySide6.QtCore import Qt, QLocale, QStringListModel
+from PySide6.QtCore import Qt, QLocale, QStringListModel, QTimer
 from PySide6.QtWidgets import (
     QWidget,
     QDialog,
@@ -338,6 +338,11 @@ class CreateImportDialog(QDialog):
         finally:
             cursor.close()
 
+    def _reset_product_search(self):
+        """Xóa từ khóa sau khi QCompleter hoàn tất xử lý lựa chọn."""
+        self.product_search.clear()
+        self.product_search.setFocus()
+
     def add_completed_product(self, completion):
         """Thêm sản phẩm khi người dùng chọn một gợi ý."""
         code = str(completion or "").split(" | ", 1)[0].strip()
@@ -398,8 +403,9 @@ class CreateImportDialog(QDialog):
 
         self.refresh_cart()
         self.update_total()
-        self.product_search.clear()
-        self.product_search.setFocus()
+        # QCompleter có thể ghi lại completion sau khi signal activated kết thúc.
+        # Đặt clear/focus vào lượt event kế tiếp để nội dung không bị điền lại.
+        QTimer.singleShot(0, self._reset_product_search)
 
     def refresh_cart(self):
         """Cập nhật giỏ hàng với số lượng và đơn giá chỉnh ngay trên từng dòng."""
