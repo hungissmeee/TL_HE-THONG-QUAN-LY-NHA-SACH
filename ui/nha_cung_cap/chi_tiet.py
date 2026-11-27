@@ -55,7 +55,7 @@ class SupplierDetailDialog(QDialog):
                 status_button.clicked.connect(self._restore_supplier)
             else:
                 status_button = QPushButton("Ngừng hoạt động")
-                status_button.setProperty("buttonRole", "danger")
+                status_button.setObjectName("dangerButton")
                 status_button.clicked.connect(self._deactivate_supplier)
             buttons.addWidget(status_button)
 
