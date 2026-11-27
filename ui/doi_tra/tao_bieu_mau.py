@@ -27,8 +27,9 @@ class CreateReturnDialog(QDialog):
         self.invoice_discount = Decimal("0.00")
 
         self.setWindowTitle("Lập phiếu đổi trả")
-        self.resize(1120, 720)
-        self.setMinimumSize(980, 620)
+        # Đồng bộ kích thước với biểu mẫu phiếu nhập; vùng bảng có thêm không gian.
+        self.resize(1120, 780)
+        self.setMinimumSize(980, 680)
         self._ensure_manager()
         self._build_ui()
         self._load_eligible_invoices()
@@ -74,7 +75,7 @@ class CreateReturnDialog(QDialog):
         """Tạo giao diện chọn hóa đơn, sản phẩm và hình thức xử lý."""
         root = QVBoxLayout(self)
         root.setContentsMargins(16, 14, 16, 14)
-        root.setSpacing(10)
+        root.setSpacing(9)
 
         title = QLabel("LẬP PHIẾU ĐỔI TRẢ")
         title.setStyleSheet("font-size: 20px; font-weight: bold;")
@@ -83,19 +84,7 @@ class CreateReturnDialog(QDialog):
         invoice_group = QGroupBox("Hóa đơn gốc")
         invoice_form = QFormLayout(invoice_group)
         self.invoice_combo = QComboBox()
-        self.invoice_combo.setEditable(True)
-        self.invoice_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-        self.invoice_combo.setMaxVisibleItems(15)
-        self.invoice_combo.lineEdit().setPlaceholderText(
-            "Nhập mã hóa đơn để tìm..."
-        )
-        self.invoice_combo.setToolTip(
-            "Nhập mã hóa đơn hoặc một phần mã để tìm trong các hóa đơn hợp lệ."
-        )
-        completer = self.invoice_combo.completer()
-        completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
-        completer.setFilterMode(Qt.MatchFlag.MatchContains)
-        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self._configure_invoice_selector(self.invoice_combo)
         self.invoice_combo.currentIndexChanged.connect(self.load_invoice_items)
         self.invoice_combo.lineEdit().editingFinished.connect(
             self._select_typed_invoice
@@ -155,6 +144,23 @@ class CreateReturnDialog(QDialog):
         bottom.addWidget(self.save_button)
         bottom.addWidget(close_button)
         root.addLayout(bottom)
+
+    @staticmethod
+    def _configure_invoice_selector(combo):
+        """Cấu hình ô tìm hóa đơn như combobox tìm kiếm của phiếu nhập.
+
+        Giữ số dòng xổ xuống mặc định của Qt, không ép popup cao hơn màn hình.
+        """
+        combo.setEditable(True)
+        combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        combo.lineEdit().setPlaceholderText("Nhập mã hóa đơn để tìm...")
+        combo.setToolTip(
+            "Nhập mã hóa đơn hoặc một phần mã để tìm trong các hóa đơn hợp lệ."
+        )
+        completer = combo.completer()
+        completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
 
     @staticmethod
     def _find_invoice_index(invoice_combo, typed_text):

@@ -7,8 +7,10 @@ from decimal import Decimal
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtWidgets import QApplication, QTableWidget
+from PySide6.QtWidgets import QApplication, QTableWidget, QComboBox
 from PySide6.QtGui import QPalette
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QCompleter
 from ui.styles import MAIN_WINDOW_STYLESHEET, apply_app_palette
 
 from database.connection import Database
@@ -99,6 +101,36 @@ class NativeQtControlStyleTests(unittest.TestCase):
             )
         finally:
             _APP.setPalette(original)
+
+
+class ReturnDialogWidgetTests(unittest.TestCase):
+    """Kiểm tra ô chọn hóa đơn giữ nguyên hành vi native của QComboBox."""
+
+    def test_invoice_selector_keeps_qt_default_visible_item_limit(self):
+        combo = QComboBox()
+        default_visible_items = combo.maxVisibleItems()
+
+        CreateReturnDialog._configure_invoice_selector(combo)
+
+        self.assertTrue(combo.isEditable())
+        self.assertEqual(
+            combo.insertPolicy(),
+            QComboBox.InsertPolicy.NoInsert,
+        )
+        self.assertEqual(combo.maxVisibleItems(), default_visible_items)
+        self.assertEqual(
+            combo.completer().completionMode(),
+            QCompleter.CompletionMode.PopupCompletion,
+        )
+        self.assertEqual(
+            combo.completer().filterMode(),
+            Qt.MatchFlag.MatchContains,
+        )
+        self.assertEqual(
+            combo.completer().caseSensitivity(),
+            Qt.CaseSensitivity.CaseInsensitive,
+        )
+        combo.close()
 
 
 class DatabaseUtilityTests(unittest.TestCase):
