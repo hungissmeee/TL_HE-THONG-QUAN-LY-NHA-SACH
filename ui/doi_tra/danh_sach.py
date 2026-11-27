@@ -176,6 +176,7 @@ class ReturnWindow(QWidget):
             dialog_parent, "Xác nhận xóa phiếu đổi trả",
             f"Bạn có chắc chắn muốn xóa phiếu {return_code}?\n\n"
             "Hệ thống sẽ xóa phiếu và chi tiết, đồng thời đảo biến động tồn kho. "
+            "Sản phẩm được cộng tồn (nếu đã xóa mềm) sẽ được khôi phục trạng thái hoạt động. "
             "Khoản tiền đã hoàn thực tế cho khách không tự được thu hồi.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
@@ -186,7 +187,11 @@ class ReturnWindow(QWidget):
             self.service.delete_return(
                 return_code, self.username, is_admin=self.is_admin
             )
-            QMessageBox.information(dialog_parent, "Thành công", f"Đã xóa phiếu {return_code} và đảo tồn kho.")
+            QMessageBox.information(
+                dialog_parent, "Thành công",
+                f"Đã xóa phiếu {return_code} và đảo tồn kho. "
+                "Sản phẩm được cộng tồn đã được khôi phục trạng thái hoạt động nếu cần."
+            )
             self.load_returns()
             return True
         except Exception as error:
