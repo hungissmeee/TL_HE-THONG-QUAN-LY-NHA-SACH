@@ -147,7 +147,7 @@ class ClosingCashPayload(BaseModel):
 def list_suppliers(
     keyword: str = Query(default="", max_length=100),
     show_inactive: bool = False,
-    _user: CurrentUser = Depends(get_current_user),
+    _user: CurrentUser = Depends(require_roles("rl_QuanLy", "rl_NhanVienKho", "rl_KeToan")),
     connection=Depends(get_db_connection),
 ):
     rows = NhaCungCapService(NhaCungCapRepository(connection)).list_suppliers(
@@ -167,7 +167,7 @@ def supplier_next_code(
 @router.get("/suppliers/{supplier_code}", summary="Chi tiết nhà cung cấp")
 def get_supplier(
     supplier_code: str,
-    _user: CurrentUser = Depends(get_current_user),
+    _user: CurrentUser = Depends(require_roles("rl_QuanLy", "rl_NhanVienKho", "rl_KeToan")),
     connection=Depends(get_db_connection),
 ):
     row = NhaCungCapService(NhaCungCapRepository(connection)).get_supplier(supplier_code)
@@ -233,7 +233,7 @@ def set_supplier_status(
 def list_catalog(
     catalog_type: str,
     keyword: str = Query(default="", max_length=100),
-    _user: CurrentUser = Depends(get_current_user),
+    _user: CurrentUser = Depends(MANAGEMENT_ROLES),
     connection=Depends(get_db_connection),
 ):
     if catalog_type not in CATALOGS:
@@ -337,7 +337,7 @@ class _WebAuthorizedPromotionRepository(KhuyenMaiRepository):
 def list_promotions(
     keyword: str = Query(default="", max_length=100),
     show_deleted: bool = False,
-    _user: CurrentUser = Depends(get_current_user),
+    _user: CurrentUser = Depends(MANAGER_ONLY),
     connection=Depends(get_db_connection),
 ):
     rows = KhuyenMaiService(_WebAuthorizedPromotionRepository(connection)).list_promotions(
@@ -424,7 +424,7 @@ def list_imports(
     start_date: date = Query(default_factory=lambda: date.today() - timedelta(days=30)),
     end_date: date = Query(default_factory=date.today),
     keyword: str = Query(default="", max_length=100),
-    _user: CurrentUser = Depends(get_current_user),
+    _user: CurrentUser = Depends(require_roles("rl_QuanLy", "rl_NhanVienKho", "rl_KeToan")),
     connection=Depends(get_db_connection),
 ):
     try:
@@ -443,7 +443,7 @@ def list_imports(
 @router.get("/imports/{import_code}", summary="Chi tiết phiếu nhập")
 def get_import_detail(
     import_code: str,
-    _user: CurrentUser = Depends(get_current_user),
+    _user: CurrentUser = Depends(require_roles("rl_QuanLy", "rl_NhanVienKho", "rl_KeToan")),
     connection=Depends(get_db_connection),
 ):
     try:
@@ -488,7 +488,7 @@ def cancel_import(
 
 @router.get("/invoices/lookups", summary="Dữ liệu lập hóa đơn")
 def invoice_lookups(
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser = Depends(require_roles("rl_ThuNgan", "rl_QuanLy")),
     connection=Depends(get_db_connection),
 ):
     service = HoaDonService(HoaDonRepository(connection))
@@ -510,7 +510,7 @@ def list_invoices(
     start_date: date = Query(default_factory=lambda: date.today() - timedelta(days=30)),
     end_date: date = Query(default_factory=date.today),
     keyword: str = Query(default="", max_length=100),
-    _user: CurrentUser = Depends(get_current_user),
+    _user: CurrentUser = Depends(require_roles("rl_ThuNgan", "rl_QuanLy", "rl_KeToan")),
     connection=Depends(get_db_connection),
 ):
     try:
@@ -529,7 +529,7 @@ def list_invoices(
 @router.get("/invoices/{invoice_code}", summary="Chi tiết hóa đơn")
 def get_invoice_detail(
     invoice_code: str,
-    _user: CurrentUser = Depends(get_current_user),
+    _user: CurrentUser = Depends(require_roles("rl_ThuNgan", "rl_QuanLy", "rl_KeToan")),
     connection=Depends(get_db_connection),
 ):
     try:
@@ -645,7 +645,7 @@ def list_returns(
     start_date: date = Query(default_factory=lambda: date.today() - timedelta(days=30)),
     end_date: date = Query(default_factory=date.today),
     keyword: str = Query(default="", max_length=100),
-    _user: CurrentUser = Depends(get_current_user),
+    _user: CurrentUser = Depends(MANAGER_ONLY),
     connection=Depends(get_db_connection),
 ):
     try:
@@ -660,7 +660,7 @@ def list_returns(
 @router.get("/returns/{return_code}", summary="Chi tiết phiếu đổi trả")
 def get_return_detail(
     return_code: str,
-    _user: CurrentUser = Depends(get_current_user),
+    _user: CurrentUser = Depends(MANAGER_ONLY),
     connection=Depends(get_db_connection),
 ):
     try:
