@@ -200,23 +200,22 @@ class ProductListColumnTests(unittest.TestCase):
 
     def test_isbn_remains_searchable_and_visible_in_book_details(self):
         import inspect
-        from ui.san_pham.danh_sach import ProductWindow
+        from core.repositories.san_pham_repository import SanPhamRepository
         from ui.san_pham.chi_tiet import ProductDetailDialog
 
-        list_source = inspect.getsource(ProductWindow.load_products)
+        repository_source = inspect.getsource(SanPhamRepository.list_products)
         detail_source = inspect.getsource(ProductDetailDialog.setup_ui)
 
-        # ISBN is kept only in the search predicate, not in the list SELECT.
-        list_query = list_source.split("query = \"\"\"", 1)[1].split(
+        # ISBN is part of the search predicate, not the product-list SELECT.
+        list_query = repository_source.split('query = """', 1)[1].split(
             '"""', 1
         )[0]
-        self.assertIn("S2.ISBN LIKE ?", list_source)
+        self.assertIn("S2.ISBN LIKE ?", repository_source)
         self.assertNotIn("S.ISBN", list_query)
 
-        # Book-specific attributes are still shown after opening details.
-        self.assertIn("SELECT S.ISBN, S.NAMXB, NXB.TENNXB", detail_source)
-        self.assertIn('"ISBN:"', detail_source)
-
+        # The detail service result still supplies ISBN to the visible field.
+        self.assertIn("detail.get('isbn')", detail_source)
+        self.assertIn("'ISBN:'", detail_source)
 
 class ProductTableWidgetTests(unittest.TestCase):
     """Các bảng sản phẩm của hóa đơn, phiếu nhập và đổi trả dùng chung cấu hình."""
