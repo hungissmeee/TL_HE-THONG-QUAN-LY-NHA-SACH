@@ -576,9 +576,10 @@ class CodeGenerationTests(unittest.TestCase):
 
     def test_catalog_code_uses_configured_prefix_and_table_lock(self):
         cursor = FakeCursor(7)
-        page_stub = SimpleNamespace(config=CATALOGS["authors"])
+        from core.repositories.catalog_repository import CatalogRepository
+        repository = CatalogRepository(None, "authors")
 
-        code = CatalogPage._next_code(page_stub, cursor, lock_table=True)
+        code = repository._next_code(cursor, lock_table=True)
 
         self.assertEqual(code, "TG008")
         self.assertIn("dbo.TAC_GIA WITH (TABLOCKX, HOLDLOCK)", cursor.sql)
@@ -595,9 +596,8 @@ class CodeGenerationTests(unittest.TestCase):
     def test_product_code_uses_sp_prefix_and_table_lock(self):
         cursor = FakeCursor(9)
 
-        code = ProductFormDialog._next_product_code(
-            SimpleNamespace(), cursor, lock_table=True
-        )
+        from core.repositories.san_pham_repository import SanPhamRepository
+        code = SanPhamRepository._next_product_code(cursor, lock_table=True)
 
         self.assertEqual(code, "SP010")
         self.assertIn("dbo.SAN_PHAM WITH (TABLOCKX, HOLDLOCK)", cursor.sql)
