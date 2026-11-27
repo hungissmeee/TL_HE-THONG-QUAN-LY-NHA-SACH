@@ -20,6 +20,8 @@ from core.repositories.ca_lam_viec_repository import CaLamViecRepository
 from core.services.ca_lam_viec_service import CaLamViecService
 from core.repositories.khuyen_mai_repository import KhuyenMaiRepository
 from core.services.khuyen_mai_service import KhuyenMaiService
+from core.repositories.bao_cao_repository import BaoCaoRepository
+from core.services.bao_cao_service import BaoCaoService
 
 
 class FakeProductRepository(SanPhamRepository):
@@ -759,6 +761,139 @@ class PromotionServiceTests(unittest.TestCase):
             "KM001",
         )
         self.assertEqual(self.repository.deleted, "KM001")
+
+
+class FakeReportRepository(BaoCaoRepository):
+    def __init__(self):
+        self.calls = []
+
+    def overview_summary(self, start, end):
+        self.calls.append(("overview_summary", start, end))
+        return (1, 0, Decimal("100"))
+
+    def overview_refunds(self, start, end):
+        self.calls.append(("overview_refunds", start, end))
+        return (Decimal("10"),)
+
+    def overview_imports(self, start, end):
+        self.calls.append(("overview_imports", start, end))
+        return (Decimal("50"),)
+
+    def overview_trend(self, start, end):
+        self.calls.append(("overview_trend", start, end))
+        return []
+
+    def overview_top_products(self, start, end):
+        self.calls.append(("overview_top_products", start, end))
+        return []
+
+    def revenue_by_period(self, start, end, period):
+        self.calls.append(("revenue_by_period", start, end, period))
+        return []
+
+    def promotion_effectiveness(self, start, end):
+        self.calls.append(("promotion_effectiveness", start, end))
+        return []
+
+    def invoice_report(self, start, end):
+        self.calls.append(("invoice_report", start, end))
+        return []
+
+    def import_report(self, start, end):
+        self.calls.append(("import_report", start, end))
+        return {"imports": [], "suppliers": []}
+
+    def return_report(self, start, end):
+        self.calls.append(("return_report", start, end))
+        return []
+
+    def inventory_report(self, threshold, status, keyword=""):
+        self.calls.append(("inventory_report", threshold, status, keyword))
+        return {"summary": (0, 0, 0, Decimal("0")), "rows": []}
+
+    def product_report(self, start, end, sort, keyword=""):
+        self.calls.append(("product_report", start, end, sort, keyword))
+        return []
+
+    def shift_report(self, start, end):
+        self.calls.append(("shift_report", start, end))
+        return []
+
+
+class ReportServiceTests(unittest.TestCase):
+    def setUp(self):
+        self.repository = FakeReportRepository()
+        self.service = BaoCaoService(self.repository)
+
+    def test_report_service_validates_date_range(self):
+        with self.assertRaisesRegex(ValueError, "không được lớn hơn"):
+            self.service.invoice_report("2026-12-02", "2026-12-01")
+
+    def test_report_service_rejects_invalid_date(self):
+        with self.assertRaisesRegex(ValueError, "không hợp lệ"):
+            self.service.shift_report("today", "2026-12-01")
+
+    def test_overview_report_methods_delegate_with_normalized_dates(self):
+        self.service.overview_summary("2026-11-01", "2026-11-27")
+        self.service.overview_refunds("2026-11-01", "2026-11-27")
+        self.service.overview_imports("2026-11-01", "2026-11-27")
+        self.service.overview_trend("2026-11-01", "2026-11-27")
+        self.service.overview_top_products("2026-11-01", "2026-11-27")
+        self.assertEqual(
+            [call[0] for call in self.repository.calls],
+            [
+                "overview_summary", "overview_refunds", "overview_imports",
+                "overview_trend", "overview_top_products",
+            ],
+        )
+
+    def test_revenue_service_accepts_supported_periods(self):
+        for period in ("day", "month", "year"):
+            self.service.revenue_by_period("2026-01-01", "2026-01-31", period)
+        self.assertEqual(
+            [call[3] for call in self.repository.calls],
+            ["day", "month", "year"],
+        )
+
+    def test_revenue_service_rejects_untrusted_period_value(self):
+        with self.assertRaisesRegex(ValueError, "Kiểu tổng hợp"):
+            self.service.revenue_by_period(
+                "2026-01-01", "2026-01-31", "day; DROP TABLE HOA_DON"
+            )
+
+    def test_inventory_service_validates_threshold_and_status(self):
+        self.service.inventory_report(10, "low", "SP")
+        self.assertEqual(
+            self.repository.calls[-1],
+            ("inventory_report", 10, "low", "SP"),
+        )
+        with self.assertRaises(ValueError):
+            self.service.inventory_report(0, "low")
+        with self.assertRaises(ValueError):
+            self.service.inventory_report(5, "unknown")
+
+    def test_product_report_service_validates_sort_whitelist(self):
+        self.service.product_report(
+            "2026-01-01", "2026-01-31", "quantity_desc", "book"
+        )
+        self.assertEqual(
+            self.repository.calls[-1],
+            ("product_report", "2026-01-01", "2026-01-31", "quantity_desc", "book"),
+        )
+        with self.assertRaisesRegex(ValueError, "sắp xếp"):
+            self.service.product_report(
+                "2026-01-01", "2026-01-31", "MASP DESC; DROP TABLE SAN_PHAM"
+            )
+
+    def test_invoice_import_return_and_shift_reports_delegate(self):
+        self.service.invoice_report("2026-01-01", "2026-01-31")
+        self.service.import_report("2026-01-01", "2026-01-31")
+        self.service.return_report("2026-01-01", "2026-01-31")
+        self.service.shift_report("2026-01-01", "2026-01-31")
+        self.assertEqual(
+            [call[0] for call in self.repository.calls],
+            ["invoice_report", "import_report", "return_report", "shift_report"],
+        )
 
 
 if __name__ == "__main__":
