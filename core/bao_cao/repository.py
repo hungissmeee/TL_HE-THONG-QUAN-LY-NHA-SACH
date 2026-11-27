@@ -10,7 +10,7 @@ class BaoCaoRepository:
     def __init__(self, connection_source):
         self.connection_source = connection_source
 
-    def fetch_all(self, sql, params=()):
+    def _fetch_all(self, sql, params=()):
         conn = resolve_connection(self.connection_source)
         cursor = conn.cursor()
         try:
@@ -19,12 +19,12 @@ class BaoCaoRepository:
         finally:
             cursor.close()
 
-    def fetch_one(self, sql, params=()):
-        rows = self.fetch_all(sql, params)
+    def _fetch_one(self, sql, params=()):
+        rows = self._fetch_all(sql, params)
         return rows[0] if rows else None
 
     def overview_summary(self, start_date, end_date):
-        return self.fetch_one("""
+        return self._fetch_one("""
             SELECT
                 COUNT(DISTINCT CASE WHEN HD.TRANGTHAI = 1 THEN HD.MAHD END),
                 COUNT(DISTINCT CASE WHEN HD.TRANGTHAI = 0 THEN HD.MAHD END),

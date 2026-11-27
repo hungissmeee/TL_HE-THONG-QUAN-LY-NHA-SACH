@@ -171,21 +171,6 @@ class NhanVienRepository:
         finally:
             cursor.close()
 
-    def create_account(self, employee_code, name, role, phone, password):
-        """API tương thích với Database.create_account cũ."""
-        conn = self._require_admin()
-        cursor = conn.cursor()
-        try:
-            self._create_account_with_cursor(
-                cursor, employee_code, name, role, phone, password
-            )
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
-        finally:
-            cursor.close()
-
     def _create_account_with_cursor(self, cursor, employee_code, name, role, phone, password):
         if role not in ROLE_MAP:
             raise ValueError("Vai trò không hợp lệ!")

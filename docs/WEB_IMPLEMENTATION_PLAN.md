@@ -21,7 +21,7 @@
 - `main.py` khởi tạo đối tượng `Database`; `database/connection.py` quản lý kết nối SQL Server và các thao tác tài khoản/role ở cấp SQL Server.
 - Mỗi phân hệ trong `core/` hiện được tổ chức theo feature: `service.py` là Service xử lý/kiểm tra nghiệp vụ; `repository.py` là Repository chứa truy vấn SQL và transaction.
 - Các trang trong `ui/` chủ yếu phụ trách giao diện và gọi Service. Các kiểm tra quyền theo trạng thái mới nhất của chứng từ được đưa về tầng dữ liệu thay vì tự viết SQL trong màn hình.
-- Các đường dẫn `core/repositories/` và `core/services/` cũ được giữ làm wrapper tương thích; code mới nên import trực tiếp từ package phân hệ.
+- Các wrapper `core/repositories/` và `core/services/` đã được loại bỏ; mọi import dùng trực tiếp `core.<feature>.service` hoặc `core.<feature>.repository`.
 - `ui/main_windows.py` khởi tạo cửa sổ và các trang; `ui/sidebar_navigation.py` phụ trách nhóm menu, điều hướng và quyền hiển thị. Giao diện nhân viên được chia thành package danh sách và chi tiết.
 - Database dùng các SQL Server Login/Database User và các role như `rl_QuanLy`, `rl_ThuNgan`, `rl_NhanVienKho`, `rl_KeToan`. Tài khoản admin có quyền rộng để quản trị.
 - Tầng Service/Repository hiện có thể được tái sử dụng khi phát triển Backend, nhưng Backend vẫn cần lớp xác thực, phân quyền theo từng request và quản lý kết nối riêng; không dùng trực tiếp các lớp PySide6 hoặc chia sẻ một kết nối Desktop toàn cục cho nhiều request.

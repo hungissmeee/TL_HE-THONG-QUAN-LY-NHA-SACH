@@ -16,6 +16,8 @@ from ui.styles import MAIN_WINDOW_STYLESHEET, apply_app_palette
 from ui.calendar_utils import configure_date_edit_calendar
 
 from database.connection import Database
+from core.nhan_vien.repository import NhanVienRepository, ROLE_MAP
+from core.doi_tra.repository import ReturnRepository
 from ui.product_table import ProductTableWidget
 from ui.table_sort import (
     SORT_ROLE,
@@ -368,7 +370,7 @@ class DatabaseUtilityTests(unittest.TestCase):
 
     def test_login_identifier_escapes_closing_bracket(self):
         db = Database()
-        self.assertEqual(db._quote_login("NV]01"), "[NV]]01]")
+        self.assertEqual(NhanVienRepository.quote_identifier("NV]01"), "[NV]]01]")
 
     def test_admin_guard_rejects_employee_account(self):
         db = Database()
@@ -376,7 +378,7 @@ class DatabaseUtilityTests(unittest.TestCase):
         db.conn = object()
 
         with self.assertRaises(PermissionError):
-            db._check_admin()
+            NhanVienRepository(db)._require_admin()
 
     def test_admin_guard_rejects_missing_connection(self):
         db = Database()
@@ -388,11 +390,11 @@ class DatabaseUtilityTests(unittest.TestCase):
 
     def test_role_map_contains_all_supported_roles(self):
         self.assertEqual(
-            set(Database.ROLE_MAP),
+            set(ROLE_MAP),
             {"Quản lý", "Thu ngân", "Nhân viên kho", "Kế toán"},
         )
         self.assertEqual(
-            set(Database.ROLE_MAP.values()),
+            set(ROLE_MAP.values()),
             {"rl_QuanLy", "rl_ThuNgan", "rl_NhanVienKho", "rl_KeToan"},
         )
 
@@ -810,7 +812,7 @@ class ReturnVoucherDeletionTests(unittest.TestCase):
     """Kiểm thử tính toán biến động tồn kho khi xóa phiếu đổi trả."""
 
     def test_delete_refunded_intact_goods_reverses_stock_decrease(self):
-        actions = ReturnWindow._build_inventory_reversal_actions([
+        actions = ReturnRepository.build_inventory_reversal_actions([
             ("SP001", 2, 1, 0),
         ])
         self.assertEqual(actions, [("SP001", 2, "SUBTRACT")])

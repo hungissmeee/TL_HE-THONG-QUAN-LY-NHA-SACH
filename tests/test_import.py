@@ -1,4 +1,4 @@
-"""Kiểm tra các import nội bộ trỏ tới module/package có thật."""
+"""Kiểm tra import nội bộ trên toàn bộ mã nguồn."""
 
 import ast
 import unittest
@@ -6,21 +6,26 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-LOCAL_PACKAGES = {"ui", "database"}
+LOCAL_PACKAGES = {"core", "database", "ui"}
+IGNORED_DIRECTORIES = {".git", ".venv", "venv", "__pycache__", "build", "dist"}
 
 
 def _module_exists(path):
-    """Kiểm tra đường dẫn có trỏ tới một module Python hoặc package hợp lệ hay không."""
-    return path.with_suffix(".py").is_file() or (path / "__init__.py").is_file()
+    """Hỗ trợ module Python, package thường và namespace package."""
+    return path.with_suffix(".py").is_file() or path.is_dir()
 
 
 class LocalImportTests(unittest.TestCase):
-    """Đảm bảo mọi import nội bộ trỏ tới tệp Python hoặc package tồn tại."""
-    def test_local_import_targets_exist(self):
-        """Phân tích import trong ui và kiểm tra tất cả module nội bộ được tham chiếu."""
-        missing = []
+    """Đảm bảo import nội bộ trỏ tới module hoặc package tồn tại."""
 
-        for source in (ROOT / "ui").rglob("*.py"):
+    def test_local_import_targets_exist(self):
+        missing = []
+        source_files = (
+            source for source in ROOT.rglob("*.py")
+            if not any(part in IGNORED_DIRECTORIES for part in source.relative_to(ROOT).parts)
+        )
+
+        for source in source_files:
             tree = ast.parse(source.read_text(encoding="utf-8"), filename=str(source))
 
             for node in ast.walk(tree):
@@ -43,7 +48,19 @@ class LocalImportTests(unittest.TestCase):
                         f"{source.relative_to(ROOT)}:{node.lineno} -> {node.module or '.'}"
                     )
 
-        self.assertEqual(missing, [], "Import nội bộ không tồn tại:\n" + "\n".join(missing))
+        self.assertEqual(
+            missing,
+            [],
+            "Import nội bộ không tồn tại:\n" + "\n".join(missing),
+        )
+
+    def test_legacy_compatibility_packages_are_removed(self):
+        self.assertFalse((ROOT / "core" / "repositories").exists())
+        self.assertFalse((ROOT / "core" / "services").exists())
+
+    def test_empty_root_package_initializers_are_removed(self):
+        for package in ("core", "database", "ui"):
+            self.assertFalse((ROOT / package / "__init__.py").exists())
 
 
 if __name__ == "__main__":

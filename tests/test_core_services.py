@@ -767,14 +767,6 @@ class FakeReportRepository(BaoCaoRepository):
     def __init__(self):
         self.calls = []
 
-    def fetch_all(self, sql, params=()):
-        self.calls.append(("fetch_all", sql, params))
-        return []
-
-    def fetch_one(self, sql, params=()):
-        self.calls.append(("fetch_one", sql, params))
-        return ("ok",)
-
     def overview_summary(self, start, end):
         self.calls.append(("overview_summary", start, end))
         return (1, 0, Decimal("100"))
@@ -833,23 +825,21 @@ class ReportServiceTests(unittest.TestCase):
         self.repository = FakeReportRepository()
         self.service = BaoCaoService(self.repository)
 
-    def test_report_service_fetch_all_and_fetch_one_delegate(self):
-        self.assertEqual(self.service.fetch_all("SELECT 1"), [])
-        self.assertEqual(self.service.fetch_one("SELECT 1"), ("ok",))
-        self.assertEqual(
-            [call[0] for call in self.repository.calls],
-            ["fetch_all", "fetch_one"],
-        )
+    def test_report_service_exposes_only_named_report_operations(self):
+        self.assertFalse(hasattr(self.service, "fetch_all"))
+        self.assertFalse(hasattr(self.service, "fetch_one"))
+        self.assertTrue(callable(self.service.overview_summary))
+        self.assertTrue(callable(self.service.inventory_report))
 
     def test_report_repository_exposes_only_public_fetch_helpers(self):
         import inspect
         from core.bao_cao.repository import BaoCaoRepository
 
         source = inspect.getsource(BaoCaoRepository)
-        self.assertIn("def fetch_all(", source)
-        self.assertIn("def fetch_one(", source)
-        self.assertNotIn("self._fetch_all(", source)
-        self.assertNotIn("self._fetch_one(", source)
+        self.assertIn("def _fetch_all(", source)
+        self.assertIn("def _fetch_one(", source)
+        self.assertNotIn("\n    def fetch_all(", source)
+        self.assertNotIn("\n    def fetch_one(", source)
 
     def test_report_service_validates_date_range(self):
         with self.assertRaisesRegex(ValueError, "không được lớn hơn"):

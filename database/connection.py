@@ -5,22 +5,11 @@ import os
 import pyodbc
 
 
-_ROLE_MAP = {
-    "Quản lý": "rl_QuanLy",
-    "Thu ngân": "rl_ThuNgan",
-    "Nhân viên kho": "rl_NhanVienKho",
-    "Kế toán": "rl_KeToan",
-}
-_ROLE_DISPLAY_MAP = {
-    sql_role: display_role
-    for display_role, sql_role in _ROLE_MAP.items()
-}
-
 DB_NAME = "CSDLTEST"
 
 class Database:
 
-    """Quản lý kết nối SQL Server và các thao tác tài khoản, vai trò nhân viên."""
+    """Quản lý kết nối và phiên đăng nhập SQL Server của ứng dụng Desktop."""
     def __init__(self):
         """Khởi tạo trạng thái kết nối và cấu hình SQL Server của ứng dụng."""
         self.conn = None
@@ -111,56 +100,6 @@ class Database:
         finally:
             if temp_conn is not None:
                 temp_conn.close()
-
-    ROLE_MAP = _ROLE_MAP
-    ROLE_DISPLAY_MAP = _ROLE_DISPLAY_MAP
-
-    def _check_admin(self):
-        """Đảm bảo thao tác quản trị tài khoản chỉ được thực hiện bởi admin đang kết nối."""
-
-        if (self.username or "").lower() != "admin":
-            raise PermissionError(
-                "Chỉ tài khoản admin được thực hiện chức năng này!"
-            )
-
-        if self.conn is None:
-            raise Exception("Chưa kết nối database!")
-
-    def _quote_login(self, manv):
-        """Thoát ký tự đặc biệt trong tên Login để tạo SQL identifier hợp lệ."""
-
-        return "[" + manv.replace("]", "]]") + "]"
-
-    # =====================================
-    # TẠO TÀI KHOẢN NHÂN VIÊN
-    # =====================================
-
-    def create_account(self, manv, tennv, vaitro, sdt, password):
-        """Compatibility adapter; nghiệp vụ tạo tài khoản nằm trong Repository."""
-        from core.repositories.nhan_vien_repository import NhanVienRepository
-        return NhanVienRepository(self).create_account(
-            manv, tennv, vaitro, sdt, password
-        )
-
-    def get_employee_permissions(self, manv):
-        """Compatibility adapter đọc hồ sơ và quyền tài khoản."""
-        from core.repositories.nhan_vien_repository import NhanVienRepository
-        return NhanVienRepository(self).get_employee_permissions(manv)
-
-    def update_employee_permissions(self, manv, vaitro):
-        """Compatibility adapter cập nhật vai trò SQL và hồ sơ nhân viên."""
-        from core.repositories.nhan_vien_repository import NhanVienRepository
-        return NhanVienRepository(self).update_employee_role(manv, vaitro)
-
-    def set_employee_account_enabled(self, manv, enabled):
-        """Compatibility adapter bật/tắt SQL Login."""
-        from core.repositories.nhan_vien_repository import NhanVienRepository
-        return NhanVienRepository(self).set_account_enabled(manv, enabled)
-
-    def delete_employee_account(self, manv):
-        """Compatibility adapter xóa Login/User nhưng giữ hồ sơ nhân viên."""
-        from core.repositories.nhan_vien_repository import NhanVienRepository
-        return NhanVienRepository(self).delete_account(manv)
 
     def close(self):
         """Đóng kết nối SQL Server hiện tại và xóa trạng thái tài khoản khỏi đối tượng."""

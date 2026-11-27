@@ -72,7 +72,7 @@ Dự án xây dựng giải pháp quản lý tập trung cho mô hình kinh doan
 - Tên file mã nguồn Python (`.py`) phải viết theo quy tắc `snake_case` và phản ánh đúng nội dung bên trong. Mỗi file thường chứa một class chính trùng nghĩa với tên file (ví dụ: class `Student` đặt trong file `student.py`, class `HoaDon` đặt trong file `hoa_don.py`).
 - Cho phép gộp các class phụ trợ nhỏ, `Enum`, `dataclass` hoặc các lớp ngoại lệ (`Exception`) có liên quan mật thiết trong cùng một module (`.py`) để tránh phân mảnh file không cần thiết.
 - Python không có từ khóa `interface` riêng biệt; các giao diện chuẩn được định nghĩa thông qua lớp cơ sở trừu tượng (`abc.ABC`) hoặc `typing.Protocol` và phải được khai báo trong các module riêng biệt (ví dụ: `base_repository.py` hoặc đặt trong package `interfaces/`).
-- Các thư mục chức năng (package) cần được tổ chức rõ ràng theo từng tầng (như `models/`, `repositories/`, `services/`, `ui/`) và có file `__init__.py` để quản lý việc import.
+- Chỉ thêm `__init__.py` khi package cần công bố API, tái xuất thành phần hoặc có khởi tạo riêng. Có thể dùng namespace package cho thư mục chỉ tổ chức module, không cần file rỗng.
 
 ---
 
@@ -119,14 +119,14 @@ Mã nguồn được tổ chức theo từng phân hệ nghiệp vụ. Trong m�
 └── tests/
 ```
 
-Các thư mục `core/repositories/` và `core/services/` được giữ dưới dạng lớp tương thích import cũ; code mới nên import trực tiếp từ package nghiệp vụ tương ứng. Ví dụ: `core.hoa_don.service` và `core.hoa_don.repository`.
+Mỗi phân hệ `core/` chỉ có `service.py` và `repository.py` làm hai điểm vào chính. Không duy trì thư mục wrapper hoặc facade legacy. Các `__init__.py` trong phân hệ nghiệp vụ chỉ được giữ khi cần tái xuất Service/Repository như API công khai.
 
 ## 4.1. Quy ước phân chia trách nhiệm
 
 - `ui/`: nhận thao tác, hiển thị dữ liệu và gọi Service; không tự mở cursor hoặc viết SQL.
 - `core/<phan_he>/service.py`: kiểm tra đầu vào, tính toán và điều phối quy tắc nghiệp vụ.
 - `core/<phan_he>/repository.py`: truy vấn, đọc/ghi SQL Server và transaction của thao tác dữ liệu.
-- `database/connection.py`: kết nối SQL Server và quản lý các thao tác tài khoản/role ở cấp SQL Server.
+- `database/connection.py`: quản lý kết nối và phiên đăng nhập SQL Server; `core/nhan_vien/repository.py` chịu trách nhiệm các thao tác Login/User và role.
 - `core/sql_support.py`: tiện ích dùng chung để phân giải nguồn kết nối.
 - `ui/sidebar_navigation.py`: nhóm menu, điều hướng trang và quyền hiển thị sidebar.
 - `ui/formatters.py`, `ui/styles.py`, `ui/table_sort.py`: tiện ích hiển thị dùng chung.

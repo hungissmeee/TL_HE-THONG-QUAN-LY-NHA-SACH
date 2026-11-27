@@ -62,12 +62,6 @@ class NhanVienService:
             "password": password,
         })
 
-    def create_account(self, employee_code, name, role, phone, password):
-        # Compatibility entry point for legacy Desktop database adapter.
-        return self.repository.create_account(
-            employee_code, name, role, phone, password
-        )
-
     def update_employee_role(self, employee_code, role):
         code = str(employee_code or "").strip()
         role = str(role or "").strip()

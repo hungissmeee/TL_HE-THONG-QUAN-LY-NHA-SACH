@@ -3,6 +3,7 @@
 import unittest
 
 from database.connection import Database
+from core.nhan_vien.repository import NhanVienRepository
 
 
 class FakeCursor:
@@ -52,7 +53,7 @@ class EmployeeAccountStatusTests(unittest.TestCase):
     def test_disable_account_uses_alter_login_disable(self):
         db, cursor, connection = self.make_database(0)
 
-        db.set_employee_account_enabled("NV001", False)
+        NhanVienRepository(db).set_account_enabled("NV001", False)
 
         self.assertIn(
             ("ALTER LOGIN [NV001] DISABLE", ()),
@@ -65,7 +66,7 @@ class EmployeeAccountStatusTests(unittest.TestCase):
     def test_enable_account_uses_alter_login_enable(self):
         db, cursor, connection = self.make_database(1)
 
-        db.set_employee_account_enabled("NV001", True)
+        NhanVienRepository(db).set_account_enabled("NV001", True)
 
         self.assertIn(
             ("ALTER LOGIN [NV001] ENABLE", ()),
@@ -77,7 +78,7 @@ class EmployeeAccountStatusTests(unittest.TestCase):
         db, cursor, connection = self.make_database(0)
 
         with self.assertRaises(PermissionError):
-            db.set_employee_account_enabled("admin", False)
+            NhanVienRepository(db).set_account_enabled("admin", False)
 
         self.assertEqual(cursor.commands, [])
         self.assertEqual(connection.commits, 0)
@@ -86,7 +87,7 @@ class EmployeeAccountStatusTests(unittest.TestCase):
         db, cursor, connection = self.make_database(None)
 
         with self.assertRaisesRegex(Exception, "không tồn tại"):
-            db.set_employee_account_enabled("NV999", False)
+            NhanVienRepository(db).set_account_enabled("NV999", False)
 
         self.assertEqual(connection.rollbacks, 1)
         self.assertTrue(cursor.closed)

@@ -265,13 +265,6 @@ class ReportBasePage(QWidget):
             raise ValueError("Ngày bắt đầu không được lớn hơn ngày kết thúc.")
         return start.toString("yyyy-MM-dd"), end.toString("yyyy-MM-dd")
 
-    def fetch_all(self, sql, params=()):
-        """Tương thích cho báo cáo mở rộng; SQL chỉ được chạy qua Repository."""
-        return self.service.fetch_all(sql, params)
-
-    def fetch_one(self, sql, params=()):
-        return self.service.fetch_one(sql, params)
-
     def make_table(self, headers, min_height=190):
         """Tạo bảng báo cáo với tiêu đề và quy tắc sắp xếp."""
         table = QTableWidget(0, len(headers))

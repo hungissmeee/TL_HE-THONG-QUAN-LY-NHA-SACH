@@ -36,11 +36,6 @@ class ReturnWindow(QWidget):
         self._build_ui()
         self.load_returns()
 
-    @staticmethod
-    def _build_inventory_reversal_actions(details):
-        """Giữ API tương thích; logic đảo tồn kho thuộc Repository."""
-        return ReturnRepository.build_inventory_reversal_actions(details)
-
     def _get_employee_role(self):
         try:
             return self.service.get_employee_role(self.username)
