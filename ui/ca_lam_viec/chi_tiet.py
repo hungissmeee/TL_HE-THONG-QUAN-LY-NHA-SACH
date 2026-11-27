@@ -105,9 +105,7 @@ class ShiftDetailDialog(QDialog):
 
         if self.on_delete is not None:
             delete_button = QPushButton("Xóa ca làm việc")
-            delete_button.setStyleSheet(
-                "QPushButton { background-color: #A83232; color: white; }"
-            )
+            delete_button.setProperty("buttonRole", "danger")
             delete_button.clicked.connect(self._delete_shift)
             actions.addWidget(delete_button)
 
