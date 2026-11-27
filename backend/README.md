@@ -29,6 +29,23 @@ Production phải dùng mã hóa SQL Server với chứng chỉ được tin c�
 
 Tệp `.env` thật đã được loại khỏi Git bởi `.gitignore`; không commit mật khẩu hoặc thông tin kết nối riêng vào repository.
 
+## Xác thực nhân viên Web
+
+Backend dùng tài khoản SQL Server Login hiện có của nhân viên để xác thực:
+
+- Trường username là mã nhân viên (ví dụ NV001), password là mật khẩu SQL Server hiện tại.
+- Backend mở một kết nối SQL tạm bằng thông tin người dùng nhập, kiểm tra hồ sơ trong `dbo.NHAN_VIEN` và vai trò SQL thực tế (`rl_QuanLy`, `rl_ThuNgan`, `rl_NhanVienKho`, `rl_KeToan`, hoặc `db_owner` cho admin).
+- Kết nối xác thực được đóng ngay sau khi kiểm tra; Backend không lưu mật khẩu nhân viên.
+- Đăng nhập thành công trả JWT access token. Frontend gửi token ở header `Authorization: Bearer <token>` cho các API cần đăng nhập.
+- `GET /api/v1/auth/me` trả về thông tin nhân viên gắn với token. Health-check vẫn là endpoint công khai.
+
+Cấu hình thêm trong `.env`:
+
+    BOOKHUB_WEB_JWT_SECRET=thay-bang-chuoi-ngau-nhien-rieng-dai-it-nhat-32-ky-tu
+    BOOKHUB_WEB_ACCESS_TOKEN_MINUTES=30
+
+Tự tạo secret bằng trình tạo mật khẩu an toàn, tối thiểu 32 ký tự; không dùng ví dụ trên làm secret thật và tuyệt đối không commit `.env`. Access token hiện có thời hạn mặc định 30 phút. Khi triển khai qua Internet, toàn bộ đăng nhập và API phải chạy qua HTTPS. Không gửi mật khẩu SQL hoặc JWT qua URL, không lưu password nhân viên ở localStorage. JWT hiện là access token stateless: thay đổi role hoặc khóa tài khoản sẽ không thu hồi token đã cấp ngay lập tức; cần chờ token hết hạn (tối đa theo cấu hình) trong phiên bản hiện tại.
+
 ## Khởi động Backend
 
 1. Cài thư viện một lần:
