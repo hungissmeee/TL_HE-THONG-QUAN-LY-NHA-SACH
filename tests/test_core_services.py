@@ -281,7 +281,7 @@ class InvoiceServiceTests(unittest.TestCase):
             "cash": "300",
         }
 
-    def test_invoice_total_discount_and_change_are_calculated(self):
+    def test_invoice_total_discount_is_allocated_to_each_line(self):
         code = self.service.create_invoice(self.valid_payload())
         payload, is_admin = self.repository.created
         self.assertEqual(code, "HD000001")
@@ -291,6 +291,39 @@ class InvoiceServiceTests(unittest.TestCase):
         self.assertEqual(payload["total"], Decimal("225.45"))
         self.assertEqual(payload["change"], Decimal("74.55"))
         self.assertEqual(payload["cart"]["SP001"]["price"], Decimal("100.25"))
+        self.assertEqual(payload["cart"]["SP001"]["line_total"], Decimal("200.50"))
+        self.assertEqual(
+            payload["cart"]["SP001"]["line_total_after_discount"],
+            Decimal("180.45"),
+        )
+        self.assertEqual(
+            payload["cart"]["SP002"]["line_total_after_discount"],
+            Decimal("45.00"),
+        )
+        self.assertEqual(
+            sum(item["line_total_after_discount"] for item in payload["cart"].values()),
+            payload["total"],
+        )
+
+    def test_invoice_discount_allocation_distributes_rounding_remainder(self):
+        cart = {
+            "SP001": {"price": Decimal("0.05"), "quantity": 1},
+            "SP002": {"price": Decimal("0.05"), "quantity": 1},
+            "SP003": {"price": Decimal("0.05"), "quantity": 1},
+        }
+        allocations = HoaDonService.allocate_invoice_discount(cart, Decimal("0.02"))
+        self.assertEqual(
+            sum(x["line_total"] for x in allocations.values()),
+            Decimal("0.15"),
+        )
+        self.assertEqual(
+            sum(x["line_discount"] for x in allocations.values()),
+            Decimal("0.02"),
+        )
+        self.assertEqual(
+            sum(x["line_total_after_discount"] for x in allocations.values()),
+            Decimal("0.13"),
+        )
 
     def test_admin_can_create_invoice_without_employee_or_shift(self):
         data = self.valid_payload()
@@ -452,10 +485,33 @@ class ReturnServiceTests(unittest.TestCase):
 
     def test_refund_total_ignores_exchange_lines(self):
         total = self.service.calculate_refund([
-            {"net_price": "90", "quantity": 2, "action": 0},
-            {"net_price": "50", "quantity": 1, "action": 1},
+            {"line_refund_total": "180", "action": 0},
+            {"line_refund_total": "0", "action": 1},
         ])
         self.assertEqual(total, Decimal("180.00"))
+
+    def test_partial_refunds_use_cumulative_rounding_and_match_invoice_line(self):
+        amounts = []
+        already_refunded = Decimal("0.00")
+        refunded_quantity = 0
+        for _ in range(3):
+            amount = self.service.calculate_line_refund(
+                Decimal("0.13"), 3, refunded_quantity, already_refunded, 1
+            )
+            amounts.append(amount)
+            already_refunded += amount
+            refunded_quantity += 1
+
+        self.assertEqual(amounts, [
+            Decimal("0.04"), Decimal("0.05"), Decimal("0.04")
+        ])
+        self.assertEqual(already_refunded, Decimal("0.13"))
+
+    def test_refund_calculation_respects_historical_amount_already_paid(self):
+        amount = self.service.calculate_line_refund(
+            Decimal("0.13"), 3, 1, Decimal("0.05"), 1
+        )
+        self.assertEqual(amount, Decimal("0.04"))
 
 
 
