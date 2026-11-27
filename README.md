@@ -195,10 +195,17 @@ python main.py
 
 Đổi `BOOKHUB_SQL_SERVER` theo SQL Server instance của máy chạy ứng dụng. Trong môi trường production, nên dùng chứng chỉ máy chủ được hệ điều hành tin cậy và đặt `BOOKHUB_TRUST_SERVER_CERTIFICATE=no`; giá trị `yes` chỉ nhằm tương thích với chứng chỉ tự ký ở môi trường phát triển.
 
-## 5.3. Cập nhật ràng buộc dữ liệu
+## 5.3. Ràng buộc dữ liệu
 
-Sau khi database đã được tạo bằng quy trình cài đặt hiện tại, sao lưu database rồi chạy:
+`database/script.sql` đã tạo các CHECK constraint cho giá, tồn kho, số lượng, VAT, tiền và thời gian ca khi khởi tạo database mới.
 
-`database/migrations/001_data_integrity_constraints.sql`
+## 5.4. Cập nhật dữ liệu hóa đơn và đổi trả
 
-Migration bổ sung các CHECK constraint cho giá, tồn kho, số lượng, VAT, tiền và thời gian ca. Migration kiểm tra cả dữ liệu hiện có; cần xử lý các dòng dữ liệu không hợp lệ trước khi chạy. Các cột nullable được giữ nguyên để không tự ý thay đổi dữ liệu lịch sử và quy tắc nghiệp vụ.
+Với database đã tồn tại, sao lưu database trước, sau đó chạy migration:
+
+`database/migrations/002_invoice_line_amounts_and_return_totals.sql`
+
+Migration bổ sung `THANHTIEN` và `THANHTIENSAUGIAM` cho `CHI_TIET_HOA_DON`, đổi `DONGIAHOAN` thành `TONGTIENHOAN` trong `CHI_TIET_DOI_TRA`, đồng thời chuyển dữ liệu hoàn trả cũ từ đơn giá sang tổng tiền theo dòng. Tổng tiền hoàn đã lưu ở `PHIEU_DOI_TRA.TONG_TIEN_HOAN` được giữ nguyên.
+
+Khi backfill hóa đơn cũ, migration sử dụng tỷ lệ khuyến mãi hiện được lưu trong `CHUONG_TRINH_KM`. Nên chạy migration trước khi tiếp tục tạo hóa đơn hoặc phiếu đổi trả bằng phiên bản ứng dụng mới.
+
