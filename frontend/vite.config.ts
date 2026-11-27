@@ -24,6 +24,8 @@ export default defineConfig(({ mode }) => {
       host: env.BOOKHUB_WEB_FRONTEND_HOST || "127.0.0.1",
       port: Number(env.BOOKHUB_WEB_FRONTEND_PORT || "5173"),
       strictPort: true,
+      // Chỉ cho phép hostname public đã cấu hình; không dùng wildcard để tránh DNS rebinding.
+      allowedHosts: ["qhung.ddns.net"],
       proxy: {
         [apiPrefix]: {
           target: `http://${proxyHost}:${backendPort}`,
