@@ -10,6 +10,8 @@ from core.repositories.nha_cung_cap_repository import NhaCungCapRepository
 from core.services.nha_cung_cap_service import NhaCungCapService
 from core.repositories.phieu_nhap_repository import PhieuNhapRepository
 from core.services.phieu_nhap_service import PhieuNhapService
+from core.repositories.hoa_don_repository import HoaDonRepository
+from core.services.hoa_don_service import HoaDonService
 
 
 class FakeProductRepository(SanPhamRepository):
@@ -235,6 +237,125 @@ class ImportServiceTests(unittest.TestCase):
             self.repository.cancelled,
             ("PN000001", "admin", "Quản lý", True),
         )
+
+
+class FakeInvoiceRepository(HoaDonRepository):
+    def __init__(self):
+        self.created = None
+        self.cancelled = None
+
+    def create_invoice(self, payload, is_admin=False):
+        self.created = (payload, is_admin)
+        return "HD000001"
+
+    def cancel_invoice(self, invoice_code, username, role, is_admin=False):
+        self.cancelled = (invoice_code, username, role, is_admin)
+        return True
+
+
+class InvoiceServiceTests(unittest.TestCase):
+    def setUp(self):
+        self.repository = FakeInvoiceRepository()
+        self.service = HoaDonService(self.repository)
+
+    def valid_payload(self):
+        return {
+            "employee": {"manv": "NV001", "tennv": "Thu ngân A"},
+            "active_shift": {"maca": 10},
+            "cart": {
+                "SP001": {"quantity": 2, "price": "100.25", "vat": "8", "stock": 5},
+                "SP002": {"quantity": 1, "price": "50", "vat": "0", "stock": 3},
+            },
+            "promotion_code": "KM01",
+            "discount_rate": "10",
+            "cash": "300",
+        }
+
+    def test_invoice_total_discount_and_change_are_calculated(self):
+        code = self.service.create_invoice(self.valid_payload())
+        payload, is_admin = self.repository.created
+        self.assertEqual(code, "HD000001")
+        self.assertFalse(is_admin)
+        self.assertEqual(payload["subtotal"], Decimal("250.50"))
+        self.assertEqual(payload["discount"], Decimal("25.05"))
+        self.assertEqual(payload["total"], Decimal("225.45"))
+        self.assertEqual(payload["change"], Decimal("74.55"))
+        self.assertEqual(payload["cart"]["SP001"]["price"], Decimal("100.25"))
+
+    def test_admin_can_create_invoice_without_employee_or_shift(self):
+        data = self.valid_payload()
+        data["employee"] = {"manv": None, "tennv": "Admin"}
+        data["active_shift"] = None
+        code = self.service.create_invoice(data, is_admin=True)
+        payload, is_admin = self.repository.created
+        self.assertEqual(code, "HD000001")
+        self.assertTrue(is_admin)
+        self.assertIsNone(payload["employee"]["manv"])
+        self.assertIsNone(payload["active_shift"])
+
+    def test_non_admin_requires_active_shift(self):
+        data = self.valid_payload()
+        data["active_shift"] = None
+        with self.assertRaisesRegex(PermissionError, "ca làm việc"):
+            self.service.create_invoice(data)
+
+    def test_invoice_rejects_empty_cart(self):
+        data = self.valid_payload()
+        data["cart"] = {}
+        with self.assertRaisesRegex(ValueError, "chưa có sản phẩm"):
+            self.service.create_invoice(data)
+
+    def test_invoice_rejects_insufficient_stock(self):
+        data = self.valid_payload()
+        data["cart"]["SP001"]["stock"] = 1
+        with self.assertRaisesRegex(ValueError, "không đủ tồn kho"):
+            self.service.create_invoice(data)
+
+    def test_invoice_rejects_insufficient_cash(self):
+        data = self.valid_payload()
+        data["cash"] = "100"
+        with self.assertRaisesRegex(ValueError, "chưa đủ tiền"):
+            self.service.create_invoice(data)
+
+    def test_invoice_rejects_discount_without_promotion(self):
+        data = self.valid_payload()
+        data["promotion_code"] = None
+        with self.assertRaisesRegex(ValueError, "chưa chọn khuyến mãi"):
+            self.service.create_invoice(data)
+
+    def test_invoice_rejects_discount_above_one_hundred_percent(self):
+        data = self.valid_payload()
+        data["discount_rate"] = "101"
+        with self.assertRaisesRegex(ValueError, "không được vượt quá"):
+            self.service.create_invoice(data)
+
+    def test_invoice_rejects_non_positive_quantity(self):
+        data = self.valid_payload()
+        data["cart"]["SP001"]["quantity"] = 0
+        with self.assertRaisesRegex(ValueError, "phải lớn hơn 0"):
+            self.service.create_invoice(data)
+
+    def test_invoice_rejects_invalid_price(self):
+        data = self.valid_payload()
+        data["cart"]["SP001"]["price"] = "-1"
+        with self.assertRaisesRegex(ValueError, "Đơn giá"):
+            self.service.create_invoice(data)
+
+    def test_invoice_rejects_vat_above_one_hundred(self):
+        data = self.valid_payload()
+        data["cart"]["SP001"]["vat"] = "101"
+        with self.assertRaisesRegex(ValueError, "không được vượt quá"):
+            self.service.create_invoice(data)
+
+    def test_cancel_invoice_normalizes_code(self):
+        self.assertTrue(self.service.cancel_invoice(
+            " HD000001 ", "NV001", "Thu ngân"
+        ))
+        self.assertEqual(
+            self.repository.cancelled,
+            ("HD000001", "NV001", "Thu ngân", False),
+        )
+
 
 
 if __name__ == "__main__":
