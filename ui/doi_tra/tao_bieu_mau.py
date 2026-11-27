@@ -4,10 +4,10 @@ from decimal import Decimal, ROUND_HALF_UP
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QDialog, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
+    QDialog, QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
     QFormLayout, QGroupBox, QComboBox, QCompleter, QLineEdit, QSpinBox,
-    QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
-    QMessageBox,
+    QAbstractSpinBox, QTableWidget, QTableWidgetItem, QHeaderView,
+    QAbstractItemView, QMessageBox,
 )
 
 from .dung_chung import MONEY_QUANT, as_decimal, date_text, money
@@ -140,25 +140,21 @@ class CreateReturnDialog(QDialog):
             QAbstractItemView.ScrollMode.ScrollPerPixel
         )
 
-        # Bố trí cột theo độ rộng thực tế của các ô nhập giống giỏ hàng
-        # hóa đơn/phiếu nhập; cột tên sản phẩm co giãn theo cửa sổ.
+        # Dùng cùng cách co giãn cột như bảng giỏ hàng hóa đơn/phiếu nhập.
+        # Các cột điều khiển được chừa riêng không gian cho nút và mũi tên.
         header = self.table.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
-        column_widths = {
-            0: 72,   # Mã SP
-            2: 68,   # Đã mua
-            3: 72,   # Đã xử lý
-            4: 108,  # Còn được xử lý
-            5: 96,   # Số lượng
-            6: 155,  # Tình trạng hàng
-            7: 190,  # Hình thức xử lý
-            8: 100,  # Tiền hoàn
-        }
-        for column, width in column_widths.items():
-            self.table.setColumnWidth(column, width)
-        header.setMinimumSectionSize(60)
+        header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        self.table.setColumnWidth(1, 180)
+        control_column_widths = {
+            5: 112,  # Số lượng: chừa chỗ cho nút tăng/giảm
+            6: 172,  # Tình trạng hàng: chừa chỗ cho mũi tên
+            7: 210,  # Hình thức xử lý: đủ chỗ cho nội dung và mũi tên
+        }
+        for column, width in control_column_widths.items():
+            header.setSectionResizeMode(
+                column, QHeaderView.ResizeMode.Fixed
+            )
+            self.table.setColumnWidth(column, width)
 
         items_layout.addWidget(self.table, 1)
         root.addWidget(items_group, 1)
@@ -332,47 +328,50 @@ class CreateReturnDialog(QDialog):
                 for column, value in enumerate(values):
                     self.table.setItem(row, column, QTableWidgetItem(str(value)))
 
-                # Dùng QSpinBox giống ô số lượng trong hóa đơn/phiếu nhập:
-                # có nút tăng giảm, giới hạn trực tiếp theo lượng còn lại.
-                quantity = QSpinBox(self.table)
+                # Dùng QSpinBox cùng cấu hình với ô số lượng trong hóa đơn.
+                # Không ép minimumWidth lên widget; độ rộng do cột bảng đảm nhiệm.
+                quantity = QSpinBox()
                 quantity.setRange(0, remaining)
                 quantity.setValue(0)
                 quantity.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                quantity.setMinimumWidth(88)
+                quantity.setButtonSymbols(
+                    QAbstractSpinBox.ButtonSymbols.UpDownArrows
+                )
                 quantity.setMinimumHeight(34)
                 quantity.setToolTip(
                     f"Chỉ nhập số nguyên từ 0 đến {remaining}. "
                     f"Đơn vị tính: {data[2] or 'Không xác định'}"
                 )
 
-                condition = QComboBox(self.table)
+                condition = QComboBox()
                 condition.addItem("Còn nguyên vẹn", 1)
                 condition.addItem("Đã hỏng", 0)
-                condition.setMinimumWidth(145)
                 condition.setMinimumHeight(34)
-                condition.setMinimumContentsLength(12)
-                condition.setSizeAdjustPolicy(
-                    QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
-                )
+                condition.setMaxVisibleItems(5)
                 condition.setToolTip("Chọn tình trạng thực tế của hàng khách trả.")
 
-                action = QComboBox(self.table)
+                action = QComboBox()
                 action.addItem("Hoàn tiền", 0)
                 action.addItem("Đổi sản phẩm cùng mã", 1)
-                action.setMinimumWidth(180)
                 action.setMinimumHeight(34)
-                action.setMinimumContentsLength(20)
-                action.setSizeAdjustPolicy(
-                    QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
-                )
+                action.setMaxVisibleItems(5)
                 action.setToolTip(
                     "Chọn hoàn tiền hoặc đổi sản phẩm cùng mã. "
                     "Chỉ hàng đã hỏng mới được đổi."
                 )
 
-                self.table.setCellWidget(row, 5, quantity)
-                self.table.setCellWidget(row, 6, condition)
-                self.table.setCellWidget(row, 7, action)
+                # Đặt các điều khiển vào wrapper có lề nhỏ giống các ô nhập
+                # trong biểu mẫu khác, tránh sát/đè lên đường viền của cell.
+                for column, control in (
+                    (5, quantity), (6, condition), (7, action)
+                ):
+                    cell_widget = QWidget(self.table)
+                    cell_layout = QHBoxLayout(cell_widget)
+                    cell_layout.setContentsMargins(3, 2, 3, 2)
+                    cell_layout.setSpacing(0)
+                    cell_layout.addWidget(control)
+                    self.table.setCellWidget(row, column, cell_widget)
+
                 self.table.setRowHeight(row, 44)
                 self.row_controls[masp] = {
                     "row": row,
