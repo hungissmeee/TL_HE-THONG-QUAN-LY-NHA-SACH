@@ -129,7 +129,9 @@ function ImportsPage() {
         <Form
           form={form}
           className="desktop-dialog-form"
-          layout="vertical"
+          layout="horizontal"
+          labelCol={{ xs: { span: 24 }, sm: { span: 8 } }}
+          wrapperCol={{ xs: { span: 24 }, sm: { span: 16 } }}
           onFinish={(v) => void save(v)}
         >
           <Card size="small" title="Thông tin phiếu nhập" className="desktop-form-section">
