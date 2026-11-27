@@ -217,10 +217,11 @@ CALENDAR_STYLESHEET = """
 
 def configure_date_edit(date_edit):
     """Căn chỉnh lịch popup của QDateEdit/QDateTimeEdit dùng trong toàn hệ thống."""
-    if isinstance(date_edit, QDateTimeEdit):
-        date_edit.setMinimumWidth(180)
-    elif isinstance(date_edit, QDateEdit):
+    # QDateEdit kế thừa QDateTimeEdit nên phải kiểm tra QDateEdit trước.
+    if isinstance(date_edit, QDateEdit):
         date_edit.setMinimumWidth(148)
+    elif isinstance(date_edit, QDateTimeEdit):
+        date_edit.setMinimumWidth(180)
 
     date_edit.setCalendarPopup(True)
     calendar = date_edit.calendarWidget()
