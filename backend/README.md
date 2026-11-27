@@ -88,7 +88,7 @@ Backend không dùng tài khoản SQL của nhân viên để truy vấn nghiệ
 Với database `CSDLTEST`, thực hiện trên SQL Server Management Studio bằng tài khoản có quyền quản trị database:
 
 1. Đảm bảo SQL Login `bookhub_web_app` đã được tạo và mật khẩu trùng với `BOOKHUB_WEB_SQL_PASSWORD` trong `.env`. Đây là tài khoản dịch vụ riêng, không phải tài khoản đăng nhập nhân viên.
-2. Nếu database được tạo từ phiên bản schema cũ chưa có cột `SAN_PHAM.BARCODE`, sao lưu database rồi chạy `database/migrations/004_product_barcode.sql` trước. Migration này thêm cột và unique filtered index; cần xử lý mã vạch trùng nếu script báo lỗi.
+2. Sau khi tạo database và các role nghiệp vụ, sao lưu database rồi chạy `database/migrations/004_product_barcode.sql`. Migration tự thêm cột `BARCODE` nếu chưa tồn tại và tạo unique filtered index để chống trùng mã vạch; cần xử lý dữ liệu barcode trùng trước nếu script báo lỗi.
 3. Chạy `database/migrations/005_bookhub_web_products_permissions.sql`. Script tạo role `rl_BookHubWeb`, ánh xạ user dịch vụ và cấp quyền giới hạn trên các bảng/cột dùng cho phân hệ sản phẩm. Không cấp `db_owner`, `db_datareader` hoặc `db_datawriter`.
 4. Kiểm tra `BOOKHUB_WEB_SQL_SERVER`, `BOOKHUB_WEB_SQL_DATABASE=CSDLTEST`, `BOOKHUB_WEB_SQL_USERNAME=bookhub_web_app` và mật khẩu trong `.env`, sau đó khởi động lại bằng `python run_web.py`.
 5. Đăng nhập bằng tài khoản nhân viên đã được cấp role. Mở mục **Sản phẩm** để kiểm tra dữ liệu.
