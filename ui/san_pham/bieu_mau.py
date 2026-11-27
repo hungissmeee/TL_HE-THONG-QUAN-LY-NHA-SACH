@@ -31,8 +31,8 @@ from PySide6.QtWidgets import (
     QScrollArea,
 )
 from .bo_chon import SearchableSingleSelect, SearchableMultiSelect
-from core.san_pham.truy_van_sql import SanPhamRepository
-from core.san_pham.xu_ly_du_lieu import SanPhamService
+from core.san_pham.repository import SanPhamRepository
+from core.san_pham.service import SanPhamService
 
 
 class ProductFormDialog(QDialog):

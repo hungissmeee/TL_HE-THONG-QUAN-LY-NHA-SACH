@@ -13,8 +13,8 @@ from PySide6.QtWidgets import (
 )
 
 from ui.calendar_utils import configure_date_edit_calendar
-from core.bao_cao.truy_van_sql import BaoCaoRepository
-from core.bao_cao.xu_ly_du_lieu import BaoCaoService
+from core.bao_cao.repository import BaoCaoRepository
+from core.bao_cao.service import BaoCaoService
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
     prepare_sortable_table,

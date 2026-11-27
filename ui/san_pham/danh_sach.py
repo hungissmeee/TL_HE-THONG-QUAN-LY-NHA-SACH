@@ -22,8 +22,8 @@ from ui.table_sort import (
 from .chi_tiet import ProductDetailDialog
 from .bieu_mau import ProductFormDialog
 from ui.formatters import format_product_number
-from core.san_pham.truy_van_sql import SanPhamRepository, ProductHasStockError
-from core.san_pham.xu_ly_du_lieu import SanPhamService
+from core.san_pham.repository import SanPhamRepository, ProductHasStockError
+from core.san_pham.service import SanPhamService
 
 
 PRODUCT_TABLE_HEADERS = (

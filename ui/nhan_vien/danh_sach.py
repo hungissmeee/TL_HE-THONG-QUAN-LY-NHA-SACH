@@ -12,8 +12,8 @@ from PySide6.QtWidgets import (
 
 from PySide6.QtCore import Qt
 from ui.tai_khoan import EmployeePermissionDialog
-from core.nhan_vien.truy_van_sql import NhanVienRepository
-from core.nhan_vien.xu_ly_du_lieu import NhanVienService
+from core.nhan_vien.repository import NhanVienRepository
+from core.nhan_vien.service import NhanVienService
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
     prepare_sortable_table,

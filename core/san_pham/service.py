@@ -2,7 +2,7 @@
 
 from decimal import Decimal, InvalidOperation
 
-from core.san_pham.truy_van_sql import SanPhamRepository
+from core.san_pham.repository import SanPhamRepository
 
 
 class SanPhamService:

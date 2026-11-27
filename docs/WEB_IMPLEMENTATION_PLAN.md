@@ -19,7 +19,7 @@
 
 - Ứng dụng Desktop hiện tại dùng Python, PySide6 và `pyodbc`; `requirements.txt` khai báo các thư viện chạy ứng dụng.
 - `main.py` khởi tạo đối tượng `Database`; `database/connection.py` quản lý kết nối SQL Server và các thao tác tài khoản/role ở cấp SQL Server.
-- Mỗi phân hệ trong `core/` hiện được tổ chức theo feature: `xu_ly_du_lieu.py` là Service xử lý/kiểm tra nghiệp vụ; `truy_van_sql.py` là Repository chứa truy vấn SQL và transaction.
+- Mỗi phân hệ trong `core/` hiện được tổ chức theo feature: `service.py` là Service xử lý/kiểm tra nghiệp vụ; `repository.py` là Repository chứa truy vấn SQL và transaction.
 - Các trang trong `ui/` chủ yếu phụ trách giao diện và gọi Service. Các kiểm tra quyền theo trạng thái mới nhất của chứng từ được đưa về tầng dữ liệu thay vì tự viết SQL trong màn hình.
 - Các đường dẫn `core/repositories/` và `core/services/` cũ được giữ làm wrapper tương thích; code mới nên import trực tiếp từ package phân hệ.
 - `ui/main_windows.py` khởi tạo cửa sổ và các trang; `ui/sidebar_navigation.py` phụ trách nhóm menu, điều hướng và quyền hiển thị. Giao diện nhân viên được chia thành package danh sách và chi tiết.
@@ -73,8 +73,8 @@ project/
 ├── database/                 # Kết nối và script SQL hiện tại
 ├── core/
 │   ├── hoa_don/
-│   │   ├── xu_ly_du_lieu.py  # Service nghiệp vụ
-│   │   └── truy_van_sql.py   # Repository SQL
+│   │   ├── service.py  # Service nghiệp vụ
+│   │   └── repository.py   # Repository SQL
 │   ├── phieu_nhap/
 │   ├── san_pham/
 │   ├── doi_tra/
@@ -109,8 +109,8 @@ project/
 
 ### Quy tắc phân lớp
 
-- **`xu_ly_du_lieu.py` (Service):** chứa quy tắc nghiệp vụ, kiểm tra đầu vào, tính tiền và điều phối các bước xử lý.
-- **`truy_van_sql.py` (Repository):** đảm nhiệm truy vấn SQL, đọc/ghi dữ liệu và transaction; các kiểm tra cần khóa/trạng thái mới nhất phải nằm trong cùng transaction.
+- **`service.py` (Service):** chứa quy tắc nghiệp vụ, kiểm tra đầu vào, tính tiền và điều phối các bước xử lý.
+- **`repository.py` (Repository):** đảm nhiệm truy vấn SQL, đọc/ghi dữ liệu và transaction; các kiểm tra cần khóa/trạng thái mới nhất phải nằm trong cùng transaction.
 - **API Router:** nhận request, xác thực đầu vào, gọi service và chuyển kết quả thành response; không viết truy vấn SQL dài trực tiếp trong router.
 - **Schema:** định nghĩa dữ liệu vào/ra; không trả thông tin nhạy cảm như mật khẩu, chuỗi kết nối hoặc dữ liệu nội bộ không cần thiết.
 - **Frontend:** không chứa bí mật hoặc thông tin kết nối SQL; không tự tính lại kết quả tài chính để thay thế Backend.

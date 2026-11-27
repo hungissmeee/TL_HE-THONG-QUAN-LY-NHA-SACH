@@ -2,7 +2,7 @@
 
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
-from core.doi_tra.truy_van_sql import ReturnRepository
+from core.doi_tra.repository import ReturnRepository
 
 
 MONEY_QUANT = Decimal("0.01")

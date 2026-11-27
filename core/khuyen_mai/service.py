@@ -3,7 +3,7 @@
 from datetime import datetime
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
-from core.khuyen_mai.truy_van_sql import KhuyenMaiRepository
+from core.khuyen_mai.repository import KhuyenMaiRepository
 
 
 class KhuyenMaiService:

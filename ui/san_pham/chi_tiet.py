@@ -13,8 +13,8 @@ from PySide6.QtWidgets import (
     QGroupBox,
 )
 from .bieu_mau import ProductFormDialog
-from core.san_pham.truy_van_sql import SanPhamRepository
-from core.san_pham.xu_ly_du_lieu import SanPhamService
+from core.san_pham.repository import SanPhamRepository
+from core.san_pham.service import SanPhamService
 
 
 class ProductDetailDialog(QDialog):

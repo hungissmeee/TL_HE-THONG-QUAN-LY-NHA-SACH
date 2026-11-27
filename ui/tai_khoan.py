@@ -8,8 +8,8 @@ from PySide6.QtWidgets import (
 )
 
 from PySide6.QtCore import Qt
-from core.nhan_vien.truy_van_sql import NhanVienRepository
-from core.nhan_vien.xu_ly_du_lieu import NhanVienService
+from core.nhan_vien.repository import NhanVienRepository
+from core.nhan_vien.service import NhanVienService
 
 
 class EmployeePermissionDialog(QDialog):

@@ -23,8 +23,8 @@ from ui.table_sort import (
 )
 from .bieu_mau import SupplierFormDialog
 from .chi_tiet import SupplierDetailDialog
-from core.nha_cung_cap.truy_van_sql import NhaCungCapRepository
-from core.nha_cung_cap.xu_ly_du_lieu import NhaCungCapService
+from core.nha_cung_cap.repository import NhaCungCapRepository
+from core.nha_cung_cap.service import NhaCungCapService
 
 
 SUPPLIER_VIEW_ROLES = frozenset({"quản lý", "nhân viên kho", "kế toán"})

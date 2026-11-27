@@ -2,7 +2,7 @@
 
 from decimal import Decimal, InvalidOperation
 
-from core.ca_lam_viec.truy_van_sql import CaLamViecRepository
+from core.ca_lam_viec.repository import CaLamViecRepository
 
 
 class CaLamViecService:

@@ -1,2 +1,2 @@
-"""Tương thích import cũ; xử lý dữ liệu nằm trong core/danh_muc/xu_ly_du_lieu.py. """
-from core.danh_muc.xu_ly_du_lieu import *
+"""Compatibility import; canonical service: core.danh_muc.service."""
+from core.danh_muc.service import *

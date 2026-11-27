@@ -2,7 +2,7 @@
 
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
-from core.phieu_nhap.truy_van_sql import PhieuNhapRepository
+from core.phieu_nhap.repository import PhieuNhapRepository
 
 
 class PhieuNhapService:

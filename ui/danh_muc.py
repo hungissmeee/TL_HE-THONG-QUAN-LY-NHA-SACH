@@ -9,8 +9,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 
 from core.catalog_config import CATALOGS
-from core.danh_muc.truy_van_sql import CatalogRepository
-from core.danh_muc.xu_ly_du_lieu import CatalogService
+from core.danh_muc.repository import CatalogRepository
+from core.danh_muc.service import CatalogService
 
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,

@@ -15,8 +15,8 @@ from ui.table_sort import (
 from .dung_chung import date_text, money
 from .tao_bieu_mau import CreateReturnDialog
 from .chi_tiet import ReturnDetailDialog
-from core.doi_tra.truy_van_sql import ReturnRepository
-from core.doi_tra.xu_ly_du_lieu import ReturnService
+from core.doi_tra.repository import ReturnRepository
+from core.doi_tra.service import ReturnService
 
 
 class ReturnWindow(QWidget):

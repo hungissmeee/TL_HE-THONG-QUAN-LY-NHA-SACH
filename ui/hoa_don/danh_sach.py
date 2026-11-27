@@ -29,8 +29,8 @@ from ui.table_sort import (
 from .dung_chung import money, date_text
 from .tao_bieu_mau import CreateInvoiceDialog
 from .chi_tiet import InvoiceDetailDialog
-from core.hoa_don.truy_van_sql import HoaDonRepository
-from core.hoa_don.xu_ly_du_lieu import HoaDonService
+from core.hoa_don.repository import HoaDonRepository
+from core.hoa_don.service import HoaDonService
 
 
 class InvoiceWindow(QWidget):

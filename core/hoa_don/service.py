@@ -2,7 +2,7 @@
 
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
-from core.hoa_don.truy_van_sql import HoaDonRepository
+from core.hoa_don.repository import HoaDonRepository
 
 
 MONEY_QUANT = Decimal("0.01")

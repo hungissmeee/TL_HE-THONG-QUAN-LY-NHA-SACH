@@ -26,8 +26,8 @@ from ui.table_sort import (
     resume_table_sorting,
 )
 from .bieu_mau import PromotionFormDialog
-from core.khuyen_mai.truy_van_sql import KhuyenMaiRepository
-from core.khuyen_mai.xu_ly_du_lieu import KhuyenMaiService
+from core.khuyen_mai.repository import KhuyenMaiRepository
+from core.khuyen_mai.service import KhuyenMaiService
 
 
 class PromotionDetailDialog(QDialog):

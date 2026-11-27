@@ -1,6 +1,6 @@
 """Service nghiệp vụ cho các danh mục sản phẩm."""
 
-from core.danh_muc.truy_van_sql import CatalogRepository
+from core.danh_muc.repository import CatalogRepository
 
 
 class CatalogService:

@@ -31,8 +31,8 @@ from ui.table_sort import (
     prepare_sortable_table,
 )
 from .dung_chung import Decimal, money, as_decimal, date_text
-from core.phieu_nhap.truy_van_sql import PhieuNhapRepository
-from core.phieu_nhap.xu_ly_du_lieu import PhieuNhapService
+from core.phieu_nhap.repository import PhieuNhapRepository
+from core.phieu_nhap.service import PhieuNhapService
 
 
 class ImportDetailDialog(QDialog):

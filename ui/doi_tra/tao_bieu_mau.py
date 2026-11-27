@@ -12,8 +12,8 @@ from PySide6.QtWidgets import (
 from .dung_chung import MONEY_QUANT, as_decimal, date_text, money
 from ui.permissions import is_admin_account
 from ui.product_table import ProductTableWidget
-from core.doi_tra.truy_van_sql import ReturnRepository
-from core.doi_tra.xu_ly_du_lieu import ReturnService
+from core.doi_tra.repository import ReturnRepository
+from core.doi_tra.service import ReturnService
 
 
 class CreateReturnDialog(QDialog):

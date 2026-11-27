@@ -78,7 +78,7 @@ Dự án xây dựng giải pháp quản lý tập trung cho mô hình kinh doan
 
 # 4. Cấu trúc mã nguồn hiện tại
 
-Mã nguồn được tổ chức theo từng phân hệ nghiệp vụ. Trong mỗi phân hệ của `core/`, hai tệp có tên cố định giúp nhận biết ngay trách nhiệm: `xu_ly_du_lieu.py` chứa Service và quy tắc nghiệp vụ; `truy_van_sql.py` chứa Repository và câu lệnh SQL.
+Mã nguồn được tổ chức theo từng phân hệ nghiệp vụ. Trong mỗi phân hệ của `core/`, hai tệp có tên cố định giúp nhận biết ngay trách nhiệm: `service.py` chứa Service và quy tắc nghiệp vụ; `repository.py` chứa Repository và câu lệnh SQL.
 
 ```text
 .
@@ -89,8 +89,8 @@ Mã nguồn được tổ chức theo từng phân hệ nghiệp vụ. Trong m�
 │   └── migrations/
 ├── core/
 │   ├── hoa_don/
-│   │   ├── xu_ly_du_lieu.py
-│   │   └── truy_van_sql.py
+│   │   ├── service.py
+│   │   └── repository.py
 │   ├── phieu_nhap/
 │   ├── san_pham/
 │   ├── doi_tra/
@@ -119,13 +119,13 @@ Mã nguồn được tổ chức theo từng phân hệ nghiệp vụ. Trong m�
 └── tests/
 ```
 
-Các thư mục `core/repositories/` và `core/services/` được giữ dưới dạng lớp tương thích import cũ; code mới nên import trực tiếp từ package nghiệp vụ tương ứng. Ví dụ: `core.hoa_don.xu_ly_du_lieu` và `core.hoa_don.truy_van_sql`.
+Các thư mục `core/repositories/` và `core/services/` được giữ dưới dạng lớp tương thích import cũ; code mới nên import trực tiếp từ package nghiệp vụ tương ứng. Ví dụ: `core.hoa_don.service` và `core.hoa_don.repository`.
 
 ## 4.1. Quy ước phân chia trách nhiệm
 
 - `ui/`: nhận thao tác, hiển thị dữ liệu và gọi Service; không tự mở cursor hoặc viết SQL.
-- `core/<phan_he>/xu_ly_du_lieu.py`: kiểm tra đầu vào, tính toán và điều phối quy tắc nghiệp vụ.
-- `core/<phan_he>/truy_van_sql.py`: truy vấn, đọc/ghi SQL Server và transaction của thao tác dữ liệu.
+- `core/<phan_he>/service.py`: kiểm tra đầu vào, tính toán và điều phối quy tắc nghiệp vụ.
+- `core/<phan_he>/repository.py`: truy vấn, đọc/ghi SQL Server và transaction của thao tác dữ liệu.
 - `database/connection.py`: kết nối SQL Server và quản lý các thao tác tài khoản/role ở cấp SQL Server.
 - `core/sql_support.py`: tiện ích dùng chung để phân giải nguồn kết nối.
 - `ui/sidebar_navigation.py`: nhóm menu, điều hướng trang và quyền hiển thị sidebar.

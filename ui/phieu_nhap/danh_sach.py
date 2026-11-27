@@ -29,8 +29,8 @@ from ui.table_sort import (
 from .dung_chung import money, date_text
 from .tao_bieu_mau import CreateImportDialog
 from .chi_tiet import ImportDetailDialog
-from core.phieu_nhap.truy_van_sql import PhieuNhapRepository
-from core.phieu_nhap.xu_ly_du_lieu import PhieuNhapService
+from core.phieu_nhap.repository import PhieuNhapRepository
+from core.phieu_nhap.service import PhieuNhapService
 
 
 IMPORT_VIEW_ROLES = frozenset({"quản lý", "nhân viên kho", "kế toán"})

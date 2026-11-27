@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from core.bao_cao.truy_van_sql import BaoCaoRepository
+from core.bao_cao.repository import BaoCaoRepository
 
 
 class BaoCaoService:

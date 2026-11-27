@@ -32,8 +32,8 @@ from ui.table_sort import (
 )
 from .dung_chung import MONEY_QUANT, Decimal, ROUND_HALF_UP, money, as_decimal, date_text, time_text
 from ui.formatters import format_report_date
-from core.hoa_don.truy_van_sql import HoaDonRepository
-from core.hoa_don.xu_ly_du_lieu import HoaDonService
+from core.hoa_don.repository import HoaDonRepository
+from core.hoa_don.service import HoaDonService
 
 
 class InvoiceDetailDialog(QDialog):
