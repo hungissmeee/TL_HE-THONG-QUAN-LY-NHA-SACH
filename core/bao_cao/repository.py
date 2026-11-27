@@ -482,7 +482,8 @@ class BaoCaoRepository:
         sql = self._stock_movements_cte() + f"""
             , MovementSummary AS (
                 SELECT M.MASP,
-                    SUM(M.SL_NHAP - M.SL_XUAT) AS NET_FROM_START,
+                    SUM(CASE WHEN M.NGAY >= B.START_DATE
+                        THEN M.SL_NHAP - M.SL_XUAT ELSE 0 END) AS NET_FROM_START,
                     SUM(CASE WHEN M.NGAY >= B.END_EXCLUSIVE
                         THEN M.SL_NHAP - M.SL_XUAT ELSE 0 END) AS NET_AFTER_END,
                     SUM(CASE WHEN M.NGAY >= B.START_DATE AND M.NGAY < B.END_EXCLUSIVE
