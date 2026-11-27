@@ -16,6 +16,7 @@ from backend.database import (
 )
 from backend.dependencies import get_db_connection
 from backend.main import create_app
+from database.connection import Database
 
 
 def make_settings(**overrides):
@@ -125,6 +126,23 @@ class BackendConfigurationTests(unittest.TestCase):
 
         self.assertEqual(settings.environment, "production")
         self.assertFalse(settings.docs_enabled)
+
+    def test_desktop_database_reads_shared_root_dotenv_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            env_file = Path(directory) / ".env"
+            env_file.write_text(
+                "BOOKHUB_SQL_SERVER=desktop-sql\\\\INSTANCE\\n"
+                "BOOKHUB_SQL_DATABASE=BOOKHUB_DESKTOP\\n"
+                "BOOKHUB_SQL_DRIVER=ODBC Driver 18 for SQL Server\\n",
+                encoding="utf-8",
+            )
+            with patch.dict(os.environ, {}, clear=True):
+                with patch("database.connection.ENV_FILE", env_file):
+                    database = Database()
+
+        self.assertEqual(database.server, "desktop-sql\\\\INSTANCE")
+        self.assertEqual(database.database, "BOOKHUB_DESKTOP")
+        self.assertEqual(database.driver, "ODBC Driver 18 for SQL Server")
 
     def test_load_settings_rejects_invalid_environment(self):
         with patch.dict(os.environ, {"BOOKHUB_WEB_ENV": "prod"}, clear=True):
