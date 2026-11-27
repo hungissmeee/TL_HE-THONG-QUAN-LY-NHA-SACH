@@ -35,7 +35,7 @@ class ProductReportPage(ReportBasePage):
              "Doanh thu sau khuyến mãi", "positive"),
             ("active", "Sản phẩm có phát sinh bán", "0",
              "Số mặt hàng có số lượng bán lớn hơn 0", "primary"),
-        ])
+        ], primary_key="revenue")
 
         self.table = self.make_table([
             "Xếp hạng", "Mã sản phẩm", "Tên sản phẩm", "Số hóa đơn",
