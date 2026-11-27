@@ -41,62 +41,7 @@ class InvoiceReportPage(ReportBasePage):
 
     def load_report(self):
         start_date, end_date = self.date_parameters()
-        sql = """
-            SELECT
-                HD.MAHD,
-                HD.NGAYLAP,
-                COALESCE(NV.TENNV, HD.MANV, N''),
-                COALESCE(CONVERT(nvarchar(20), HD.MACA), N''),
-                COALESCE(S.TIEN_HANG, 0) AS TIEN_HANG,
-                COALESCE(KM.TYLEGIAM, 0) AS TYLE_GIAM,
-                COALESCE(S.TIEN_HANG, 0) * COALESCE(KM.TYLEGIAM, 0) / 100.0 AS TIEN_GIAM,
-                COALESCE(S.TIEN_HANG, 0)
-                    * (1 - COALESCE(KM.TYLEGIAM, 0) / 100.0) AS THANH_TIEN,
-                CASE WHEN HD.TRANGTHAI = 1
-                    THEN COALESCE(S.TIEN_HANG, 0)
-                        * (1 - COALESCE(KM.TYLEGIAM, 0) / 100.0)
-                    ELSE 0 END AS DOANH_THU_GHI_NHAN,
-                COALESCE(R.SO_PHIEU, 0),
-                COALESCE(RX.SL_HOAN_TIEN, 0),
-                COALESCE(RX.SL_DOI_HANG, 0),
-                COALESCE(R.TIEN_HOAN, 0),
-                CASE WHEN HD.TRANGTHAI = 1
-                    THEN COALESCE(S.TIEN_HANG, 0)
-                        * (1 - COALESCE(KM.TYLEGIAM, 0) / 100.0)
-                        - COALESCE(R.TIEN_HOAN, 0)
-                    ELSE 0 END AS DOANH_THU_SAU_HOAN,
-                COALESCE(HD.TIENKHACHDUA, 0),
-                HD.TRANGTHAI
-            FROM dbo.HOA_DON HD
-            LEFT JOIN dbo.NHAN_VIEN NV ON NV.MANV = HD.MANV
-            LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
-            OUTER APPLY (
-                SELECT SUM(COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0)) AS TIEN_HANG
-                FROM dbo.CHI_TIET_HOA_DON CT
-                WHERE CT.MAHD = HD.MAHD
-            ) S
-            OUTER APPLY (
-                SELECT
-                    COUNT(*) AS SO_PHIEU,
-                    COALESCE(SUM(PDT.TONG_TIEN_HOAN), 0) AS TIEN_HOAN
-                FROM dbo.PHIEU_DOI_TRA PDT
-                WHERE PDT.MAHD = HD.MAHD
-            ) R
-            OUTER APPLY (
-                SELECT
-                    COALESCE(SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 0
-                        THEN CTDT.SOLUONG ELSE 0 END), 0) AS SL_HOAN_TIEN,
-                    COALESCE(SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 1
-                        THEN CTDT.SOLUONG ELSE 0 END), 0) AS SL_DOI_HANG
-                FROM dbo.PHIEU_DOI_TRA PDT
-                INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT
-                WHERE PDT.MAHD = HD.MAHD
-            ) RX
-            WHERE HD.NGAYLAP >= CONVERT(date, ?)
-              AND HD.NGAYLAP < DATEADD(day, 1, CONVERT(date, ?))
-            ORDER BY HD.NGAYLAP DESC, HD.MAHD DESC
-        """
-        rows = self.fetch_all(sql, (start_date, end_date))
+        rows = self.service.invoice_report(start_date, end_date)
 
         total_count = len(rows)
         valid_rows = [row for row in rows if row[15] is True or row[15] == 1]
