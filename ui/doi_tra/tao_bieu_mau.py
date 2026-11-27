@@ -1,6 +1,6 @@
 """Hộp thoại lập phiếu đổi trả."""
 
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
     QTableWidgetItem, QMessageBox, QSpinBox,
 )
 
-from .dung_chung import MONEY_QUANT, as_decimal, date_text, money
+from .dung_chung import date_text, money
 from ui.permissions import is_admin_account
 from ui.product_table import ProductTableWidget
 from core.doi_tra.repository import ReturnRepository
@@ -28,6 +28,7 @@ class CreateReturnDialog(QDialog):
         self.employee_code = None if self.is_admin else self.username
         self.row_controls = {}
         self.invoice_discount = Decimal("0.00")
+        self.invoice_items = []
 
         self.setWindowTitle("Lập phiếu đổi trả")
         # Đồng bộ kích thước với biểu mẫu phiếu nhập; vùng bảng có thêm không gian.
@@ -99,7 +100,7 @@ class CreateReturnDialog(QDialog):
             [
                 "Mã SP", "Tên sản phẩm", "Đã mua", "Đã xử lý",
                 "Còn được xử lý", "Số lượng", "Tình trạng hàng",
-                "Hình thức xử lý", "Tiền hoàn"
+                "Hình thức xử lý"
             ],
             stretch_column=1,
             fixed_column_widths={5: 100},
@@ -167,6 +168,7 @@ class CreateReturnDialog(QDialog):
         self.invoice_combo.setCurrentIndex(-1)
         self.table.setRowCount(0)
         self.row_controls.clear()
+        self.invoice_items = []
         self.invoice_info.setText(
             "Không tìm thấy hóa đơn phù hợp. Hãy chọn một kết quả trong danh sách."
         )
@@ -207,11 +209,13 @@ class CreateReturnDialog(QDialog):
         invoice_code = self.invoice_combo.currentData()
         self.table.setRowCount(0)
         self.row_controls.clear()
+        self.invoice_items = []
         if not invoice_code:
             self.update_totals()
             return
         data = self.service.get_invoice_items(invoice_code)
         self.invoice_discount = data["discount_rate"]
+        self.invoice_items = data["items"]
         self.invoice_info.setText(
             f"Ngày lập: {date_text(data['invoice_date'])} | "
             f"Giảm giá hóa đơn: {money(self.invoice_discount)}%"
@@ -222,7 +226,7 @@ class CreateReturnDialog(QDialog):
             row = self.table.insert_product_row()
             values = [
                 masp, product["product_name"], product["purchased"],
-                product["processed"], remaining, "", "", "", money(0)
+                product["processed"], remaining, "", "", ""
             ]
             for column, value in enumerate(values):
                 self.table.setItem(row, column, QTableWidgetItem(str(value)))
@@ -243,7 +247,6 @@ class CreateReturnDialog(QDialog):
             self.row_controls[masp] = {
                 "row": row, "quantity": quantity, "remaining": remaining,
                 "condition": condition, "action": action,
-                "net_price": product["net_price"],
             }
             quantity.valueChanged.connect(self.update_totals)
             condition.currentIndexChanged.connect(self.update_totals)
@@ -252,25 +255,41 @@ class CreateReturnDialog(QDialog):
         self.update_totals()
 
     def update_totals(self, *_):
-        """Tính tiền hoàn dự kiến; dòng đổi sản phẩm không hoàn tiền."""
-        total = Decimal("0.00")
-        for controls in self.row_controls.values():
-            quantity = self._parse_quantity_input(
-                str(controls["quantity"].value())
-            )
+        """Tính tiền hoàn bằng chênh lệch tổng hóa đơn trước và sau trả."""
+        selected = []
+        invalid_exchange = False
+        for product_code, controls in self.row_controls.items():
+            quantity = int(controls["quantity"].value())
+            if quantity <= 0:
+                continue
             condition = controls["condition"].currentData()
             action = controls["action"].currentData()
-            amount_item = self.table.item(controls["row"], 8)
+            if action == 1 and condition != 0:
+                invalid_exchange = True
+            selected.append({
+                "product_code": product_code,
+                "quantity": quantity,
+                "condition": condition,
+                "action": action,
+            })
 
-            if quantity > 0 and action == 1 and condition != 0:
-                amount_item.setText("Chỉ đổi hàng đã hỏng")
-                continue
+        if invalid_exchange:
+            self.total_label.setText(
+                "Chỉ được đổi sản phẩm khi hàng trả đã hỏng."
+            )
+            self.save_button.setEnabled(False)
+            return
 
-            amount = controls["net_price"] * quantity if action == 0 else Decimal("0")
-            amount = amount.quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
-            total += amount
-            amount_item.setText(money(amount))
-        self.total_label.setText(f"Tổng tiền hoàn: {money(total)} đ")
+        try:
+            calculation = self.service.calculate_invoice_refund(
+                self.invoice_items, selected, self.invoice_discount
+            )
+            total = calculation["total_refund"]
+            self.total_label.setText(f"Tổng tiền hoàn: {money(total)} đ")
+            self.save_button.setEnabled(bool(self.row_controls))
+        except ValueError as error:
+            self.total_label.setText(f"Không thể tính tiền hoàn: {error}")
+            self.save_button.setEnabled(False)
 
     def save_return(self):
         selected = []
