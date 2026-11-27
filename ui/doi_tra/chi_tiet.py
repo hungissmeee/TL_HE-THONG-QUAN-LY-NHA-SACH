@@ -137,6 +137,7 @@ class ReturnDetailDialog(QDialog):
         buttons.addStretch()
         if self.on_delete is not None:
             delete_button = QPushButton("Xóa phiếu")
+            delete_button.setObjectName("dangerButton")
             delete_button.setProperty("buttonRole", "danger")
             delete_button.setToolTip(
                 "Xóa phiếu này và đảo ngược biến động tồn kho do phiếu tạo ra."
