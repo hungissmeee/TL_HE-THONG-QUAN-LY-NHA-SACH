@@ -65,9 +65,7 @@ class PromotionDetailDialog(QDialog):
             actions.addWidget(rename_button)
 
             delete_button = QPushButton("Xóa mềm")
-            delete_button.setStyleSheet(
-                "QPushButton { background-color: #A83232; color: white; }"
-            )
+            delete_button.setProperty("buttonRole", "danger")
             delete_button.clicked.connect(self._delete)
             actions.addWidget(delete_button)
 
