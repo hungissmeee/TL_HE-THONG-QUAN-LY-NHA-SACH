@@ -18,6 +18,7 @@ from ui.table_sort import (
     resume_table_sorting,
 )
 from ui.san_pham.bieu_mau import ProductFormDialog
+from ui.san_pham.tim_kiem import find_matching_product_codes
 from ui.san_pham.bo_chon import SearchableSingleSelect, SearchableMultiSelect
 from ui.danh_muc import CatalogPage, CATALOGS
 from ui.nha_cung_cap.bieu_mau import SupplierFormDialog
@@ -287,6 +288,51 @@ class CodeGenerationTests(unittest.TestCase):
 
         self.assertEqual(len(tables), len(set(tables)))
         self.assertEqual(len(prefixes), len(set(prefixes)))
+
+
+class ProductLookupTests(unittest.TestCase):
+    """Kiểm thử tra cứu sản phẩm bằng mã sản phẩm, barcode và ISBN."""
+
+    def setUp(self):
+        self.products = {
+            "SP001": {
+                "tensp": "Yuru Camp - Tập 1",
+                "barcode": "8931234567890",
+                "isbn": "9786041234567",
+            },
+            "SP002": {
+                "tensp": "Sổ tay",
+                "barcode": "8939876543210",
+                "isbn": "",
+            },
+        }
+
+    def test_lookup_by_exact_barcode(self):
+        self.assertEqual(
+            find_matching_product_codes(self.products, "8931234567890"),
+            ["SP001"],
+        )
+
+    def test_lookup_book_by_exact_isbn(self):
+        self.assertEqual(
+            find_matching_product_codes(self.products, "9786041234567"),
+            ["SP001"],
+        )
+
+    def test_lookup_by_partial_barcode(self):
+        self.assertEqual(
+            find_matching_product_codes(self.products, "893987"),
+            ["SP002"],
+        )
+
+    def test_lookup_ignores_case_and_outer_spaces(self):
+        self.assertEqual(
+            find_matching_product_codes(self.products, "  yuru camp  "),
+            ["SP001"],
+        )
+
+    def test_empty_lookup_returns_no_products(self):
+        self.assertEqual(find_matching_product_codes(self.products, "  "), [])
 
 
 class InputValidationTests(unittest.TestCase):
