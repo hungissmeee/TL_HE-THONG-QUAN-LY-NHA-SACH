@@ -6,6 +6,10 @@ Backend chạy độc lập với ứng dụng Desktop. Các API hiện có gồ
 - GET /api/v1/products: danh sách, tìm kiếm, lọc, sắp xếp và phân trang sản phẩm.
 - GET /api/v1/products/{product_code}: xem chi tiết sản phẩm.
 - POST/PUT/DELETE /api/v1/products: thêm, sửa và xóa mềm sản phẩm (có kiểm tra quyền và tồn kho).
+- /api/v1/suppliers, /catalogs, /promotions: nhà cung cấp, tác giả, thể loại, nhà xuất bản, thương hiệu và khuyến mãi.
+- /api/v1/imports, /invoices, /returns: phiếu nhập, hóa đơn, đổi trả.
+- /api/v1/shifts, /employees: ca làm việc và hồ sơ nhân viên.
+- /api/v1/reports/{report_type}: tổng quan, doanh thu, hóa đơn, nhập hàng, đổi trả, tồn kho, sản phẩm và ca làm việc.
 - GET /api/v1/health/ready: mở kết nối SQL Server theo request và chạy SELECT 1.
 
 ## Cài đặt
@@ -96,3 +100,19 @@ Với database `CSDLTEST`, thực hiện trên SQL Server Management Studio bằ
 Quyền nghiệp vụ ở API: mọi vai trò nhân viên hợp lệ có thể xem/tìm kiếm sản phẩm; Quản lý, Nhân viên kho và admin mới được thêm, sửa hoặc xóa mềm. Sản phẩm chỉ được xóa mềm khi tồn kho bằng 0. Giá nhập và số lượng tồn không được sửa từ biểu mẫu sản phẩm vì do các giao dịch nhập/xuất kho cập nhật.
 
 Lưu ý: migration chỉ được lưu trong repository; cần tự chạy trên đúng SQL Server của bạn. CI kiểm tra API bằng dữ liệu giả, không thay thế việc xác nhận kết nối và quyền trên database thực tế.
+
+## Quyền SQL Server cho toàn bộ phân hệ Web
+
+Sau khi đã tạo SQL Login dịch vụ `bookhub_web_app` và chạy migration quyền sản phẩm `database/migrations/005_bookhub_web_products_permissions.sql`, chạy tiếp:
+
+`database/migrations/006_bookhub_web_operations_permissions.sql`
+
+Migration 006 cấp quyền tối thiểu cho role `rl_BookHubWeb` trên các bảng/cột được các API nhà cung cấp, danh mục, khuyến mãi, nhập hàng, bán hàng, đổi trả, ca làm việc, hồ sơ nhân viên và báo cáo sử dụng. Script không cấp `db_owner`, `db_datareader`, `db_datawriter`, `ALTER ANY LOGIN` hoặc quyền quản trị SQL Server.
+
+Thứ tự cài mới database `CSDLTEST`: chạy `database/script.sql`, sau đó `database/migrations/004_product_barcode.sql`, `005_bookhub_web_products_permissions.sql`, rồi `006_bookhub_web_operations_permissions.sql`. Nếu một migration đã được chạy trước đó, có thể chạy lại các migration 005/006 vì các lệnh cấp quyền và tạo role/user đã được thiết kế theo hướng kiểm tra tồn tại hoặc cấp thêm quyền.
+
+Phân quyền tại API: thu ngân và quản lý lập hóa đơn; nhân viên kho và quản lý lập phiếu nhập; quản lý lập/xóa phiếu đổi trả và quản lý khuyến mãi; quản lý tạo/xóa ca; kế toán và quản lý xem báo cáo; tài khoản Admin có quyền vượt qua các kiểm tra vai trò của API. Đăng ký ca và chốt tiền cuối ca lấy mã nhân viên từ JWT, không nhận mã nhân viên do trình duyệt tự gửi.
+
+Trang Nhân viên trên Web hiện hỗ trợ tra cứu và cập nhật hồ sơ liên hệ. Tạo SQL Login, đổi role SQL, bật/tắt hoặc xóa tài khoản Login vẫn chưa được expose qua API Web vì yêu cầu quyền máy chủ rất cao; các thao tác này cần giữ trong quy trình quản trị Desktop/SQL an toàn.
+
+CI kiểm tra cú pháp, unit test và TypeScript build bằng dữ liệu giả. Không có SQL Server thật trong CI; sau khi chạy migrations, cần thử bằng tài khoản dịch vụ trên database của môi trường bạn.
