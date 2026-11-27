@@ -62,7 +62,7 @@ export function LoginPage() {
           </Text>
         </div>
 
-        <Text className="brand-footer">BOOKHUB WEB · INTERNAL MANAGEMENT</Text>
+        <Text className="brand-footer">HỆ THỐNG QUẢN LÝ NHÀ SÁCH · WEB</Text>
       </section>
 
       <section className="login-form-panel">
