@@ -3,11 +3,13 @@
 import csv
 from decimal import Decimal
 
-from PySide6.QtCore import Qt, QDate
+from PySide6.QtCore import Qt, QDate, QPointF, QRectF
+from PySide6.QtGui import QPainter, QColor, QPen, QPainterPath
 from PySide6.QtWidgets import (
     QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QGridLayout,
     QFrame, QDateEdit, QTableWidget, QHeaderView,
     QAbstractItemView, QMessageBox, QFileDialog, QComboBox,
+    QSizePolicy,
 )
 
 from ui.table_sort import (
@@ -20,6 +22,144 @@ from ui.formatters import (
     format_number as number_text,
     format_report_date as date_text,
 )
+
+
+
+class ReportLineChart(QWidget):
+    """Biểu đồ đường tối giản dùng cho xu hướng doanh thu theo thời gian."""
+
+    def __init__(self, title, series, parent=None):
+        super().__init__(parent)
+        self.title = title
+        self.series = list(series)
+        self.points = []
+        self.setMinimumHeight(235)
+        self.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Minimum,
+        )
+
+    def set_data(self, points):
+        """Nhận danh sách (nhãn kỳ, giá trị theo thứ tự series)."""
+        self.points = [
+            (str(row[0]), *(float(value or 0) for value in row[1:]))
+            for row in points
+        ]
+        self.update()
+
+    @staticmethod
+    def _compact_value(value):
+        value = float(value or 0)
+        absolute = abs(value)
+        if absolute >= 1_000_000_000:
+            return f"{value / 1_000_000_000:.1f} tỷ"
+        if absolute >= 1_000_000:
+            return f"{value / 1_000_000:.0f} tr"
+        if absolute >= 1_000:
+            return f"{value / 1_000:.0f} k"
+        return f"{value:.0f}"
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.fillRect(self.rect(), QColor("#1B2432"))
+
+        outer = self.rect().adjusted(0, 0, -1, -1)
+        painter.setPen(QPen(QColor("#303E50"), 1))
+        painter.setBrush(QColor("#1B2432"))
+        painter.drawRoundedRect(outer, 8, 8)
+
+        painter.setPen(QColor("#E2E8F0"))
+        painter.drawText(18, 25, self.title)
+
+        legend_x = 18
+        legend_y = 48
+        for label, value_index, color in self.series:
+            painter.setPen(QPen(QColor(color), 3))
+            painter.drawLine(legend_x, legend_y - 4, legend_x + 16, legend_y - 4)
+            painter.setPen(QColor("#AAB7C8"))
+            painter.drawText(legend_x + 22, legend_y, label)
+            legend_x += 22 + painter.fontMetrics().horizontalAdvance(label) + 20
+
+        if not self.points:
+            painter.setPen(QColor("#8291A5"))
+            painter.drawText(
+                outer,
+                Qt.AlignmentFlag.AlignCenter,
+                "Không có dữ liệu trong khoảng thời gian đã chọn.",
+            )
+            painter.end()
+            return
+
+        left = 78
+        right = 18
+        top = 68
+        bottom = 34
+        plot_width = max(1, self.width() - left - right)
+        plot_height = max(1, self.height() - top - bottom)
+        values = [
+            point[index + 1]
+            for point in self.points
+            for _label, index, _color in self.series
+        ]
+        minimum = min([0.0, *values])
+        maximum = max([0.0, *values])
+        if maximum == minimum:
+            maximum = minimum + 1.0
+        padding = (maximum - minimum) * 0.08
+        minimum -= padding
+        maximum += padding
+
+        for tick in range(5):
+            ratio = tick / 4
+            y = top + plot_height * ratio
+            value = maximum - (maximum - minimum) * ratio
+            painter.setPen(QPen(QColor("#344256"), 1, Qt.PenStyle.DashLine))
+            painter.drawLine(int(left), int(y), int(left + plot_width), int(y))
+            painter.setPen(QColor("#8291A5"))
+            painter.drawText(
+                QRectF(5, y - 9, left - 13, 18),
+                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
+                self._compact_value(value),
+            )
+
+        count = len(self.points)
+        x_step = plot_width / max(count - 1, 1)
+        for series_label, value_index, color in self.series:
+            path = QPainterPath()
+            coordinates = []
+            for index, point in enumerate(self.points):
+                x = left + index * x_step if count > 1 else left + plot_width / 2
+                value = point[value_index + 1]
+                y = top + (maximum - value) / (maximum - minimum) * plot_height
+                coordinates.append(QPointF(x, y))
+                if index == 0:
+                    path.moveTo(x, y)
+                else:
+                    path.lineTo(x, y)
+
+            painter.setPen(QPen(QColor(color), 2.4))
+            painter.drawPath(path)
+            painter.setBrush(QColor(color))
+            painter.setPen(QPen(QColor("#1B2432"), 1))
+            for point in coordinates:
+                painter.drawEllipse(point, 3.2, 3.2)
+
+        label_indices = sorted(set(
+            [0, count - 1, count // 2]
+            + ([count // 4, (count * 3) // 4] if count > 8 else list(range(count)))
+        ))
+        painter.setPen(QColor("#8291A5"))
+        for index in label_indices:
+            if index < 0 or index >= count:
+                continue
+            x = left + index * x_step if count > 1 else left + plot_width / 2
+            painter.drawText(
+                QRectF(x - 46, top + plot_height + 8, 92, 18),
+                Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop,
+                self.points[index][0],
+            )
+        painter.end()
 
 
 class ReportBasePage(QWidget):
