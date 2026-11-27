@@ -281,7 +281,11 @@ class BackendHealthTests(unittest.TestCase):
         self.assertEqual(len(middleware), 1)
         self.assertEqual(
             middleware[0].kwargs["allow_origins"],
-            ["https://web.example.test"],
+            [
+                "https://web.example.test",
+                "http://qhung.ddns.net",
+                "https://qhung.ddns.net",
+            ],
         )
 
     def test_readiness_returns_503_without_database_configuration(self):

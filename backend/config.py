@@ -92,11 +92,15 @@ def load_settings() -> Settings:
         "BOOKHUB_WEB_ALLOWED_ORIGINS",
         "http://localhost:5173,http://127.0.0.1:5173,http://qhung.ddns.net,https://qhung.ddns.net",
     )
-    origins = tuple(
+    configured_origins = tuple(
         origin.strip().rstrip("/")
         for origin in origin_raw.split(",")
         if origin.strip()
     )
+    # Giữ các Origin do máy chủ tự cấu hình và luôn cho phép domain public
+    # đã được chủ hệ thống yêu cầu.
+    public_origins = ("http://qhung.ddns.net", "https://qhung.ddns.net")
+    origins = tuple(dict.fromkeys((*configured_origins, *public_origins)))
     if not origins:
         raise ConfigurationError("Phải cấu hình ít nhất một Web origin được phép.")
     if "*" in origins and environment == "production":
