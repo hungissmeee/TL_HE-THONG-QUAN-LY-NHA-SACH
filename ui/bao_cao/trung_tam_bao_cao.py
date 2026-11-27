@@ -217,7 +217,7 @@ REPORTS = {
 
 
 class ReportCenterPage(QWidget):
-    """Một trung tâm báo cáo dạng POS: cây danh mục, bộ lọc và bảng chứng từ."""
+    """Trung tâm báo cáo POS với menu xổ xuống, bộ lọc và bảng chứng từ."""
 
     GROUPS = [
         ("BÁO CÁO BÁN HÀNG", [
@@ -491,7 +491,7 @@ class ReportCenterPage(QWidget):
             self._sync_horizontal_scroll_range
         )
 
-        self.status_label = QLabel("Chọn một báo cáo ở danh mục bên trái.")
+        self.status_label = QLabel("Chọn nhóm báo cáo ở thanh phía trên.")
         self.status_label.setStyleSheet("color: #AAB7C8; font-size: 10px;")
         right.addWidget(self.status_label)
         root.addWidget(self.right_panel, 1)
