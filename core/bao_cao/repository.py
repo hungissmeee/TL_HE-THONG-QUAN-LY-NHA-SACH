@@ -574,8 +574,8 @@ class BaoCaoRepository:
                 WHERE M.NGAY >= B.START_DATE AND M.NGAY < B.END_EXCLUSIVE
             )
             SELECT P.NGAY, P.LOAI, P.CHUNG_TU, P.MASP,
-                COALESCE(SP.TENSP, N''), P.SL_NHAP, P.GT_NHAP,
-                P.SL_XUAT, P.GT_XUAT,
+                COALESCE(SP.TENSP, N''), O.TON_DAU,
+                P.SL_NHAP, P.GT_NHAP, P.SL_XUAT, P.GT_XUAT,
                 O.TON_DAU + SUM(P.SL_NHAP - P.SL_XUAT) OVER (
                     PARTITION BY P.MASP
                     ORDER BY P.NGAY, P.CHUNG_TU, P.LOAI
