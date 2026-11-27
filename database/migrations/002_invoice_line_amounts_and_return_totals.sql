@@ -136,6 +136,21 @@ BEGIN TRY
             ON F.MAHD = CT.MAHD AND F.MASP = CT.MASP;
     END;
 
+    IF OBJECT_ID(N'dbo.CK_CTHD_THANHTIEN_KHONG_AM', N'C') IS NULL
+    BEGIN
+        ALTER TABLE dbo.CHI_TIET_HOA_DON
+        ADD CONSTRAINT CK_CTHD_THANHTIEN_KHONG_AM
+            CHECK (THANHTIEN >= 0);
+    END;
+
+    IF OBJECT_ID(N'dbo.CK_CTHD_THANHTIENSAUGIAM_HOP_LE', N'C') IS NULL
+    BEGIN
+        ALTER TABLE dbo.CHI_TIET_HOA_DON
+        ADD CONSTRAINT CK_CTHD_THANHTIENSAUGIAM_HOP_LE
+            CHECK (THANHTIENSAUGIAM >= 0
+                   AND THANHTIENSAUGIAM <= THANHTIEN);
+    END;
+
     /*
        Đổi tên cột cũ và chuyển giá trị lịch sử từ đơn giá hoàn
        sang tổng tiền hoàn của cả dòng.
