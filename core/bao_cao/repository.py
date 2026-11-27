@@ -34,7 +34,7 @@ class BaoCaoRepository:
         params = [start_date, end_date, employee_code, employee_code]
         if keyword:
             search_sql = """
-                AND (HD.MAHD LIKE ? OR NV.TENNV LIKE ?
+                AND (HD.MAHD LIKE ? OR I.TENNV LIKE ?
                      OR HD.MANV LIKE ? OR CONVERT(nvarchar(20), HD.MACA) LIKE ?)
             """
             params.extend([f"%{keyword}%"] * 4)
