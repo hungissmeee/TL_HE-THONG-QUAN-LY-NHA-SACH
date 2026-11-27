@@ -11,18 +11,15 @@ Backend chạy độc lập với ứng dụng Desktop và hiện cung cấp hai
 
 ## Cấu hình
 
-Windows PowerShell:
+Trong thư mục gốc repository, sao chép `.env.example` và đổi tên bản sao thành `.env` (có thể thao tác trực tiếp bằng File Explorer). Mở `.env` bằng trình soạn thảo và điền thông tin SQL Server. Cả Desktop và Backend đều tự nạp cùng file này khi khởi động.
 
-    Copy-Item .env.example .env
+- `BOOKHUB_SQL_*`: kết nối của ứng dụng Desktop.
+- `BOOKHUB_WEB_SQL_*`: kết nối dịch vụ riêng của Backend. Hãy tạo một SQL Login riêng cho Backend với quyền tối thiểu; không dùng tài khoản nhân viên hoặc Admin Desktop.
 
-Linux/macOS:
-
-    cp .env.example .env
-
-Mở tệp `.env` bằng trình soạn thảo và điền `BOOKHUB_WEB_SQL_SERVER`, `BOOKHUB_WEB_SQL_DATABASE`, `BOOKHUB_WEB_SQL_USERNAME` và `BOOKHUB_WEB_SQL_PASSWORD`. Để trống hoặc bỏ qua cấu hình Desktop nếu chỉ chạy Backend.
+Để trống `BOOKHUB_WEB_SQL_PASSWORD` cho đến khi bạn đã tạo tài khoản dịch vụ và có mật khẩu thật.
 
 
-Backend tự động nạp tệp `.env` tại thư mục gốc dự án bằng python-dotenv khi khởi tạo cấu hình. Bạn chỉ cần sao chép `.env.example` thành `.env` rồi điền thông tin tại đó; không cần dùng lệnh `$env:` hoặc `export`. Biến môi trường do hệ điều hành/container cung cấp sẽ được ưu tiên hơn giá trị trong `.env`.
+Backend tự động nạp tệp `.env` tại thư mục gốc dự án bằng python-dotenv khi khởi tạo cấu hình. Desktop cũng nạp cùng tệp khi tạo đối tượng `Database`. Bạn chỉ cần sao chép `.env.example` thành `.env` rồi điền thông tin tại đó; không cần dùng lệnh `$env:` hoặc `export`. Biến môi trường do hệ điều hành/container cung cấp sẽ được ưu tiên hơn giá trị trong `.env`.
 
 Dùng tài khoản SQL Server riêng cho Backend qua BOOKHUB_WEB_SQL_USERNAME và BOOKHUB_WEB_SQL_PASSWORD. Không dùng tài khoản cá nhân của nhân viên, không dùng tài khoản Admin Desktop và không commit thông tin đăng nhập vào Git.
 
