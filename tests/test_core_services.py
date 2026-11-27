@@ -969,6 +969,31 @@ class ReportServiceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.service.inventory_report(5, "unknown")
 
+    def test_product_report_sql_does_not_read_removed_refund_unit_price(self):
+        class CaptureRepository(BaoCaoRepository):
+            def __init__(self):
+                self.sql = None
+                self.params = None
+
+            def _fetch_all(self, sql, params=()):
+                self.sql = sql
+                self.params = params
+                return []
+
+        repository = CaptureRepository()
+        repository.product_report(
+            "2026-11-01", "2026-11-30", "revenue_desc", "SP"
+        )
+
+        self.assertNotIn("DONGIAHOAN", repository.sql)
+        self.assertNotIn("TIEN_HOAN", repository.sql)
+        self.assertIn("SL_HOAN_TIEN", repository.sql)
+        self.assertIn("SL_DOI_HANG", repository.sql)
+        self.assertEqual(
+            repository.params,
+            ("2026-11-01", "2026-11-30", "2026-11-01", "2026-11-30", "%SP%", "%SP%"),
+        )
+
     def test_product_report_service_validates_sort_whitelist(self):
         self.service.product_report(
             "2026-01-01", "2026-01-31", "quantity_desc", "book"
