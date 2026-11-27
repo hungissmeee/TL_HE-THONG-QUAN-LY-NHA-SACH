@@ -28,7 +28,24 @@ class ImportReportPage(ReportBasePage):
             "Số HĐ nhà cung cấp", "Nhân viên lập", "Số lượng nhập", "Tổng trị giá"
         ])
         self.content_layout.addWidget(self.table)
-        self.register_export_table("Bao cao nhap hang", self.table)
+        self.register_export_table("Chi tiet phieu nhap", self.table)
+
+        supplier_title = QLabel("Tổng hợp nhập hàng theo nhà cung cấp")
+        supplier_title.setStyleSheet("font-size: 14px; font-weight: bold;")
+        self.content_layout.addWidget(supplier_title)
+        supplier_note = QLabel(
+            "Chỉ tổng hợp các phiếu nhập còn hiệu lực trong khoảng thời gian đã chọn."
+        )
+        supplier_note.setStyleSheet("color: #8291A5; font-size: 10px;")
+        self.content_layout.addWidget(supplier_note)
+        self.supplier_table = self.make_table([
+            "Mã NCC", "Nhà cung cấp", "Số điện thoại",
+            "Số phiếu nhập", "Số lượng nhập", "Tổng trị giá",
+        ])
+        self.content_layout.addWidget(self.supplier_table)
+        self.register_export_table(
+            "Nhap hang theo nha cung cap", self.supplier_table
+        )
 
     def load_report(self):
         start_date, end_date = self.date_parameters()
@@ -70,3 +87,39 @@ class ImportReportPage(ReportBasePage):
             )
             for row in rows
         ])
+        supplier_sql = """
+            SELECT
+                PN.MANCC,
+                COALESCE(NCC.TENNCC, PN.MANCC, N'Không xác định'),
+                COALESCE(NCC.SDT, N''),
+                COUNT(DISTINCT PN.MAPN) AS SO_PHIEU,
+                COALESCE(SUM(CT.TONG_SOLUONG), 0) AS TONG_SOLUONG,
+                COALESCE(SUM(PN.TONGTRIGIA), 0) AS TONG_TRIGIA
+            FROM dbo.PHIEU_NHAP PN
+            LEFT JOIN dbo.NHA_CUNG_CAP NCC ON NCC.MANCC = PN.MANCC
+            OUTER APPLY (
+                SELECT SUM(COALESCE(CTPN.SOLUONG, 0)) AS TONG_SOLUONG
+                FROM dbo.CHI_TIET_PHIEU_NHAP CTPN
+                WHERE CTPN.MAPN = PN.MAPN
+            ) CT
+            WHERE PN.NGAYNHAP >= CONVERT(date, ?)
+              AND PN.NGAYNHAP < DATEADD(day, 1, CONVERT(date, ?))
+              AND ISNULL(PN.TRANGTHAI, 1) = 1
+            GROUP BY PN.MANCC, NCC.TENNCC, NCC.SDT
+            ORDER BY TONG_TRIGIA DESC, NCC.TENNCC
+        """
+        supplier_rows = self.fetch_all(
+            supplier_sql, (start_date, end_date)
+        )
+        self.fill_table(self.supplier_table, [
+            (
+                row[0] or "",
+                row[1],
+                row[2],
+                number_text(row[3]),
+                number_text(row[4]),
+                money_text(row[5]),
+            )
+            for row in supplier_rows
+        ])
+
