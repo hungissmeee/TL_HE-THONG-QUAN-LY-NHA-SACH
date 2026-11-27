@@ -141,6 +141,39 @@ class NativeQtControlStyleTests(unittest.TestCase):
             _APP.setPalette(original)
 
 
+class CartTableOrderTests(unittest.TestCase):
+    """Giỏ hàng hóa đơn và phiếu nhập phải giữ nguyên thứ tự thêm sản phẩm."""
+
+    def _assert_cart_table_keeps_insertion_order(self, configure_table):
+        table = QTableWidget(0, 3)
+        configure_table(table, stretch_column=1)
+
+        self.assertFalse(table.isSortingEnabled())
+        self.assertFalse(table.horizontalHeader().sectionsClickable())
+        self.assertFalse(table.horizontalHeader().isSortIndicatorShown())
+
+        codes = ["SP003", "SP001", "SP002"]
+        for row, code in enumerate(codes):
+            table.insertRow(row)
+            table.setItem(row, 0, SortableTableWidgetItem(code))
+
+        self.assertEqual(
+            [table.item(row, 0).text() for row in range(table.rowCount())],
+            codes,
+        )
+        table.close()
+
+    def test_invoice_cart_keeps_products_in_added_order(self):
+        self._assert_cart_table_keeps_insertion_order(
+            CreateInvoiceDialog._configure_table
+        )
+
+    def test_import_cart_keeps_products_in_added_order(self):
+        self._assert_cart_table_keeps_insertion_order(
+            CreateImportDialog._configure_table
+        )
+
+
 class ReturnDialogWidgetTests(unittest.TestCase):
     """Kiểm tra ô chọn hóa đơn giữ nguyên hành vi native của QComboBox."""
 

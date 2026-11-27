@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (
 )
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
-    prepare_sortable_table,
+    set_table_minimum_section_size,
     pause_table_sorting,
     resume_table_sorting,
 )
@@ -194,8 +194,7 @@ class CreateInvoiceDialog(QDialog):
         ])
         self._configure_table(
             self.cart_table,
-            stretch_column=1,
-            default_sort_column=0
+            stretch_column=1
         )
         cart_layout.addWidget(self.cart_table)
         root.addWidget(cart_group, 3)
@@ -234,30 +233,25 @@ class CreateInvoiceDialog(QDialog):
         root.addLayout(bottom)
 
     @staticmethod
-    def _configure_table(
-            table,
-            stretch_column=None,
-            default_sort_column=0
-    ):
-        """Cấu hình cách hiển thị, chọn và sắp xếp bảng sản phẩm."""
+    def _configure_table(table, stretch_column=None):
+        """Cấu hình bảng giỏ hàng, giữ nguyên thứ tự thêm sản phẩm."""
         table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         table.setAlternatingRowColors(True)
         table.verticalHeader().setVisible(False)
+        table.setSortingEnabled(False)
 
         header = table.horizontalHeader()
+        set_table_minimum_section_size(table)
+        header.setSectionsClickable(False)
+        header.setSortIndicatorShown(False)
         header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
 
         if stretch_column is not None:
             header.setSectionResizeMode(
                 stretch_column, QHeaderView.ResizeMode.Stretch
             )
-
-        prepare_sortable_table(
-            table,
-            default_column=default_sort_column
-        )
 
     @staticmethod
     def _set_cell(table, row, column, value, data=None):
