@@ -74,7 +74,20 @@ class RevenueReportPage(ReportBasePage):
             "Doanh thu bán hàng", "Tiền hoàn phát sinh", "Doanh thu sau hoàn"
         ])
         self.content_layout.addWidget(self.table)
-        self.register_export_table("Bao cao doanh thu", self.table)
+        self.register_export_table("Bao cao doanh thu theo ky", self.table)
+
+        promotion_title = QLabel("Hiệu quả chương trình khuyến mãi")
+        promotion_title.setStyleSheet("font-size: 14px; font-weight: bold;")
+        self.content_layout.addWidget(promotion_title)
+        self.promotion_table = self.make_table([
+            "Mã khuyến mãi", "Tên chương trình", "Tỷ lệ giảm",
+            "Số hóa đơn", "Tiền hàng", "Tiền giảm",
+            "Doanh thu sau giảm", "Tiền hoàn", "Doanh thu sau hoàn",
+        ])
+        self.content_layout.addWidget(self.promotion_table)
+        self.register_export_table(
+            "Hieu qua khuyen mai", self.promotion_table
+        )
 
     def load_report(self):
         start_date, end_date = self.date_parameters()
@@ -162,3 +175,67 @@ class RevenueReportPage(ReportBasePage):
         # Trục thời gian của biểu đồ phải chạy từ cũ đến mới.
         self.chart.set_data(list(reversed(chart_rows)))
         self.fill_table(self.table, display_rows)
+        promotion_sql = """
+            WITH PromotionSales AS (
+                SELECT
+                    HD.MAKM,
+                    COALESCE(KM.TENKM, N'Không áp dụng khuyến mãi') AS TENKM,
+                    COALESCE(KM.TYLEGIAM, 0) AS TYLEGIAM,
+                    COUNT(DISTINCT HD.MAHD) AS SO_HD,
+                    COALESCE(SUM(CT.DONGIA * CT.SOLUONG), 0) AS TIEN_HANG,
+                    COALESCE(SUM(CT.DONGIA * CT.SOLUONG
+                        * COALESCE(KM.TYLEGIAM, 0) / 100.0), 0) AS TIEN_GIAM,
+                    COALESCE(SUM(CT.DONGIA * CT.SOLUONG
+                        * (1 - COALESCE(KM.TYLEGIAM, 0) / 100.0)), 0) AS DOANH_THU
+                FROM dbo.HOA_DON HD
+                LEFT JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
+                LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
+                WHERE HD.TRANGTHAI = 1
+                  AND HD.NGAYLAP >= CONVERT(date, ?)
+                  AND HD.NGAYLAP < DATEADD(day, 1, CONVERT(date, ?))
+                GROUP BY HD.MAKM, KM.TENKM, KM.TYLEGIAM
+            ),
+            PromotionRefunds AS (
+                SELECT
+                    HD.MAKM,
+                    COALESCE(SUM(PDT.TONG_TIEN_HOAN), 0) AS TIEN_HOAN
+                FROM dbo.HOA_DON HD
+                INNER JOIN dbo.PHIEU_DOI_TRA PDT ON PDT.MAHD = HD.MAHD
+                WHERE HD.TRANGTHAI = 1
+                  AND HD.NGAYLAP >= CONVERT(date, ?)
+                  AND HD.NGAYLAP < DATEADD(day, 1, CONVERT(date, ?))
+                GROUP BY HD.MAKM
+            )
+            SELECT
+                S.MAKM,
+                S.TENKM,
+                S.TYLEGIAM,
+                S.SO_HD,
+                S.TIEN_HANG,
+                S.TIEN_GIAM,
+                S.DOANH_THU,
+                COALESCE(R.TIEN_HOAN, 0) AS TIEN_HOAN,
+                S.DOANH_THU - COALESCE(R.TIEN_HOAN, 0) AS DOANH_THU_SAU_HOAN
+            FROM PromotionSales S
+            LEFT JOIN PromotionRefunds R
+                ON ISNULL(R.MAKM, '') = ISNULL(S.MAKM, '')
+            ORDER BY S.DOANH_THU DESC, S.TENKM
+        """
+        promotion_rows = self.fetch_all(
+            promotion_sql, (start_date, end_date, start_date, end_date)
+        )
+        self.fill_table(self.promotion_table, [
+            (
+                row[0] or "—",
+                row[1],
+                f"{float(row[2] or 0):.2f}%",
+                number_text(row[3]),
+                money_text(row[4]),
+                money_text(row[5]),
+                money_text(row[6]),
+                money_text(row[7]),
+                money_text(row[8]),
+            )
+            for row in promotion_rows
+        ])
+
