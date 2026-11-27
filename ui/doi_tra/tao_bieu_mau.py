@@ -27,10 +27,8 @@ class CreateReturnDialog(QDialog):
         self.invoice_discount = Decimal("0.00")
 
         self.setWindowTitle("Lập phiếu đổi trả")
-        # Chừa đủ không gian cho các cột có combobox; màn hình nhỏ hơn
-        # vẫn có thể cuộn ngang thay vì cắt mất nội dung điều khiển.
-        self.resize(1180, 740)
-        self.setMinimumSize(1040, 640)
+        self.resize(1120, 720)
+        self.setMinimumSize(980, 620)
         self._ensure_manager()
         self._build_ui()
         self._load_eligible_invoices()
@@ -135,35 +133,9 @@ class CreateReturnDialog(QDialog):
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setAlternatingRowColors(True)
         self.table.verticalHeader().setVisible(False)
-        self.table.setWordWrap(True)
-        self.table.setHorizontalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAsNeeded
-        )
-        self.table.setHorizontalScrollMode(
-            QAbstractItemView.ScrollMode.ScrollPerPixel
-        )
-
-        # Đặt độ rộng rõ ràng cho các cột chứa điều khiển. QHeaderView
-        # ResizeToContents không tính đủ chiều rộng của widget nhúng.
         header = self.table.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
-        column_widths = {
-            0: 65,    # Mã sản phẩm
-            1: 200,   # Tên sản phẩm
-            2: 68,    # Đã mua
-            3: 70,    # Đã xử lý
-            4: 108,   # Còn được xử lý
-            5: 100,   # Số lượng
-            6: 162,   # Tình trạng hàng
-            7: 200,   # Hình thức xử lý
-            8: 90,    # Tiền hoàn
-        }
-        for column, width in column_widths.items():
-            header.setSectionResizeMode(
-                column, QHeaderView.ResizeMode.Fixed
-            )
-            self.table.setColumnWidth(column, width)
-
+        header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         items_layout.addWidget(self.table, 1)
         root.addWidget(items_group, 1)
 
@@ -177,10 +149,8 @@ class CreateReturnDialog(QDialog):
         self.save_button = QPushButton("Lưu phiếu đổi trả")
         self.save_button.setProperty("buttonRole", "primary")
         self.save_button.setObjectName("primaryButton")
-        self.save_button.setMinimumSize(145, 36)
         self.save_button.clicked.connect(self.save_return)
         close_button = QPushButton("Đóng")
-        close_button.setMinimumSize(70, 36)
         close_button.clicked.connect(self.reject)
         bottom.addWidget(self.save_button)
         bottom.addWidget(close_button)
@@ -336,14 +306,11 @@ class CreateReturnDialog(QDialog):
                     remaining, "", "", "", money(0)
                 ]
                 for column, value in enumerate(values):
-                    cell_item = QTableWidgetItem(str(value))
-                    cell_item.setToolTip(str(value))
-                    self.table.setItem(row, column, cell_item)
+                    self.table.setItem(row, column, QTableWidgetItem(str(value)))
 
                 quantity = QLineEdit("0")
-                quantity.setMinimumWidth(90)
-                quantity.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 quantity.setValidator(QIntValidator(0, remaining, quantity))
+                quantity.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 quantity.setToolTip(
                     f"Chỉ nhập số nguyên từ 0 đến {remaining}. "
                     f"Đơn vị tính: {data[2] or 'Không xác định'}"
@@ -352,36 +319,14 @@ class CreateReturnDialog(QDialog):
                 condition = QComboBox()
                 condition.addItem("Còn nguyên vẹn", 1)
                 condition.addItem("Đã hỏng", 0)
-                condition.setMinimumWidth(155)
-                condition.setMinimumContentsLength(12)
-                condition.setToolTip("Chọn tình trạng thực tế của hàng khách trả.")
-                condition.view().setMinimumWidth(160)
 
                 action = QComboBox()
                 action.addItem("Hoàn tiền", 0)
                 action.addItem("Đổi sản phẩm cùng mã", 1)
-                action.setMinimumWidth(192)
-                action.setMinimumContentsLength(20)
-                action.setToolTip(
-                    "Chọn hoàn tiền hoặc đổi sản phẩm cùng mã. "
-                    "Chỉ hàng đã hỏng mới được đổi."
-                )
-                action.view().setMinimumWidth(205)
-
-                # Dòng đã xử lý hết được khóa để tránh người dùng tưởng
-                # rằng vẫn còn số lượng có thể đổi trả.
-                has_remaining = remaining > 0
-                for control in (quantity, condition, action):
-                    control.setEnabled(has_remaining)
-                if not has_remaining:
-                    quantity.setToolTip(
-                        "Sản phẩm đã được xử lý đủ; không còn số lượng đổi trả."
-                    )
 
                 self.table.setCellWidget(row, 5, quantity)
                 self.table.setCellWidget(row, 6, condition)
                 self.table.setCellWidget(row, 7, action)
-                self.table.setRowHeight(row, 46)
                 self.row_controls[masp] = {
                     "row": row,
                     "quantity": quantity,
@@ -394,10 +339,7 @@ class CreateReturnDialog(QDialog):
                 condition.currentIndexChanged.connect(self.update_totals)
                 action.currentIndexChanged.connect(self.update_totals)
 
-            # Chỉ bật nút lưu khi còn ít nhất một sản phẩm có thể xử lý.
-            self.save_button.setEnabled(
-                any(item["remaining"] > 0 for item in self.row_controls.values())
-            )
+            self.save_button.setEnabled(bool(self.row_controls))
             self.update_totals()
         finally:
             cursor.close()
