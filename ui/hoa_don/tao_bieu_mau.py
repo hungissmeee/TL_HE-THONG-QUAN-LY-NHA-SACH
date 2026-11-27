@@ -190,10 +190,11 @@ class CreateInvoiceDialog(QDialog):
 
         cart_group = QGroupBox("Giỏ hàng")
         cart_layout = QVBoxLayout(cart_group)
-        self.cart_table = QTableWidget(0, 6)
+        self.cart_table = QTableWidget(0, 7)
+        self.cart_table.setMinimumHeight(170)
         self.cart_table.setHorizontalHeaderLabels([
             "Mã SP", "Tên sản phẩm", "Số lượng",
-            "Đơn giá (đã gồm VAT)", "VAT (%)", "Thành tiền"
+            "Đơn giá (đã gồm VAT)", "VAT (%)", "Thành tiền", "Thao tác"
         ])
         self._configure_table(
             self.cart_table,
@@ -431,7 +432,15 @@ class CreateInvoiceDialog(QDialog):
                     lambda value, code=masp: self._update_cart_quantity(code, value)
                 )
                 self.cart_table.setCellWidget(row_index, 2, quantity)
-                self.cart_table.setRowHeight(row_index, 42)
+
+                remove_button = QPushButton("Bỏ")
+                remove_button.setObjectName("dangerButton")
+                remove_button.clicked.connect(
+                    lambda _checked=False, product_code=masp:
+                    self._remove_cart_item(product_code)
+                )
+                self.cart_table.setCellWidget(row_index, 6, remove_button)
+                self.cart_table.setRowHeight(row_index, 44)
         finally:
             resume_table_sorting(self.cart_table)
 
@@ -454,16 +463,18 @@ class CreateInvoiceDialog(QDialog):
                 break
         self.update_totals()
 
+    def _remove_cart_item(self, masp):
+        """Bỏ một sản phẩm trực tiếp từ giỏ hàng."""
+        self.cart.pop(masp, None)
+        self._refresh_cart()
+        self.update_totals()
+
     def remove_selected_cart_item(self):
-        """Xóa sản phẩm đang chọn khỏi giỏ hàng."""
+        """Tương thích với thao tác xóa theo dòng đang chọn."""
         row = self.cart_table.currentRow()
-        if row < 0:
-            return
-        item = self.cart_table.item(row, 0)
-        if item:
-            self.cart.pop(item.text(), None)
-            self._refresh_cart()
-            self.update_totals()
+        item = self.cart_table.item(row, 0) if row >= 0 else None
+        if item is not None:
+            self._remove_cart_item(item.text())
 
     def _calculate_totals(self):
         """Tính tiền từ đơn giá đã bao gồm VAT, không cộng VAT lần nữa."""
