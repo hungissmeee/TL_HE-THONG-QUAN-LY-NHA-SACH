@@ -2,6 +2,7 @@ import type { EmployeeSummary, LoginCredentials, LoginResponse } from "@/types/a
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "/api/v1").replace(/\/+$/, "");
 const ACCESS_TOKEN_KEY = "bookhub.web.access_token";
+let memoryAccessToken: string | null = null;
 
 export class ApiError extends Error {
   constructor(readonly status: number, message: string) {
@@ -12,17 +13,28 @@ export class ApiError extends Error {
 
 export function getAccessToken(): string | null {
   try {
-    return window.sessionStorage.getItem(ACCESS_TOKEN_KEY);
+    const storedToken = window.sessionStorage.getItem(ACCESS_TOKEN_KEY);
+    if (storedToken) {
+      memoryAccessToken = storedToken;
+      return storedToken;
+    }
   } catch {
-    return null;
+    // Dùng token trong bộ nhớ nếu trình duyệt chặn sessionStorage.
   }
+  return memoryAccessToken;
 }
 
 export function saveAccessToken(token: string): void {
-  window.sessionStorage.setItem(ACCESS_TOKEN_KEY, token);
+  memoryAccessToken = token;
+  try {
+    window.sessionStorage.setItem(ACCESS_TOKEN_KEY, token);
+  } catch {
+    // Phiên hiện tại vẫn hoạt động bằng token trong bộ nhớ của tab.
+  }
 }
 
 export function clearAccessToken(): void {
+  memoryAccessToken = null;
   try {
     window.sessionStorage.removeItem(ACCESS_TOKEN_KEY);
   } catch {

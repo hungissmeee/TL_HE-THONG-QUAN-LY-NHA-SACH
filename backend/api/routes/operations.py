@@ -939,6 +939,7 @@ def record_shift_cash(
         raise HTTPException(status_code=403, detail="Chỉ Kế toán/Admin được ghi tiền cuối ca.")
     sql = """
         SET XACT_ABORT ON;
+        DECLARE @IsAdmin BIT = ?;
         DECLARE @Maca INT = ?;
         DECLARE @Manv VARCHAR(20) = ?;
         DECLARE @Cash DECIMAL(15,2) = ?;
@@ -949,7 +950,7 @@ def record_shift_cash(
         DECLARE @EndAt DATETIME2;
         DECLARE @ExistingCash DECIMAL(15,2);
 
-        IF LOWER(@Manv) <> N'admin' AND NOT EXISTS (
+        IF @IsAdmin = 0 AND NOT EXISTS (
             SELECT 1 FROM dbo.NHAN_VIEN
             WHERE MANV = @Manv AND LTRIM(RTRIM(VAITRO)) = N'Kế toán'
         )
@@ -981,7 +982,7 @@ def record_shift_cash(
     """
     cursor = connection.cursor()
     try:
-        cursor.execute(sql, shift_id, user.employee_code, payload.amount)
+        cursor.execute(sql, int(_is_admin(user)), shift_id, user.employee_code, payload.amount)
         connection.commit()
         return {"maca": shift_id, "message": "Đã ghi tiền cuối ca."}
     except Exception as error:

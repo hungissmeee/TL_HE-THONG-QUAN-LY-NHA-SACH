@@ -51,10 +51,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (active) setUser(currentUser);
         })
         .catch((error: unknown) => {
-          clearAccessToken();
-          if (active && !(error instanceof ApiError && error.status === 401)) {
-            setUser(null);
+          if (error instanceof ApiError && error.status === 401) {
+            clearAccessToken();
           }
+          if (active) setUser(null);
         })
         .finally(() => {
           if (active) setLoading(false);

@@ -60,5 +60,77 @@ class OperationsAuthorizationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 403)
 
 
+
+class FakeClosingCashCursor:
+    def __init__(self):
+        self.sql = ""
+        self.params = ()
+        self.closed = False
+
+    def execute(self, sql, *params):
+        self.sql = sql
+        self.params = params
+        return self
+
+    def close(self):
+        self.closed = True
+
+
+class FakeClosingCashConnection:
+    def __init__(self):
+        self.fake_cursor = FakeClosingCashCursor()
+        self.commits = 0
+        self.rollbacks = 0
+
+    def cursor(self):
+        return self.fake_cursor
+
+    def commit(self):
+        self.commits += 1
+
+    def rollback(self):
+        self.rollbacks += 1
+
+
+class ClosingCashAuthorizationTests(unittest.TestCase):
+    def _post_as(self, role_code, role):
+        app = create_app()
+        connection = FakeClosingCashConnection()
+        user = CurrentUser(
+            employee_code="NV009",
+            full_name="Nhân viên kiểm thử",
+            role=role,
+            role_code=role_code,
+        )
+        app.dependency_overrides[get_current_user] = lambda: user
+        app.dependency_overrides[get_db_connection] = lambda: connection
+        try:
+            response = TestClient(app).post(
+                "/api/v1/shifts/42/closing-cash",
+                json={"amount": "125000.00"},
+            )
+        finally:
+            app.dependency_overrides.clear()
+        return response, connection
+
+    def test_admin_can_close_shift_even_when_employee_code_is_not_admin(self):
+        response, connection = self._post_as("admin", "Quản trị hệ thống")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(connection.fake_cursor.params[0], 1)
+        self.assertEqual(connection.fake_cursor.params[1], 42)
+        self.assertEqual(connection.fake_cursor.params[2], "NV009")
+        self.assertIn("IF @IsAdmin = 0", connection.fake_cursor.sql)
+        self.assertNotIn("LOWER(@Manv) <> N'admin'", connection.fake_cursor.sql)
+        self.assertEqual(connection.commits, 1)
+        self.assertEqual(connection.rollbacks, 0)
+
+    def test_accountant_keeps_employee_role_check(self):
+        response, connection = self._post_as("rl_KeToan", "Kế toán")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(connection.fake_cursor.params[0], 0)
+        self.assertIn("IF @IsAdmin = 0 AND NOT EXISTS", connection.fake_cursor.sql)
+        self.assertEqual(connection.commits, 1)
+
+
 if __name__ == "__main__":
     unittest.main()

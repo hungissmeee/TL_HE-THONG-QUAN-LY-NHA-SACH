@@ -59,6 +59,18 @@ function ImportsPage() {
   }
 
   async function save(values: DataRow) {
+    const items = Array.isArray(values.items) ? values.items as DataRow[] : [];
+    const seenProducts = new Set<string>();
+    for (const item of items) {
+      const code = String(item?.product_code || "").trim();
+      if (!code) continue;
+      if (seenProducts.has(code)) {
+        message.error(`Sản phẩm ${code} chỉ được xuất hiện một lần trong phiếu nhập.`);
+        return;
+      }
+      seenProducts.add(code);
+    }
+
     setSaving(true);
     try {
       const result = await operationsApi.createImport(values);
