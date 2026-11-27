@@ -1,5 +1,8 @@
 """SupplierFormDialog: thành phần giao diện nghiệp vụ."""
 
+from core.repositories.nha_cung_cap_repository import NhaCungCapRepository
+from core.services.nha_cung_cap_service import NhaCungCapService
+
 from PySide6.QtWidgets import (
     QDialog,
     QLabel,
@@ -20,6 +23,7 @@ class SupplierFormDialog(QDialog):
         """Khởi tạo biểu mẫu và nạp dữ liệu nhà cung cấp nếu đang ở chế độ chỉnh sửa."""
         super().__init__(parent)
         self.db = db
+        self.service = NhaCungCapService(NhaCungCapRepository(db))
         self.supplier = supplier
         self.is_edit = supplier is not None
         self.saved_supplier = None
@@ -94,96 +98,32 @@ class SupplierFormDialog(QDialog):
         self.address_input.setText(str(row[3] or ""))
         self.tax_input.setText(str(row[4] or ""))
 
-    @staticmethod
-    def _next_code(cursor, lock_table=False):
-        """Sinh mã nhà cung cấp kế tiếp theo dữ liệu đã có trong SQL Server."""
-        hint = " WITH (TABLOCKX, HOLDLOCK)" if lock_table else ""
-        cursor.execute(f"""
-            SELECT COALESCE(
-                MAX(TRY_CONVERT(BIGINT, SUBSTRING(MANCC, 4, 17))), 0
-            )
-            FROM dbo.NHA_CUNG_CAP{hint}
-            WHERE UPPER(LEFT(MANCC, 3)) = 'NCC'
-              AND TRY_CONVERT(BIGINT, SUBSTRING(MANCC, 4, 17)) IS NOT NULL
-        """)
-        next_number = int(cursor.fetchone()[0] or 0) + 1
-        code = f"NCC{next_number:03d}"
-        if len(code) > 20:
-            raise ValueError("Mã nhà cung cấp đã vượt quá 20 ký tự.")
-        return code
-
     def _refresh_code_preview(self):
-        """Hiển thị trước mã nhà cung cấp sẽ được cấp khi lưu."""
-        conn = self.db.get_connection()
-        if conn is None:
-            return
-        cursor = None
         try:
-            cursor = conn.cursor()
-            self.code_input.setText(self._next_code(cursor))
-            conn.commit()
+            self.code_input.setText(self.service.preview_next_code())
         except Exception as error:
-            conn.rollback()
             self.code_input.setText("Tự động khi lưu")
             QMessageBox.warning(self, "Không tạo được mã", str(error))
-        finally:
-            if cursor is not None:
-                cursor.close()
 
     def save(self):
-        """Kiểm tra dữ liệu bắt buộc rồi thêm mới hoặc cập nhật nhà cung cấp."""
-        name = self.name_input.text().strip()
-        if not name:
-            QMessageBox.warning(self, "Thiếu thông tin", "Vui lòng nhập tên nhà cung cấp.")
-            self.name_input.setFocus()
-            return
-
-        phone = self.phone_input.text().strip() or None
-        address = self.address_input.text().strip() or None
-        tax = self.tax_input.text().strip() or None
-
-        conn = self.db.get_connection()
-        if conn is None:
-            QMessageBox.warning(self, "Thông báo", "Chưa có kết nối SQL Server.")
-            return
-
-        cursor = None
+        data = {
+            "name": self.name_input.text(),
+            "phone": self.phone_input.text(),
+            "address": self.address_input.text(),
+            "tax": self.tax_input.text(),
+        }
         try:
-            cursor = conn.cursor()
-            if self.is_edit:
-                code = str(self.supplier[0])
-                cursor.execute("""
-                    UPDATE dbo.NHA_CUNG_CAP
-                    SET TENNCC = ?, SDT = ?, DIACHI = ?, MST = ?
-                    WHERE MANCC = ? AND ISNULL(IS_DELETED, 0) = 0
-                """, (name, phone, address, tax, code))
-                if cursor.rowcount != 1:
-                    raise RuntimeError("Nhà cung cấp không tồn tại hoặc đã ngừng hoạt động.")
-            else:
-                # Khóa bảng trong transaction để không sinh trùng mã khi có nhiều người thêm cùng lúc.
-                code = self._next_code(cursor, lock_table=True)
-                cursor.execute("""
-                    INSERT INTO dbo.NHA_CUNG_CAP
-                        (MANCC, TENNCC, SDT, DIACHI, MST, IS_DELETED)
-                    VALUES (?, ?, ?, ?, ?, 0)
-                """, (code, name, phone, address, tax))
-
-            conn.commit()
-            self.saved_supplier = (code, name)
+            code = self.service.save_supplier(
+                data,
+                supplier_code=self.supplier[0] if self.is_edit else None,
+            )
+            self.saved_supplier = (code, str(data["name"]).strip())
             QMessageBox.information(
                 self, "Thành công",
-                f"Đã {'cập nhật' if self.is_edit else 'thêm'} nhà cung cấp {code}."
+                f"Đã {'cập nhật' if self.is_edit else 'thêm'} nhà cung cấp {code}.",
             )
             self.accept()
+        except (ValueError, LookupError) as error:
+            QMessageBox.warning(self, "Thông tin chưa hợp lệ", str(error))
         except Exception as error:
-            conn.rollback()
-            message = str(error)
-            if "permission" in message.casefold() or "denied" in message.casefold():
-                message += "\n\nTài khoản cần quyền INSERT/UPDATE trên dbo.NHA_CUNG_CAP."
-            QMessageBox.critical(self, "Không thể lưu nhà cung cấp", message)
-        finally:
-            if cursor is not None:
-                cursor.close()
-
-
-
+            QMessageBox.critical(self, "Không thể lưu nhà cung cấp", str(error))
