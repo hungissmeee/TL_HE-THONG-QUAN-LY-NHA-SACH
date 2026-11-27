@@ -2,7 +2,9 @@
 
 from PySide6.QtWidgets import QLabel, QHBoxLayout, QComboBox
 
-from ui.bao_cao.bao_cao_co_so import ReportBasePage, money_text, number_text, date_text
+from ui.bao_cao.bao_cao_co_so import (
+    ReportBasePage, ReportLineChart, money_text, number_text, date_text,
+)
 
 
 class RevenueReportPage(ReportBasePage):
@@ -22,7 +24,7 @@ class RevenueReportPage(ReportBasePage):
         super().__init__(
             db,
             "Báo cáo doanh thu",
-            "Theo dõi tiền hàng, tiền giảm khuyến mãi, doanh thu hợp lệ và tiền hoàn trả theo kỳ.",
+            "Doanh thu được nhóm theo ngày lập hóa đơn; tiền hoàn được nhóm theo ngày xử lý phiếu đổi trả.",
             True,
             parent,
         )
@@ -49,9 +51,27 @@ class RevenueReportPage(ReportBasePage):
             ("count", "Hóa đơn hợp lệ", "0",
              "Số hóa đơn được ghi nhận doanh thu", "positive"),
         ], primary_key="net")
+        self.chart = ReportLineChart(
+            "Xu hướng doanh thu và doanh thu sau hoàn",
+            [
+                ("Doanh thu bán hàng", 0, "#60A5FA"),
+                ("Doanh thu sau hoàn theo ngày", 1, "#34D399"),
+            ],
+        )
+        self.content_layout.addWidget(self.chart)
+
+        note = QLabel(
+            "Doanh thu bán hàng tính theo ngày lập hóa đơn. Tiền hoàn tính "
+            "theo ngày lập phiếu đổi trả; doanh thu sau hoàn trong kỳ bằng "
+            "doanh thu bán hàng trong kỳ trừ tiền hoàn phát sinh trong kỳ."
+        )
+        note.setWordWrap(True)
+        note.setStyleSheet("color: #8291A5; font-size: 10px;")
+        self.content_layout.addWidget(note)
+
         self.table = self.make_table([
             "Kỳ", "Số hóa đơn", "Tiền hàng", "Giảm khuyến mãi",
-            "Doanh thu", "Tiền hoàn", "Doanh thu sau hoàn"
+            "Doanh thu bán hàng", "Tiền hoàn phát sinh", "Doanh thu sau hoàn"
         ])
         self.content_layout.addWidget(self.table)
         self.register_export_table("Bao cao doanh thu", self.table)
@@ -115,6 +135,7 @@ class RevenueReportPage(ReportBasePage):
         self.set_stat("net", money_text(sales_total - refund_total))
         self.set_stat("count", number_text(invoice_total))
 
+        chart_rows = []
         display_rows = []
         for row in rows:
             period = row[0]
@@ -126,6 +147,8 @@ class RevenueReportPage(ReportBasePage):
                     period_label = period.strftime("%Y")
             else:
                 period_label = str(period or "")
+
+            chart_rows.append((period_label, row[4] or 0, row[6] or 0))
             display_rows.append((
                 period_label,
                 number_text(row[1]),
@@ -135,4 +158,7 @@ class RevenueReportPage(ReportBasePage):
                 money_text(row[5]),
                 money_text(row[6]),
             ))
+
+        # Trục thời gian của biểu đồ phải chạy từ cũ đến mới.
+        self.chart.set_data(list(reversed(chart_rows)))
         self.fill_table(self.table, display_rows)
