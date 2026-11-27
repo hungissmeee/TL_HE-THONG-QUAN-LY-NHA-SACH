@@ -823,6 +823,44 @@ class ReturnDialogInputTests(unittest.TestCase):
                     CreateReturnDialog._parse_quantity_input(value)
 
 
+class InventoryRestorationTests(unittest.TestCase):
+    """Kiểm thử hoàn tồn kho đồng thời kích hoạt lại sản phẩm đã xóa mềm."""
+
+    def test_restore_and_activate_product_adds_stock_and_clears_soft_delete(self):
+        from core.sql_support import restore_and_activate_product
+
+        class RecordingCursor:
+            rowcount = 1
+
+            def execute(self, sql, *params):
+                self.sql = sql
+                self.params = params
+                return self
+
+        cursor = RecordingCursor()
+        restored = restore_and_activate_product(cursor, "SP001", 3)
+
+        self.assertTrue(restored)
+        self.assertIn("SET IS_DELETED = 0", cursor.sql)
+        self.assertIn("SLTON = ISNULL(SLTON, 0) + ?", cursor.sql)
+        self.assertIn("WHERE MASP = ?", cursor.sql)
+        self.assertEqual(cursor.params, (3, "SP001"))
+
+    def test_restore_and_activate_product_reports_missing_product(self):
+        from core.sql_support import restore_and_activate_product
+
+        class MissingProductCursor:
+            rowcount = 0
+
+            def execute(self, sql, *params):
+                self.sql = sql
+                self.params = params
+                return self
+
+        cursor = MissingProductCursor()
+        self.assertFalse(restore_and_activate_product(cursor, "SP404", 1))
+
+
 class ReturnVoucherDeletionTests(unittest.TestCase):
     """Kiểm thử tính toán biến động tồn kho khi xóa phiếu đổi trả."""
 
