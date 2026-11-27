@@ -11,7 +11,7 @@ class ProductReportPage(ReportBasePage):
         super().__init__(
             db,
             "Báo cáo sản phẩm",
-            "Phân tích số lượng bán, số hóa đơn có sản phẩm, doanh thu sau khuyến mãi và tồn kho hiện tại.",
+            "Phân tích lượng bán, lượng đổi/trả, tiền hoàn và doanh thu ròng theo sản phẩm. Tồn kho là số hiện tại.",
             True,
             parent,
         )
@@ -29,17 +29,21 @@ class ProductReportPage(ReportBasePage):
         self.content_layout.addLayout(controls)
 
         self.add_stat_cards([
-            ("sold", "Tổng số lượng đã bán", "0",
-             "Số lượng trên các hóa đơn hợp lệ", "neutral"),
-            ("revenue", "Doanh thu sản phẩm", "0 đ",
-             "Doanh thu sau khuyến mãi", "positive"),
+            ("sold", "Số lượng đã bán", "0",
+             "Tổng lượng xuất trên hóa đơn hợp lệ", "neutral"),
+            ("refund", "Tiền hoàn theo sản phẩm", "0 đ",
+             "Chỉ gồm dòng xử lý hoàn tiền", "warning"),
             ("active", "Sản phẩm có phát sinh bán", "0",
-             "Số mặt hàng có số lượng bán lớn hơn 0", "primary"),
-        ], primary_key="revenue")
+             "Số mã hàng có phát sinh bán", "neutral"),
+            ("net", "Doanh thu sản phẩm sau hoàn", "0 đ",
+             "Doanh thu sau khuyến mãi trừ tiền hoàn theo sản phẩm", "primary"),
+        ], primary_key="net")
 
         self.table = self.make_table([
             "Xếp hạng", "Mã sản phẩm", "Tên sản phẩm", "Số hóa đơn",
-            "Số lượng bán", "Tiền hàng", "Doanh thu sau KM", "Tồn kho"
+            "SL đã bán", "SL hoàn tiền", "SL đổi hàng", "Tiền hàng",
+            "Giảm khuyến mãi", "Doanh thu sau KM", "Tiền hoàn",
+            "Doanh thu sau hoàn", "Tồn kho hiện tại"
         ])
         self.content_layout.addWidget(self.table)
         self.register_export_table("Bao cao san pham", self.table)
@@ -51,20 +55,34 @@ class ProductReportPage(ReportBasePage):
         start_date, end_date = self.date_parameters()
         search = self.search_input.text().strip()
         filter_sql = ""
-        params = [start_date, end_date]
-        if search:
-            filter_sql = " AND (SP.MASP LIKE ? OR SP.TENSP LIKE ?)"
-            params.extend([f"%{search}%", f"%{search}%"])
-
         order_options = {
-            "quantity_desc": "COALESCE(S.SL_BAN, 0) DESC, COALESCE(S.DOANH_THU, 0) DESC, SP.TENSP ASC",
-            "quantity_asc": "COALESCE(S.SL_BAN, 0) ASC, COALESCE(S.DOANH_THU, 0) ASC, SP.TENSP ASC",
-            "revenue_desc": "COALESCE(S.DOANH_THU, 0) DESC, COALESCE(S.SL_BAN, 0) DESC, SP.TENSP ASC",
+            "quantity_desc": (
+                "COALESCE(S.SL_BAN, 0) DESC, "
+                "(COALESCE(S.DOANH_THU, 0) - COALESCE(R.TIEN_HOAN, 0)) DESC, "
+                "SP.TENSP ASC"
+            ),
+            "quantity_asc": (
+                "COALESCE(S.SL_BAN, 0) ASC, "
+                "(COALESCE(S.DOANH_THU, 0) - COALESCE(R.TIEN_HOAN, 0)) ASC, "
+                "SP.TENSP ASC"
+            ),
+            "revenue_desc": (
+                "(COALESCE(S.DOANH_THU, 0) - COALESCE(R.TIEN_HOAN, 0)) DESC, "
+                "COALESCE(S.SL_BAN, 0) DESC, SP.TENSP ASC"
+            ),
         }
         order_sql = order_options.get(
             self.sort_combo.currentData(),
             order_options["quantity_desc"],
         )
+
+        sales_params = [start_date, end_date]
+        return_params = [start_date, end_date]
+        if search:
+            filter_sql = " AND (SP.MASP LIKE ? OR SP.TENSP LIKE ?)"
+            search_params = [f"%{search}%", f"%{search}%"]
+        else:
+            search_params = []
 
         sql = f"""
             WITH Sales AS (
@@ -74,6 +92,8 @@ class ProductReportPage(ReportBasePage):
                     SUM(COALESCE(CT.SOLUONG, 0)) AS SL_BAN,
                     SUM(COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0)) AS TIEN_HANG,
                     SUM(COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0)
+                        * COALESCE(KM.TYLEGIAM, 0) / 100.0) AS TIEN_GIAM,
+                    SUM(COALESCE(CT.DONGIA, 0) * COALESCE(CT.SOLUONG, 0)
                         * (1 - COALESCE(KM.TYLEGIAM, 0) / 100.0)) AS DOANH_THU
                 FROM dbo.HOA_DON HD
                 INNER JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
@@ -82,6 +102,23 @@ class ProductReportPage(ReportBasePage):
                   AND HD.NGAYLAP >= CONVERT(date, ?)
                   AND HD.NGAYLAP < DATEADD(day, 1, CONVERT(date, ?))
                 GROUP BY CT.MASP
+            ),
+            Returns AS (
+                SELECT
+                    CTDT.MASP,
+                    SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 0
+                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_HOAN_TIEN,
+                    SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 1
+                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_DOI_HANG,
+                    SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 0
+                        THEN COALESCE(CTDT.DONGIAHOAN, 0)
+                           * COALESCE(CTDT.SOLUONG, 0)
+                        ELSE 0 END) AS TIEN_HOAN
+                FROM dbo.PHIEU_DOI_TRA PDT
+                INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT
+                WHERE PDT.NGAY_DOI_TRA >= CONVERT(date, ?)
+                  AND PDT.NGAY_DOI_TRA < DATEADD(day, 1, CONVERT(date, ?))
+                GROUP BY CTDT.MASP
             )
             SELECT
                 ROW_NUMBER() OVER (ORDER BY {order_sql}) AS XEP_HANG,
@@ -89,31 +126,42 @@ class ProductReportPage(ReportBasePage):
                 COALESCE(SP.TENSP, N''),
                 COALESCE(S.SO_HD, 0),
                 COALESCE(S.SL_BAN, 0),
+                COALESCE(R.SL_HOAN_TIEN, 0),
+                COALESCE(R.SL_DOI_HANG, 0),
                 COALESCE(S.TIEN_HANG, 0),
+                COALESCE(S.TIEN_GIAM, 0),
                 COALESCE(S.DOANH_THU, 0),
-                COALESCE(SP.SLTON, 0),
-                COALESCE(S.SL_BAN, 0) AS SL_BAN_SORT,
-                COALESCE(S.DOANH_THU, 0) AS DOANH_THU_SORT
+                COALESCE(R.TIEN_HOAN, 0),
+                COALESCE(S.DOANH_THU, 0) - COALESCE(R.TIEN_HOAN, 0),
+                COALESCE(SP.SLTON, 0)
             FROM dbo.SAN_PHAM SP
             LEFT JOIN Sales S ON S.MASP = SP.MASP
+            LEFT JOIN Returns R ON R.MASP = SP.MASP
             WHERE COALESCE(SP.IS_DELETED, 0) = 0
             {filter_sql}
             ORDER BY {order_sql}
         """
+        params = [*sales_params, *return_params, *search_params]
         rows = self.fetch_all(sql, tuple(params))
 
         total_sold = sum(int(row[4] or 0) for row in rows)
-        total_revenue = sum((row[6] or 0) for row in rows)
+        total_refund = sum((row[10] or 0) for row in rows)
+        net_revenue = sum((row[11] or 0) for row in rows)
         active_products = sum(1 for row in rows if int(row[4] or 0) > 0)
+
         self.set_stat("sold", number_text(total_sold))
-        self.set_stat("revenue", money_text(total_revenue))
+        self.set_stat("refund", money_text(total_refund))
         self.set_stat("active", number_text(active_products))
+        self.set_stat("net", money_text(net_revenue))
 
         self.fill_table(self.table, [
             (
-                number_text(row[0]), row[1], row[2], number_text(row[3]),
-                number_text(row[4]), money_text(row[5]), money_text(row[6]),
-                number_text(row[7]),
+                number_text(row[0]), row[1], row[2],
+                number_text(row[3]), number_text(row[4]),
+                number_text(row[5]), number_text(row[6]),
+                money_text(row[7]), money_text(row[8]),
+                money_text(row[9]), money_text(row[10]),
+                money_text(row[11]), number_text(row[12]),
             )
             for row in rows
         ])
