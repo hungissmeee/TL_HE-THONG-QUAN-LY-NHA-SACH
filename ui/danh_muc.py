@@ -361,7 +361,7 @@ class CatalogPage(QWidget):
     def add_record(self, values):
         try:
             new_code = self.service.create_record(values)
-            QMessageBox.information(self, "Thành công", f"Đã thêm {new_code} vào bảng {self.config[chr(116)+chr(97)+chr(98)+chr(108)+chr(101)]}!")
+            QMessageBox.information(self, "Thành công", f"Đã thêm {new_code} vào bảng {self.config['table']}!")
             self.load_data()
         except Exception as error:
             QMessageBox.critical(self, "Không thể thêm dữ liệu", str(error))
