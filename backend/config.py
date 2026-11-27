@@ -90,7 +90,7 @@ def load_settings() -> Settings:
 
     origin_raw = os.getenv(
         "BOOKHUB_WEB_ALLOWED_ORIGINS",
-        "http://localhost:5173,http://127.0.0.1:5173",
+        "http://localhost:5173,http://127.0.0.1:5173,http://qhung.ddns.net,https://qhung.ddns.net",
     )
     origins = tuple(
         origin.strip().rstrip("/")

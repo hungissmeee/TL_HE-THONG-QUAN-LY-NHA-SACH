@@ -98,6 +98,8 @@ class BackendConfigurationTests(unittest.TestCase):
             settings = load_settings()
         self.assertEqual(settings.environment, "development")
         self.assertEqual(settings.api_prefix, "/api/v1")
+        self.assertIn("http://qhung.ddns.net", settings.allowed_origins)
+        self.assertIn("https://qhung.ddns.net", settings.allowed_origins)
         self.assertFalse(settings.sql_trust_server_certificate)
         self.assertFalse(settings.database_configured)
 

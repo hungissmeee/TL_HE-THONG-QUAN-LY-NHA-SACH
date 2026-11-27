@@ -22,6 +22,7 @@ Trong thư mục gốc repository, sao chép `.env.example` và đổi tên bả
 
 - `BOOKHUB_SQL_*`: kết nối của ứng dụng Desktop.
 - `BOOKHUB_WEB_SQL_*`: kết nối dịch vụ riêng của Backend. Hãy tạo một SQL Login riêng cho Backend với quyền tối thiểu; không dùng tài khoản nhân viên hoặc Admin Desktop.
+- `BOOKHUB_WEB_ALLOWED_ORIGINS`: danh sách Origin được phép, phân tách bằng dấu phẩy. Đã thêm `http://qhung.ddns.net` và `https://qhung.ddns.net`; nếu máy chủ đang dùng một tệp `.env` cũ, hãy cập nhật giá trị biến này trong `.env` thành `https://qhung.ddns.net,http://qhung.ddns.net` (có thể giữ thêm Origin localhost khi cần phát triển), rồi khởi động lại Backend.
 
 Để trống `BOOKHUB_WEB_SQL_PASSWORD` cho đến khi bạn đã tạo tài khoản dịch vụ và có mật khẩu thật.
 
