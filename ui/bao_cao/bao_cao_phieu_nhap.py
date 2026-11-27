@@ -49,11 +49,24 @@ class ImportReportPage(ReportBasePage):
             "Nhap hang theo nha cung cap", self.supplier_table
         )
 
+        product_title = QLabel("Tổng hợp nhập hàng theo sản phẩm")
+        product_title.setStyleSheet("font-size: 14px; font-weight: bold;")
+        self.content_layout.addWidget(product_title)
+        self.product_table = self.make_table([
+            "Mã sản phẩm", "Tên sản phẩm", "Số phiếu nhập",
+            "Số lượng nhập", "Trị giá nhập",
+        ])
+        self.content_layout.addWidget(self.product_table)
+        self.register_export_table(
+            "Nhap hang theo san pham", self.product_table
+        )
+
     def load_report(self):
         start_date, end_date = self.date_parameters()
         data = self.service.import_report(start_date, end_date)
         rows = data["imports"]
         suppliers = data["suppliers"]
+        products = data["products"]
         quantity = sum(int(row[6] or 0) for row in rows)
         amount = sum((row[7] or 0) for row in rows)
 
@@ -74,4 +87,11 @@ class ImportReportPage(ReportBasePage):
                 number_text(row[3]), number_text(row[4]), money_text(row[5]),
             )
             for row in suppliers
+        ])
+        self.fill_table(self.product_table, [
+            (
+                row[0], row[1], number_text(row[2]),
+                number_text(row[3]), money_text(row[4]),
+            )
+            for row in products
         ])
