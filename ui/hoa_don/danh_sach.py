@@ -96,6 +96,7 @@ class InvoiceWindow(QWidget):
         top.addStretch()
 
         self.create_button = QPushButton("+ Tạo hóa đơn")
+        self.create_button.setProperty("buttonRole", "primary")
         self.create_button.setVisible(self.can_create)
         self.create_button.clicked.connect(self.open_create_invoice)
         top.addWidget(self.create_button)
