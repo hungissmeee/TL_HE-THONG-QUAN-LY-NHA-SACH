@@ -24,7 +24,7 @@ from ui.bao_cao import (
     ShiftReportPage,
 )
 from ui.bao_cao.bao_cao_co_so import ReportBasePage
-from ui.styles import MAIN_WINDOW_STYLESHEET, install_bookhub_style
+from ui.styles import MAIN_WINDOW_STYLESHEET
 from ui.permissions import allowed_pages_for_user
 from ui.phieu_nhap import ImportWindow
 from ui.nha_cung_cap import SupplierWindow
@@ -61,7 +61,6 @@ class MainWindow(QMainWindow):
 
     def __init__(self, db, login_window=None):
         """Khởi tạo sidebar, các trang chức năng, thông tin nhân viên và cấu hình phân quyền."""
-        install_bookhub_style(QApplication.instance())
         super().__init__()
 
         self.employee_role = ""
