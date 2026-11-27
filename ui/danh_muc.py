@@ -435,7 +435,7 @@ class CatalogPage(QWidget):
             QMessageBox.warning(
                 self,
                 "Không thể tạo mã tự động",
-                f"Không lấy được mã cho {self.config['table']}.\\n{error}",
+                f"Không lấy được mã cho {self.config['table']}.\n{error}",
             )
             return ""
         finally:
@@ -584,7 +584,7 @@ class CatalogPage(QWidget):
             QMessageBox.critical(
                 self,
                 "Không thể thêm dữ liệu",
-                f"Thêm dữ liệu thất bại!\\n{error}",
+                f"Thêm dữ liệu thất bại!\n{error}",
             )
         finally:
             if cursor is not None:
