@@ -174,7 +174,7 @@ MAIN_WINDOW_STYLESHEET = """
             }
 
             /* Primary: thao tac chinh cua man hinh/dialog. */
-            QPushButton[buttonRole="primary"] {
+            QPushButton#primaryButton {
                 background-color: #2563EB;
                 color: #FFFFFF;
                 border: 1px solid #2563EB;
@@ -184,18 +184,18 @@ MAIN_WINDOW_STYLESHEET = """
                 font-weight: 600;
             }
 
-            QPushButton[buttonRole="primary"]:hover {
+            QPushButton#primaryButton:hover {
                 background-color: #1D4ED8;
                 border-color: #60A5FA;
             }
 
-            QPushButton[buttonRole="primary"]:pressed {
+            QPushButton#primaryButton:pressed {
                 background-color: #1E40AF;
                 border-color: #1E40AF;
             }
 
             /* Danger: xoa hoac huy mot chung tu/giao dich. */
-            QPushButton[buttonRole="danger"] {
+            QPushButton#dangerButton {
                 background-color: #A83232;
                 color: #FFFFFF;
                 border: 1px solid #A83232;
@@ -205,12 +205,12 @@ MAIN_WINDOW_STYLESHEET = """
                 font-weight: 600;
             }
 
-            QPushButton[buttonRole="danger"]:hover {
+            QPushButton#dangerButton:hover {
                 background-color: #C94444;
                 border-color: #EF7777;
             }
 
-            QPushButton[buttonRole="danger"]:pressed {
+            QPushButton#dangerButton:pressed {
                 background-color: #842525;
                 border-color: #842525;
             }
@@ -492,8 +492,8 @@ MAIN_WINDOW_STYLESHEET = """
                 border: 1px solid #344256;
             }
 
-            QPushButton[buttonRole="primary"]:disabled,
-            QPushButton[buttonRole="danger"]:disabled {
+            QPushButton#primaryButton:disabled,
+            QPushButton#dangerButton:disabled {
                 background-color: #293442;
                 color: #8291A5;
                 border: 1px solid #344256;
