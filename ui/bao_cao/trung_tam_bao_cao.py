@@ -400,6 +400,20 @@ class ReportCenterPage(QWidget):
         self.filter_note.setStyleSheet("color: #66788A; font-size: 9px;")
         right.addWidget(self.filter_note)
 
+        self.group_header = QTableWidget(1, 0)
+        self.group_header.setFixedHeight(30)
+        self.group_header.setVerticalHeaderHidden(True)
+        self.group_header.setHorizontalHeaderHidden(True)
+        self.group_header.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.group_header.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.group_header.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.group_header.setStyleSheet(
+            "QTableWidget { background: #DCE7F0; color: #263445; "
+            "border: 1px solid #CCD7E2; font-weight: 700; }"
+        )
+        self.group_header.hide()
+        right.addWidget(self.group_header)
+
         self.table = QTableWidget(0, 0)
         self.table.setAlternatingRowColors(True)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -414,7 +428,7 @@ class ReportCenterPage(QWidget):
 
         self.footer = QTableWidget(1, 0)
         self.footer.setFixedHeight(32)
-        self.footer.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.footer.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.footer.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.footer.setVerticalHeaderHidden(True)
         self.footer.setHorizontalHeaderHidden(True)
@@ -427,6 +441,9 @@ class ReportCenterPage(QWidget):
         """)
         right.addWidget(self.footer)
         self.table.horizontalHeader().sectionResized.connect(self._sync_footer_widths)
+        self.table.horizontalScrollBar().valueChanged.connect(
+            self._sync_horizontal_scroll
+        )
 
         self.status_label = QLabel("Chọn một báo cáo ở danh mục bên trái.")
         self.status_label.setStyleSheet("color: #64748B; font-size: 10px;")
@@ -510,6 +527,24 @@ class ReportCenterPage(QWidget):
         self.table.setHorizontalHeaderLabels(headers)
         self.footer.setColumnCount(len(headers))
         self.footer.setRowCount(1)
+
+        groups = definition.get("group_headers", [])
+        self.group_header.clear()
+        self.group_header.setColumnCount(len(headers))
+        self.group_header.setRowCount(1)
+        self.group_header.setHorizontalHeaderLabels([""] * len(headers))
+        if groups:
+            self.group_header.show()
+            for start_col, end_col, label in groups:
+                if end_col > start_col:
+                    self.group_header.setSpan(0, start_col, 1, end_col - start_col + 1)
+                item = QTableWidgetItem(label)
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                self.group_header.setItem(0, start_col, item)
+        else:
+            self.group_header.hide()
+
         self.table.setSortingEnabled(True)
         self._sync_footer_widths()
 
@@ -628,9 +663,18 @@ class ReportCenterPage(QWidget):
 
     def _sync_footer_widths(self, *_):
         self.footer.setColumnCount(self.table.columnCount())
+        self.group_header.setColumnCount(self.table.columnCount())
         for col in range(self.table.columnCount()):
-            self.footer.setColumnWidth(col, self.table.columnWidth(col))
-        self.footer.setFixedWidth(max(100, self.table.viewport().width()))
+            width = self.table.columnWidth(col)
+            self.footer.setColumnWidth(col, width)
+            self.group_header.setColumnWidth(col, width)
+        viewport_width = max(100, self.table.viewport().width())
+        self.footer.setFixedWidth(viewport_width)
+        self.group_header.setFixedWidth(viewport_width)
+
+    def _sync_horizontal_scroll(self, value):
+        self.footer.horizontalScrollBar().setValue(value)
+        self.group_header.horizontalScrollBar().setValue(value)
 
     def export_xlsx(self):
         if not self.rows:
@@ -732,8 +776,9 @@ class ReportCenterPage(QWidget):
                 else:
                     worksheet.write(header_row, col, header, header_fmt)
         else:
+            worksheet.merge_range(group_row, 0, group_row, last_col, "CHI TIẾT BÁO CÁO", group_fmt)
             for col, header in enumerate(headers):
-                worksheet.merge_range(group_row, col, header_row, col, header, header_fmt)
+                worksheet.write(header_row, col, header, header_fmt)
 
         for col, header in enumerate(headers):
             width = max(12, min(34, len(header) + 3))
