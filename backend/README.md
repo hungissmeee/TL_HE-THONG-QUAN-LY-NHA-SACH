@@ -71,6 +71,8 @@ Cấu hình host/port trong `.env` bằng `BOOKHUB_WEB_HOST`, `BOOKHUB_WEB_PORT`
 
 3. Chạy riêng Backend (không cần Frontend) bằng:
 
+       python run_backend.py
+
 Launcher tự nạp `.env`, kiểm tra host/port/reload và khởi chạy Uvicorn. Khi dùng để phát triển, `reload=true` tự khởi động lại API khi mã nguồn thay đổi. Trong production phải đặt `BOOKHUB_WEB_RELOAD=false`.
 
 Muốn truy cập từ máy khác trong mạng LAN, bind --host 0.0.0.0 và cấu hình firewall/reverse proxy phù hợp. Không mở cổng SQL Server trực tiếp ra Internet. Chưa triển khai public trực tiếp Uvicorn; Internet cần reverse proxy HTTPS.
