@@ -151,7 +151,10 @@ function CatalogPage({ catalogType }: { catalogType: string }) {
           <Title level={2}>{data?.title || "Danh mục"}</Title>
           <Text className="muted-text">Quản lý danh mục được sử dụng trong thông tin sản phẩm.</Text>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => void openCreate()}>Thêm mới</Button>
+        <Space>
+          <Button icon={<ReloadOutlined />} onClick={() => void load()}>Làm mới</Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => void openCreate()}>Thêm mới</Button>
+        </Space>
       </div>
       <Card bordered={false} className="operation-card">
         <div className="operation-toolbar">
@@ -164,10 +167,9 @@ function CatalogPage({ catalogType }: { catalogType: string }) {
             onSearch={(value) => setSearch(value.trim())}
             className="operation-search"
           />
-          <Button icon={<ReloadOutlined />} onClick={() => void load()}>Làm mới</Button>
         </div>
         <Table<Row>
-          rowKey={(record) => String(record[data?.fields[0]?.key || ""] || "")}
+          rowKey={(record) => String(record[data?.fields[0]?.key || ""] || "")>
           columns={columns}
           dataSource={data?.items || []}
           loading={loading}
@@ -186,21 +188,23 @@ function CatalogPage({ catalogType }: { catalogType: string }) {
         destroyOnClose
       >
         {!data ? <Spin /> : (
-          <Form form={form} layout="vertical" onFinish={(values) => void save(values)}>
-            {data.fields.map((field, index) => (
-              <Form.Item
-                key={field.key}
-                name={field.key}
-                label={field.label}
-                rules={field.required && index > 0 ? [{ required: true, whitespace: true, message: "Vui lòng nhập " + field.label.toLowerCase() }] : []}
-              >
-                <Input
-                  maxLength={field.key === data.fields[0].key ? 20 : field.key === "DIACHI" ? 255 : 100}
-                  readOnly={index === 0}
-                  placeholder={index === 0 ? "Mã tự động: " + code : "Nhập " + field.label.toLowerCase()}
-                />
-              </Form.Item>
-            ))}
+          <Form form={form} className="desktop-dialog-form" layout="horizontal" labelCol={{ xs: { span: 24 }, sm: { span: 8 } }} wrapperCol={{ xs: { span: 24 }, sm: { span: 16 } }} onFinish={(values) => void save(values)}>
+            <Card size="small" title="Thông tin danh mục" className="desktop-form-section">
+              {data.fields.map((field, index) => (
+                <Form.Item
+                  key={field.key}
+                  name={field.key}
+                  label={field.label}
+                  rules={field.required && index > 0 ? [{ required: true, whitespace: true, message: "Vui lòng nhập " + field.label.toLowerCase() }] : []}
+                >
+                  <Input
+                    maxLength={field.key === data.fields[0].key ? 20 : field.key === "DIACHI" ? 255 : 100}
+                    readOnly={index === 0}
+                    placeholder={index === 0 ? "Mã tự động: " + code : "Nhập " + field.label.toLowerCase()}
+                  />
+                </Form.Item>
+              ))}
+            </Card>
           </Form>
         )}
       </Modal>
@@ -318,7 +322,10 @@ function SuppliersPage() {
           <Title level={2}>Nhà cung cấp</Title>
           <Text className="muted-text">Quản lý thông tin và trạng thái nhà cung cấp.</Text>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => void openAdd()}>Thêm nhà cung cấp</Button>
+        <Space>
+          <Button icon={<ReloadOutlined />} onClick={() => void load()}>Làm mới</Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => void openAdd()}>Thêm nhà cung cấp</Button>
+        </Space>
       </div>
       <Card bordered={false} className="operation-card">
         <div className="operation-toolbar">
@@ -337,7 +344,6 @@ function SuppliersPage() {
             options={[{ value: "active", label: "Đang hoạt động" }, { value: "all", label: "Bao gồm đã ngừng" }]}
             onChange={(value) => setShowInactive(value === "all")}
           />
-          <Button icon={<ReloadOutlined />} onClick={() => void load()}>Làm mới</Button>
         </div>
         <Table<Row> rowKey="mancc" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }} />
       </Card>
@@ -350,13 +356,17 @@ function SuppliersPage() {
         cancelText="Hủy"
         confirmLoading={saving}
         destroyOnClose
+        width={560}
+        className="desktop-entity-modal"
       >
-        <Form form={form} layout="vertical" onFinish={(values) => void save(values)}>
-          {!editing && <Form.Item label="Mã nhà cung cấp"><Input value={nextCode} readOnly /></Form.Item>}
-          <Form.Item name="name" label="Tên nhà cung cấp" rules={[{ required: true, whitespace: true, max: 100 }]}><Input maxLength={100} /></Form.Item>
-          <Form.Item name="phone" label="Số điện thoại"><Input maxLength={15} /></Form.Item>
-          <Form.Item name="tax" label="Mã số thuế"><Input maxLength={20} /></Form.Item>
-          <Form.Item name="address" label="Địa chỉ"><Input.TextArea rows={3} maxLength={255} /></Form.Item>
+        <Form form={form} className="desktop-dialog-form" layout="horizontal" labelCol={{ xs: { span: 24 }, sm: { span: 8 } }} wrapperCol={{ xs: { span: 24 }, sm: { span: 16 } }} onFinish={(values) => void save(values)}>
+          <Card size="small" title="Thông tin chung" className="desktop-form-section">
+            {!editing && <Form.Item label="Mã nhà cung cấp"><Input value={nextCode} readOnly /></Form.Item>}
+            <Form.Item name="name" label="Tên nhà cung cấp" rules={[{ required: true, whitespace: true, max: 100 }]}><Input maxLength={100} placeholder="Nhập tên nhà cung cấp" /></Form.Item>
+            <Form.Item name="phone" label="Số điện thoại"><Input maxLength={15} placeholder="Số điện thoại" /></Form.Item>
+            <Form.Item name="address" label="Địa chỉ"><Input maxLength={255} placeholder="Địa chỉ nhà cung cấp" /></Form.Item>
+            <Form.Item name="tax" label="Mã số thuế"><Input maxLength={20} placeholder="Mã số thuế (nếu có)" /></Form.Item>
+          </Card>
         </Form>
       </Modal>
     </div>
@@ -459,29 +469,35 @@ function PromotionsPage() {
     <div className="operation-page">
       <div className="operation-heading">
         <div><Text className="eyebrow">BÁN HÀNG</Text><Title level={2}>Chương trình khuyến mãi</Title><Text className="muted-text">Quản lý thời gian và tỷ lệ giảm giá áp dụng trên hóa đơn.</Text></div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => void openCreate()}>Thêm khuyến mãi</Button>
+        <Space>
+          <Button icon={<ReloadOutlined />} onClick={() => void load()}>Làm mới</Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => void openCreate()}>Thêm khuyến mãi</Button>
+        </Space>
       </div>
       <Card bordered={false} className="operation-card">
         <div className="operation-toolbar">
           <Input.Search className="operation-search" allowClear value={keyword} placeholder="Tìm mã hoặc tên chương trình..." onChange={(e) => setKeyword(e.target.value)} onSearch={(v) => setKeyword(v.trim())} enterButton="Tìm kiếm" />
           <Select value={showDeleted ? "all" : "active"} style={{ width: 190 }} options={[{ value: "active", label: "Đang sử dụng" }, { value: "all", label: "Bao gồm đã ngừng" }]} onChange={(v) => setShowDeleted(v === "all")} />
-          <Button icon={<ReloadOutlined />} onClick={() => void load()}>Làm mới</Button>
         </div>
         <Table<Row> rowKey="makm" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }} />
       </Card>
-      <Modal title="Tạo chương trình khuyến mãi" open={open} onCancel={() => setOpen(false)} onOk={() => form.submit()} okText="Tạo chương trình" cancelText="Hủy" confirmLoading={saving} destroyOnClose>
-        <Form form={form} layout="vertical" onFinish={(v) => void create(v)}>
-          <Form.Item label="Mã khuyến mãi"><Input value={nextCode} readOnly /></Form.Item>
-          <Form.Item name="name" label="Tên chương trình" rules={[{ required: true, max: 100 }]}><Input maxLength={100} /></Form.Item>
-          <Form.Item name="discount_rate" label="Tỷ lệ giảm (%)" rules={[{ required: true }]}><InputNumber min={0} max={100} precision={2} style={{ width: "100%" }} /></Form.Item>
-          <Form.Item name="period" label="Thời gian áp dụng" rules={[{ required: true, message: "Chọn thời gian bắt đầu và kết thúc." }]}>
-            <DatePicker.RangePicker showTime format="DD/MM/YYYY HH:mm" style={{ width: "100%" }} />
-          </Form.Item>
+      <Modal title="Tạo chương trình khuyến mãi" open={open} onCancel={() => setOpen(false)} onOk={() => form.submit()} okText="Tạo chương trình" cancelText="Hủy" confirmLoading={saving} width={560} destroyOnClose className="desktop-entity-modal">
+        <Form form={form} className="desktop-dialog-form" layout="horizontal" labelCol={{ xs: { span: 24 }, sm: { span: 8 } }} wrapperCol={{ xs: { span: 24 }, sm: { span: 16 } }} onFinish={(v) => void create(v)}>
+          <Card size="small" title="Thông tin chương trình" className="desktop-form-section">
+            <Form.Item name="name" label="Tên khuyến mãi" rules={[{ required: true, max: 100 }]}><Input maxLength={100} placeholder="Nhập tên chương trình" /></Form.Item>
+            <Form.Item name="discount_rate" label="Tỷ lệ giảm (%)" rules={[{ required: true }]}><InputNumber min={0} max={100} precision={2} style={{ width: "100%" }} /></Form.Item>
+            <Form.Item name="period" label="Thời gian áp dụng" rules={[{ required: true, message: "Chọn thời gian bắt đầu và kết thúc." }]}>
+              <DatePicker.RangePicker showTime format="DD/MM/YYYY HH:mm" style={{ width: "100%" }} />
+            </Form.Item>
+            <Alert type="info" showIcon message="Sau khi tạo, tỷ lệ giảm và thời hạn được giữ cố định để không làm thay đổi cách tính của hóa đơn cũ. Muốn ngừng áp dụng, hãy ngừng chương trình tại danh sách." />
+          </Card>
         </Form>
       </Modal>
-      <Modal title="Đổi tên chương trình" open={Boolean(renameRecord)} onCancel={() => setRenameRecord(null)} onOk={() => renameForm.submit()} okText="Lưu" cancelText="Hủy">
-        <Form form={renameForm} layout="vertical" onFinish={(v) => void rename(v)}>
-          <Form.Item name="name" label="Tên chương trình" rules={[{ required: true, max: 100 }]}><Input maxLength={100} /></Form.Item>
+      <Modal title="Đổi tên chương trình" open={Boolean(renameRecord)} onCancel={() => setRenameRecord(null)} onOk={() => renameForm.submit()} okText="Lưu" cancelText="Hủy" width={540} className="desktop-entity-modal">
+        <Form form={renameForm} className="desktop-dialog-form" layout="horizontal" labelCol={{ span: 8 }} wrapperCol={{ span: 16 }} onFinish={(v) => void rename(v)}>
+          <Card size="small" title="Thông tin chương trình" className="desktop-form-section">
+            <Form.Item name="name" label="Tên chương trình" rules={[{ required: true, max: 100 }]}><Input maxLength={100} /></Form.Item>
+          </Card>
         </Form>
       </Modal>
     </div>
