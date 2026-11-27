@@ -416,7 +416,7 @@ class CatalogPage(QWidget):
             QMessageBox.critical(self, "Không thể chỉnh sửa dữ liệu", str(error))
 
     def delete_record_by_id(self, record_id, record_name=""):
-        message = f"Bạn có chắc muốn xóa {record_id}" + (f" - {record_name}" if record_name else "") + "?\\n\\nBản ghi sẽ được đánh dấu xóa mềm."
+        message = f"Bạn có chắc muốn xóa {record_id}" + (f" - {record_name}" if record_name else "") + "?\n\nBản ghi sẽ được đánh dấu xóa mềm."
         answer = QMessageBox.question(self, "Xác nhận xóa", message, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
         if answer != QMessageBox.StandardButton.Yes:
             return

@@ -207,7 +207,7 @@ class ReturnWindow(QWidget):
         dialog_parent = parent_dialog or self
         answer = QMessageBox.question(
             dialog_parent, "Xác nhận xóa phiếu đổi trả",
-            f"Bạn có chắc chắn muốn xóa phiếu {return_code}?\\n\\n"
+            f"Bạn có chắc chắn muốn xóa phiếu {return_code}?\n\n"
             "Hệ thống sẽ xóa phiếu và chi tiết, đồng thời đảo biến động tồn kho. "
             "Khoản tiền đã hoàn thực tế cho khách không tự được thu hồi.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
@@ -223,7 +223,7 @@ class ReturnWindow(QWidget):
             self.load_returns()
             return True
         except Exception as error:
-            QMessageBox.critical(dialog_parent, "Không thể xóa phiếu đổi trả", f"{error}\\n\\nGiao dịch đã được hoàn tác.")
+            QMessageBox.critical(dialog_parent, "Không thể xóa phiếu đổi trả", f"{error}\n\nGiao dịch đã được hoàn tác.")
             self.load_returns()
             return False
 

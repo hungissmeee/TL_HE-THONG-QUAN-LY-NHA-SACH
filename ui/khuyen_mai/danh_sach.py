@@ -370,7 +370,7 @@ class PromotionWindow(QWidget):
         answer = QMessageBox.question(
             self, "Xác nhận xóa khuyến mãi",
             f"Bạn có chắc muốn ngừng áp dụng chương trình {code}"
-            f"{' - ' + name if name else ''}?\\n\\n"
+            f"{' - ' + name if name else ''}?\n\n"
             "Chương trình sẽ được đánh dấu IS_DELETED = 1. "
             "Hóa đơn cũ và dữ liệu tính tiền hoàn vẫn được giữ nguyên.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,

@@ -433,7 +433,7 @@ class CreateInvoiceDialog(QDialog):
             self.saved_invoice_code = invoice_code
             QMessageBox.information(
                 self, "Thành công",
-                f"Đã tạo hóa đơn {invoice_code}.\\n"
+                f"Đã tạo hóa đơn {invoice_code}.\n"
                 f"Tiền thừa: {money(cash - total)}"
             )
             self.accept()
@@ -442,5 +442,5 @@ class CreateInvoiceDialog(QDialog):
         except Exception as error:
             QMessageBox.critical(
                 self, "Không thể tạo hóa đơn",
-                f"{error}\\n\\nCác thay đổi trong giao dịch đã được hoàn tác."
+                f"{error}\n\nCác thay đổi trong giao dịch đã được hoàn tác."
             )

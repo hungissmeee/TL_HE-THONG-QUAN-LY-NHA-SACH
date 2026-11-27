@@ -435,9 +435,9 @@ class CreateImportDialog(QDialog):
         total = self.calculate_total()
         answer = QMessageBox.question(
             self, "Xác nhận lập phiếu nhập",
-            f"Nhà cung cấp: {self.suppliers.get(supplier_code, '')}\\n"
-            f"Số mặt hàng: {len(self.cart)}\\n"
-            f"Tổng giá trị: {money(total)} đồng\\n\\n"
+            f"Nhà cung cấp: {self.suppliers.get(supplier_code, '')}\n"
+            f"Số mặt hàng: {len(self.cart)}\n"
+            f"Tổng giá trị: {money(total)} đồng\n\n"
             "Khi lưu, tồn kho và giá nhập bình quân sẽ được cập nhật. Tiếp tục?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.Yes,
@@ -465,8 +465,8 @@ class CreateImportDialog(QDialog):
             self.saved_import_code = import_code
             QMessageBox.information(
                 self, "Lập phiếu nhập thành công",
-                f"Đã tạo phiếu nhập {import_code}.\\n"
-                f"Tổng giá trị: {money(total)} đồng.\\n"
+                f"Đã tạo phiếu nhập {import_code}.\n"
+                f"Tổng giá trị: {money(total)} đồng.\n"
                 "Tồn kho và giá nhập bình quân đã được cập nhật.",
             )
             self.accept()
@@ -475,5 +475,5 @@ class CreateImportDialog(QDialog):
         except Exception as error:
             QMessageBox.critical(
                 self, "Không thể lập phiếu nhập",
-                f"{error}\\n\\nGiao dịch đã được hoàn tác; tồn kho không bị cập nhật dở dang.",
+                f"{error}\n\nGiao dịch đã được hoàn tác; tồn kho không bị cập nhật dở dang.",
             )

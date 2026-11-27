@@ -240,7 +240,7 @@ class SupplierWindow(QWidget):
         action = "ngừng hoạt động" if inactive else "kích hoạt lại"
         answer = QMessageBox.question(
             self, "Xác nhận",
-            f"Bạn có chắc muốn {action} nhà cung cấp {code}?\\n\\nLịch sử phiếu nhập vẫn được giữ nguyên.",
+            f"Bạn có chắc muốn {action} nhà cung cấp {code}?\n\nLịch sử phiếu nhập vẫn được giữ nguyên.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )

@@ -444,7 +444,7 @@ class ShiftWindow(QWidget):
             return
         try:
             shift_id = self.service.create_shift(dialog.get_values(), is_manager=self.is_manager)
-            QMessageBox.information(self, "Thành công", f"Đã tạo ca làm việc thành công.\\nMã ca: {shift_id}")
+            QMessageBox.information(self, "Thành công", f"Đã tạo ca làm việc thành công.\nMã ca: {shift_id}")
             self.refresh_manager_view()
         except ValueError as error:
             QMessageBox.warning(self, "Không thể tạo ca", str(error))
@@ -560,7 +560,7 @@ class ShiftWindow(QWidget):
         if not self.is_manager:
             QMessageBox.warning(self, "Không có quyền", "Chỉ Quản lý/Admin mới được xóa ca làm việc.")
             return
-        answer = QMessageBox.question(self, "Xác nhận xóa ca", f"Bạn có chắc muốn xóa ca làm việc mã {maca}?\\n\\nCa chỉ được xóa nếu chưa bắt đầu và chưa có hóa đơn liên kết. Các đăng ký nhân viên của ca này cũng sẽ bị xóa.", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+        answer = QMessageBox.question(self, "Xác nhận xóa ca", f"Bạn có chắc muốn xóa ca làm việc mã {maca}?\n\nCa chỉ được xóa nếu chưa bắt đầu và chưa có hóa đơn liên kết. Các đăng ký nhân viên của ca này cũng sẽ bị xóa.", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
         if answer != QMessageBox.StandardButton.Yes:
             return
         try:

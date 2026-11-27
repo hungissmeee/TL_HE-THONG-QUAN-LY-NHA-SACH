@@ -296,8 +296,8 @@ class CreateReturnDialog(QDialog):
             )
             QMessageBox.information(
                 self, "Thành công",
-                f"Đã lập phiếu đổi trả {result['return_code']}.\\n"
-                f"Hóa đơn: {result['invoice_code']}\\n"
+                f"Đã lập phiếu đổi trả {result['return_code']}.\n"
+                f"Hóa đơn: {result['invoice_code']}\n"
                 f"Tổng tiền hoàn: {money(result['total_refund'])} đ"
             )
             self.accept()
@@ -306,5 +306,5 @@ class CreateReturnDialog(QDialog):
         except Exception as error:
             QMessageBox.critical(
                 self, "Không thể lập phiếu đổi trả",
-                f"{error}\\n\\nMọi thay đổi trong giao dịch đã được hoàn tác."
+                f"{error}\n\nMọi thay đổi trong giao dịch đã được hoàn tác."
             )

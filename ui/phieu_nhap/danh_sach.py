@@ -255,7 +255,7 @@ class ImportWindow(QWidget):
                 return
         answer = QMessageBox.question(
             self, "Xác nhận hủy phiếu nhập",
-            f"Bạn có chắc chắn muốn hủy phiếu nhập {import_code}?\\n\\n"
+            f"Bạn có chắc chắn muốn hủy phiếu nhập {import_code}?\n\n"
             "Hệ thống sẽ trừ lại số lượng đã nhập khỏi tồn kho. "
             "Phiếu vẫn được giữ lại trong lịch sử với trạng thái Đã hủy.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
@@ -276,7 +276,7 @@ class ImportWindow(QWidget):
         except Exception as error:
             QMessageBox.critical(
                 self, "Không thể hủy phiếu nhập",
-                f"{error}\\n\\nMọi thay đổi đã được hoàn tác.",
+                f"{error}\n\nMọi thay đổi đã được hoàn tác.",
             )
             self.load_imports()
 

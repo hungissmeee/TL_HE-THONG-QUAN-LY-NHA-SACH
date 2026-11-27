@@ -142,7 +142,7 @@ class ProductWindow(QWidget):
                     self.table.setItem(row_index, col_index, item)
             self.total_label.setText(f'Tổng số sản phẩm: {len(products)}')
         except Exception as error:
-            QMessageBox.critical(self, 'Lỗi', f'Không thể tải danh sách sản phẩm!\\n{error}')
+            QMessageBox.critical(self, 'Lỗi', f'Không thể tải danh sách sản phẩm!\n{error}')
         finally:
             resume_table_sorting(self.table)
 
@@ -179,7 +179,7 @@ class ProductWindow(QWidget):
                 QMessageBox.warning(self, 'Thông báo', 'Không tìm thấy sản phẩm!')
                 return
         except Exception as error:
-            QMessageBox.critical(self, 'Lỗi', f'Không thể lấy chi tiết sản phẩm!\\n{error}')
+            QMessageBox.critical(self, 'Lỗi', f'Không thể lấy chi tiết sản phẩm!\n{error}')
             return
         dialog = ProductDetailDialog(
             self.db, product, self,
@@ -196,7 +196,7 @@ class ProductWindow(QWidget):
         display_name = product_name or masp
         answer = QMessageBox.warning(
             self, 'Xác nhận xóa sản phẩm',
-            f'Bạn có chắc muốn xóa sản phẩm {masp} - {display_name}?\\n\\nSản phẩm sẽ được đánh dấu xóa mềm.',
+            f'Bạn có chắc muốn xóa sản phẩm {masp} - {display_name}?\n\nSản phẩm sẽ được đánh dấu xóa mềm.',
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No
         )

@@ -283,7 +283,7 @@ class EmployeeWindow(QWidget):
             self.total_label.setText(f"Tổng số nhân viên: {len(employees)}")
         except Exception as error:
             QMessageBox.critical(
-                self, "Lỗi", f"Không thể tải danh sách nhân viên!\\n{error}"
+                self, "Lỗi", f"Không thể tải danh sách nhân viên!\n{error}"
             )
         finally:
             resume_table_sorting(self.table)
@@ -410,7 +410,7 @@ class EmployeeWindow(QWidget):
         except Exception as error:
             QMessageBox.critical(
                 self, "Lỗi tạo nhân viên",
-                f"{error}\\n\\nGiao dịch đã được hoàn tác."
+                f"{error}\n\nGiao dịch đã được hoàn tác."
             )
 
     def show_add_page(self):
