@@ -107,20 +107,7 @@ function ShiftsPage() {
       <Button size="small" icon={<TeamOutlined />} onClick={() => void showRoster(Number(row.maca))}>Nhân viên</Button>
       {isManager && row.trangthai === "Sắp bắt đầu" && <Popconfirm title="Xóa ca này?" okText="Xóa" cancelText="Hủy" onConfirm={() => void deleteShift(Number(row.maca))}><Button size="small" danger icon={<DeleteOutlined />} /></Popconfirm>}
       {isAccountant && row.trangthai === "Đã kết thúc" && row.tmcuoica === null && <Button size="small" onClick={() => { setClosingShift(row); setCash(null); }}>Ghi tiền cuối ca</Button>}
-      {isAccountant && row.trangthai === "Đã kết thúc" && row.tmcuoica === null && <Button size="small" onClick={() => { setClosingShift(row); setCash(null); }}>Ghi tiền cuối ca</Button>}
     </Space> },
-  ];
-
-  const currentColumns: TableColumnsType<DataRow> = [
-    { title: "Mã ca", dataIndex: "maca", key: "maca", width: 85 },
-    { title: "Ngày", dataIndex: "ngaylam", key: "ngaylam", width: 120, render: dateText },
-    { title: "Ca", dataIndex: "soca", key: "soca", width: 65, render: (v: unknown) => "Ca " + String(v) },
-    { title: "Giờ làm", key: "hours", width: 145, render: (_: unknown, row: DataRow) => String(row.tgmo || "").slice(0, 5) + " – " + String(row.tgdong || "").slice(0, 5) },
-    { title: "Nhân viên", dataIndex: "so_nhan_vien", key: "count", width: 100, align: "right" },
-    { title: "Trạng thái", key: "status", width: 130, render: () => <Tag color="success">Đang diễn ra</Tag> },
-    { title: "Thao tác", key: "actions", width: 140, render: (_: unknown, row: DataRow) => (
-      <Button size="small" icon={<TeamOutlined />} onClick={() => void showRoster(Number(row.maca))}>Nhân viên</Button>
-    ) },
   ];
 
   const currentColumns: TableColumnsType<DataRow> = [
@@ -141,10 +128,10 @@ function ShiftsPage() {
     { title: "Ca", dataIndex: "soca", key: "soca", width: 70, render: (v: unknown) => "Ca " + String(v) },
     { title: "Giờ làm", key: "hours", width: 150, render: (_: unknown, row: DataRow) => String(row.tgmo || "").slice(0, 5) + " – " + String(row.tgdong || "").slice(0, 5) },
     { title: "Số nhân viên", dataIndex: "so_nhan_vien", key: "count", width: 115 },
-    { title: "Trạng thái", key: "status", render: (_: unknown, row: DataRow) => <Tag color={row.is_registered ? "success" : "default"}>{row.is_registered ? "Đã đăng ký" : row.is_ended ? "Đã kết thúc" : "Chưa đăng ký"}</Tag> },
+    { title: "Trạng thái", key: "status", render: (_: unknown, row: DataRow) => <Tag color={Boolean(row.is_registered) ? "success" : "default"}>{Boolean(row.is_registered) ? "Đã đăng ký" : Boolean(row.is_ended) ? "Đã kết thúc" : "Chưa đăng ký"}</Tag> },
     { title: "Thao tác", key: "actions", width: 175, render: (_: unknown, row: DataRow) => <Space>
-      {!row.is_registered && !row.is_ended && <Button size="small" type="primary" onClick={() => void registerShift(Number(row.maca))}>Đăng ký</Button>}
-      {isAccountant && row.is_ended && row.tmcuoica === null && <Button size="small" onClick={() => { setClosingShift(row); setCash(null); }}>Ghi tiền cuối ca</Button>}
+      {!Boolean(row.is_registered) && !Boolean(row.is_ended) && <Button size="small" type="primary" onClick={() => void registerShift(Number(row.maca))}>Đăng ký</Button>}
+      {isAccountant && Boolean(row.is_ended) && row.tmcuoica === null && <Button size="small" onClick={() => { setClosingShift(row); setCash(null); }}>Ghi tiền cuối ca</Button>}
     </Space> },
   ];
 
