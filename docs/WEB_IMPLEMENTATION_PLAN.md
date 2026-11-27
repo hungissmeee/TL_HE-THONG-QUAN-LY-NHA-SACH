@@ -202,8 +202,9 @@ Chưa tự ý thêm module khách hàng/đăng ký khách hàng vì phạm vi hi
 
 ### Giai đoạn 2 — Nền tảng Backend
 
-- [x] Tạo FastAPI app, cấu hình môi trường Web riêng, dependency quản lý kết nối SQL Server theo request và tách tài khoản dịch vụ Backend.
+- [x] Tạo FastAPI app, tự nạp cấu hình từ tệp .env ở thư mục gốc, dependency quản lý kết nối SQL Server theo request và tách tài khoản dịch vụ Backend.
 - [x] Tạo health check live/ready; phản hồi lỗi tổng quát, không tiết lộ thông tin nhạy cảm.
+- [x] Bổ sung python-dotenv, .env.example, hướng dẫn sao chép thành .env và bảo vệ .env thật khỏi Git.
 - [ ] Xây dựng xác thực, session, logout, đổi mật khẩu và RBAC.
 - [ ] Chuẩn hóa response, validation, lỗi và logging.
 - [ ] Viết kiểm thử API cho đăng nhập, quyền truy cập và quyền Admin.
