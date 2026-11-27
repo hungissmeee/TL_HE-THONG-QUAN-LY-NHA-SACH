@@ -6,6 +6,7 @@ from PySide6.QtWidgets import QApplication
 
 from database.connection import Database
 from ui.login import LoginWindow
+from ui.styles import configure_app_theme
 
 
 APP_NAME = "Hệ thống quản lý nhà sách"
@@ -13,6 +14,9 @@ APP_NAME = "Hệ thống quản lý nhà sách"
 app = QApplication(sys.argv)
 app.setApplicationName(APP_NAME)
 app.setApplicationDisplayName(APP_NAME)
+
+# Áp dụng theme trước khi tạo LoginWindow để giao diện mở app và đăng xuất đồng nhất.
+configure_app_theme(app)
 
 # Khởi tạo một đối tượng kết nối dùng chung trong toàn bộ phiên làm việc.
 db = Database()
