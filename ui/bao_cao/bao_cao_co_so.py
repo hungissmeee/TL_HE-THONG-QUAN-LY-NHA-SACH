@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QScrollArea, QSizePolicy,
 )
 
+from ui.styles import configure_date_edit
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
     prepare_sortable_table,
@@ -203,11 +204,13 @@ class ReportBasePage(QWidget):
         if self.use_date_filter:
             self.date_from = QDateEdit()
             self.date_from.setCalendarPopup(True)
+            configure_date_edit(self.date_from)
             self.date_from.setDisplayFormat("dd/MM/yyyy")
             self.date_from.setDate(QDate(today.year(), today.month(), 1))
 
             self.date_to = QDateEdit()
             self.date_to.setCalendarPopup(True)
+            configure_date_edit(self.date_to)
             self.date_to.setDisplayFormat("dd/MM/yyyy")
             self.date_to.setDate(today)
 
