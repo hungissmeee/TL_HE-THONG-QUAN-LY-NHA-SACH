@@ -96,6 +96,7 @@ class SupplierWindow(QWidget):
 
         actions = QHBoxLayout()
         self.add_button = QPushButton("+ Thêm nhà cung cấp")
+        self.add_button.setProperty("buttonRole", "primary")
         self.add_button.clicked.connect(self.add_supplier)
         actions.addWidget(self.add_button)
         actions.addStretch()
