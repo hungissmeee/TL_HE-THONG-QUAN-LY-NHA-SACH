@@ -262,19 +262,6 @@ class ProductFormDialog(QDialog):
             # Khi thêm mới, mã luôn do hệ thống sinh, không nhập tay.
             self.masp.setReadOnly(True)
 
-    def _fill_combo(self, cursor, sql, combo, placeholder, selected_code=None):
-        """Điền dữ liệu danh mục vào hộp chọn và thiết lập giá trị hiện tại."""
-        cursor.execute(sql, selected_code) if "?" in sql else cursor.execute(sql)
-        combo.clear()
-        combo.addItem(placeholder, None)
-        for code, name, is_deleted in cursor.fetchall():
-            suffix = " (đã xóa mềm)" if is_deleted else ""
-            combo.addItem(f"{code} - {name}{suffix}", code)
-        if selected_code is not None:
-            index = combo.findData(selected_code)
-            if index >= 0:
-                combo.setCurrentIndex(index)
-
     def load_lookup_data(self):
         selected_publisher = self.existing.get('manxb') if self.is_edit and self.existing['loai'] == 'Sách' else None
         selected_brand = self.existing.get('math') if self.is_edit and self.existing['loai'] == 'Sản phẩm khác' else None
