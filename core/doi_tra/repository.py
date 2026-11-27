@@ -2,7 +2,7 @@
 
 from decimal import Decimal, ROUND_HALF_UP
 
-from core.sql_support import resolve_connection
+from core.sql_support import resolve_connection, restore_and_activate_product
 
 
 MONEY_QUANT = Decimal("0.01")
@@ -505,14 +505,11 @@ class ReturnRepository:
             actions = self.build_inventory_reversal_actions(details)
             for product_code, quantity, direction in actions:
                 if direction == "ADD":
-                    # Đảo phiếu đổi hàng có thể hoàn sản phẩm về mã đã bị xóa mềm.
-                    # Kích hoạt lại sản phẩm và cộng tồn trong cùng transaction.
-                    cursor.execute("""
-                        UPDATE dbo.SAN_PHAM
-                        SET IS_DELETED = 0,
-                            SLTON = ISNULL(SLTON, 0) + ?
-                        WHERE MASP = ?
-                    """, quantity, product_code)
+                    # Đảo phiếu đổi hàng có thể hoàn sản phẩm đã bị xóa mềm.
+                    if not restore_and_activate_product(cursor, product_code, quantity):
+                        raise LookupError(
+                            f"Không tìm thấy sản phẩm {product_code}; không thể đảo tồn kho."
+                        )
                 else:
                     cursor.execute("""
                         UPDATE dbo.SAN_PHAM
