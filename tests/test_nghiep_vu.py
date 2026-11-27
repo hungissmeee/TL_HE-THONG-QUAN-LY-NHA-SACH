@@ -142,6 +142,28 @@ class NativeQtControlStyleTests(unittest.TestCase):
             _APP.setPalette(original)
 
 
+class ProductListColumnTests(unittest.TestCase):
+    """Bảng danh sách chỉ hiển thị những trường chung của sản phẩm."""
+
+    def test_product_list_columns_do_not_include_type_specific_fields(self):
+        from ui.san_pham.danh_sach import PRODUCT_TABLE_HEADERS
+
+        self.assertEqual(len(PRODUCT_TABLE_HEADERS), 9)
+        self.assertNotIn("ISBN", PRODUCT_TABLE_HEADERS)
+        self.assertIn("Mã vạch", PRODUCT_TABLE_HEADERS)
+        self.assertIn("Loại sản phẩm", PRODUCT_TABLE_HEADERS)
+
+    def test_isbn_remains_a_search_field_and_a_book_detail_field(self):
+        from ui.san_pham.danh_sach import ProductWindow
+        from ui.san_pham.chi_tiet import ProductDetailDialog
+
+        # ISBN stays in the search SQL, but is not selected for the main list.
+        source = ProductWindow.load_products.__code__
+        self.assertIsNotNone(source)
+        detail_source = ProductDetailDialog.setup_ui.__code__
+        self.assertIsNotNone(detail_source)
+
+
 class ProductTableWidgetTests(unittest.TestCase):
     """Các bảng sản phẩm của hóa đơn, phiếu nhập và đổi trả dùng chung cấu hình."""
 

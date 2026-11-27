@@ -24,9 +24,14 @@ from .bieu_mau import ProductFormDialog
 from ui.formatters import format_product_number
 
 
+PRODUCT_TABLE_HEADERS = (
+    "Mã sản phẩm", "Tên sản phẩm", "Loại sản phẩm", "Đơn vị tính",
+    "Giá nhập", "Giá bán", "Số lượng tồn", "VAT (%)", "Mã vạch",
+)
+
+
 class ProductWindow(QWidget):
     """Trang tra cứu, thêm mới, xem và chỉnh sửa sản phẩm."""
-    """Trang danh sách sản phẩm, xem chi tiết, thêm và chỉnh sửa sản phẩm."""
 
     def __init__(self, db):
         """Khởi tạo trang sản phẩm, tải dữ liệu và áp dụng quyền của nhân viên."""
@@ -87,12 +92,8 @@ class ProductWindow(QWidget):
         root.addLayout(search_layout)
 
         self.table = QTableWidget()
-        self.table.setColumnCount(10)
-        self.table.setHorizontalHeaderLabels([
-            "Mã sản phẩm", "Tên sản phẩm", "Loại sản phẩm", "Đơn vị tính",
-            "Giá nhập", "Giá bán", "Số lượng tồn", "VAT (%)",
-            "Mã vạch", "ISBN"
-        ])
+        self.table.setColumnCount(len(PRODUCT_TABLE_HEADERS))
+        self.table.setHorizontalHeaderLabels(PRODUCT_TABLE_HEADERS)
         prepare_sortable_table(self.table)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
@@ -179,8 +180,7 @@ class ProductWindow(QWidget):
                     SP.GIABAN,
                     SP.SLTON,
                     SP.VAT,
-                    SP.BARCODE,
-                    S.ISBN
+                    SP.BARCODE
                 FROM dbo.SAN_PHAM SP
                 LEFT JOIN dbo.SACH S ON S.MASP = SP.MASP
                 LEFT JOIN dbo.SAN_PHAM_KHAC SPK ON SPK.MASP = SP.MASP
@@ -268,7 +268,7 @@ class ProductWindow(QWidget):
                     self.format_number(product[4]),
                     self.format_number(product[5]),
                     product[6], self.format_number(product[7]),
-                    product[8], product[9]
+                    product[8]
                 ]
                 for col_index, value in enumerate(values):
                     item = QTableWidgetItem("" if value is None else str(value))
