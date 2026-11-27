@@ -8,6 +8,8 @@ from PySide6.QtWidgets import (
 )
 
 from PySide6.QtCore import Qt
+from core.nhan_vien.truy_van_sql import NhanVienRepository
+from core.nhan_vien.xu_ly_du_lieu import NhanVienService
 
 
 class EmployeePermissionDialog(QDialog):
@@ -17,12 +19,13 @@ class EmployeePermissionDialog(QDialog):
         super().__init__(parent)
 
         self.db = db
-        self.manv = manv
+        self.service = NhanVienService(NhanVienRepository(db))
+        self.manv = str(manv or '').strip()
 
         self.setWindowTitle("Quản lý tài khoản nhân viên")
         self.setFixedSize(430, 430)
 
-        self.employee = self.db.get_employee_permissions(manv)
+        self.employee = self.service.get_employee_permissions(self.manv)
 
         self.setup_ui()
 
@@ -181,7 +184,7 @@ class EmployeePermissionDialog(QDialog):
 
         try:
 
-            self.db.update_employee_permissions(
+            self.service.update_employee_role(
                 self.manv,
                 role
             )
