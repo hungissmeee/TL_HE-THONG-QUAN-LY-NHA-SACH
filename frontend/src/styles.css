@@ -254,41 +254,43 @@ button, input { font: inherit; }
 .ant-modal-root .ant-modal-body .ant-descriptions-view {
   width: 100%;
   max-width: 100%;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .ant-modal-root .ant-modal-body .ant-descriptions table {
   width: 100%;
-  table-layout: fixed;
+  table-layout: auto;
 }
 
 .ant-modal-root .ant-modal-body .ant-descriptions-item-label,
 .ant-modal-root .ant-modal-body .ant-descriptions-item-content {
   white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .ant-modal-root .ant-modal-body .ant-table-wrapper {
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .ant-modal-root .ant-modal-body .ant-table-content {
-  overflow-x: hidden !important;
+  overflow-x: auto !important;
+  overflow-y: hidden;
 }
 
 .ant-modal-root .ant-modal-body .ant-table table {
-  width: 100% !important;
-  table-layout: fixed;
+  width: max-content !important;
+  min-width: 100%;
+  table-layout: auto !important;
 }
 
 .ant-modal-root .ant-modal-body .ant-table-cell {
   white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .header-actions {
@@ -461,7 +463,7 @@ button, input { font: inherit; }
 /* Các popup giao dịch theo cấu trúc Desktop: thông tin, danh sách, tổng kết. */
 .desktop-transaction-modal .ant-modal-body {
   max-height: min(74vh, 820px);
-  overflow-x: hidden;
+  overflow-x: visible;
   overflow-y: auto;
 }
 
@@ -523,7 +525,8 @@ button, input { font: inherit; }
 }
 
 .desktop-transaction-modal .ant-table-cell {
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 @media (max-width: 760px) {
@@ -563,4 +566,55 @@ button, input { font: inherit; }
 
 .desktop-transaction-modal .invoice-cart-table .invoice-cart-unit-column {
   white-space: nowrap;
+}
+
+
+/* Quy tắc bảng dùng chung: không cắt ngang hoặc bẻ chữ giữa ký tự. */
+.ant-table-wrapper {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.ant-table-content {
+  overflow-x: auto !important;
+  overflow-y: hidden;
+}
+
+.ant-table table {
+  table-layout: auto !important;
+}
+
+.ant-table-cell {
+  word-break: normal;
+  overflow-wrap: break-word;
+  vertical-align: middle;
+}
+
+.ant-table-thead > tr > th {
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: break-word;
+  line-height: 1.4;
+}
+
+.ant-table-tbody > tr > td {
+  line-height: 1.5;
+}
+
+.ant-table-cell .ant-space {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+
+.report-table-hint {
+  margin: 0 0 12px;
+}
+
+.report-summary-stats {
+  margin-top: 4px;
+}
+
+.report-table-section-title {
+  margin: 20px 0 10px !important;
 }
