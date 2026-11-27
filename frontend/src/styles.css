@@ -456,3 +456,95 @@ button, input { font: inherit; }
     padding: 12px;
   }
 }
+
+
+/* Các popup giao dịch theo cấu trúc Desktop: thông tin, danh sách, tổng kết. */
+.desktop-transaction-modal .ant-modal-body {
+  max-height: min(74vh, 820px);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.desktop-transaction-modal .desktop-form-section {
+  margin-bottom: 14px;
+}
+
+.transaction-product-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.transaction-product-search .ant-select {
+  min-width: 0;
+}
+
+.transaction-line-row {
+  padding: 4px 0 0;
+  border-bottom: 1px solid #344256;
+}
+
+.transaction-line-row:last-child {
+  border-bottom: 0;
+}
+
+.transaction-line-row .ant-form-item {
+  margin-bottom: 12px;
+}
+
+.transaction-line-remove {
+  margin-top: 6px;
+}
+
+.transaction-total-card .ant-descriptions-item-content {
+  font-weight: 600;
+}
+
+.transaction-total-value {
+  color: #16a34a !important;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.invoice-promotion-form {
+  margin-top: 10px;
+}
+
+.return-condition-hint {
+  display: block;
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+
+.desktop-transaction-modal .ant-table-wrapper {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.desktop-transaction-modal .ant-table-cell {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  .transaction-product-search {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .transaction-product-search .ant-btn {
+    width: 100%;
+  }
+
+  .transaction-line-row {
+    padding-top: 10px;
+  }
+
+  .transaction-line-remove {
+    margin: 0 0 10px;
+  }
+
+  .desktop-transaction-modal .ant-modal-body {
+    max-height: 72vh;
+  }
+}
