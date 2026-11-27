@@ -308,9 +308,9 @@ class ReportCenterPage(QWidget):
 
         self.report_category_combo = QComboBox()
         self.report_category_combo.setObjectName("reportCategoryCombo")
-        self.report_category_combo.setMinimumWidth(0)
+        self.report_category_combo.setMinimumWidth(135)
         self.report_category_combo.setSizePolicy(
-            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
+            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed
         )
         self.report_category_combo.addItem("Bán hàng", "BÁO CÁO BÁN HÀNG")
         for group_name, _ in self.GROUPS[1:]:
@@ -319,9 +319,9 @@ class ReportCenterPage(QWidget):
 
         self.report_combo = QComboBox()
         self.report_combo.setObjectName("reportTypeCombo")
-        self.report_combo.setMinimumWidth(0)
+        self.report_combo.setMinimumWidth(185)
         self.report_combo.setSizePolicy(
-            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
+            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed
         )
         for report_key, report_title in self.GROUPS[0][1]:
             self.report_combo.addItem(report_title, report_key)
@@ -393,9 +393,9 @@ class ReportCenterPage(QWidget):
         filter_layout.addWidget(self.period_combo)
 
         self.employee_combo = QComboBox()
-        self.employee_combo.setMinimumWidth(0)
+        self.employee_combo.setMinimumWidth(120)
         self.employee_combo.setSizePolicy(
-            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
+            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed
         )
         self.employee_combo.addItem("Tất cả nhân viên", "")
         filter_layout.addWidget(self.employee_combo)
@@ -415,9 +415,9 @@ class ReportCenterPage(QWidget):
 
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Tìm mã / tên / chứng từ...")
-        self.search_input.setMinimumWidth(0)
+        self.search_input.setMinimumWidth(100)
         self.search_input.setSizePolicy(
-            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
         )
         filter_layout.addWidget(self.search_input, 1)
 
