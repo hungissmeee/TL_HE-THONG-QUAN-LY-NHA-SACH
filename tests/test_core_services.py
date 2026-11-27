@@ -1079,6 +1079,50 @@ class ReportServiceTests(unittest.TestCase):
             ("employee_sales_report", "2026-01-01", "2026-01-31"),
         )
 
+    def test_employee_sales_report_sql_does_not_multiply_return_header_amounts(self):
+        class CaptureRepository(BaoCaoRepository):
+            def __init__(self):
+                self.sql = None
+                self.params = None
+
+            def _fetch_all(self, sql, params=()):
+                self.sql = sql
+                self.params = params
+                return []
+
+        repository = CaptureRepository()
+        repository.employee_sales_report("2026-01-01", "2026-01-31")
+
+        self.assertIn("ReturnHeadersByEmployee AS", repository.sql)
+        self.assertIn("ReturnLinesByEmployee AS", repository.sql)
+        self.assertIn("SUM(COALESCE(PDT.TONG_TIEN_HOAN, 0))", repository.sql)
+        self.assertEqual(
+            repository.params,
+            ("2026-01-01", "2026-01-31", "2026-01-01", "2026-01-31",
+             "2026-01-01", "2026-01-31"),
+        )
+
+    def test_shift_report_sql_uses_invoice_level_discount_rounding(self):
+        class CaptureRepository(BaoCaoRepository):
+            def __init__(self):
+                self.sql = None
+                self.params = None
+
+            def _fetch_all(self, sql, params=()):
+                self.sql = sql
+                self.params = params
+                return []
+
+        repository = CaptureRepository()
+        repository.shift_report("2026-01-01", "2026-01-31")
+
+        self.assertIn(
+            "H.TIEN_HANG - ROUND(H.TIEN_HANG * H.TYLEGIAM / 100.0, 2)",
+            repository.sql,
+        )
+        self.assertIn("C.TMCUOICA", repository.sql)
+        self.assertEqual(repository.params, ("2026-01-01", "2026-01-31"))
+
     def test_invoice_import_return_and_shift_reports_delegate(self):
         self.service.invoice_report("2026-01-01", "2026-01-31")
         self.service.import_report("2026-01-01", "2026-01-31")
