@@ -73,12 +73,6 @@ function formatNumber(value: number | string | null | undefined): string {
   return Number.isFinite(amount) ? amount.toLocaleString("vi-VN") : "—";
 }
 
-function displayDate(value?: string | null): string {
-  if (!value) return "—";
-  const parsed = dayjs(value);
-  return parsed.isValid() ? parsed.format("DD/MM/YYYY") : "—";
-}
-
 function getErrorMessage(error: unknown): string {
   return error instanceof ApiError ? error.message : "Không thể hoàn tất yêu cầu. Vui lòng thử lại.";
 }

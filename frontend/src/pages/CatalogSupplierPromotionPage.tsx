@@ -16,6 +16,7 @@ import {
   Tag,
   Typography,
   message,
+  type TableColumnsType,
 } from "antd";
 import {
   DeleteOutlined,
@@ -122,7 +123,7 @@ function CatalogPage({ catalogType }: { catalogType: string }) {
     }
   }
 
-  const columns = (data?.fields || []).map((field) => ({
+  const columns: TableColumnsType<Row> = (data?.fields || []).map((field) => ({
     title: field.label,
     dataIndex: field.key,
     key: field.key,
@@ -143,7 +144,7 @@ function CatalogPage({ catalogType }: { catalogType: string }) {
           </Popconfirm>
         </Space>
       ),
-    } as typeof columns[number]);
+    });
   }
 
   return (

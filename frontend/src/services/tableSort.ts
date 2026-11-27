@@ -45,7 +45,7 @@ function compareValues(left: unknown, right: unknown): number {
 export function tableSorter<T extends object>(selector: TableSortSelector<T>) {
   const read = typeof selector === "function"
     ? selector
-    : (record: T) => (record as Record<string, unknown>)[selector];
+    : (record: T) => (record as unknown as Record<string, unknown>)[selector];
 
   return (left: T, right: T): number => compareValues(read(left), read(right));
 }
