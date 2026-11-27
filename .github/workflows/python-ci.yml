@@ -44,7 +44,7 @@ jobs:
 
       - name: Check Python syntax
         run: |
-          python -m compileall -q main.py core database ui tests
+          python -m compileall -q main.py core database ui backend tests
 
       - name: Run unit tests
         run: |
