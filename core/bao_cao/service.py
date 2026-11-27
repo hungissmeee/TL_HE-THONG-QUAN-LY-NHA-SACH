@@ -1,4 +1,4 @@
-"""Service truy vấn và xác thực bộ lọc báo cáo."""
+"""Service xác thực tham số cho trung tâm báo cáo POS."""
 
 from datetime import date
 
@@ -6,7 +6,7 @@ from core.bao_cao.repository import BaoCaoRepository
 
 
 class BaoCaoService:
-    """Facade báo cáo dùng chung cho Desktop và Backend."""
+    """Facade chỉ cho phép gọi các báo cáo đã định nghĩa."""
 
     def __init__(self, repository):
         if not isinstance(repository, BaoCaoRepository):
@@ -14,7 +14,7 @@ class BaoCaoService:
         self.repository = repository
 
     @staticmethod
-    def _validate_dates(start_date, end_date):
+    def validate_dates(start_date, end_date):
         try:
             start = date.fromisoformat(str(start_date))
             end = date.fromisoformat(str(end_date))
@@ -24,45 +24,54 @@ class BaoCaoService:
             raise ValueError("Ngày bắt đầu không được lớn hơn ngày kết thúc.")
         return start.isoformat(), end.isoformat()
 
-    def overview_summary(self, start_date, end_date):
-        return self.repository.overview_summary(*self._validate_dates(start_date, end_date))
+    @staticmethod
+    def _keyword(value):
+        value = str(value or "").strip()
+        if len(value) > 100:
+            raise ValueError("Từ khóa tìm kiếm không được vượt quá 100 ký tự.")
+        return value
 
-    def overview_refunds(self, start_date, end_date):
-        return self.repository.overview_refunds(*self._validate_dates(start_date, end_date))
+    def employees(self):
+        return self.repository.employees()
 
-    def overview_imports(self, start_date, end_date):
-        return self.repository.overview_imports(*self._validate_dates(start_date, end_date))
-
-    def overview_trend(self, start_date, end_date):
-        return self.repository.overview_trend(*self._validate_dates(start_date, end_date))
-
-    def overview_top_products(self, start_date, end_date):
-        return self.repository.overview_top_products(*self._validate_dates(start_date, end_date))
-
-    def revenue_by_period(self, start_date, end_date, period):
-        start, end = self._validate_dates(start_date, end_date)
-        if period not in {"day", "month", "year"}:
-            raise ValueError("Kiểu tổng hợp doanh thu không hợp lệ.")
-        return self.repository.revenue_by_period(start, end, period)
-
-    def promotion_effectiveness(self, start_date, end_date):
-        return self.repository.promotion_effectiveness(*self._validate_dates(start_date, end_date))
-
-    def invoice_report(self, start_date, end_date):
-        return self.repository.invoice_report(*self._validate_dates(start_date, end_date))
-
-    def employee_sales_report(self, start_date, end_date):
-        return self.repository.employee_sales_report(
-            *self._validate_dates(start_date, end_date)
+    def daily_sales_report(self, start_date, end_date, employee_code=None, keyword=""):
+        start, end = self.validate_dates(start_date, end_date)
+        return self.repository.daily_sales_report(
+            start, end, str(employee_code or "").strip() or None,
+            self._keyword(keyword),
         )
 
-    def import_report(self, start_date, end_date):
-        return self.repository.import_report(*self._validate_dates(start_date, end_date))
+    def sales_by_period_report(self, start_date, end_date, period="day"):
+        start, end = self.validate_dates(start_date, end_date)
+        if period not in {"day", "month", "year"}:
+            raise ValueError("Kiểu tổng hợp thời gian không hợp lệ.")
+        return self.repository.sales_by_period_report(start, end, period)
 
-    def return_report(self, start_date, end_date):
-        return self.repository.return_report(*self._validate_dates(start_date, end_date))
+    def sales_by_employee_report(self, start_date, end_date, keyword=""):
+        start, end = self.validate_dates(start_date, end_date)
+        return self.repository.sales_by_employee_report(start, end, self._keyword(keyword))
 
-    def inventory_report(self, threshold, status, keyword=""):
+    def sales_by_product_report(self, start_date, end_date, keyword=""):
+        start, end = self.validate_dates(start_date, end_date)
+        return self.repository.sales_by_product_report(start, end, self._keyword(keyword))
+
+    def promotion_report(self, start_date, end_date, keyword=""):
+        start, end = self.validate_dates(start_date, end_date)
+        return self.repository.promotion_report(start, end, self._keyword(keyword))
+
+    def return_detail_report(self, start_date, end_date, keyword=""):
+        start, end = self.validate_dates(start_date, end_date)
+        return self.repository.return_detail_report(start, end, self._keyword(keyword))
+
+    def import_detail_report(self, start_date, end_date, keyword=""):
+        start, end = self.validate_dates(start_date, end_date)
+        return self.repository.import_detail_report(start, end, self._keyword(keyword))
+
+    def import_supplier_report(self, start_date, end_date, keyword=""):
+        start, end = self.validate_dates(start_date, end_date)
+        return self.repository.import_supplier_report(start, end, self._keyword(keyword))
+
+    def current_inventory_report(self, threshold=5, status="all", keyword=""):
         try:
             threshold = int(threshold)
         except (TypeError, ValueError):
@@ -70,24 +79,19 @@ class BaoCaoService:
         if threshold < 1 or threshold > 100000:
             raise ValueError("Ngưỡng sắp hết hàng phải từ 1 đến 100000.")
         if status not in {"all", "low", "out"}:
-            raise ValueError("Bộ lọc tình trạng tồn kho không hợp lệ.")
-        keyword = str(keyword or "").strip()
-        if len(keyword) > 100:
-            raise ValueError("Từ khóa tìm kiếm không được vượt quá 100 ký tự.")
-        return self.repository.inventory_report(threshold, status, keyword)
+            raise ValueError("Tình trạng tồn kho không hợp lệ.")
+        return self.repository.current_inventory_report(
+            threshold, status, self._keyword(keyword)
+        )
 
-    def product_report(self, start_date, end_date, sort, keyword=""):
-        start, end = self._validate_dates(start_date, end_date)
-        if sort not in {"quantity_desc", "quantity_asc", "refund_desc"}:
-            raise ValueError("Kiểu sắp xếp báo cáo sản phẩm không hợp lệ.")
-        keyword = str(keyword or "").strip()
-        if len(keyword) > 100:
-            raise ValueError("Từ khóa tìm kiếm không được vượt quá 100 ký tự.")
-        return self.repository.product_report(start, end, sort, keyword)
+    def stock_movement_report(self, start_date, end_date, keyword=""):
+        start, end = self.validate_dates(start_date, end_date)
+        return self.repository.stock_movement_report(start, end, self._keyword(keyword))
 
-    def product_report_summary(self, start_date, end_date):
-        start, end = self._validate_dates(start_date, end_date)
-        return self.repository.product_report_summary(start, end)
+    def stock_card_report(self, start_date, end_date, keyword=""):
+        start, end = self.validate_dates(start_date, end_date)
+        return self.repository.stock_card_report(start, end, self._keyword(keyword))
 
     def shift_report(self, start_date, end_date):
-        return self.repository.shift_report(*self._validate_dates(start_date, end_date))
+        start, end = self.validate_dates(start_date, end_date)
+        return self.repository.shift_report(start, end)
