@@ -192,9 +192,7 @@ class CatalogDetailDialog(QDialog):
         actions.addWidget(edit_button)
 
         delete_button = QPushButton("Xóa mềm")
-        delete_button.setStyleSheet(
-            "QPushButton { background-color: #A83232; color: white; }"
-        )
+            delete_button.setObjectName("dangerButton")
         delete_button.clicked.connect(self._delete)
         actions.addWidget(delete_button)
 
