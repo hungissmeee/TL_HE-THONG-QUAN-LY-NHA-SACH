@@ -319,15 +319,18 @@ class CreateImportDialog(QDialog):
         cursor = conn.cursor()
         try:
             cursor.execute("""
-                SELECT MASP, TENSP, DVT, GIANHAP, SLTON, VAT
-                FROM dbo.SAN_PHAM
-                WHERE ISNULL(IS_DELETED, 0) = 0
-                ORDER BY TENSP, MASP
+                SELECT
+                    SP.MASP, SP.TENSP, SP.DVT, SP.GIANHAP,
+                    SP.SLTON, SP.VAT, SP.BARCODE, S.ISBN
+                FROM dbo.SAN_PHAM SP
+                LEFT JOIN dbo.SACH S ON S.MASP = SP.MASP
+                WHERE ISNULL(SP.IS_DELETED, 0) = 0
+                ORDER BY SP.TENSP, SP.MASP
             """)
             self.products = {}
             suggestions = []
             for row in cursor.fetchall():
-                code, name, unit, cost, stock, vat = row
+                code, name, unit, cost, stock, vat, barcode, isbn = row
                 code = str(code)
                 product = {
                     "masp": code,
@@ -336,10 +339,15 @@ class CreateImportDialog(QDialog):
                     "price": as_decimal(cost),
                     "stock": int(stock or 0),
                     "vat": as_decimal(vat),
+                    "barcode": str(barcode or "").strip(),
+                    "isbn": str(isbn or "").strip(),
                 }
                 self.products[code] = product
                 suggestions.append(
-                    f"{code} | {product['tensp']} | Giá nhập hiện tại: {money(cost)}"
+                    f"{code} | {product['tensp']} | "
+                    f"Mã vạch: {product['barcode'] or '—'} | "
+                    f"ISBN: {product['isbn'] or '—'} | "
+                    f"Giá nhập hiện tại: {money(cost)}"
                 )
             self.product_suggestion_model.setStringList(suggestions)
         except Exception as error:
@@ -375,6 +383,8 @@ class CreateImportDialog(QDialog):
             if keyword in {
                 code.casefold(),
                 product["tensp"].casefold(),
+                product.get("barcode", "").casefold(),
+                product.get("isbn", "").casefold(),
                 f"{code} | {product['tensp']}".casefold(),
             }
         ]
@@ -384,7 +394,12 @@ class CreateImportDialog(QDialog):
 
         matches = [
             code for code, product in self.products.items()
-            if keyword in code.casefold() or keyword in product["tensp"].casefold()
+            if (
+                keyword in code.casefold()
+                or keyword in product["tensp"].casefold()
+                or keyword in product.get("barcode", "").casefold()
+                or keyword in product.get("isbn", "").casefold()
+            )
         ]
         if len(matches) == 1:
             self._add_product_to_cart(matches[0])
