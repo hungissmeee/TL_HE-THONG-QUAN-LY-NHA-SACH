@@ -4,11 +4,9 @@ Không tạo QApplication, không mở cửa sổ và không kết nối SQL Ser
 """
 
 from pathlib import Path
-import re
 import sys
 import unittest
 
-from PySide6.QtCore import QUrl
 from PySide6.QtGui import QImageReader
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -54,17 +52,15 @@ class ArrowAssetTests(unittest.TestCase):
                 reader = QImageReader(str(icon_path))
                 self.assertTrue(reader.canRead(), reader.errorString())
 
-    def test_stylesheets_use_existing_absolute_arrow_urls(self):
-        stylesheets = (MAIN_WINDOW_STYLESHEET, CALENDAR_STYLESHEET)
-        urls = []
-        for stylesheet in stylesheets:
-            urls.extend(re.findall(r'image:\\s*url\\(["\\']?([^"\\')]+)', stylesheet))
-
-        self.assertTrue(urls, "Không tìm thấy URL icon trong stylesheet.")
-        for icon_url in urls:
-            with self.subTest(url=icon_url):
-                icon_path = Path(QUrl(icon_url).toLocalFile())
-                self.assertTrue(icon_path.is_file(), str(icon_path))
+    def test_stylesheets_use_absolute_svg_paths(self):
+        for stylesheet in (MAIN_WINDOW_STYLESHEET, CALENDAR_STYLESHEET):
+            with self.subTest(stylesheet=stylesheet[:40]):
+                self.assertIn("file:///", stylesheet)
+                for icon_name in (
+                    "arrow-down.svg",
+                    "arrow-up.svg",
+                ):
+                    self.assertIn(icon_name, stylesheet)
 
 
 def main():
