@@ -178,3 +178,38 @@ button, input { font: inherit; }
   .products-table-footer { align-items: flex-start; flex-direction: column; }
   .brand-name { font-size: 16px; letter-spacing: .035em; }
 }
+
+
+/* Thành phần giao diện dùng chung cho các phân hệ nghiệp vụ còn lại */
+.operation-page { width: 100%; max-width: 1600px; margin: 0 auto; }
+.operation-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 20px; }
+.operation-heading h2.ant-typography { margin: 7px 0 5px; color: #f3f4f6; }
+.operation-card { margin-bottom: 18px; border: 1px solid #344256; border-radius: 9px; background: #202938; }
+.operation-card > .ant-card-body { padding: 20px; }
+.operation-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; }
+.operation-search { flex: 1 1 310px; min-width: 220px; }
+.operation-list-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.operation-list-heading h4.ant-typography { margin: 0; }
+.operation-info { margin: 12px 0 16px; }
+.operation-line { margin-bottom: 2px; }
+.operation-stats { margin: 0 0 16px; }
+.operation-stats .ant-card { height: 100%; border: 1px solid #344256; border-radius: 9px; background: #202938; }
+.operation-stats .ant-statistic-title { color: #aab7c8; }
+.invoice-checkout { margin: 18px 0 10px; }
+.invoice-checkout .ant-col > .ant-typography { display: block; margin-bottom: 7px; }
+.invoice-totals { margin-top: 14px; }
+.detail-table { margin-top: 18px; }
+.return-reason { margin-top: 18px; }
+.operation-card .ant-table { background: transparent; }
+.operation-card .ant-table-thead > tr > th { white-space: nowrap; }
+.operation-card .ant-table-tbody > tr > td { vertical-align: middle; }
+.operation-page .ant-modal-body { max-height: min(72vh, 780px); overflow-y: auto; }
+.operation-page .ant-input-number { width: 100%; }
+.operation-page .ant-form-item { margin-bottom: 14px; }
+
+@media (max-width: 760px) {
+  .operation-heading { align-items: flex-start; flex-direction: column; }
+  .operation-toolbar { align-items: stretch; }
+  .operation-search { flex-basis: 100%; }
+  .operation-list-heading { align-items: flex-start; flex-direction: column; }
+}
