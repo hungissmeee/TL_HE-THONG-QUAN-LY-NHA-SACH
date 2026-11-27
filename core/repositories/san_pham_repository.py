@@ -209,7 +209,8 @@ class SanPhamRepository:
                 """
                 + from_sql
                 + where_sql
-                + f" ORDER BY {sort_column} {sort_direction}, SP.MASP ASC"
+                + f" ORDER BY {sort_column} {sort_direction}"
+                + (", SP.MASP ASC" if sort_column != "SP.MASP" else "")
                 + " OFFSET ? ROWS FETCH NEXT ? ROWS ONLY",
                 *params,
                 offset,
