@@ -30,7 +30,7 @@ export function clearAccessToken(): void {
   }
 }
 
-async function request<T>(
+export async function apiRequest<T>(
   path: string,
   options: RequestInit = {},
   authenticated = false,
@@ -87,13 +87,13 @@ async function request<T>(
 
 export const authApi = {
   login(credentials: LoginCredentials): Promise<LoginResponse> {
-    return request<LoginResponse>("/auth/login", {
+    return apiRequest<LoginResponse>("/auth/login", {
       method: "POST",
       body: JSON.stringify(credentials),
     });
   },
 
   me(): Promise<EmployeeSummary> {
-    return request<EmployeeSummary>("/auth/me", { method: "GET" }, true);
+    return apiRequest<EmployeeSummary>("/auth/me", { method: "GET" }, true);
   },
 };
