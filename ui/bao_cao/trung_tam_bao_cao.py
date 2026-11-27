@@ -1,0 +1,775 @@
+"""Trung tâm báo cáo POS theo dạng bảng chứng từ."""
+
+from datetime import date, datetime
+from decimal import Decimal
+
+import xlsxwriter
+from PySide6.QtCore import Qt, QDate
+from PySide6.QtWidgets import (
+    QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QTreeWidget,
+    QTreeWidgetItem, QTableWidget, QTableWidgetItem, QHeaderView,
+    QAbstractItemView, QDateEdit, QComboBox, QLineEdit, QSpinBox,
+    QFrame, QFileDialog, QMessageBox,
+)
+
+from core.bao_cao.repository import BaoCaoRepository
+from core.bao_cao.service import BaoCaoService
+from ui.calendar_utils import configure_date_edit_calendar
+from ui.formatters import (
+    format_report_money as money_text,
+    format_number as number_text,
+    format_report_date as date_text,
+)
+
+
+REPORTS = {
+    "daily_sales": {
+        "title": "BÁO CÁO CUỐI NGÀY BÁN HÀNG",
+        "description": "Chi tiết hóa đơn, số lượng bán, giảm giá, tiền hoàn và số tiền còn lại theo hóa đơn gốc.",
+        "method": "daily_sales_report",
+        "headers": [
+            "Mã hóa đơn", "Khách hàng", "Nhân viên", "Ngày lập", "Ca",
+            "Số dòng", "SL bán", "Tiền hàng", "Giảm giá", "Doanh số",
+            "Số phiếu trả", "SL hoàn tiền", "SL đổi hàng", "Tiền hoàn",
+            "Còn lại sau hoàn", "Khách đưa", "Tiền thừa", "Trạng thái",
+        ],
+        "money_cols": [7, 8, 9, 13, 14, 15, 16],
+        "number_cols": [5, 6, 10, 11, 12],
+        "date_cols": [3],
+        "sum_cols": [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+        "search": True,
+        "employee": True,
+    },
+    "sales_time": {
+        "title": "BÁO CÁO BÁN HÀNG THEO THỜI GIAN",
+        "description": "Doanh số được nhóm theo ngày lập hóa đơn; phiếu trả được nhóm theo ngày xử lý. Chênh lệch theo kỳ không phải doanh thu thuần theo hóa đơn gốc.",
+        "method": "sales_by_period_report",
+        "headers": [
+            "Thời gian", "SL đơn bán", "SL bán", "Tổng tiền hàng",
+            "Giảm giá HĐ", "Doanh số", "SL phiếu trả", "SL hàng trả",
+            "Giá trị hoàn", "Doanh số sau hoàn theo kỳ",
+        ],
+        "money_cols": [3, 4, 5, 8, 9],
+        "number_cols": [1, 2, 6, 7],
+        "date_cols": [0],
+        "sum_cols": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+        "period": True,
+    },
+    "sales_employee": {
+        "title": "BÁO CÁO BÁN HÀNG THEO NHÂN VIÊN",
+        "description": "Doanh số ghi theo nhân viên lập hóa đơn; số phiếu đổi trả và tiền hoàn ghi theo nhân viên trực tiếp xử lý phiếu.",
+        "method": "sales_by_employee_report",
+        "headers": [
+            "Mã NV", "Tên nhân viên", "SL hóa đơn", "SL bán",
+            "Tiền hàng", "Giảm giá", "Doanh số", "SL phiếu trả",
+            "SL hoàn tiền", "SL đổi hàng", "Tiền đã hoàn",
+        ],
+        "money_cols": [4, 5, 6, 10],
+        "number_cols": [2, 3, 7, 8, 9],
+        "sum_cols": [2, 3, 4, 5, 6, 7, 8, 9, 10],
+        "search": True,
+    },
+    "sales_product": {
+        "title": "BÁO CÁO BÁN HÀNG THEO SẢN PHẨM",
+        "description": "Tập trung vào số hóa đơn, số lượng bán, hoàn tiền, đổi hàng và tồn hiện tại; không phân bổ tiền hoàn xuống từng sản phẩm.",
+        "method": "sales_by_product_report",
+        "headers": [
+            "Mã hàng", "Mã vạch", "ISBN", "Tên hàng", "Đơn vị",
+            "SL hóa đơn", "SL bán", "SL hoàn tiền", "SL đổi hàng", "Tồn hiện tại",
+        ],
+        "number_cols": [5, 6, 7, 8, 9],
+        "sum_cols": [5, 6, 7, 8],
+        "search": True,
+    },
+    "promotion": {
+        "title": "BÁO CÁO HIỆU QUẢ KHUYẾN MÃI",
+        "description": "Tổng hợp theo hóa đơn gốc trong kỳ; tiền hoàn được cộng lũy kế theo hóa đơn thuộc chương trình.",
+        "method": "promotion_report",
+        "headers": [
+            "Mã khuyến mãi", "Tên chương trình", "Tỷ lệ giảm",
+            "SL hóa đơn", "Tiền hàng", "Tiền giảm", "Doanh số",
+            "Số phiếu trả", "Tiền hoàn lũy kế", "Còn lại sau hoàn",
+        ],
+        "money_cols": [4, 5, 6, 8, 9],
+        "number_cols": [3, 7],
+        "percent_cols": [2],
+        "sum_cols": [3, 4, 5, 6, 7, 8, 9],
+        "search": True,
+    },
+    "import_detail": {
+        "title": "BÁO CÁO CHI TIẾT NHẬP HÀNG",
+        "description": "Chi tiết từng dòng hàng trên phiếu nhập còn hiệu lực trong kỳ đã chọn.",
+        "method": "import_detail_report",
+        "headers": [
+            "Mã phiếu nhập", "Ngày nhập", "Loại phiếu", "Nhà cung cấp",
+            "Số HĐ NCC", "Nhân viên lập", "Mã hàng", "Tên hàng",
+            "Số lượng", "Đơn giá nhập", "Thành tiền",
+        ],
+        "money_cols": [9, 10],
+        "number_cols": [8],
+        "date_cols": [1],
+        "sum_cols": [8, 10],
+        "search": True,
+    },
+    "import_supplier": {
+        "title": "BÁO CÁO NHẬP HÀNG THEO NHÀ CUNG CẤP",
+        "description": "Tổng hợp số phiếu, số lượng và trị giá nhập theo nhà cung cấp.",
+        "method": "import_supplier_report",
+        "headers": [
+            "Mã NCC", "Nhà cung cấp", "Số điện thoại",
+            "Số phiếu nhập", "Số lượng nhập", "Tổng trị giá nhập",
+        ],
+        "money_cols": [5],
+        "number_cols": [3, 4],
+        "sum_cols": [3, 4, 5],
+        "search": True,
+    },
+    "return_detail": {
+        "title": "BÁO CÁO CHI TIẾT ĐỔI TRẢ",
+        "description": "Tiền hoàn chỉ lấy ở cấp phiếu đổi trả; không có đơn giá hoàn từng dòng sản phẩm.",
+        "method": "return_detail_report",
+        "headers": [
+            "Mã phiếu đổi trả", "Ngày xử lý", "Hóa đơn gốc", "Nhân viên xử lý",
+            "Lý do", "Số dòng", "SL hoàn tiền", "SL đổi hàng",
+            "SL hàng nguyên vẹn", "SL hàng hỏng", "Tổng tiền hoàn",
+        ],
+        "money_cols": [10],
+        "number_cols": [5, 6, 7, 8, 9],
+        "date_cols": [1],
+        "sum_cols": [5, 6, 7, 8, 9, 10],
+        "search": True,
+    },
+    "current_inventory": {
+        "title": "BÁO CÁO TỒN KHO HIỆN TẠI",
+        "description": "Ảnh chụp số lượng tồn hiện tại; giá trị tồn ước tính theo giá nhập đang lưu trên sản phẩm.",
+        "method": "current_inventory_report",
+        "headers": [
+            "Mã hàng", "Mã vạch", "Tên hàng", "Đơn vị",
+            "Số lượng tồn", "Giá nhập hiện tại", "Giá bán",
+            "Giá trị tồn ước tính", "Tình trạng",
+        ],
+        "money_cols": [5, 6, 7],
+        "number_cols": [4],
+        "sum_cols": [4, 7],
+        "search": True,
+        "stock_filter": True,
+        "no_date": True,
+    },
+    "stock_movement": {
+        "title": "BÁO CÁO NHẬP – XUẤT – TỒN KHO",
+        "description": "Tồn đầu/cuối được tái dựng từ số tồn hiện tại và chứng từ còn hiệu lực. Giá trị tồn, xuất bán, hàng trả và đổi hàng là ước tính theo giá nhập hiện tại; trị giá nhập NCC lấy giá trên phiếu nhập.",
+        "method": "stock_movement_report",
+        "headers": [
+            "Mã hàng", "Tên hàng", "Đơn vị",
+            "Tồn đầu - SL", "Tồn đầu - Thành tiền*",
+            "Nhập NCC - SL", "Nhập NCC - Thành tiền",
+            "Khách trả - SL", "Khách trả - Thành tiền*",
+            "Xuất bán - SL", "Xuất bán - Thành tiền*",
+            "Xuất đổi - SL", "Xuất đổi - Thành tiền*",
+            "Tồn cuối - SL", "Tồn cuối - Thành tiền*",
+        ],
+        "number_cols": [3, 5, 7, 9, 11, 13],
+        "money_cols": [4, 6, 8, 10, 12, 14],
+        "sum_cols": list(range(3, 15)),
+        "group_headers": [
+            (0, 2, "Thông tin hàng hóa"),
+            (3, 4, "Tồn đầu kỳ"),
+            (5, 6, "Nhập trong kỳ"),
+            (7, 8, "Khách trả nhập lại"),
+            (9, 10, "Xuất bán"),
+            (11, 12, "Xuất đổi hàng"),
+            (13, 14, "Tồn cuối kỳ"),
+        ],
+        "search": True,
+    },
+    "stock_card": {
+        "title": "BÁO CÁO XUẤT NHẬP TỒN CHI TIẾT (THẺ KHO)",
+        "description": "Các lần nhập, bán, khách trả hàng nguyên vẹn và xuất hàng đổi; tồn chạy được tái dựng từ số tồn hiện tại và lịch sử chứng từ.",
+        "method": "stock_card_report",
+        "headers": [
+            "Ngày giao dịch", "Loại giao dịch", "Mã chứng từ",
+            "Mã hàng", "Tên hàng", "SL nhập", "SL xuất", "Tồn sau giao dịch",
+        ],
+        "number_cols": [5, 6, 7],
+        "date_cols": [0],
+        "sum_cols": [5, 6],
+        "search": True,
+    },
+    "shift": {
+        "title": "BÁO CÁO CUỐI CA",
+        "description": "Số hóa đơn và doanh số theo ca; tiền cuối ca là số kiểm kê được ghi nhận, không tự động đồng nhất với doanh số.",
+        "method": "shift_report",
+        "headers": [
+            "Mã ca", "Ngày làm", "Ca", "Giờ mở", "Giờ đóng",
+            "Lượt nhân viên", "SL hóa đơn", "SL bán", "Doanh số",
+            "Số phiếu trả", "Tiền hoàn", "Tiền đầu ca",
+            "Tiền cuối ca", "Trạng thái chốt",
+        ],
+        "money_cols": [8, 10, 11, 12],
+        "number_cols": [5, 6, 7, 9],
+        "date_cols": [1],
+        "sum_cols": [5, 6, 7, 8, 9, 10, 11, 12],
+    },
+}
+
+
+class ReportCenterPage(QWidget):
+    """Một trung tâm báo cáo dạng POS: cây danh mục, bộ lọc và bảng chứng từ."""
+
+    GROUPS = [
+        ("BÁO CÁO BÁN HÀNG", [
+            ("daily_sales", "Báo cáo cuối ngày"),
+            ("sales_time", "Bán hàng theo thời gian"),
+            ("sales_employee", "Bán hàng theo nhân viên"),
+            ("sales_product", "Bán hàng theo sản phẩm"),
+            ("promotion", "Hiệu quả khuyến mãi"),
+        ]),
+        ("BÁO CÁO HÀNG HÓA / KHO", [
+            ("stock_movement", "Báo cáo nhập xuất tồn"),
+            ("stock_card", "Xuất nhập tồn chi tiết"),
+            ("current_inventory", "Tồn kho hiện tại"),
+        ]),
+        ("BÁO CÁO NHẬP HÀNG", [
+            ("import_detail", "Chi tiết nhập hàng"),
+            ("import_supplier", "Nhập hàng theo nhà cung cấp"),
+        ]),
+        ("BÁO CÁO ĐỔI TRẢ", [
+            ("return_detail", "Chi tiết đổi trả"),
+        ]),
+        ("BÁO CÁO CA LÀM VIỆC", [
+            ("shift", "Báo cáo cuối ca"),
+        ]),
+    ]
+
+    def __init__(self, db, parent=None):
+        super().__init__(parent)
+        self.db = db
+        self.service = BaoCaoService(BaoCaoRepository(db))
+        self.current_report = "daily_sales"
+        self.rows = []
+        self._build_ui()
+        self._load_employees()
+        self._select_report("daily_sales")
+        self.refresh_data()
+
+    def _build_ui(self):
+        root = QHBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
+
+        self.report_tree = QTreeWidget()
+        self.report_tree.setHeaderHidden(True)
+        self.report_tree.setMinimumWidth(218)
+        self.report_tree.setMaximumWidth(250)
+        self.report_tree.setIndentation(14)
+        self.report_tree.setStyleSheet("""
+            QTreeWidget {
+                background: #172333; color: #DCE6F1;
+                border: 0; padding: 8px 4px; font-size: 11px;
+            }
+            QTreeWidget::item { min-height: 31px; padding: 3px 7px; }
+            QTreeWidget::item:selected {
+                background: #087E91; color: white; border-radius: 3px;
+            }
+            QTreeWidget::item:hover { background: #26394D; }
+        """)
+        for group_name, children in self.GROUPS:
+            group = QTreeWidgetItem([group_name])
+            group.setFlags(group.flags() & ~Qt.ItemFlag.ItemIsSelectable)
+            self.report_tree.addTopLevelItem(group)
+            group.setExpanded(True)
+            for key, title in children:
+                item = QTreeWidgetItem([title])
+                item.setData(0, Qt.ItemDataRole.UserRole, key)
+                group.addChild(item)
+        self.report_tree.currentItemChanged.connect(self._on_report_changed)
+        root.addWidget(self.report_tree)
+
+        self.right_panel = QWidget()
+        self.right_panel.setObjectName("reportPaper")
+        self.right_panel.setStyleSheet("""
+            QWidget#reportPaper { background: #F3F6F9; }
+            QLabel#reportTitle { color: #1D2939; font-size: 18px; font-weight: 800; }
+            QLabel#reportDescription { color: #536477; font-size: 10px; }
+            QLabel#reportPeriod { color: #344256; font-size: 11px; font-weight: 600; }
+            QFrame#reportFilters {
+                background: #FFFFFF; border: 1px solid #D6DEE8; border-radius: 4px;
+            }
+            QTableWidget {
+                background: #FFFFFF; alternate-background-color: #F4F7FA;
+                color: #263445; gridline-color: #DFE5EC;
+                border: 1px solid #D6DEE8; selection-background-color: #D5EDF3;
+                selection-color: #17313B; font-size: 10px;
+            }
+            QHeaderView::section {
+                background: #E8EEF4; color: #263445; font-weight: 700;
+                border: 1px solid #D3DCE6; padding: 6px 5px;
+            }
+        """)
+        right = QVBoxLayout(self.right_panel)
+        right.setContentsMargins(12, 10, 12, 8)
+        right.setSpacing(8)
+
+        self.title_label = QLabel("BÁO CÁO CUỐI NGÀY BÁN HÀNG")
+        self.title_label.setObjectName("reportTitle")
+        right.addWidget(self.title_label)
+
+        self.description_label = QLabel("")
+        self.description_label.setObjectName("reportDescription")
+        self.description_label.setWordWrap(True)
+        right.addWidget(self.description_label)
+
+        self.period_label = QLabel("")
+        self.period_label.setObjectName("reportPeriod")
+        self.period_label.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        right.addWidget(self.period_label)
+
+        filter_frame = QFrame()
+        filter_frame.setObjectName("reportFilters")
+        filter_layout = QHBoxLayout(filter_frame)
+        filter_layout.setContentsMargins(8, 7, 8, 7)
+        filter_layout.setSpacing(6)
+
+        self.preset_combo = QComboBox()
+        self.preset_combo.addItem("Tháng này", "this_month")
+        self.preset_combo.addItem("Hôm nay", "today")
+        self.preset_combo.addItem("7 ngày qua", "last_7_days")
+        self.preset_combo.addItem("Tháng trước", "last_month")
+        self.preset_combo.addItem("Tùy chọn", "custom")
+        self.preset_combo.currentIndexChanged.connect(self._apply_date_preset)
+        filter_layout.addWidget(self.preset_combo)
+
+        today = QDate.currentDate()
+        self.date_from = QDateEdit()
+        configure_date_edit_calendar(self.date_from)
+        self.date_from.setDisplayFormat("dd/MM/yyyy")
+        self.date_from.setDate(QDate(today.year(), today.month(), 1))
+        filter_layout.addWidget(QLabel("Từ"))
+        filter_layout.addWidget(self.date_from)
+
+        self.date_to = QDateEdit()
+        configure_date_edit_calendar(self.date_to)
+        self.date_to.setDisplayFormat("dd/MM/yyyy")
+        self.date_to.setDate(today)
+        filter_layout.addWidget(QLabel("Đến"))
+        filter_layout.addWidget(self.date_to)
+
+        self.period_combo = QComboBox()
+        self.period_combo.addItem("Theo ngày", "day")
+        self.period_combo.addItem("Theo tháng", "month")
+        self.period_combo.addItem("Theo năm", "year")
+        filter_layout.addWidget(self.period_combo)
+
+        self.employee_combo = QComboBox()
+        self.employee_combo.setMinimumWidth(130)
+        self.employee_combo.addItem("Tất cả nhân viên", "")
+        filter_layout.addWidget(self.employee_combo)
+
+        self.stock_status_combo = QComboBox()
+        self.stock_status_combo.addItem("Tất cả hàng hóa", "all")
+        self.stock_status_combo.addItem("Sắp hết hàng", "low")
+        self.stock_status_combo.addItem("Hết hàng", "out")
+        filter_layout.addWidget(self.stock_status_combo)
+
+        self.threshold_spin = QSpinBox()
+        self.threshold_spin.setRange(1, 100000)
+        self.threshold_spin.setValue(5)
+        self.threshold_spin.setPrefix("Ngưỡng: ")
+        self.threshold_spin.setMaximumWidth(120)
+        filter_layout.addWidget(self.threshold_spin)
+
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Tìm mã / tên / chứng từ...")
+        self.search_input.setMinimumWidth(160)
+        filter_layout.addWidget(self.search_input, 1)
+
+        self.view_button = QPushButton("Xem báo cáo")
+        self.view_button.clicked.connect(self.refresh_data)
+        filter_layout.addWidget(self.view_button)
+
+        self.export_button = QPushButton("Xuất Excel")
+        self.export_button.clicked.connect(self.export_xlsx)
+        filter_layout.addWidget(self.export_button)
+
+        right.addWidget(filter_frame)
+
+        self.filter_note = QLabel("")
+        self.filter_note.setWordWrap(True)
+        self.filter_note.setStyleSheet("color: #66788A; font-size: 9px;")
+        right.addWidget(self.filter_note)
+
+        self.table = QTableWidget(0, 0)
+        self.table.setAlternatingRowColors(True)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.table.verticalHeader().setVisible(False)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        self.table.horizontalHeader().setMinimumSectionSize(78)
+        self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.setSortingEnabled(True)
+        right.addWidget(self.table, 1)
+
+        self.footer = QTableWidget(1, 0)
+        self.footer.setFixedHeight(32)
+        self.footer.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.footer.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.footer.setVerticalHeaderHidden(True)
+        self.footer.setHorizontalHeaderHidden(True)
+        self.footer.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.footer.setStyleSheet("""
+            QTableWidget {
+                background: #E7EEF4; color: #1F2D3D;
+                border: 1px solid #CCD7E2; font-weight: 800;
+            }
+        """)
+        right.addWidget(self.footer)
+        self.table.horizontalHeader().sectionResized.connect(self._sync_footer_widths)
+
+        self.status_label = QLabel("Chọn một báo cáo ở danh mục bên trái.")
+        self.status_label.setStyleSheet("color: #64748B; font-size: 10px;")
+        right.addWidget(self.status_label)
+        root.addWidget(self.right_panel, 1)
+
+    def _load_employees(self):
+        try:
+            for code, name in self.service.employees():
+                self.employee_combo.addItem(f"{name} ({code})", str(code))
+        except Exception:
+            # Các báo cáo không cần lọc nhân viên vẫn có thể mở; lỗi sẽ hiện khi tải.
+            pass
+
+    def _apply_date_preset(self, *_):
+        preset = self.preset_combo.currentData()
+        today = QDate.currentDate()
+        if preset == "today":
+            start = end = today
+        elif preset == "last_7_days":
+            start, end = today.addDays(-6), today
+        elif preset == "last_month":
+            first_this_month = QDate(today.year(), today.month(), 1)
+            end = first_this_month.addDays(-1)
+            start = QDate(end.year(), end.month(), 1)
+        elif preset == "this_month":
+            start, end = QDate(today.year(), today.month(), 1), today
+        else:
+            return
+        self.date_from.setDate(start)
+        self.date_to.setDate(end)
+
+    def _select_report(self, key):
+        iterator = QTreeWidgetItemIterator(self.report_tree)
+        while iterator.value():
+            item = iterator.value()
+            if item.data(0, Qt.ItemDataRole.UserRole) == key:
+                self.report_tree.setCurrentItem(item)
+                return
+            iterator += 1
+
+    def _on_report_changed(self, current, previous):
+        if current is None:
+            return
+        key = current.data(0, Qt.ItemDataRole.UserRole)
+        if key:
+            self.current_report = key
+            self._configure_report()
+
+    def _configure_report(self):
+        definition = REPORTS[self.current_report]
+        self.title_label.setText(definition["title"])
+        self.description_label.setText(definition["description"])
+
+        is_no_date = definition.get("no_date", False)
+        for widget in (self.preset_combo, self.date_from, self.date_to):
+            widget.setVisible(not is_no_date)
+        self.period_combo.setVisible(bool(definition.get("period")))
+        self.employee_combo.setVisible(bool(definition.get("employee")))
+        self.stock_status_combo.setVisible(bool(definition.get("stock_filter")))
+        self.threshold_spin.setVisible(bool(definition.get("stock_filter")))
+        self.search_input.setVisible(bool(definition.get("search")))
+        self.search_input.clear()
+        self._build_table_headers(definition)
+        self.filter_note.setText(
+            "Đơn giá nhập và số dư kho không có lịch sử điều chỉnh riêng trong CSDL; "
+            "các cột có dấu * là số liệu ước tính theo giá nhập hiện lưu."
+            if self.current_report in {"stock_movement", "stock_card", "current_inventory"}
+            else ""
+        )
+        self.refresh_data()
+
+    def _build_table_headers(self, definition):
+        headers = definition["headers"]
+        self.table.setSortingEnabled(False)
+        self.table.clear()
+        self.table.setColumnCount(len(headers))
+        self.table.setHorizontalHeaderLabels(headers)
+        self.footer.setColumnCount(len(headers))
+        self.footer.setRowCount(1)
+        self.table.setSortingEnabled(True)
+        self._sync_footer_widths()
+
+    def _date_values(self):
+        start, end = self.date_from.date(), self.date_to.date()
+        if start > end:
+            raise ValueError("Ngày bắt đầu không được lớn hơn ngày kết thúc.")
+        return start.toString("yyyy-MM-dd"), end.toString("yyyy-MM-dd")
+
+    def _load_rows(self):
+        definition = REPORTS[self.current_report]
+        method = definition["method"]
+        keyword = self.search_input.text().strip() if definition.get("search") else ""
+        if definition.get("no_date"):
+            return self.service.current_inventory_report(
+                self.threshold_spin.value(),
+                self.stock_status_combo.currentData(),
+                keyword,
+            )
+
+        start, end = self._date_values()
+        if self.current_report == "daily_sales":
+            employee = self.employee_combo.currentData() or None
+            return self.service.daily_sales_report(start, end, employee, keyword)
+        if self.current_report == "sales_time":
+            return self.service.sales_by_period_report(
+                start, end, self.period_combo.currentData()
+            )
+        if method in {
+            "sales_by_employee_report", "sales_by_product_report",
+            "promotion_report", "return_detail_report",
+            "import_detail_report", "import_supplier_report",
+            "stock_movement_report", "stock_card_report",
+        }:
+            return getattr(self.service, method)(start, end, keyword)
+        return getattr(self.service, method)(start, end)
+
+    def refresh_data(self):
+        try:
+            self.view_button.setEnabled(False)
+            self.status_label.setText("Đang tải dữ liệu báo cáo...")
+            self.rows = list(self._load_rows() or [])
+            self._fill_table()
+            definition = REPORTS[self.current_report]
+            self.period_label.setText(
+                "TỒN KHO TẠI THỜI ĐIỂM HIỆN TẠI"
+                if definition.get("no_date")
+                else f"KỲ BÁO CÁO: {self.date_from.date().toString('dd/MM/yyyy')} "
+                     f"– {self.date_to.date().toString('dd/MM/yyyy')}"
+            )
+            self.status_label.setText(f"Có {len(self.rows):,} dòng dữ liệu.")
+        except Exception as exc:
+            self.rows = []
+            self._fill_table()
+            self.status_label.setText("Không thể tải báo cáo.")
+            QMessageBox.critical(self, "Lỗi báo cáo", str(exc))
+        finally:
+            self.view_button.setEnabled(True)
+
+    def _format_value(self, value, column, definition):
+        if value is None:
+            return ""
+        if column in definition.get("date_cols", []):
+            return date_text(value)
+        if column in definition.get("money_cols", []):
+            return money_text(value)
+        if column in definition.get("percent_cols", []):
+            return f"{float(value):.2f}%"
+        if column in definition.get("number_cols", []):
+            return number_text(value)
+        return str(value)
+
+    def _fill_table(self):
+        definition = REPORTS[self.current_report]
+        headers = definition["headers"]
+        self.table.setSortingEnabled(False)
+        self.table.setRowCount(0)
+        for values in self.rows:
+            row = self.table.rowCount()
+            self.table.insertRow(row)
+            for col, value in enumerate(values):
+                item = QTableWidgetItem(self._format_value(value, col, definition))
+                item.setData(Qt.ItemDataRole.UserRole, value)
+                item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                if col in definition.get("money_cols", []) or col in definition.get("number_cols", []):
+                    item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+                self.table.setItem(row, col, item)
+        self.table.setSortingEnabled(True)
+        self._fill_footer()
+        self._sync_footer_widths()
+
+    def _fill_footer(self):
+        definition = REPORTS[self.current_report]
+        cols = self.table.columnCount()
+        self.footer.setColumnCount(cols)
+        self.footer.setRowCount(1)
+        totals = {}
+        for col in definition.get("sum_cols", []):
+            total = Decimal("0")
+            for row in self.rows:
+                try:
+                    total += Decimal(str(row[col] or 0))
+                except Exception:
+                    continue
+            totals[col] = total
+        for col in range(cols):
+            value = "TỔNG CỘNG" if col == 0 else ""
+            if col in totals:
+                value = self._format_value(totals[col], col, definition)
+            item = QTableWidgetItem(value)
+            item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            if col in definition.get("money_cols", []) or col in definition.get("number_cols", []):
+                item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            self.footer.setItem(0, col, item)
+        self.footer.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+    def _sync_footer_widths(self, *_):
+        self.footer.setColumnCount(self.table.columnCount())
+        for col in range(self.table.columnCount()):
+            self.footer.setColumnWidth(col, self.table.columnWidth(col))
+        self.footer.setFixedWidth(max(100, self.table.viewport().width()))
+
+    def export_xlsx(self):
+        if not self.rows:
+            QMessageBox.information(self, "Xuất Excel", "Báo cáo hiện không có dữ liệu.")
+            return
+        definition = REPORTS[self.current_report]
+        safe_name = self.current_report.replace("-", "_")
+        default_name = f"{safe_name}_{date.today():%Y%m%d}.xlsx"
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Xuất báo cáo Excel", default_name, "Excel Workbook (*.xlsx)"
+        )
+        if not path:
+            return
+        if not path.lower().endswith(".xlsx"):
+            path += ".xlsx"
+
+        try:
+            self._write_workbook(path, definition)
+            QMessageBox.information(self, "Xuất Excel", f"Đã xuất báo cáo:\\n{path}")
+        except Exception as exc:
+            QMessageBox.critical(self, "Lỗi xuất Excel", str(exc))
+
+    def _write_workbook(self, path, definition):
+        workbook = xlsxwriter.Workbook(path)
+        worksheet = workbook.add_worksheet("Bao cao")
+        worksheet.hide_gridlines(2)
+        worksheet.set_landscape()
+        worksheet.fit_to_pages(1, 0)
+        worksheet.repeat_rows(0, 5)
+
+        title_fmt = workbook.add_format({
+            "bold": True, "font_size": 16, "align": "center",
+            "valign": "vcenter", "font_color": "#17324D",
+        })
+        subtitle_fmt = workbook.add_format({
+            "font_size": 10, "align": "center", "font_color": "#526477",
+        })
+        group_fmt = workbook.add_format({
+            "bold": True, "align": "center", "valign": "vcenter",
+            "bg_color": "#DCE7F0", "border": 1, "border_color": "#AEBCCB",
+            "text_wrap": True,
+        })
+        header_fmt = workbook.add_format({
+            "bold": True, "align": "center", "valign": "vcenter",
+            "bg_color": "#EAF0F5", "border": 1, "border_color": "#BAC7D3",
+            "text_wrap": True,
+        })
+        text_fmt = workbook.add_format({"border": 1, "border_color": "#E0E6EC"})
+        number_fmt = workbook.add_format({
+            "border": 1, "border_color": "#E0E6EC", "num_format": "#,##0",
+        })
+        money_fmt = workbook.add_format({
+            "border": 1, "border_color": "#E0E6EC", "num_format": "#,##0.00",
+        })
+        date_fmt = workbook.add_format({
+            "border": 1, "border_color": "#E0E6EC", "num_format": "dd/mm/yyyy hh:mm",
+        })
+        total_text_fmt = workbook.add_format({
+            "bold": True, "bg_color": "#E6EDF3", "top": 1, "bottom": 1,
+        })
+        total_number_fmt = workbook.add_format({
+            "bold": True, "bg_color": "#E6EDF3", "top": 1, "bottom": 1,
+            "num_format": "#,##0",
+        })
+        total_money_fmt = workbook.add_format({
+            "bold": True, "bg_color": "#E6EDF3", "top": 1, "bottom": 1,
+            "num_format": "#,##0.00",
+        })
+
+        headers = definition["headers"]
+        last_col = len(headers) - 1
+        worksheet.merge_range(0, 0, 0, last_col, definition["title"], title_fmt)
+        worksheet.set_row(0, 28)
+        worksheet.merge_range(1, 0, 1, last_col, "HỆ THỐNG QUẢN LÝ NHÀ SÁCH", subtitle_fmt)
+        period_text = (
+            "Tồn kho tại thời điểm xuất báo cáo"
+            if definition.get("no_date")
+            else f"Kỳ báo cáo: {self.date_from.date().toString('dd/MM/yyyy')} – "
+                 f"{self.date_to.date().toString('dd/MM/yyyy')}"
+        )
+        worksheet.merge_range(2, 0, 2, last_col, period_text, subtitle_fmt)
+        worksheet.merge_range(
+            3, 0, 3, last_col,
+            f"Ngày xuất: {datetime.now():%d/%m/%Y %H:%M:%S}",
+            subtitle_fmt,
+        )
+
+        group_row, header_row, data_row = 4, 5, 6
+        group_headers = definition.get("group_headers")
+        if group_headers:
+            for start_col, end_col, label in group_headers:
+                if start_col == end_col:
+                    worksheet.merge_range(group_row, start_col, header_row, end_col, label, group_fmt)
+                else:
+                    worksheet.merge_range(group_row, start_col, group_row, end_col, label, group_fmt)
+            for col, header in enumerate(headers):
+                if not any(a <= col <= b for a, b, _ in group_headers):
+                    worksheet.merge_range(group_row, col, header_row, col, header, group_fmt)
+                else:
+                    worksheet.write(header_row, col, header, header_fmt)
+        else:
+            for col, header in enumerate(headers):
+                worksheet.merge_range(group_row, col, header_row, col, header, header_fmt)
+
+        for col, header in enumerate(headers):
+            width = max(12, min(34, len(header) + 3))
+            if col in definition.get("money_cols", []):
+                width = max(width, 17)
+            worksheet.set_column(col, col, width)
+
+        for row_index, row in enumerate(self.rows, start=data_row):
+            for col, value in enumerate(row):
+                if value is None:
+                    worksheet.write_blank(row_index, col, None, text_fmt)
+                elif col in definition.get("date_cols", []) and isinstance(value, (datetime, date)):
+                    if isinstance(value, date) and not isinstance(value, datetime):
+                        value = datetime.combine(value, datetime.min.time())
+                    worksheet.write_datetime(row_index, col, value, date_fmt)
+                elif isinstance(value, (int, float, Decimal)):
+                    number = float(value)
+                    fmt = money_fmt if col in definition.get("money_cols", []) else number_fmt if col in definition.get("number_cols", []) else text_fmt
+                    worksheet.write_number(row_index, col, number, fmt)
+                else:
+                    worksheet.write(row_index, col, str(value), text_fmt)
+
+        total_row = data_row + len(self.rows)
+        sum_cols = set(definition.get("sum_cols", []))
+        worksheet.write(total_row, 0, "TỔNG CỘNG", total_text_fmt)
+        for col in range(1, len(headers)):
+            if col in sum_cols:
+                col_letter = xlsxwriter.utility.xl_col_to_name(col)
+                formula = f"=SUM({col_letter}{data_row + 1}:{col_letter}{total_row})"
+                cached = sum(
+                    (Decimal(str(row[col] or 0)) for row in self.rows),
+                    Decimal("0"),
+                )
+                fmt = total_money_fmt if col in definition.get("money_cols", []) else total_number_fmt
+                worksheet.write_formula(total_row, col, formula, fmt, float(cached))
+            else:
+                worksheet.write_blank(total_row, col, None, total_text_fmt)
+
+        worksheet.autofilter(header_row, 0, max(header_row, total_row - 1), last_col)
+        worksheet.freeze_panes(data_row, 1)
+        worksheet.set_margins(0.25, 0.25, 0.5, 0.5)
+        worksheet.fit_to_pages(1, 0)
+        worksheet.set_footer("&LBookHub - Báo cáo nội bộ&CTrang &P / &N")
+        workbook.close()
