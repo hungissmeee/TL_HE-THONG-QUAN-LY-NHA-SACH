@@ -14,6 +14,8 @@ from core.repositories.hoa_don_repository import HoaDonRepository
 from core.services.hoa_don_service import HoaDonService
 from core.repositories.doi_tra_repository import ReturnRepository
 from core.services.doi_tra_service import ReturnService
+from core.repositories.nhan_vien_repository import NhanVienRepository
+from core.services.nhan_vien_service import NhanVienService
 
 
 class FakeProductRepository(SanPhamRepository):
@@ -448,6 +450,94 @@ class ReturnServiceTests(unittest.TestCase):
             {"net_price": "50", "quantity": 1, "action": 1},
         ])
         self.assertEqual(total, Decimal("180.00"))
+
+
+
+class FakeEmployeeRepository(NhanVienRepository):
+    def __init__(self):
+        self.created = None
+        self.updated_role = None
+        self.account_status = None
+        self.deleted = None
+
+    def create_employee(self, data):
+        self.created = data
+        return "NV003"
+
+    def update_employee_role(self, employee_code, role):
+        self.updated_role = (employee_code, role)
+        return True
+
+    def set_account_enabled(self, employee_code, enabled):
+        self.account_status = (employee_code, enabled)
+        return True
+
+    def delete_account(self, employee_code):
+        self.deleted = employee_code
+        return True
+
+
+class EmployeeServiceTests(unittest.TestCase):
+    def setUp(self):
+        self.repository = FakeEmployeeRepository()
+        self.service = NhanVienService(self.repository)
+
+    def valid_data(self):
+        return {
+            "name": "Nguyễn Văn A",
+            "role": "Thu ngân",
+            "phone": "0901234567",
+            "password": "StrongPassword123!",
+            "confirm_password": "StrongPassword123!",
+        }
+
+    def test_create_employee_normalizes_and_delegates_data(self):
+        code = self.service.create_employee(self.valid_data())
+        self.assertEqual(code, "NV003")
+        self.assertEqual(self.repository.created["name"], "Nguyễn Văn A")
+        self.assertEqual(self.repository.created["role"], "Thu ngân")
+        self.assertEqual(self.repository.created["phone"], "0901234567")
+        self.assertNotIn("confirm_password", self.repository.created)
+
+    def test_create_employee_rejects_missing_name(self):
+        data = self.valid_data()
+        data["name"] = "  "
+        with self.assertRaisesRegex(ValueError, "họ tên"):
+            self.service.create_employee(data)
+
+    def test_create_employee_rejects_invalid_role(self):
+        data = self.valid_data()
+        data["role"] = "Admin"
+        with self.assertRaisesRegex(ValueError, "vai trò"):
+            self.service.create_employee(data)
+
+    def test_create_employee_rejects_password_mismatch(self):
+        data = self.valid_data()
+        data["confirm_password"] = "different"
+        with self.assertRaisesRegex(ValueError, "không khớp"):
+            self.service.create_employee(data)
+
+    def test_create_employee_rejects_invalid_phone(self):
+        data = self.valid_data()
+        data["phone"] = "phone-number"
+        with self.assertRaisesRegex(ValueError, "Số điện thoại"):
+            self.service.create_employee(data)
+
+    def test_update_role_normalizes_employee_code(self):
+        self.service.update_employee_role(" NV003 ", "Kế toán")
+        self.assertEqual(self.repository.updated_role, ("NV003", "Kế toán"))
+
+    def test_account_status_requires_boolean(self):
+        with self.assertRaisesRegex(ValueError, "Trạng thái"):
+            self.service.set_account_enabled("NV003", 1)
+
+    def test_account_status_delegates_valid_value(self):
+        self.service.set_account_enabled(" NV003 ", False)
+        self.assertEqual(self.repository.account_status, ("NV003", False))
+
+    def test_delete_account_normalizes_code(self):
+        self.service.delete_account(" NV003 ")
+        self.assertEqual(self.repository.deleted, "NV003")
 
 
 
