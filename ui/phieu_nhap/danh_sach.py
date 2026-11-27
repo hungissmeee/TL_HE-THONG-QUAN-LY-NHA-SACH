@@ -97,6 +97,7 @@ class ImportWindow(QWidget):
         top.addWidget(title)
         top.addStretch()
         self.create_button = QPushButton("+ Lập phiếu nhập")
+        self.create_button.setProperty("buttonRole", "primary")
         self.create_button.setVisible(self.can_create)
         self.create_button.clicked.connect(self.open_create_import)
         top.addWidget(self.create_button)
