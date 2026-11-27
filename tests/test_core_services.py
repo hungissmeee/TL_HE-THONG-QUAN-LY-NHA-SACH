@@ -174,6 +174,10 @@ class FakeImportRepository(PhieuNhapRepository):
         self.cancelled = (import_code, username, role, is_admin)
         return True
 
+    def can_cancel_import(self, import_code, username):
+        self.cancel_check = (import_code, username)
+        return True
+
 
 class ImportServiceTests(unittest.TestCase):
     def setUp(self):
@@ -248,6 +252,10 @@ class ImportServiceTests(unittest.TestCase):
             ("PN000001", "admin", "Quản lý", True),
         )
 
+    def test_can_cancel_import_delegates_normalized_values(self):
+        self.assertTrue(self.service.can_cancel_import(" PN000001 ", " NV001 "))
+        self.assertEqual(self.repository.cancel_check, ("PN000001", "NV001"))
+
 
 class FakeInvoiceRepository(HoaDonRepository):
     def __init__(self):
@@ -260,6 +268,10 @@ class FakeInvoiceRepository(HoaDonRepository):
 
     def cancel_invoice(self, invoice_code, username, role, is_admin=False):
         self.cancelled = (invoice_code, username, role, is_admin)
+        return True
+
+    def can_cancel_invoice(self, invoice_code, username):
+        self.cancel_check = (invoice_code, username)
         return True
 
 
@@ -366,6 +378,10 @@ class InvoiceServiceTests(unittest.TestCase):
             ("HD000001", "NV001", "Thu ngân", False),
         )
 
+    def test_can_cancel_invoice_delegates_normalized_values(self):
+        self.assertTrue(self.service.can_cancel_invoice(" HD000001 ", " NV001 "))
+        self.assertEqual(self.repository.cancel_check, ("HD000001", "NV001"))
+
 
 
 class FakeReturnRepository(ReturnRepository):
@@ -384,6 +400,9 @@ class FakeReturnRepository(ReturnRepository):
     def delete_return(self, return_code, username, is_admin=False):
         self.deleted = (return_code, username, is_admin)
         return True
+
+    def get_authorized_employee(self, username, is_admin=False):
+        return None if is_admin else username.strip()
 
 
 class ReturnServiceTests(unittest.TestCase):
@@ -413,6 +432,13 @@ class ReturnServiceTests(unittest.TestCase):
     def test_admin_can_create_return_without_employee_profile(self):
         self.service.create_return(self.valid_payload(), "admin", is_admin=True)
         self.assertTrue(self.repository.created[2])
+
+    def test_get_authorized_employee_delegates_account_context(self):
+        self.assertEqual(
+            self.service.get_authorized_employee(" NV001 "),
+            "NV001",
+        )
+        self.assertIsNone(self.service.get_authorized_employee("admin", is_admin=True))
 
     def test_return_rejects_missing_invoice_or_reason(self):
         for key, value in (("invoice_code", ""), ("reason", "  ")):

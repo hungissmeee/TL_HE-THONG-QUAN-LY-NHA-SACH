@@ -348,6 +348,44 @@ class HoaDonRepository:
         finally:
             cursor.close()
 
+    def can_cancel_invoice(self, invoice_code, username):
+        """Kiểm tra quyền tự hủy của thu ngân trong 5 phút đầu sau khi lập hóa đơn."""
+        invoice_code = str(invoice_code or "").strip()
+        username = str(username or "").strip()
+        if not invoice_code or not username:
+            return False
+
+        conn = self._connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                SELECT CASE WHEN
+                    HD.TRANGTHAI = 1
+                    AND HD.MANV = ?
+                    AND HD.NGAYLAP >= DATEADD(MINUTE, -5, SYSDATETIME())
+                    AND HD.NGAYLAP <= SYSDATETIME()
+                    AND LOWER(ORIGINAL_LOGIN()) = LOWER(?)
+                    AND IS_ROLEMEMBER(N'rl_ThuNgan') = 1
+                    AND EXISTS (
+                        SELECT 1
+                        FROM dbo.NHAN_VIEN NV
+                        WHERE NV.MANV = ?
+                          AND NV.VAITRO = N'Thu ngân'
+                    )
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM dbo.PHIEU_DOI_TRA PDT
+                        WHERE PDT.MAHD = HD.MAHD
+                    )
+                THEN 1 ELSE 0 END
+                FROM dbo.HOA_DON HD
+                WHERE HD.MAHD = ?
+            """, username, username, username, invoice_code)
+            row = cursor.fetchone()
+            return bool(row and int(row[0] or 0) == 1)
+        finally:
+            cursor.close()
+
     def cancel_invoice(self, invoice_code, username, role, is_admin=False):
         """Hủy hóa đơn, từ chối nếu đã đổi trả và hoàn kho nguyên tử."""
         conn = self._connection()

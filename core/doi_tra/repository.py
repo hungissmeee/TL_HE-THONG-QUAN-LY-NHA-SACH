@@ -19,8 +19,24 @@ class ReturnRepository:
 
     @staticmethod
     def ensure_manager(cursor, username, is_admin=False):
-        """Xác nhận quyền từ SQL role và hồ sơ nhân viên; Admin được miễn hồ sơ."""
-        if is_admin or str(username or "").strip().casefold() == "admin":
+        """Xác nhận SQL login hiện tại và quyền Quản lý/Admin trong database."""
+        username = str(username or "").strip()
+        if not username:
+            raise PermissionError("Không xác định được tài khoản đang đăng nhập.")
+
+        cursor.execute("SELECT ORIGINAL_LOGIN()")
+        login_row = cursor.fetchone()
+        actual_login = str(login_row[0] or "").strip() if login_row else ""
+        if actual_login.casefold() != username.casefold():
+            raise PermissionError(
+                "Tài khoản SQL Server không khớp với tài khoản đang thao tác."
+            )
+
+        is_admin_login = username.casefold() == "admin"
+        if is_admin and not is_admin_login:
+            raise PermissionError("Chỉ tài khoản admin được sử dụng quyền quản trị.")
+
+        if is_admin_login:
             cursor.execute(
                 "SELECT MANV FROM dbo.NHAN_VIEN WHERE MANV = ?",
                 username,
@@ -43,7 +59,16 @@ class ReturnRepository:
             raise PermissionError(
                 "Chỉ tài khoản thuộc vai trò Quản lý được xử lý đổi trả."
             )
-        return str(username or "").strip()
+        return username
+
+    def get_authorized_employee(self, username, is_admin=False):
+        """Xác thực phiên SQL và trả mã nhân viên được phép lập phiếu đổi trả."""
+        conn = self._connection()
+        cursor = conn.cursor()
+        try:
+            return self.ensure_manager(cursor, username, is_admin=is_admin)
+        finally:
+            cursor.close()
 
     def get_employee_role(self, username):
         if str(username or "").strip().casefold() == "admin":
