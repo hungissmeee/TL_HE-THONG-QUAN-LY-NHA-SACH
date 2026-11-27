@@ -78,6 +78,7 @@ class SupplierFormDialog(QDialog):
         cancel = QPushButton("Đóng")
         cancel.clicked.connect(self.reject)
         self.save_button = QPushButton("Lưu thay đổi" if self.is_edit else "Thêm nhà cung cấp")
+        self.save_button.setProperty("buttonRole", "primary")
         self.save_button.clicked.connect(self.save)
         buttons.addWidget(cancel)
         buttons.addWidget(self.save_button)
