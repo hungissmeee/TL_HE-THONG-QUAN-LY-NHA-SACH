@@ -202,3 +202,11 @@ Sau khi database đã được tạo bằng quy trình cài đặt hiện tại,
 `database/migrations/001_data_integrity_constraints.sql`
 
 Migration bổ sung các CHECK constraint cho giá, tồn kho, số lượng, VAT, tiền và thời gian ca. Migration kiểm tra cả dữ liệu hiện có; cần xử lý các dòng dữ liệu không hợp lệ trước khi chạy. Các cột nullable được giữ nguyên để không tự ý thay đổi dữ liệu lịch sử và quy tắc nghiệp vụ.
+
+## 5.4. Cập nhật nghiệp vụ đổi trả
+
+Sao lưu database trước khi cập nhật, sau đó chạy:
+
+`database/migrations/001_remove_return_unit_refund.sql`
+
+Migration gỡ ràng buộc và cột giá hoàn trên từng dòng của `CHI_TIET_DOI_TRA`. Tiền hoàn chính thức tiếp tục được lưu tại `PHIEU_DOI_TRA.TONG_TIEN_HOAN`. Với database mới được tạo bằng `database/script.sql`, cũng chạy migration này sau khi khởi tạo để đồng bộ schema với phiên bản ứng dụng.
