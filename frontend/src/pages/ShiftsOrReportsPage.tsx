@@ -19,7 +19,7 @@ function ShiftsPage() {
   const { user } = useAuth();
   const isManager = ["admin", "rl_QuanLy"].includes(user?.role_code || "");
   const isAccountant = ["admin", "rl_KeToan"].includes(user?.role_code || "");
-  const [summary, setSummary] = useState<Row | null>(null);
+  const [summary, setSummary] = useState<DataRow | null>(null);
   const [current, setCurrent] = useState<DataRow[]>([]);
   const [history, setHistory] = useState<DataRow[]>([]);
   const [mine, setMine] = useState<DataRow[]>([]);
@@ -31,7 +31,7 @@ function ShiftsPage() {
   const [roster, setRoster] = useState<DataRow[]>([]);
   const [rosterTitle, setRosterTitle] = useState("");
   const [rosterOpen, setRosterOpen] = useState(false);
-  const [closingShift, setClosingShift] = useState<Row | null>(null);
+  const [closingShift, setClosingShift] = useState<DataRow | null>(null);
   const [cash, setCash] = useState<number | null>(null);
   const [closingSaving, setClosingSaving] = useState(false);
 
@@ -94,7 +94,7 @@ function ShiftsPage() {
     finally { setClosingSaving(false); }
   }
 
-  const managerColumns: TableColumnsType<Row> = [
+  const managerColumns: TableColumnsType<DataRow> = [
     { title: "Mã ca", dataIndex: "maca", key: "maca", width: 85 },
     { title: "Ngày", dataIndex: "ngaylam", key: "ngaylam", width: 120, render: dateText },
     { title: "Ca", dataIndex: "soca", key: "soca", width: 65, render: (v: unknown) => "Ca " + String(v) },
@@ -106,10 +106,23 @@ function ShiftsPage() {
     { title: "Thao tác", key: "actions", width: 170, render: (_: unknown, row: DataRow) => <Space>
       <Button size="small" icon={<TeamOutlined />} onClick={() => void showRoster(Number(row.maca))}>Nhân viên</Button>
       {isManager && row.trangthai === "Sắp bắt đầu" && <Popconfirm title="Xóa ca này?" okText="Xóa" cancelText="Hủy" onConfirm={() => void deleteShift(Number(row.maca))}><Button size="small" danger icon={<DeleteOutlined />} /></Popconfirm>}
+      {isAccountant && row.trangthai === "Đã kết thúc" && row.tmcuoica === null && <Button size="small" onClick={() => { setClosingShift(row); setCash(null); }}>Ghi tiền cuối ca</Button>}
     </Space> },
   ];
 
-  const employeeColumns: TableColumnsType<Row> = [
+  const currentColumns: TableColumnsType<DataRow> = [
+    { title: "Mã ca", dataIndex: "maca", key: "maca", width: 85 },
+    { title: "Ngày", dataIndex: "ngaylam", key: "ngaylam", width: 120, render: dateText },
+    { title: "Ca", dataIndex: "soca", key: "soca", width: 65, render: (v: unknown) => "Ca " + String(v) },
+    { title: "Giờ làm", key: "hours", width: 145, render: (_: unknown, row: DataRow) => String(row.tgmo || "").slice(0, 5) + " – " + String(row.tgdong || "").slice(0, 5) },
+    { title: "Nhân viên", dataIndex: "so_nhan_vien", key: "count", width: 100, align: "right" },
+    { title: "Trạng thái", key: "status", width: 130, render: () => <Tag color="success">Đang diễn ra</Tag> },
+    { title: "Thao tác", key: "actions", width: 140, render: (_: unknown, row: DataRow) => (
+      <Button size="small" icon={<TeamOutlined />} onClick={() => void showRoster(Number(row.maca))}>Nhân viên</Button>
+    ) },
+  ];
+
+  const employeeColumns: TableColumnsType<DataRow> = [
     { title: "Mã ca", dataIndex: "maca", key: "maca", width: 85 },
     { title: "Ngày", dataIndex: "ngaylam", key: "ngaylam", width: 130, render: dateText },
     { title: "Ca", dataIndex: "soca", key: "soca", width: 70, render: (v: unknown) => "Ca " + String(v) },
@@ -132,7 +145,7 @@ function ShiftsPage() {
       </Row>
       <Card bordered={false} className="operation-card">
         <div className="operation-list-heading"><Title level={4}>Ca đang diễn ra</Title><Button icon={<ReloadOutlined />} onClick={() => void load()}>Làm mới</Button></div>
-        <Table<DataRow> rowKey="maca" columns={managerColumns} dataSource={current} loading={loading} pagination={false} locale={{ emptyText: "Hiện không có ca đang diễn ra." }} />
+        <Table<DataRow> rowKey="maca" columns={currentColumns} dataSource={current} loading={loading} pagination={false} locale={{ emptyText: "Hiện không có ca đang diễn ra." }} />
       </Card>
       <Card bordered={false} className="operation-card">
         <div className="operation-toolbar"><Title level={4}>Lịch sử ca</Title><Select value={period} style={{ width: 180 }} options={[{ value: "all", label: "Tất cả" }, { value: "today", label: "Hôm nay" }, { value: "7days", label: "7 ngày gần nhất" }, { value: "30days", label: "30 ngày gần nhất" }]} onChange={setPeriod} /></div>
@@ -216,7 +229,7 @@ function ReportsPage({ reportType }: { reportType: string }) {
   }, [reportType, range, period, sort, threshold, inventoryStatus, keyword]);
   useEffect(() => { void load(); }, [load]);
 
-  function makeColumns(items: DataRow[]): TableColumnsType<Row> {
+  function makeColumns(items: DataRow[]): TableColumnsType<DataRow> {
     if (!items.length) return [];
     return Object.keys(items[0]).map((key) => ({
       title: titleCase(key),
