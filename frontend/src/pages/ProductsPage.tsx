@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Button,
@@ -269,8 +269,7 @@ export function ProductsPage() {
     }
   }
 
-  const columns = useMemo<TableColumnsType<Product>>(() => {
-    const result: TableColumnsType<Product> = [
+  const columns: TableColumnsType<Product> = [
       {
         title: "Mã sản phẩm",
         dataIndex: "masp",
@@ -375,9 +374,7 @@ export function ProductsPage() {
           </Space>
         ),
       },
-    ];
-    return result;
-  }, [canManage]);
+  ];
 
   const handleTableChange: TableProps<Product>["onChange"] = (_pagination, _filters, sorter) => {
     const selectedSorter = Array.isArray(sorter) ? sorter[0] : sorter;
