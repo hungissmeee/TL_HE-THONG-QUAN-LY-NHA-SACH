@@ -406,9 +406,12 @@ class HoaDonRepository:
                 quantity = int(item[1] or 0)
                 if quantity <= 0:
                     raise ValueError(f"Số lượng hoàn kho không hợp lệ cho sản phẩm {product_code}.")
+                # Hủy hóa đơn có thể hoàn hàng về một sản phẩm đã bị xóa mềm.
+                # Khôi phục trạng thái hoạt động cùng transaction với biến động tồn kho.
                 cursor.execute("""
                     UPDATE dbo.SAN_PHAM
-                    SET SLTON = ISNULL(SLTON, 0) + ?
+                    SET IS_DELETED = 0,
+                        SLTON = ISNULL(SLTON, 0) + ?
                     WHERE MASP = ?
                 """, quantity, product_code)
                 if cursor.rowcount != 1:
