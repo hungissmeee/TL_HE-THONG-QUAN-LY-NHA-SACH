@@ -179,8 +179,7 @@ class EmployeeWindow(QWidget):
         if self.is_admin:
 
             add_button = QPushButton("+ Thêm nhân viên")
-            add_button.setProperty("buttonRole", "primary")
-        add_button.setObjectName("primaryButton")
+            add_button.setObjectName("primaryButton")
             add_button.clicked.connect(self.show_add_page)
 
             top_layout.addWidget(add_button)
@@ -417,7 +416,7 @@ class EmployeeWindow(QWidget):
         button_layout = QHBoxLayout()
 
         save_button = QPushButton("Tạo tài khoản")
-        save_button.setProperty("buttonRole", "primary")
+        save_button.setObjectName("primaryButton")
         save_button.clicked.connect(self.create_employee)
 
         back_button = QPushButton("Quay lại")
