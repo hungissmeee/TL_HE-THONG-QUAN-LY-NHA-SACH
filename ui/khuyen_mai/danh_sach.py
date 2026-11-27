@@ -26,6 +26,8 @@ from ui.table_sort import (
     resume_table_sorting,
 )
 from .bieu_mau import PromotionFormDialog
+from core.repositories.khuyen_mai_repository import KhuyenMaiRepository
+from core.services.khuyen_mai_service import KhuyenMaiService
 
 
 class PromotionDetailDialog(QDialog):
@@ -95,6 +97,7 @@ class PromotionWindow(QWidget):
     def __init__(self, db):
         super().__init__()
         self.db = db
+        self.service = KhuyenMaiService(KhuyenMaiRepository(db))
         self.username = (getattr(db, "username", "") or "").strip()
         self.employee_role = self._get_employee_role()
         self.is_admin = self.username.casefold() == "admin"
@@ -108,28 +111,11 @@ class PromotionWindow(QWidget):
             self.load_promotions()
 
     def _get_employee_role(self):
-        """Lấy vai trò của tài khoản đang đăng nhập."""
-        if self.username.casefold() == "admin":
-            return "Quản lý"
-
-        conn = self.db.get_connection()
-        if conn is None or not self.username:
-            return ""
-
-        cursor = None
+        """Lấy vai trò của tài khoản đang đăng nhập qua Service."""
         try:
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT VAITRO FROM dbo.NHAN_VIEN WHERE MANV = ?",
-                self.username,
-            )
-            row = cursor.fetchone()
-            return str(row[0] or "").strip() if row else ""
+            return self.service.get_employee_role(self.username)
         except Exception:
             return ""
-        finally:
-            if cursor is not None:
-                cursor.close()
 
     def _build_ui(self):
         """Tạo thanh thao tác, bộ lọc và bảng khuyến mãi."""
@@ -253,104 +239,41 @@ class PromotionWindow(QWidget):
         return f"{float(value):.2f}".replace(".", ",") + "%"
 
     def load_promotions(self, *_):
-        """Tải danh sách, mặc định ẩn các chương trình đã xóa mềm."""
+        """Tải danh sách khuyến mãi qua Service."""
         if not self.can_view:
             return
-
-        conn = self.db.get_connection()
-        if conn is None:
-            QMessageBox.warning(
-                self, "Thông báo", "Chưa có kết nối SQL Server."
-            )
-            return
-
-        keyword = self.search_input.text().strip()
-        sql = """
-            SELECT
-                MAKM,
-                TENKM,
-                TYLEGIAM,
-                NGAYBD,
-                NGAYKT,
-                ISNULL(IS_DELETED, 0) AS IS_DELETED,
-                CASE
-                    WHEN ISNULL(IS_DELETED, 0) = 1 THEN N'Đã xóa'
-                    WHEN NGAYBD > SYSDATETIME() THEN N'Sắp diễn ra'
-                    WHEN NGAYKT < SYSDATETIME() THEN N'Đã kết thúc'
-                    ELSE N'Đang áp dụng'
-                END AS TRANGTHAI
-            FROM dbo.CHUONG_TRINH_KM
-            WHERE 1 = 1
-        """
-        params = []
-
-        if not self.show_deleted_check.isChecked():
-            sql += " AND ISNULL(IS_DELETED, 0) = 0"
-
-        if keyword:
-            like = f"%{keyword}%"
-            sql += " AND (MAKM LIKE ? OR TENKM LIKE ?)"
-            params.extend([like, like])
-
-        sql += """
-            ORDER BY
-                CASE WHEN ISNULL(IS_DELETED, 0) = 0 THEN 0 ELSE 1 END,
-                NGAYBD DESC,
-                MAKM DESC
-        """
-
-        cursor = None
         try:
-            cursor = conn.cursor()
-            if params:
-                cursor.execute(sql, *params)
-            else:
-                cursor.execute(sql)
-            rows = cursor.fetchall()
-
+            rows = self.service.list_promotions(
+                self.search_input.text().strip(),
+                self.show_deleted_check.isChecked(),
+            )
             pause_table_sorting(self.table)
             self.table.setRowCount(0)
-
             for row_index, row in enumerate(rows):
                 self.table.insertRow(row_index)
                 values = [
-                    row[0],
-                    row[1],
-                    self._format_rate(row[2]),
+                    row[0], row[1], self._format_rate(row[2]),
                     self._format_datetime(row[3]),
-                    self._format_datetime(row[4]),
-                    row[6],
+                    self._format_datetime(row[4]), row[6],
                 ]
                 for column, value in enumerate(values):
-                    item = QTableWidgetItem(
-                        "" if value is None else str(value)
-                    )
+                    item = QTableWidgetItem("" if value is None else str(value))
                     if column == 0:
-                        item.setData(
-                            Qt.ItemDataRole.UserRole, str(row[0])
-                        )
+                        item.setData(Qt.ItemDataRole.UserRole, str(row[0]))
                         item.setTextAlignment(
-                            Qt.AlignmentFlag.AlignCenter
-                            | Qt.AlignmentFlag.AlignVCenter
+                            Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter
                         )
                     elif column == 2:
                         item.setTextAlignment(
-                            Qt.AlignmentFlag.AlignRight
-                            | Qt.AlignmentFlag.AlignVCenter
+                            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
                         )
                     self.table.setItem(row_index, column, item)
-
-            self.total_label.setText(
-                f"Tổng số khuyến mãi: {len(rows)}"
-            )
+            self.total_label.setText(f"Tổng số khuyến mãi: {len(rows)}")
         except Exception as error:
-            QMessageBox.critical(
-                self, "Lỗi tải khuyến mãi", str(error)
-            )
+            QMessageBox.critical(self, "Lỗi tải khuyến mãi", str(error))
         finally:
             resume_table_sorting(self.table)
-            if cursor is not None:
-                cursor.close()
+
     def clear_search(self):
         self.search_input.clear()
         self.load_promotions()
@@ -410,75 +333,31 @@ class PromotionWindow(QWidget):
         dialog.exec()
 
     def rename_promotion(self, code, current_name):
-        """Chỉ đổi tên chương trình, không thay đổi tỷ lệ giảm."""
+        """Chỉ đổi tên chương trình, không thay đổi tỷ lệ hoặc thời hạn."""
         if not self.can_manage:
             QMessageBox.warning(
                 self, "Không có quyền",
                 "Chỉ Admin/Quản lý được đổi tên khuyến mãi.",
             )
             return
-
         name, accepted = QInputDialog.getText(
-            self,
-            "Đổi tên khuyến mãi",
-            "Tên chương trình:",
-            QLineEdit.EchoMode.Normal,
-            current_name,
+            self, "Đổi tên khuyến mãi", "Tên chương trình:",
+            QLineEdit.EchoMode.Normal, current_name,
         )
         if not accepted:
             return
-
-        name = name.strip()
-        if not name:
-            QMessageBox.warning(
-                self, "Tên không hợp lệ",
-                "Tên chương trình không được để trống.",
-            )
-            return
-        if len(name) > 100:
-            QMessageBox.warning(
-                self, "Tên quá dài",
-                "Tên chương trình không được vượt quá 100 ký tự.",
-            )
-            return
-
-        conn = self.db.get_connection()
-        if conn is None:
-            QMessageBox.warning(
-                self, "Thông báo", "Chưa có kết nối SQL Server."
-            )
-            return
-
-        cursor = None
         try:
-            cursor = conn.cursor()
-            cursor.execute("""
-                UPDATE dbo.CHUONG_TRINH_KM
-                SET TENKM = ?
-                OUTPUT inserted.MAKM
-                WHERE MAKM = ?
-                  AND ISNULL(IS_DELETED, 0) = 0
-            """, name, code)
-
-            if cursor.fetchone() is None:
-                raise RuntimeError(
-                    "Khuyến mãi không tồn tại hoặc đã bị xóa."
-                )
-
-            conn.commit()
+            updated_code = self.service.rename_promotion(
+                code, name, can_manage=self.can_manage
+            )
             QMessageBox.information(
-                self, "Thành công",
-                f"Đã đổi tên chương trình {code}.",
+                self, "Thành công", f"Đã đổi tên chương trình {updated_code}."
             )
             self.load_promotions()
+        except (ValueError, LookupError, PermissionError) as error:
+            QMessageBox.warning(self, "Không thể đổi tên khuyến mãi", str(error))
         except Exception as error:
-            conn.rollback()
-            QMessageBox.critical(
-                self, "Không thể đổi tên khuyến mãi", str(error)
-            )
-        finally:
-            if cursor is not None:
-                cursor.close()
+            QMessageBox.critical(self, "Không thể đổi tên khuyến mãi", str(error))
 
     def delete_promotion(self, code, name):
         """Xóa mềm chương trình; không tác động các hóa đơn đã dùng nó."""
@@ -488,55 +367,27 @@ class PromotionWindow(QWidget):
                 "Chỉ Admin/Quản lý được xóa khuyến mãi.",
             )
             return
-
         answer = QMessageBox.question(
-            self,
-            "Xác nhận xóa khuyến mãi",
+            self, "Xác nhận xóa khuyến mãi",
             f"Bạn có chắc muốn ngừng áp dụng chương trình {code}"
-            f"{' - ' + name if name else ''}?\n\n"
+            f"{' - ' + name if name else ''}?\\n\\n"
             "Chương trình sẽ được đánh dấu IS_DELETED = 1. "
             "Hóa đơn cũ và dữ liệu tính tiền hoàn vẫn được giữ nguyên.",
-            QMessageBox.StandardButton.Yes
-            | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
         if answer != QMessageBox.StandardButton.Yes:
             return
-
-        conn = self.db.get_connection()
-        if conn is None:
-            QMessageBox.warning(
-                self, "Thông báo", "Chưa có kết nối SQL Server."
-            )
-            return
-
-        cursor = None
         try:
-            cursor = conn.cursor()
-            cursor.execute("""
-                UPDATE dbo.CHUONG_TRINH_KM
-                SET IS_DELETED = 1
-                OUTPUT inserted.MAKM
-                WHERE MAKM = ?
-                  AND ISNULL(IS_DELETED, 0) = 0
-            """, code)
-
-            if cursor.fetchone() is None:
-                raise RuntimeError(
-                    "Khuyến mãi không tồn tại hoặc đã được xóa trước đó."
-                )
-
-            conn.commit()
+            deleted_code = self.service.soft_delete_promotion(
+                code, can_manage=self.can_manage
+            )
             QMessageBox.information(
                 self, "Thành công",
-                f"Đã ngừng áp dụng khuyến mãi {code}.",
+                f"Đã ngừng áp dụng khuyến mãi {deleted_code}.",
             )
             self.load_promotions()
+        except (ValueError, LookupError, PermissionError) as error:
+            QMessageBox.warning(self, "Không thể xóa khuyến mãi", str(error))
         except Exception as error:
-            conn.rollback()
-            QMessageBox.critical(
-                self, "Không thể xóa khuyến mãi", str(error)
-            )
-        finally:
-            if cursor is not None:
-                cursor.close()
+            QMessageBox.critical(self, "Không thể xóa khuyến mãi", str(error))
