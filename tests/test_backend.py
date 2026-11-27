@@ -75,6 +75,11 @@ class FakeConnection:
 
 
 class BackendConfigurationTests(unittest.TestCase):
+    def setUp(self):
+        patcher = patch("backend.config.ENV_FILE", Path(".missing-test-env"))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_load_settings_uses_web_namespace_and_safe_defaults(self):
         with patch.dict(os.environ, {}, clear=True):
             settings = load_settings()
@@ -181,6 +186,11 @@ class BackendConfigurationTests(unittest.TestCase):
 
 
 class BackendHealthTests(unittest.TestCase):
+    def setUp(self):
+        patcher = patch("backend.config.ENV_FILE", Path(".missing-test-env"))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_liveness_does_not_require_sql_server(self):
         with patch.dict(os.environ, {}, clear=True):
             app = create_app()
