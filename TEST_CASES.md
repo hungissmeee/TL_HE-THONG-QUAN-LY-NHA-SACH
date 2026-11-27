@@ -85,9 +85,9 @@ Tài liệu này là danh sách kiểm thử chức năng (manual/acceptance tes
 | PN-02 | P0 | Quản lý/Nhân viên kho/Admin | Nhập cùng một sản phẩm nhiều lần trong giỏ với các đơn giá khác nhau. | Chi tiết được gộp thành một dòng; đơn giá được tính bình quân theo số lượng. |
 | PN-03 | P1 | Người lập phiếu | Không chọn NCC hoặc không có sản phẩm; nhập đơn giá bằng 0. | Không cho lưu phiếu; hiển thị lỗi cụ thể. |
 | PN-04 | P0 | Người lập phiếu | Nhập SHDNCC đã tồn tại cho cùng NCC và còn hiệu lực. | Từ chối trùng chứng từ; không tăng tồn kho. |
-| PN-05 | P0 | Quản lý/Admin | Hủy phiếu nhập còn hiệu lực. | Phiếu chuyển trạng thái đã hủy; SLTON bị trừ lại đúng lượng đã nhập; GIANHAP tính lại từ các phiếu nhập còn hiệu lực. |
+| PN-05 | P0 | Quản lý/Admin | Hủy phiếu nhập còn hiệu lực, kể cả khi đã có giao dịch kho khác phát sinh sau đó. | Chỉ cần tồn kho tổng hiện tại của từng sản phẩm đủ để trừ số lượng nhập; phiếu chuyển trạng thái đã hủy; GIANHAP tính lại từ các phiếu nhập còn hiệu lực. |
 | PN-06 | P0 | Nhân viên kho | Hủy phiếu do người khác lập hoặc đã quá 5 phút. | Bị từ chối; trạng thái phiếu, SLTON và GIANHAP không đổi. |
-| PN-07 | P0 | Quản lý/Admin | Hủy phiếu nhưng tồn kho hiện tại thấp hơn lượng cần hoàn tác. | Từ chối hủy; toàn bộ transaction rollback, không cập nhật dở dang. |
+| PN-07 | P0 | Quản lý/Admin | Hủy phiếu nhưng tồn kho tổng hiện tại của ít nhất một sản phẩm thấp hơn lượng cần hoàn tác. | Từ chối hủy; toàn bộ transaction rollback, không cập nhật dở dang. |
 | PN-08 | P1 | Người có quyền xem | Tìm phiếu theo mã, SHDNCC, NCC, nhân viên và khoảng ngày; mở chi tiết/in. | Bộ lọc đúng; chi tiết và bản in thể hiện đúng NCC, sản phẩm, VAT và tổng giá trị. |
 | PN-09 | P0 | Admin | Lập phiếu nhập khi tài khoản admin không có hồ sơ NHAN_VIEN. | Vẫn tạo được phiếu nhập; MANV để NULL nếu không có hồ sơ tương ứng; tồn kho và giá nhập bình quân cập nhật đúng. |
 
@@ -101,7 +101,7 @@ Tài liệu này là danh sách kiểm thử chức năng (manual/acceptance tes
 | HD-04 | P0 | Thu ngân | Lập hóa đơn có khuyến mãi và VAT. | Đơn giá đã gồm VAT không bị cộng VAT lần hai; mức giảm và tổng thanh toán tính đúng; tiền thừa đúng. |
 | HD-05 | P1 | Người có quyền xem | Tìm hóa đơn theo mã, nhân viên, ca, khuyến mãi, sản phẩm và khoảng ngày. | Kết quả phù hợp bộ lọc; sắp xếp ngày giảm dần mặc định. |
 | HD-06 | P1 | Người có quyền xem | Mở chi tiết và in hóa đơn. | Thông tin nhân viên, ca, từng dòng hàng, VAT, khuyến mãi và tổng tiền chính xác; nội dung in không bị thiếu dữ liệu. |
-| HD-07 | P0 | Admin/Quản lý | Hủy hóa đơn còn hiệu lực, kể cả hóa đơn cũ. | Được hủy; trạng thái chuyển 0; toàn bộ sản phẩm được hoàn kho đúng một lần. |
+| HD-07 | P0 | Admin/Quản lý | Hủy hóa đơn còn hiệu lực, kể cả khi đã có giao dịch kho khác phát sinh sau đó. | Không yêu cầu hóa đơn là giao dịch kho mới nhất; nếu chưa có phiếu đổi trả gắn với hóa đơn thì được hủy, trạng thái chuyển 0 và toàn bộ sản phẩm được cộng lại kho đúng một lần. |
 | HD-08 | P0 | Thu ngân | Hủy hóa đơn của chính mình trong 5 phút đầu, sau đó thử hủy hóa đơn người khác/quá 5 phút. | Chỉ lần hủy hợp lệ được chấp nhận; các lần còn lại bị từ chối. |
 | HD-09 | P0 | Tất cả vai trò có quyền hủy | Hủy lại hóa đơn đã hủy hoặc kiểm tra khi transaction lỗi. | Không hoàn kho lần hai; lỗi phải rollback cả cập nhật tồn kho và trạng thái. |
 | HD-10 | P0 | Admin | Lập hóa đơn khi admin không có đăng ký ca hoặc không có hồ sơ NHAN_VIEN. | Admin vẫn lập được hóa đơn; MACA và/hoặc MANV được để NULL nếu không có dữ liệu liên kết phù hợp; tồn kho và thanh toán vẫn được kiểm tra. |
@@ -118,7 +118,8 @@ Tài liệu này là danh sách kiểm thử chức năng (manual/acceptance tes
 | DT-06 | P0 | Quản lý | Chọn hàng còn nguyên vẹn nhưng yêu cầu đổi sản phẩm; hoặc trả vượt số lượng còn được xử lý. | Bị từ chối; không tạo phiếu và không biến động tồn kho. |
 | DT-07 | P0 | Quản lý | Thử xử lý hóa đơn đã hủy hoặc hóa đơn không còn trong ngày; thực hiện hai thao tác đồng thời. | Bị từ chối khi không đủ điều kiện; không thể trả vượt lượng mua; lỗi giữa chừng phải rollback. |
 | DT-08 | P1 | Quản lý/Admin | Xem chi tiết phiếu đổi trả đã lập. | Hiển thị hóa đơn gốc, lý do, tình trạng hàng, hình thức xử lý, số lượng và tổng tiền hoàn. |
-| DT-09 | P0 | Quản lý/Admin | Mở chi tiết một phiếu đổi trả, nhấn Xóa phiếu; thử trường hợp tồn kho hàng nguyên vẹn đã bị bán đi. | Nút xóa nằm trong cửa sổ chi tiết; xóa thành công khi đảo tồn kho hợp lệ; nếu tồn kho không đủ để trừ lại số hàng đã hoàn thì từ chối và rollback toàn bộ; phiếu cùng chi tiết được xóa trong một transaction. |
+| DT-09 | P0 | Quản lý/Admin | Mở chi tiết một phiếu đổi trả, nhấn Xóa phiếu; thử trường hợp đã có giao dịch kho khác phát sinh sau phiếu. | Không yêu cầu phiếu đổi trả là giao dịch kho mới nhất; đảo đúng biến động do phiếu tạo ra; nếu cần trừ tồn kho thì chỉ xóa khi tồn kho tổng hiện tại đủ, nếu không thì từ chối và rollback toàn bộ. |
+| DT-10 | P1 | Quản lý/Admin | Hoàn tiền một sản phẩm còn nguyên vẹn nhưng sản phẩm đã bị xóa mềm khỏi danh mục. | Trước khi lưu, hệ thống cảnh báo và liệt kê các sản phẩm cần khôi phục; chỉ khi người dùng xác nhận mới đặt IS_DELETED = 0 và cộng tồn kho trong cùng transaction; từ chối xác nhận thì không tạo phiếu và không đổi dữ liệu. |
 
 ## 9. Ca làm việc
 

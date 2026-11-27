@@ -37,6 +37,10 @@ class ReturnService:
             raise ValueError("Mã phiếu đổi trả không hợp lệ.")
         return self.repository.get_return_detail(code)
 
+    def get_deleted_products_to_restore(self, items):
+        """Kiểm tra trước các sản phẩm xóa mềm sẽ được cộng tồn khi hoàn hàng."""
+        return self.repository.get_deleted_products_to_restore(items)
+
     @staticmethod
     def _integer(value, field):
         try:
@@ -47,7 +51,9 @@ class ReturnService:
             raise ValueError(f"{field} phải lớn hơn 0.")
         return number
 
-    def create_return(self, data, username, is_admin=False):
+    def create_return(
+        self, data, username, is_admin=False, confirmed_restore_codes=None
+    ):
         data = dict(data or {})
         invoice_code = str(data.get("invoice_code") or "").strip()
         reason = str(data.get("reason") or "").strip()
@@ -93,6 +99,7 @@ class ReturnService:
             },
             username,
             is_admin=is_admin,
+            confirmed_restore_codes=confirmed_restore_codes,
         )
 
     def delete_return(self, return_code, username, is_admin=False):

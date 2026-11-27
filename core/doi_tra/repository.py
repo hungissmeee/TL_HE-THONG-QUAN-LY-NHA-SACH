@@ -261,6 +261,46 @@ class ReturnRepository:
         return actions
 
     @staticmethod
+    def get_stock_in_product_codes(items):
+        """Lấy mã sản phẩm sẽ được cộng tồn khi lập phiếu đổi trả."""
+        codes = {
+            str(item.get("product_code") or "").strip()
+            for item in (items or [])
+            if isinstance(item, dict)
+            and item.get("condition") == 1
+            and item.get("action") == 0
+            and str(item.get("product_code") or "").strip()
+        }
+        return sorted(codes, key=str.casefold)
+
+    def get_deleted_products_to_restore(self, items):
+        """Liệt kê sản phẩm xóa mềm sẽ được nhập lại kho khi hoàn hàng nguyên vẹn."""
+        product_codes = self.get_stock_in_product_codes(items)
+        if not product_codes:
+            return []
+
+        conn = self._connection()
+        cursor = conn.cursor()
+        try:
+            placeholders = ", ".join("?" for _ in product_codes)
+            cursor.execute(f"""
+                SELECT MASP, TENSP
+                FROM dbo.SAN_PHAM
+                WHERE MASP IN ({placeholders})
+                  AND ISNULL(IS_DELETED, 0) = 1
+                ORDER BY TENSP, MASP
+            """, *product_codes)
+            return [
+                {
+                    "product_code": str(row[0]),
+                    "product_name": str(row[1] or ""),
+                }
+                for row in cursor.fetchall()
+            ]
+        finally:
+            cursor.close()
+
+    @staticmethod
     def _next_return_code(cursor):
         cursor.execute("""
             SELECT COALESCE(
@@ -275,8 +315,16 @@ class ReturnRepository:
             raise ValueError("Đã vượt giới hạn độ dài mã phiếu đổi trả.")
         return code
 
-    def create_return(self, payload, username, is_admin=False):
-        """Tạo phiếu và áp dụng biến động tồn kho nguyên tử."""
+    def create_return(
+        self, payload, username, is_admin=False, confirmed_restore_codes=None
+    ):
+        """Tạo phiếu, khôi phục sản phẩm được xác nhận và cập nhật tồn kho nguyên tử."""
+        confirmed_restore_codes = {
+            str(code or "").strip().casefold()
+            for code in (confirmed_restore_codes or [])
+            if str(code or "").strip()
+        }
+        restored_products = []
         conn = self._connection()
         cursor = conn.cursor()
         try:
@@ -356,12 +404,40 @@ class ReturnRepository:
                 else:
                     if condition == 1:
                         cursor.execute("""
-                            UPDATE dbo.SAN_PHAM
-                            SET SLTON = ISNULL(SLTON, 0) + ?
+                            SELECT ISNULL(IS_DELETED, 0)
+                            FROM dbo.SAN_PHAM WITH (UPDLOCK, HOLDLOCK)
                             WHERE MASP = ?
-                        """, quantity, product_code)
-                        if cursor.rowcount != 1:
+                        """, product_code)
+                        product_state = cursor.fetchone()
+                        if product_state is None:
                             raise LookupError(f"Không tìm thấy sản phẩm {product_code}.")
+
+                        is_deleted = int(product_state[0] or 0) == 1
+                        if is_deleted:
+                            if product_code.casefold() not in confirmed_restore_codes:
+                                raise ValueError(
+                                    f"Sản phẩm {product_code} đã bị xóa mềm. "
+                                    "Cần xác nhận khôi phục trước khi hoàn hàng."
+                                )
+                            cursor.execute("""
+                                UPDATE dbo.SAN_PHAM
+                                SET IS_DELETED = 0,
+                                    SLTON = ISNULL(SLTON, 0) + ?
+                                WHERE MASP = ? AND ISNULL(IS_DELETED, 0) = 1
+                            """, quantity, product_code)
+                            if cursor.rowcount != 1:
+                                raise RuntimeError(
+                                    f"Không thể khôi phục sản phẩm {product_code} và cập nhật tồn kho."
+                                )
+                            restored_products.append(product_code)
+                        else:
+                            cursor.execute("""
+                                UPDATE dbo.SAN_PHAM
+                                SET SLTON = ISNULL(SLTON, 0) + ?
+                                WHERE MASP = ? AND ISNULL(IS_DELETED, 0) = 0
+                            """, quantity, product_code)
+                            if cursor.rowcount != 1:
+                                raise LookupError(f"Không tìm thấy sản phẩm {product_code}.")
                     refund_unit_price = net_price
                     total_refund += net_price * quantity
 
@@ -393,6 +469,7 @@ class ReturnRepository:
                 "return_code": return_code,
                 "invoice_code": invoice_code,
                 "total_refund": total_refund,
+                "restored_products": restored_products,
             }
         except Exception:
             conn.rollback()

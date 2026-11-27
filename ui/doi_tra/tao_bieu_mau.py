@@ -285,6 +285,30 @@ class CreateReturnDialog(QDialog):
                 "action": int(controls["action"].currentData()),
             })
         try:
+            deleted_products = self.service.get_deleted_products_to_restore(selected)
+            confirmed_restore_codes = []
+            if deleted_products:
+                product_lines = "\n".join(
+                    f"• {item['product_name']} ({item['product_code']})"
+                    for item in deleted_products
+                )
+                answer = QMessageBox.question(
+                    self,
+                    "Xác nhận khôi phục sản phẩm",
+                    "Các sản phẩm sau đã bị xóa mềm khỏi danh mục:\n\n"
+                    f"{product_lines}\n\n"
+                    "Hoàn hàng sẽ khôi phục các sản phẩm này, đưa chúng trở lại danh mục "
+                    "đang hoạt động và cộng số lượng hàng nhận lại vào tồn kho.\n\n"
+                    "Bạn có chắc chắn muốn tiếp tục?",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No,
+                )
+                if answer != QMessageBox.StandardButton.Yes:
+                    return
+                confirmed_restore_codes = [
+                    item["product_code"] for item in deleted_products
+                ]
+
             result = self.service.create_return(
                 {
                     "invoice_code": self.invoice_combo.currentData(),
@@ -293,13 +317,25 @@ class CreateReturnDialog(QDialog):
                 },
                 self.username,
                 is_admin=self.is_admin,
+                confirmed_restore_codes=confirmed_restore_codes,
             )
-            QMessageBox.information(
-                self, "Thành công",
+            success_message = (
                 f"Đã lập phiếu đổi trả {result['return_code']}.\n"
                 f"Hóa đơn: {result['invoice_code']}\n"
                 f"Tổng tiền hoàn: {money(result['total_refund'])} đ"
             )
+            restored_codes = set(result.get("restored_products") or [])
+            if restored_codes:
+                restored_names = [
+                    f"{item['product_name']} ({item['product_code']})"
+                    for item in deleted_products
+                    if item["product_code"] in restored_codes
+                ]
+                success_message += (
+                    "\n\nĐã khôi phục sản phẩm:\n"
+                    + "\n".join(restored_names)
+                )
+            QMessageBox.information(self, "Thành công", success_message)
             self.accept()
         except (ValueError, PermissionError) as error:
             QMessageBox.warning(self, "Không thể lập phiếu đổi trả", str(error))

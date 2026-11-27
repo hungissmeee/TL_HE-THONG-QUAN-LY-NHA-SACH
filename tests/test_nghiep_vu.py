@@ -844,6 +844,19 @@ class ReturnVoucherDeletionTests(unittest.TestCase):
         ])
         self.assertEqual(actions, [("SP003", 1, "ADD")])
 
+    def test_only_intact_refund_lines_require_stock_in_and_restore_check(self):
+        items = [
+            {"product_code": "SP003", "condition": 1, "action": 0},
+            {"product_code": "SP002", "condition": 0, "action": 0},
+            {"product_code": "SP004", "condition": 0, "action": 1},
+            {"product_code": "SP001", "condition": 1, "action": 0},
+            {"product_code": "SP003", "condition": 1, "action": 0},
+        ]
+        self.assertEqual(
+            ReturnRepository.get_stock_in_product_codes(items),
+            ["SP001", "SP003"],
+        )
+
     def test_delete_multiple_return_lines_builds_all_reversals(self):
         actions = ReturnRepository.build_inventory_reversal_actions([
             ("SP001", 2, 1, 0),
