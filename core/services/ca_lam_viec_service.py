@@ -36,7 +36,9 @@ class CaLamViecService:
         value = self.parse_cash(amount, "tiền cuối ca")
         return self.repository.record_closing_cash(shift_id, username, value)
 
-    def create_shift(self, data):
+    def create_shift(self, data, is_manager=False):
+        if not is_manager:
+            raise PermissionError("Chỉ Quản lý/Admin mới được tạo ca làm việc.")
         data = dict(data or {})
         try:
             shift_number = int(data.get("soca"))
