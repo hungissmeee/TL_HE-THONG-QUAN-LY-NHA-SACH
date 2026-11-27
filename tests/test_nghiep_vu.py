@@ -609,6 +609,25 @@ class DatabasePermissionScriptTests(unittest.TestCase):
         self.assertIn("CREATE UNIQUE INDEX UX_SAN_PHAM_BARCODE", script)
         self.assertIn("WHERE BARCODE IS NOT NULL AND BARCODE <> ''", script)
 
+    def test_fresh_setup_contains_discounted_invoice_and_return_line_totals(self):
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parents[1]
+        script = (root / "database" / "script.sql").read_text(encoding="utf-8-sig")
+        migration = (
+            root / "database" / "migrations"
+            / "002_invoice_line_amounts_and_return_totals.sql"
+        ).read_text(encoding="utf-8-sig")
+
+        self.assertIn("THANHTIEN DECIMAL(15, 2)", script)
+        self.assertIn("THANHTIENSAUGIAM DECIMAL(15, 2)", script)
+        self.assertIn("TONGTIENHOAN DECIMAL(15, 2)", script)
+        self.assertNotIn("DONGIAHOAN DECIMAL", script)
+        self.assertIn("THANHTIENSAUGIAM", migration)
+        self.assertIn("sp_rename", migration)
+        self.assertIn("DONGIAHOAN", migration)
+        self.assertIn("TONGTIENHOAN", migration)
+
 
 class CodeGenerationTests(unittest.TestCase):
     """Kiểm thử quy tắc sinh mã tăng dần của các nhóm dữ liệu."""
