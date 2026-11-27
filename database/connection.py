@@ -1,8 +1,10 @@
 """Các thành phần kết nối và cấu hình cơ sở dữ liệu SQL Server."""
 
 import os
+from pathlib import Path
 
 import pyodbc
+from dotenv import load_dotenv
 
 
 _ROLE_MAP = {
@@ -17,12 +19,20 @@ _ROLE_DISPLAY_MAP = {
 }
 
 DB_NAME = "CSDLTEST"
+ENV_FILE = Path(__file__).resolve().parents[1] / ".env"
+
+
+def load_project_environment():
+    """Tự nạp cấu hình từ .env gốc; biến môi trường có sẵn được ưu tiên."""
+    load_dotenv(dotenv_path=ENV_FILE, override=False)
+
 
 class Database:
 
     """Quản lý kết nối SQL Server và các thao tác tài khoản, vai trò nhân viên."""
     def __init__(self):
         """Khởi tạo trạng thái kết nối và cấu hình SQL Server của ứng dụng."""
+        load_project_environment()
         self.conn = None
         self.username = None
 
