@@ -55,7 +55,7 @@ class MainWindow(QMainWindow):
             "home", "products", "suppliers", "imports", "invoices",
             "shifts", "report_overview", "report_revenue",
             "report_invoice", "report_import", "report_return",
-            "report_inventory", "report_product",
+            "report_inventory", "report_product", "report_shifts",
         ),
     }
 
