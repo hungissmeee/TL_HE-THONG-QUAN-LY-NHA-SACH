@@ -11,21 +11,26 @@ class ImportReportPage(ReportBasePage):
         super().__init__(
             db,
             "Báo cáo nhập hàng",
-            "Theo dõi phiếu nhập, nhà cung cấp, nhân viên lập, số lượng sản phẩm và trị giá nhập.",
+            "Tra cứu toàn bộ phiếu nhập theo nhà cung cấp và nhân viên; số lượng và trị giá thực nhập chỉ tính phiếu còn hiệu lực.",
             True,
             parent,
         )
         self.add_stat_cards([
-            ("count", "Số phiếu nhập", "0",
-             "Số chứng từ nhập trong kỳ", "neutral"),
-            ("quantity", "Số lượng sản phẩm nhập", "0",
-             "Tổng số lượng ở các dòng chi tiết", "positive"),
-            ("amount", "Tổng trị giá nhập", "0 đ",
-             "Tổng giá trị ghi trên phiếu nhập còn hiệu lực", "violet"),
+            ("total", "Tổng số phiếu", "0",
+             "Bao gồm cả phiếu đã hủy để đối chiếu", "neutral"),
+            ("active", "Phiếu còn hiệu lực", "0",
+             "Được tính vào số lượng và trị giá nhập thực tế", "positive"),
+            ("cancelled", "Phiếu đã hủy", "0",
+             "Không được tính vào nhập hàng thực tế", "negative"),
+            ("quantity", "Số lượng thực nhập", "0",
+             "Chỉ cộng chi tiết của phiếu còn hiệu lực", "neutral"),
+            ("amount", "Tổng trị giá thực nhập", "0 đ",
+             "Chỉ cộng phiếu nhập còn hiệu lực", "primary"),
         ], primary_key="amount")
         self.table = self.make_table([
             "Mã phiếu nhập", "Ngày nhập", "Loại phiếu", "Nhà cung cấp",
-            "Số HĐ nhà cung cấp", "Nhân viên lập", "Số lượng nhập", "Tổng trị giá"
+            "Số HĐ nhà cung cấp", "Nhân viên lập", "Số lượng theo phiếu",
+            "Tổng trị giá", "Trạng thái"
         ])
         self.content_layout.addWidget(self.table)
         self.register_export_table("Bao cao nhap hang", self.table)
@@ -41,7 +46,8 @@ class ImportReportPage(ReportBasePage):
                 COALESCE(PN.SHDNCC, N''),
                 COALESCE(NV.TENNV, PN.MANV, N''),
                 COALESCE(CT.TONG_SOLUONG, 0),
-                COALESCE(PN.TONGTRIGIA, 0)
+                COALESCE(PN.TONGTRIGIA, 0),
+                ISNULL(PN.TRANGTHAI, 1) AS TRANGTHAI
             FROM dbo.PHIEU_NHAP PN
             LEFT JOIN dbo.NHA_CUNG_CAP NCC ON NCC.MANCC = PN.MANCC
             LEFT JOIN dbo.NHAN_VIEN NV ON NV.MANV = PN.MANV
@@ -52,14 +58,17 @@ class ImportReportPage(ReportBasePage):
             ) CT
             WHERE PN.NGAYNHAP >= CONVERT(date, ?)
               AND PN.NGAYNHAP < DATEADD(day, 1, CONVERT(date, ?))
-              AND PN.TRANGTHAI = 1
             ORDER BY PN.NGAYNHAP DESC, PN.MAPN DESC
         """
         rows = self.fetch_all(sql, (start_date, end_date))
-        quantity = sum(int(row[6] or 0) for row in rows)
-        amount = sum((row[7] or 0) for row in rows)
+        active_rows = [row for row in rows if int(row[8] or 0) == 1]
+        cancelled_rows = [row for row in rows if int(row[8] or 0) == 0]
+        quantity = sum(int(row[6] or 0) for row in active_rows)
+        amount = sum((row[7] or 0) for row in active_rows)
 
-        self.set_stat("count", number_text(len(rows)))
+        self.set_stat("total", number_text(len(rows)))
+        self.set_stat("active", number_text(len(active_rows)))
+        self.set_stat("cancelled", number_text(len(cancelled_rows)))
         self.set_stat("quantity", number_text(quantity))
         self.set_stat("amount", money_text(amount))
 
@@ -67,6 +76,7 @@ class ImportReportPage(ReportBasePage):
             (
                 row[0], date_text(row[1]), row[2], row[3], row[4], row[5],
                 number_text(row[6]), money_text(row[7]),
+                "Có hiệu lực" if int(row[8] or 0) == 1 else "Đã hủy",
             )
             for row in rows
         ])
