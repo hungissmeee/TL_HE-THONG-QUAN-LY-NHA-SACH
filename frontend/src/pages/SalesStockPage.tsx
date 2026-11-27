@@ -94,7 +94,7 @@ function ImportsPage() {
         <Input.Search className="operation-search" allowClear value={keyword} placeholder="Mã phiếu, nhà cung cấp, nhân viên..." onChange={(e) => setKeyword(e.target.value)} onSearch={(v) => setKeyword(v.trim())} enterButton="Tìm kiếm" />
         <Button icon={<ReloadOutlined />} onClick={() => void load()}>Làm mới</Button>
       </div>
-      <Table<Row> rowKey="mapn" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }} />
+      <Table<DataRow> rowKey="mapn" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }} />
     </Card>
     <Modal title="Lập phiếu nhập kho" open={open} onCancel={() => setOpen(false)} onOk={() => form.submit()} okText="Lập phiếu nhập" cancelText="Hủy" confirmLoading={saving} width={920} destroyOnClose>
       {formLoading || !lookups ? <div className="product-modal-loading"><Spin /></div> : <Form form={form} layout="vertical" onFinish={(v) => void save(v)}>
@@ -102,7 +102,7 @@ function ImportsPage() {
           <Col xs={24} md={12}><Form.Item name="supplier_code" label="Nhà cung cấp" rules={[{ required: true }]}><Select showSearch optionFilterProp="label" options={lookups.suppliers.map((s) => ({ value: s.code, label: s.code + " - " + s.name }))} /></Form.Item></Col>
           <Col xs={24} md={12}><Form.Item name="import_type" label="Loại phiếu nhập" rules={[{ required: true }]}><Select options={[{ value: "Nhập hàng", label: "Nhập hàng" }, { value: "Nhập bổ sung", label: "Nhập bổ sung" }, { value: "Nhập điều chỉnh", label: "Nhập điều chỉnh" }]} /></Form.Item></Col>
           <Col span={24}><Form.Item name="supplier_invoice" label="Số hóa đơn nhà cung cấp"><Input maxLength={50} /></Form.Item></Col>
-        </Row
+        </Row>
         <Form.List name="items">
           {(fields, { add, remove }) => <>
             <div className="operation-list-heading"><Text strong>Chi tiết sản phẩm</Text><Button size="small" icon={<PlusOutlined />} onClick={() => add({ quantity: 1, vat: 0 })}>Thêm dòng</Button></div>
@@ -136,7 +136,7 @@ function ImportsPage() {
           <Descriptions.Item label="Tổng trị giá">{money(detail.header.total)}</Descriptions.Item>
           <Descriptions.Item label="Trạng thái">{Number(detail.header.status) ? "Có hiệu lực" : "Đã hủy"}</Descriptions.Item>
         </Descriptions>
-        <Table<Row> className="detail-table" rowKey="masp" pagination={false} dataSource={detail.items} columns={[
+        <Table<DataRow> className="detail-table" rowKey="masp" pagination={false} dataSource={detail.items} columns={[
           { title: "Mã SP", dataIndex: "masp", key: "masp" }, { title: "Tên sản phẩm", dataIndex: "tensp", key: "tensp" },
           { title: "SL", dataIndex: "quantity", key: "quantity", align: "right" }, { title: "Đơn giá", dataIndex: "price", key: "price", align: "right", render: money },
           { title: "VAT", dataIndex: "vat", key: "vat", align: "right", render: (v: unknown) => String(v) + "%" },
@@ -250,7 +250,7 @@ function InvoicesPage() {
         <Input.Search className="operation-search" allowClear value={keyword} placeholder="Mã hóa đơn, nhân viên, sản phẩm, ca..." onChange={(e) => setKeyword(e.target.value)} onSearch={(v) => setKeyword(v.trim())} enterButton="Tìm kiếm" />
         <Button icon={<ReloadOutlined />} onClick={() => void load()}>Làm mới</Button>
       </div>
-      <Table<Row> rowKey="mahd" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }} />
+      <Table<DataRow> rowKey="mahd" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }} />
     </Card>
     <Modal title="Lập hóa đơn bán hàng" open={open} onCancel={() => setOpen(false)} onOk={() => void checkout()} okText="Thanh toán" cancelText="Hủy" confirmLoading={saving} width={980} destroyOnClose>
       {lookupLoading || !lookup ? <div className="product-modal-loading"><Spin /></div> : <>
@@ -263,7 +263,7 @@ function InvoicesPage() {
         <Row gutter={16} className="invoice-checkout">
           <Col xs={24} md={12}><Text type="secondary">Khuyến mãi</Text><Select allowClear value={promotionCode} onChange={setPromotionCode} style={{ width: "100%" }} placeholder="Không áp dụng" options={lookup.promotions.map((p) => ({ value: String(p[0]), label: String(p[1]) + " · giảm " + p[2] + "%" }))} /></Col>
           <Col xs={24} md={12}><Text type="secondary">Tiền khách đưa</Text><InputNumber min={0} precision={2} value={cash} onChange={(v) => setCash(v === null ? null : Number(v))} style={{ width: "100%" }} /></Col>
-        </Row
+        </Row>
         <Descriptions bordered size="small" column={2} className="invoice-totals">
           <Descriptions.Item label="Tiền hàng">{money(subtotal)}</Descriptions.Item>
           <Descriptions.Item label={"Giảm giá (" + discount + "%)"}>{money(subtotal - total)}</Descriptions.Item>
@@ -280,7 +280,7 @@ function InvoicesPage() {
           <Descriptions.Item label="Khuyến mãi">{String(detail.header.tenkm || "Không áp dụng")}</Descriptions.Item><Descriptions.Item label="Giảm giá">{String(detail.header.discount_rate || 0)}%</Descriptions.Item>
           <Descriptions.Item label="Tiền khách đưa">{money(detail.header.cash)}</Descriptions.Item><Descriptions.Item label="Trạng thái">{Number(detail.header.status) ? "Có hiệu lực" : "Đã hủy"}</Descriptions.Item>
         </Descriptions>
-        <Table<Row> className="detail-table" rowKey="masp" pagination={false} dataSource={detail.items} columns={[
+        <Table<DataRow> className="detail-table" rowKey="masp" pagination={false} dataSource={detail.items} columns={[
           { title: "Mã SP", dataIndex: "masp", key: "masp" }, { title: "Tên sản phẩm", dataIndex: "tensp", key: "tensp" },
           { title: "Đơn giá", dataIndex: "price", key: "price", align: "right", render: money }, { title: "SL", dataIndex: "quantity", key: "quantity", align: "right" },
           { title: "VAT", dataIndex: "vat", key: "vat", align: "right", render: (v: unknown) => String(v) + "%" },
