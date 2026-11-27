@@ -57,6 +57,8 @@ class Settings:
     sql_encrypt: bool = True
     sql_trust_server_certificate: bool = False
     sql_timeout_seconds: int = 5
+    jwt_secret: str = field(default="", repr=False)
+    access_token_minutes: int = 30
 
     @property
     def database_configured(self) -> bool:
@@ -121,5 +123,9 @@ def load_settings() -> Settings:
         ),
         sql_timeout_seconds=_env_int(
             "BOOKHUB_WEB_SQL_TIMEOUT_SECONDS", 5, 1, 30
+        ),
+        jwt_secret=os.getenv("BOOKHUB_WEB_JWT_SECRET", ""),
+        access_token_minutes=_env_int(
+            "BOOKHUB_WEB_ACCESS_TOKEN_MINUTES", 30, 5, 1440
         ),
     )
