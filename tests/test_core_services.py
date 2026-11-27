@@ -186,6 +186,13 @@ class ImportServiceTests(unittest.TestCase):
         self.assertEqual(self.repository.created["total"], Decimal("250.50"))
         self.assertEqual(self.repository.created["items"][0]["price"], Decimal("100.25"))
 
+    def test_admin_can_create_import_without_employee_profile(self):
+        data = self.valid_payload()
+        data["employee_code"] = None
+        data["is_admin"] = True
+        self.assertEqual(self.service.create_import(data), "PN000001")
+        self.assertIsNone(self.repository.created["employee_code"])
+
     def test_import_rejects_missing_supplier(self):
         data = self.valid_payload()
         data["supplier_code"] = ""
