@@ -48,7 +48,7 @@ class RevenueReportPage(ReportBasePage):
              "Doanh thu hợp lệ trừ tiền hoàn", "primary"),
             ("count", "Hóa đơn hợp lệ", "0",
              "Số hóa đơn được ghi nhận doanh thu", "positive"),
-        ])
+        ], primary_key="net")
         self.table = self.make_table([
             "Kỳ", "Số hóa đơn", "Tiền hàng", "Giảm khuyến mãi",
             "Doanh thu", "Tiền hoàn", "Doanh thu sau hoàn"
