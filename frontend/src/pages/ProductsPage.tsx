@@ -461,7 +461,7 @@ export function ProductsPage() {
           scroll={{ x: "max-content" }}
           size="middle"
           locale={{ emptyText: "Không tìm thấy sản phẩm phù hợp." }}
-        / tableLayout="auto">
+         tableLayout="auto" />
 
         <div className="products-table-footer">
           <Text className="muted-text">Tổng số sản phẩm: {total.toLocaleString("vi-VN")}</Text>
