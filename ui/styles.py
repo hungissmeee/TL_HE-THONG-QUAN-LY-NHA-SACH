@@ -220,8 +220,7 @@ MAIN_WINDOW_STYLESHEET = """
                 color: white;
                 border: 1px solid #46546A;
                 border-radius: 5px;
-                padding: 7px 10px;
-                min-height: 22px;
+                padding: 8px;
             }
 
             QLineEdit:focus {
@@ -239,31 +238,10 @@ MAIN_WINDOW_STYLESHEET = """
                 color: #E5E7EB;
                 border: 1px solid #46546A;
                 border-radius: 5px;
-                padding: 5px 10px;
-                min-height: 24px;
+                padding: 6px 8px;
+                min-height: 18px;
                 selection-background-color: #3B526E;
                 selection-color: white;
-            }
-
-            /* Giữ vùng nhập tách khỏi nút mũi tên để ngày/số không bị che. */
-            QComboBox {
-                padding-right: 38px;
-            }
-
-            QAbstractSpinBox {
-                padding-right: 32px;
-            }
-
-            QDateEdit {
-                min-width: 108px;
-            }
-
-            QDateTimeEdit {
-                min-width: 156px;
-            }
-
-            QTimeEdit {
-                min-width: 88px;
             }
 
             QComboBox:hover,
@@ -307,18 +285,9 @@ MAIN_WINDOW_STYLESHEET = """
                 background-color: transparent;
             }
 
-            /* Vẽ mũi tên bằng border thay vì phụ thuộc icon native của hệ điều hành. */
             QComboBox::down-arrow {
-                image: none;
-                width: 0px;
-                height: 0px;
-                border-left: 5px solid transparent;
-                border-right: 5px solid transparent;
-                border-top: 6px solid #D6DEE9;
-            }
-
-            QComboBox:disabled::down-arrow {
-                border-top-color: #718096;
+                width: 9px;
+                height: 9px;
             }
 
             QComboBox QAbstractItemView {
@@ -331,24 +300,11 @@ MAIN_WINDOW_STYLESHEET = """
                 padding: 3px;
             }
 
-            /* Hai nút được neo sát cạnh phải, mỗi nút chiếm nửa chiều cao. */
-            QAbstractSpinBox::up-button {
-                subcontrol-origin: border;
-                subcontrol-position: top right;
-                width: 24px;
-                border-left: 1px solid #39465A;
-                border-top-right-radius: 4px;
-                background-color: #34445A;
-            }
-
+            QAbstractSpinBox::up-button,
             QAbstractSpinBox::down-button {
-                subcontrol-origin: border;
-                subcontrol-position: bottom right;
-                width: 24px;
-                border-left: 1px solid #39465A;
-                border-top: 1px solid #39465A;
-                border-bottom-right-radius: 4px;
+                width: 18px;
                 background-color: #34445A;
+                border: none;
             }
 
             QAbstractSpinBox::up-button:hover,
@@ -356,36 +312,10 @@ MAIN_WINDOW_STYLESHEET = """
                 background-color: #465B75;
             }
 
-            /* Tam giác rõ ràng cho QSpinBox, QDoubleSpinBox và QDateEdit. */
-            QAbstractSpinBox::up-arrow {
-                image: none;
-                width: 0px;
-                height: 0px;
-                border-left: 4px solid transparent;
-                border-right: 4px solid transparent;
-                border-bottom: 5px solid #D6DEE9;
-            }
-
+            QAbstractSpinBox::up-arrow,
             QAbstractSpinBox::down-arrow {
-                image: none;
-                width: 0px;
-                height: 0px;
-                border-left: 4px solid transparent;
-                border-right: 4px solid transparent;
-                border-top: 5px solid #D6DEE9;
-            }
-
-            QAbstractSpinBox:disabled::up-arrow {
-                border-bottom-color: #718096;
-            }
-
-            QAbstractSpinBox:disabled::down-arrow {
-                border-top-color: #718096;
-            }
-
-            QComboBox QAbstractItemView::item {
-                min-height: 28px;
-                padding: 5px 9px;
+                width: 8px;
+                height: 8px;
             }
 
             QCheckBox,
@@ -474,96 +404,21 @@ MAIN_WINDOW_STYLESHEET = """
                 border-color: #344256;
             }
 
-            QCalendarWidget {
-                min-width: 304px;
-                background-color: #202938;
-            }
-
             QCalendarWidget QWidget {
                 background-color: #202938;
                 color: #E5E7EB;
             }
 
-            /* Thanh điều hướng: dành đủ chỗ cho tên tháng, năm và hai nút chuyển tháng. */
-            QCalendarWidget QWidget#qt_calendar_navigationbar {
-                min-height: 42px;
-                background-color: #202938;
-                padding: 2px 5px;
-            }
-
             QCalendarWidget QToolButton {
                 color: #E5E7EB;
                 background-color: #34445A;
-                border: 1px solid #46546A;
-                border-radius: 5px;
-                min-height: 32px;
-                max-height: 32px;
-                padding: 0px 7px;
-                margin: 2px;
-                font-size: 12px;
-                font-weight: 600;
+                border: none;
+                border-radius: 4px;
+                padding: 5px;
             }
 
             QCalendarWidget QToolButton:hover {
                 background-color: #465B75;
-                border-color: #60758F;
-            }
-
-            QCalendarWidget QToolButton#qt_calendar_prevmonth,
-            QCalendarWidget QToolButton#qt_calendar_nextmonth {
-                min-width: 34px;
-                max-width: 34px;
-                padding: 0px;
-                margin: 2px 4px;
-            }
-
-            QCalendarWidget QToolButton#qt_calendar_monthbutton {
-                min-width: 108px;
-                max-width: 132px;
-                padding: 0px 8px;
-            }
-
-            QCalendarWidget QToolButton#qt_calendar_yearbutton {
-                min-width: 70px;
-                max-width: 82px;
-                padding: 0px 8px;
-            }
-
-            /* Mũi tên menu tháng được vẽ riêng và chừa khoảng trống bên phải cho chữ. */
-            QCalendarWidget QToolButton#qt_calendar_monthbutton {
-                padding: 0px 20px 0px 8px;
-            }
-
-            QCalendarWidget QToolButton#qt_calendar_monthbutton::menu-indicator {
-                subcontrol-origin: padding;
-                subcontrol-position: right center;
-                right: 7px;
-                image: none;
-                width: 0px;
-                height: 0px;
-                border-left: 4px solid transparent;
-                border-right: 4px solid transparent;
-                border-top: 5px solid #D6DEE9;
-            }
-
-            QCalendarWidget QToolButton#qt_calendar_monthbutton:disabled::menu-indicator {
-                border-top-color: #718096;
-            }
-
-            QCalendarWidget QSpinBox {
-                min-width: 74px;
-                min-height: 28px;
-                max-height: 32px;
-                padding: 2px 28px 2px 8px;
-                margin: 2px 4px;
-            }
-
-            QCalendarWidget QTableView#qt_calendar_calendarview {
-                min-width: 292px;
-                min-height: 210px;
-                gridline-color: #344256;
-                outline: none;
-                font-size: 12px;
             }
 
             QCalendarWidget QAbstractItemView {
@@ -572,10 +427,6 @@ MAIN_WINDOW_STYLESHEET = """
                 selection-background-color: #3B526E;
                 selection-color: white;
                 alternate-background-color: #263448;
-            }
-
-            QCalendarWidget QAbstractItemView:disabled {
-                color: #718096;
             }
 
             QTabWidget::pane {

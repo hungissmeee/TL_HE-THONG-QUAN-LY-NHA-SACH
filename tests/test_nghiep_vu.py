@@ -7,10 +7,7 @@ from decimal import Decimal
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtWidgets import (
-    QApplication, QTableWidget, QCalendarWidget, QToolButton,
-)
-from ui.styles import MAIN_WINDOW_STYLESHEET
+from PySide6.QtWidgets import QApplication, QTableWidget
 
 from database.connection import Database
 from ui.table_sort import (
@@ -57,53 +54,6 @@ class FakeCursor:
     def fetchone(self):
         return (self.last_number,)
 
-
-class SharedWidgetStyleTests(unittest.TestCase):
-    """Kiểm tra stylesheet dùng chung cho các điều khiển dễ bị lỗi hiển thị."""
-
-    def test_combo_and_spin_arrows_are_drawn_explicitly(self):
-        self.assertIn("QComboBox::down-arrow", MAIN_WINDOW_STYLESHEET)
-        self.assertIn("border-top: 6px solid #D6DEE9", MAIN_WINDOW_STYLESHEET)
-        self.assertIn("QAbstractSpinBox::up-arrow", MAIN_WINDOW_STYLESHEET)
-        self.assertIn("border-bottom: 5px solid #D6DEE9", MAIN_WINDOW_STYLESHEET)
-        self.assertIn("QAbstractSpinBox::down-arrow", MAIN_WINDOW_STYLESHEET)
-
-    def test_calendar_has_separate_month_year_and_navigation_rules(self):
-        for object_name in (
-            "qt_calendar_navigationbar",
-            "qt_calendar_prevmonth",
-            "qt_calendar_nextmonth",
-            "qt_calendar_monthbutton",
-            "qt_calendar_yearbutton",
-        ):
-            with self.subTest(control=object_name):
-                self.assertIn(object_name, MAIN_WINDOW_STYLESHEET)
-
-        self.assertIn("qt_calendar_monthbutton::menu-indicator", MAIN_WINDOW_STYLESHEET)
-        self.assertIn("border-top: 5px solid #D6DEE9", MAIN_WINDOW_STYLESHEET)
-
-    def test_calendar_navigation_controls_do_not_overlap(self):
-        calendar = QCalendarWidget()
-        calendar.setStyleSheet(MAIN_WINDOW_STYLESHEET)
-        calendar.resize(340, 280)
-        calendar.show()
-        _APP.processEvents()
-        self.addCleanup(calendar.close)
-
-        month = calendar.findChild(QToolButton, "qt_calendar_monthbutton")
-        year = calendar.findChild(QToolButton, "qt_calendar_yearbutton")
-        previous = calendar.findChild(QToolButton, "qt_calendar_prevmonth")
-        following = calendar.findChild(QToolButton, "qt_calendar_nextmonth")
-
-        self.assertIsNotNone(month)
-        self.assertIsNotNone(year)
-        self.assertIsNotNone(previous)
-        self.assertIsNotNone(following)
-        self.assertGreaterEqual(month.width(), 100)
-        self.assertGreaterEqual(year.width(), 65)
-        self.assertGreaterEqual(previous.width(), 30)
-        self.assertGreaterEqual(following.width(), 30)
-        self.assertFalse(month.geometry().intersects(year.geometry()))
 
 class DatabaseUtilityTests(unittest.TestCase):
     """Kiểm thử cấu hình kết nối, vai trò và kiểm tra quyền quản trị."""
