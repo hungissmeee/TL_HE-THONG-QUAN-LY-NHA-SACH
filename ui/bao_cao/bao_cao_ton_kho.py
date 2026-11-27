@@ -46,7 +46,7 @@ class InventoryReportPage(ReportBasePage):
              "Số mặt hàng có tồn kho bằng hoặc dưới 0", "negative"),
             ("value", "Giá trị tồn ước tính", "0 đ",
              "Tồn kho nhân với giá nhập hiện tại", "primary"),
-        ])
+        ], primary_key="value")
 
         self.table = self.make_table([
             "Mã sản phẩm", "Tên sản phẩm", "Đơn vị tính", "Số lượng tồn",
