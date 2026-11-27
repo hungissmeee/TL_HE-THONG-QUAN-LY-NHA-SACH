@@ -10,7 +10,7 @@ import { ApiError } from "@/services/api";
 import {
   operationsApi,
   type ReturnInvoiceItems,
-  type Row,
+  type DataRow,
 } from "@/features/operations/operationsApi";
 import { useAuth } from "@/features/auth/AuthContext";
 
@@ -29,7 +29,7 @@ function ReturnsPage() {
   const { user } = useAuth();
   const canManage = ["admin", "rl_QuanLy"].includes(user?.role_code || "");
   const { period, setPeriod } = usePeriod();
-  const [rows, setRows] = useState<Row[]>([]);
+  const [rows, setRows] = useState<DataRow[]>([]);
   const [keyword, setKeyword] = useState("");
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
@@ -40,7 +40,7 @@ function ReturnsPage() {
   const [reason, setReason] = useState("");
   const [loadingInvoice, setLoadingInvoice] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [detail, setDetail] = useState<{ header: Row; items: Row[] } | null>(null);
+  const [detail, setDetail] = useState<{ header: DataRow; items: DataRow[] } | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
   const load = useCallback(async () => {
@@ -123,7 +123,7 @@ function ReturnsPage() {
     { title: "Lý do", dataIndex: "lydo", key: "lydo", ellipsis: true },
     { title: "Số lượng", dataIndex: "tongsoluong", key: "tongsoluong", width: 100, align: "right" },
     { title: "Tiền hoàn", dataIndex: "tonghoan", key: "tonghoan", width: 145, align: "right", render: money },
-    { title: "Thao tác", key: "actions", width: 155, render: (_: unknown, row: Row) => <Space>
+    { title: "Thao tác", key: "actions", width: 155, render: (_: unknown, row: DataRow) => <Space>
       <Button size="small" icon={<EyeOutlined />} onClick={() => void showDetail(String(row.mapdt))}>Chi tiết</Button>
       {canManage && <Popconfirm title="Xóa phiếu đổi trả?" description="Hệ thống sẽ đảo biến động tồn kho. Nếu tồn hiện tại không đủ, thao tác bị từ chối." okText="Xóa" cancelText="Hủy" onConfirm={() => void remove(String(row.mapdt))}><Button size="small" danger icon={<DeleteOutlined />} /></Popconfirm>}
     </Space> },
@@ -195,7 +195,7 @@ function ReturnsPage() {
 }
 
 function EmployeesPage() {
-  const [rows, setRows] = useState<Row[]>([]);
+  const [rows, setRows] = useState<DataRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState("");
   const [employee, setEmployee] = useState<Row | null>(null);
@@ -208,7 +208,7 @@ function EmployeesPage() {
   }, [keyword]);
   useEffect(() => { void load(); }, [load]);
 
-  function openEdit(row: Row) {
+  function openEdit(row: DataRow) {
     setEmployee(row);
     form.setFieldsValue({ full_name: row.tennv, phone: row.sdt });
   }
@@ -228,7 +228,7 @@ function EmployeesPage() {
     { title: "Họ tên", dataIndex: "tennv", key: "tennv" },
     { title: "Vai trò", dataIndex: "vaitro", key: "vaitro", width: 155 },
     { title: "Số điện thoại", dataIndex: "sdt", key: "sdt", width: 150 },
-    { title: "Thao tác", key: "actions", width: 100, render: (_: unknown, row: Row) => <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(row)}>Sửa</Button> },
+    { title: "Thao tác", key: "actions", width: 100, render: (_: unknown, row: DataRow) => <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(row)}>Sửa</Button> },
   ];
 
   return <div className="operation-page">
