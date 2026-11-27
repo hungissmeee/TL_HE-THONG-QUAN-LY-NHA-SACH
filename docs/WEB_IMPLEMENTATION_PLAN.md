@@ -202,13 +202,15 @@ Chưa tự ý thêm module khách hàng/đăng ký khách hàng vì phạm vi hi
 
 ### Giai đoạn 2 — Nền tảng Backend
 
-- [ ] Tạo FastAPI app, cấu hình môi trường và dependency quản lý kết nối.
-- [ ] Tạo health check không tiết lộ thông tin nhạy cảm.
+- [x] Tạo FastAPI app, cấu hình môi trường Web riêng, dependency quản lý kết nối SQL Server theo request và tách tài khoản dịch vụ Backend.
+- [x] Tạo health check live/ready; phản hồi lỗi tổng quát, không tiết lộ thông tin nhạy cảm.
 - [ ] Xây dựng xác thực, session, logout, đổi mật khẩu và RBAC.
 - [ ] Chuẩn hóa response, validation, lỗi và logging.
 - [ ] Viết kiểm thử API cho đăng nhập, quyền truy cập và quyền Admin.
 
-**Kết quả:** API nền tảng an toàn, có thể tích hợp Frontend.
+**Tiến độ Backend:** Đã có FastAPI factory, cấu hình CORS allowlist, security headers, tài liệu Backend, kết nối SQL Server theo request và endpoint health. Chưa có xác thực Web/session/RBAC và chưa kết nối các nghiệp vụ API; cần tài khoản SQL dịch vụ riêng cùng quyền tối thiểu trước khi kiểm thử SQL Server thật.
+
+**Kết quả mục tiêu:** API nền tảng an toàn, có thể tích hợp Frontend.
 
 ### Giai đoạn 3 — Khung Frontend
 
