@@ -1171,6 +1171,11 @@ class ReportCenterTests(unittest.TestCase):
         self.assertNotIn("QComboBox#", source)
         self.assertNotIn("QComboBox, QDateEdit", source)
         self.assertNotIn("background: #FFFFFF", source)
+        self.assertIn("self.report_category_combo.setMinimumWidth(135)", source)
+        self.assertIn("self.report_combo.setMinimumWidth(185)", source)
+        self.assertIn("QSizePolicy.Policy.Preferred", source)
+        self.assertIn("self.report_category_combo.currentIndexChanged.connect", source)
+        self.assertIn("self.report_combo.currentIndexChanged.connect", source)
         self.assertNotIn("QTreeWidget", source)
         self.assertIn("ScrollBarAsNeeded", source)
 
