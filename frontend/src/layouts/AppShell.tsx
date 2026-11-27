@@ -28,6 +28,10 @@ import {
 
 import { useAuth } from "@/features/auth/AuthContext";
 import { ProductsPage } from "@/pages/ProductsPage";
+import { CatalogSupplierPromotionPage } from "@/pages/CatalogSupplierPromotionPage";
+import { SalesStockPage } from "@/pages/SalesStockPage";
+import { PeopleAndReturnsPage } from "@/pages/PeopleAndReturnsPage";
+import { ShiftsOrReportsPage } from "@/pages/ShiftsOrReportsPage";
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -145,8 +149,8 @@ function Dashboard({ name, role }: { name: string; role: string }) {
         <Card className="status-card" bordered={false}>
           <div className="status-icon"><BarChartOutlined /></div>
           <Text className="muted-text">Dữ liệu</Text>
-          <Title level={4}>Đang chờ API</Title>
-          <Text className="muted-text">Chưa lấy số liệu kinh doanh từ SQL Server.</Text>
+          <Title level={4}>Đã kết nối dữ liệu</Title>
+          <Text className="muted-text">Các phân hệ nghiệp vụ đã được kết nối API SQL Server.</Text>
         </Card>
       </div>
       <Card className="welcome-card" bordered={false}>
@@ -229,14 +233,24 @@ export function AppShell() {
             <Dashboard name={user?.full_name || ""} role={user?.role || ""} />
           ) : pageKey === "products" ? (
             <ProductsPage />
+          ) : pageKey === "invoices" || pageKey === "imports" ? (
+            <SalesStockPage pageKey={pageKey} />
+          ) : pageKey === "returns" || pageKey === "employees" ? (
+            <PeopleAndReturnsPage pageKey={pageKey} />
+          ) : pageKey === "suppliers" || pageKey === "promotions" ||
+              pageKey === "authors" || pageKey === "genres" ||
+              pageKey === "publishers" || pageKey === "brands" ? (
+            <CatalogSupplierPromotionPage pageKey={pageKey} />
+          ) : pageKey === "shifts" || pageKey.startsWith("report_") ? (
+            <ShiftsOrReportsPage pageKey={pageKey as
+              | "shifts" | "report_overview" | "report_revenue" | "report_invoice"
+              | "report_import" | "report_return" | "report_inventory"
+              | "report_product" | "report_shifts"} />
           ) : (
             <Card className="coming-soon-card" bordered={false}>
               <div className="coming-soon-icon"><AppstoreOutlined /></div>
               <Title level={3}>{pageTitle}</Title>
-              <Text className="muted-text">
-                Phân hệ này đang được chuyển đổi sang Web. Dữ liệu và thao tác nghiệp vụ
-                sẽ xuất hiện khi API tương ứng được hoàn thành.
-              </Text>
+              <Text className="muted-text">Không tìm thấy trang nghiệp vụ tương ứng.</Text>
             </Card>
           )}
         </Content>
