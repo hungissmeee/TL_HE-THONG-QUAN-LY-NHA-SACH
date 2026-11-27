@@ -1,7 +1,7 @@
 """Kiểm thử các quy tắc đầu vào của service sản phẩm, không cần SQL Server."""
 
 import unittest
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 from core.repositories.san_pham_repository import SanPhamRepository
@@ -18,6 +18,8 @@ from core.repositories.nhan_vien_repository import NhanVienRepository
 from core.services.nhan_vien_service import NhanVienService
 from core.repositories.ca_lam_viec_repository import CaLamViecRepository
 from core.services.ca_lam_viec_service import CaLamViecService
+from core.repositories.khuyen_mai_repository import KhuyenMaiRepository
+from core.services.khuyen_mai_service import KhuyenMaiService
 
 
 class FakeProductRepository(SanPhamRepository):
@@ -652,6 +654,111 @@ class ShiftServiceTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     self.service.register_current_shift(shift_id, "NV001")
 
+
+
+class FakePromotionRepository(KhuyenMaiRepository):
+    def __init__(self):
+        self.created = None
+        self.renamed = None
+        self.deleted = None
+
+    def create_promotion(self, data):
+        self.created = data
+        return "KM000123"
+
+    def rename_promotion(self, promotion_code, name):
+        self.renamed = (promotion_code, name)
+        return promotion_code
+
+    def soft_delete_promotion(self, promotion_code):
+        self.deleted = promotion_code
+        return promotion_code
+
+
+class PromotionServiceTests(unittest.TestCase):
+    def setUp(self):
+        self.repository = FakePromotionRepository()
+        self.service = KhuyenMaiService(self.repository)
+
+    def valid_data(self):
+        return {
+            "name": "  Khuyến mãi cuối tuần  ",
+            "discount_rate": "15.5",
+            "start_at": datetime(2026, 11, 28, 7, 0),
+            "end_at": datetime(2026, 12, 1, 22, 0),
+        }
+
+    def test_create_promotion_normalizes_fields(self):
+        code = self.service.create_promotion(self.valid_data(), can_manage=True)
+        self.assertEqual(code, "KM000123")
+        self.assertEqual(self.repository.created["name"], "Khuyến mãi cuối tuần")
+        self.assertEqual(self.repository.created["discount_rate"], Decimal("15.50"))
+        self.assertEqual(self.repository.created["start_at"], datetime(2026, 11, 28, 7, 0))
+
+    def test_create_promotion_requires_manager(self):
+        with self.assertRaises(PermissionError):
+            self.service.create_promotion(self.valid_data(), can_manage=False)
+
+    def test_create_promotion_requires_name(self):
+        data = self.valid_data()
+        data["name"] = " "
+        with self.assertRaisesRegex(ValueError, "không được để trống"):
+            self.service.create_promotion(data, can_manage=True)
+
+    def test_create_promotion_rejects_name_over_database_limit(self):
+        data = self.valid_data()
+        data["name"] = "x" * 101
+        with self.assertRaisesRegex(ValueError, "100 ký tự"):
+            self.service.create_promotion(data, can_manage=True)
+
+    def test_create_promotion_rejects_invalid_discount(self):
+        for rate in ("-0.01", "100.01", "NaN", "Infinity", "invalid"):
+            data = self.valid_data()
+            data["discount_rate"] = rate
+            with self.subTest(rate=rate):
+                with self.assertRaises(ValueError):
+                    self.service.create_promotion(data, can_manage=True)
+
+    def test_create_promotion_accepts_zero_and_one_hundred_percent(self):
+        for rate in ("0", "100"):
+            data = self.valid_data()
+            data["discount_rate"] = rate
+            self.service.create_promotion(data, can_manage=True)
+            self.assertEqual(self.repository.created["discount_rate"], Decimal(rate).quantize(Decimal("0.01")))
+
+    def test_create_promotion_rejects_end_before_start(self):
+        data = self.valid_data()
+        data["end_at"] = datetime(2026, 11, 28, 7, 0)
+        with self.assertRaisesRegex(ValueError, "phải sau"):
+            self.service.create_promotion(data, can_manage=True)
+
+    def test_create_promotion_rejects_timezone_aware_datetime(self):
+        data = self.valid_data()
+        data["start_at"] = "2026-11-28T07:00:00+07:00"
+        with self.assertRaisesRegex(ValueError, "không kèm timezone"):
+            self.service.create_promotion(data, can_manage=True)
+
+    def test_rename_promotion_only_delegates_name(self):
+        self.assertEqual(
+            self.service.rename_promotion(" KM000123 ", "  Đổi tên  ", can_manage=True),
+            "KM000123",
+        )
+        self.assertEqual(self.repository.renamed, ("KM000123", "Đổi tên"))
+
+    def test_rename_promotion_requires_manager(self):
+        with self.assertRaises(PermissionError):
+            self.service.rename_promotion("KM001", "New", can_manage=False)
+
+    def test_soft_delete_promotion_requires_manager(self):
+        with self.assertRaises(PermissionError):
+            self.service.soft_delete_promotion("KM001", can_manage=False)
+
+    def test_soft_delete_promotion_normalizes_code(self):
+        self.assertEqual(
+            self.service.soft_delete_promotion(" KM001 ", can_manage=True),
+            "KM001",
+        )
+        self.assertEqual(self.repository.deleted, "KM001")
 
 
 if __name__ == "__main__":
