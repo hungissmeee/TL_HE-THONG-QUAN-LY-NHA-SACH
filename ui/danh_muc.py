@@ -88,6 +88,87 @@ CATALOGS = {
 }
 
 
+class CatalogCreateDialog(QDialog):
+    """Popup thêm mới danh mục, thay cho form cố định trên trang danh sách."""
+
+    def __init__(self, config, code_preview="", parent=None):
+        super().__init__(parent)
+        self.config = config
+        self.inputs = {}
+        self.insert_values = None
+
+        self.setWindowTitle("Thêm danh mục")
+        self.setMinimumWidth(460)
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(18, 16, 18, 16)
+        root.setSpacing(12)
+
+        heading = QLabel("THÊM DANH MỤC MỚI")
+        heading.setStyleSheet("font-size: 18px; font-weight: bold;")
+        root.addWidget(heading)
+
+        group = QGroupBox("Thông tin danh mục")
+        form = QFormLayout(group)
+        form.setSpacing(10)
+
+        for column, label_text, placeholder, max_length, _required in config["fields"]:
+            edit = QLineEdit()
+            edit.setMaxLength(max_length)
+            edit.setPlaceholderText(placeholder)
+            if column == config["id_column"]:
+                edit.setReadOnly(True)
+                edit.setText(code_preview or "")
+                edit.setPlaceholderText("Mã sẽ được tạo tự động khi lưu")
+            self.inputs[column] = edit
+            form.addRow(label_text, edit)
+
+        root.addWidget(group)
+
+        actions = QHBoxLayout()
+        actions.addStretch()
+
+        cancel_button = QPushButton("Hủy")
+        cancel_button.clicked.connect(self.reject)
+
+        add_button = QPushButton("Thêm mới")
+        add_button.setProperty("buttonRole", "primary")
+        add_button.setObjectName("primaryButton")
+        add_button.clicked.connect(self._save)
+
+        actions.addWidget(cancel_button)
+        actions.addWidget(add_button)
+        root.addLayout(actions)
+
+    def get_insert_values(self):
+        """Kiểm tra trường bắt buộc và trả dữ liệu theo thứ tự INSERT."""
+        values = []
+        missing_fields = []
+
+        for column, label_text, _placeholder, _max_length, required in self.config["fields"]:
+            value = self.inputs[column].text().strip()
+            if required and column != self.config["id_column"] and not value:
+                missing_fields.append(label_text.replace(":", ""))
+            values.append(value if value else None)
+
+        if missing_fields:
+            QMessageBox.warning(
+                self,
+                "Thiếu thông tin",
+                "Vui lòng nhập: " + ", ".join(missing_fields),
+            )
+            return None
+
+        return values
+
+    def _save(self):
+        """Chỉ đóng popup khi dữ liệu bắt buộc đã được nhập."""
+        values = self.get_insert_values()
+        if values is not None:
+            self.insert_values = values
+            self.accept()
+
+
 class CatalogEditDialog(QDialog):
     """Biểu mẫu popup dùng để chỉnh sửa một bản ghi danh mục."""
 
@@ -226,11 +307,9 @@ class CatalogPage(QWidget):
         self.db = db
         self.catalog_type = catalog_type
         self.config = CATALOGS[catalog_type]
-        self.inputs = {}
         self.loaded = False
 
         self.setup_ui()
-        self.refresh_code_preview()
 
     def setup_ui(self):
         """Tạo form, bảng danh mục, bộ lọc tìm kiếm và các nút thao tác."""
@@ -238,53 +317,32 @@ class CatalogPage(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(12)
 
+        top = QHBoxLayout()
         title = QLabel(self.config["title"])
         title.setStyleSheet("font-size: 20px; font-weight: bold;")
-        layout.addWidget(title)
+        top.addWidget(title)
+        top.addStretch()
+
+        self.add_button = QPushButton("+ Thêm mới")
+        self.add_button.setProperty("buttonRole", "primary")
+        self.add_button.setObjectName("primaryButton")
+        self.add_button.clicked.connect(self.open_add_dialog)
+        top.addWidget(self.add_button)
+
+        self.refresh_button = QPushButton("Làm mới")
+        self.refresh_button.clicked.connect(self.load_data)
+        top.addWidget(self.refresh_button)
+        layout.addLayout(top)
 
         description = QLabel(
             "Nhấp đúp vào một dòng để xem chi tiết và thực hiện chỉnh sửa hoặc xóa."
         )
+        description.setWordWrap(True)
         description.setStyleSheet("color: #AAB7C8; font-size: 11px;")
         layout.addWidget(description)
 
-        form = QFormLayout()
-        form.setSpacing(12)
-
-        for column, label_text, placeholder, max_length, required in self.config["fields"]:
-            edit = QLineEdit()
-            edit.setPlaceholderText(placeholder)
-            edit.setMaxLength(max_length)
-            if column == self.config["id_column"]:
-                edit.setReadOnly(True)
-                edit.setPlaceholderText("Mã được tạo tự động")
-            self.inputs[column] = edit
-            form.addRow(label_text, edit)
-
-        button_layout = QHBoxLayout()
-
-        self.add_button = QPushButton("Thêm mới")
-        self.add_button.setProperty("buttonRole", "primary")
-        self.add_button.setObjectName("primaryButton")
-        self.add_button.clicked.connect(self.submit_form)
-
-        self.clear_button = QPushButton("Xóa nội dung")
-        self.clear_button.clicked.connect(self.clear_form)
-
-        self.refresh_button = QPushButton("Làm mới danh sách")
-        self.refresh_button.clicked.connect(self.load_data)
-
-        button_layout.addWidget(self.add_button)
-        button_layout.addWidget(self.clear_button)
-        button_layout.addStretch()
-        button_layout.addWidget(self.refresh_button)
-
-        layout.addLayout(form)
-        layout.addLayout(button_layout)
-
-        # Thanh tìm kiếm danh mục
+        # Thanh tìm kiếm dùng chung bố cục với Sản phẩm và Khuyến mãi.
         search_layout = QHBoxLayout()
-
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText(
             "Tìm theo mã, tên hoặc thông tin liên quan..."
@@ -297,10 +355,9 @@ class CatalogPage(QWidget):
         self.clear_search_button = QPushButton("Xóa tìm kiếm")
         self.clear_search_button.clicked.connect(self.clear_search)
 
-        search_layout.addWidget(self.search_input)
+        search_layout.addWidget(self.search_input, 1)
         search_layout.addWidget(self.search_button)
         search_layout.addWidget(self.clear_search_button)
-
         layout.addLayout(search_layout)
 
         self.table = QTableWidget()
@@ -362,27 +419,26 @@ class CatalogPage(QWidget):
 
         return code
 
-    def refresh_code_preview(self):
-        """Hiển thị trước mã kế tiếp; mã được tính lại khi nhấn Thêm mới."""
+    def preview_next_code(self):
+        """Lấy mã dự kiến để hiển thị trong popup; mã thật vẫn được sinh lại khi lưu."""
         conn = self.db.get_connection()
         if conn is None:
-            self.inputs[self.config["id_column"]].clear()
-            return
+            return ""
 
         cursor = None
         try:
             cursor = conn.cursor()
             code = self._next_code(cursor, lock_table=False)
-            self.inputs[self.config["id_column"]].setText(code)
             conn.commit()
-        except Exception as e:
+            return code
+        except Exception as error:
             conn.rollback()
-            self.inputs[self.config["id_column"]].setText("Không tạo được mã")
             QMessageBox.warning(
                 self,
                 "Không thể tạo mã tự động",
-                f"Không lấy được mã cho {self.config['table']}.\n{e}"
+                f"Không lấy được mã cho {self.config['table']}.\\n{error}",
             )
+            return ""
         finally:
             if cursor is not None:
                 cursor.close()
@@ -462,27 +518,25 @@ class CatalogPage(QWidget):
         self.load_data()
 
     def submit_form(self):
-        """Thêm mới danh mục từ biểu mẫu trên trang."""
-        self.add_record()
+        """Giữ tên phương thức cũ để tương thích; mở popup thêm mới."""
+        self.open_add_dialog()
 
-    def add_record(self):
-        """Kiểm tra dữ liệu, sinh mã có khóa chống trùng và thêm bản ghi mới."""
-        values = []
-        missing_fields = []
-
-        for column, label_text, placeholder, max_length, required in self.config["fields"]:
-            value = self.inputs[column].text().strip()
-            if required and column != self.config["id_column"] and not value:
-                missing_fields.append(label_text.replace(":", ""))
-            values.append(value if value else None)
-
-        if missing_fields:
-            QMessageBox.warning(
-                self,
-                "Thiếu thông tin",
-                "Vui lòng nhập: " + ", ".join(missing_fields)
-            )
+    def open_add_dialog(self):
+        """Mở popup thêm danh mục; form không còn chiếm diện tích cố định trên trang."""
+        dialog = CatalogCreateDialog(
+            self.config,
+            code_preview=self.preview_next_code(),
+            parent=self,
+        )
+        if dialog.exec() != QDialog.DialogCode.Accepted:
             return
+        self.add_record(dialog.insert_values)
+
+    def add_record(self, values):
+        """Sinh lại mã dưới khóa bảng và thêm bản ghi trong cùng transaction."""
+        if values is None:
+            return
+        values = list(values)
 
         conn = self.db.get_connection()
         if conn is None:
@@ -501,7 +555,6 @@ class CatalogPage(QWidget):
                 if field[0] == self.config["id_column"]
             )
             values[id_index] = new_code
-            self.inputs[self.config["id_column"]].setText(new_code)
 
             cursor.execute(self.config["insert_sql"], *values)
             conn.commit()
@@ -512,7 +565,6 @@ class CatalogPage(QWidget):
                 f"Đã thêm {new_code} vào bảng {self.config['table']}!"
             )
 
-            self.clear_form()
             self.load_data()
 
         except Exception as e:
@@ -664,25 +716,4 @@ class CatalogPage(QWidget):
             if cursor is not None:
                 cursor.close()
 
-    def clear_form(self):
-        """Xóa form; mã danh mục tự sinh và luôn không cho nhập tay."""
-        for edit in self.inputs.values():
-            edit.clear()
-            edit.setReadOnly(False)
 
-        id_input = self.inputs[self.config["id_column"]]
-        id_input.setReadOnly(True)
-
-        self.add_button.setText("Thêm mới")
-        self.clear_button.setText("Xóa nội dung")
-        self.table.setEnabled(True)
-        self.search_input.setEnabled(True)
-        self.search_button.setEnabled(True)
-        self.clear_search_button.setEnabled(True)
-        self.table.clearSelection()
-        self.refresh_code_preview()
-
-        for column, *_rest in self.config["fields"]:
-            if column != self.config["id_column"]:
-                self.inputs[column].setFocus()
-                break
