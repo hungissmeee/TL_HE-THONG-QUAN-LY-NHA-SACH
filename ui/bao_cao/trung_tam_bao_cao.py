@@ -795,9 +795,9 @@ class ReportCenterPage(QWidget):
             width = self.table.columnWidth(col)
             self.footer.setColumnWidth(col, width)
             self.group_header.setColumnWidth(col, width)
-        viewport_width = max(100, self.table.viewport().width())
-        self.footer.setFixedWidth(viewport_width)
-        self.group_header.setFixedWidth(viewport_width)
+        table_width = max(100, self.table.width())
+        self.footer.setFixedWidth(table_width)
+        self.group_header.setFixedWidth(table_width)
         self._sync_horizontal_scroll_range(
             0, self.table.horizontalScrollBar().maximum()
         )
