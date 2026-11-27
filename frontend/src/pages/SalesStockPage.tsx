@@ -377,8 +377,12 @@ function InvoicesPage() {
     {
       title: "ĐVT",
       key: "unit",
-      width: 70,
-      render: (_: unknown, line) => lookup?.products.find((product) => product.masp === line.product_code)?.dvt || "—",
+      width: 90,
+      render: (_: unknown, line) => (
+        <span style={{ whiteSpace: "nowrap" }}>
+          {lookup?.products.find((product) => product.masp === line.product_code)?.dvt || "—"}
+        </span>
+      ),
     },
     {
       title: "Số lượng",
