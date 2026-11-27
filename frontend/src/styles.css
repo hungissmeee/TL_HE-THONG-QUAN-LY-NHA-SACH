@@ -339,3 +339,120 @@ button, input { font: inherit; }
     font-size: 11px;
   }
 }
+
+
+/* Các nhóm thông tin trong popup Web tương ứng QGroupBox của Desktop. */
+.desktop-form-section {
+  margin-bottom: 14px;
+  border: 1px solid #46546a;
+  border-radius: 7px;
+  background: #202938;
+}
+.desktop-form-section .ant-card-head {
+  min-height: 42px;
+  padding-inline: 14px;
+  border-bottom: 1px solid #39465a;
+}
+.desktop-form-section .ant-card-head-title {
+  padding-block: 10px;
+  color: #d6dee9;
+  font-size: 13px;
+  font-weight: 700;
+}
+.desktop-form-section .ant-card-body {
+  padding: 14px 16px 6px;
+}
+.desktop-dialog-form .ant-form-item {
+  margin-bottom: 12px;
+}
+.desktop-dialog-form .ant-form-item-label > label {
+  color: #d6dee9;
+  font-weight: 600;
+}
+.desktop-dialog-form .ant-alert {
+  margin: 4px 0 10px;
+}
+.desktop-entity-modal .ant-modal-body {
+  padding-top: 16px;
+}
+.product-desktop-form > .ant-form-item {
+  margin-bottom: 14px;
+}
+
+/* Bảng và vùng thao tác bám theo nền bảng của ứng dụng Desktop. */
+.operation-card {
+  border: 1px solid #39465a;
+  background: #202938;
+}
+.operation-card > .ant-card-body {
+  padding: 16px;
+}
+.operation-toolbar {
+  margin-bottom: 14px;
+}
+.operation-page .ant-table-wrapper {
+  width: 100%;
+}
+.operation-page .ant-table {
+  background: transparent;
+}
+.operation-page .ant-table-thead > tr > th {
+  background: #29374b;
+  color: #e5e7eb;
+  border-bottom-color: #39465a;
+  font-weight: 700;
+}
+.operation-page .ant-table-tbody > tr > td {
+  border-bottom-color: #344256;
+}
+.operation-page .ant-table-tbody > tr.ant-table-row:hover > td {
+  background: #29374b;
+}
+.operation-page .ant-pagination {
+  margin-bottom: 0;
+}
+.operation-heading {
+  align-items: center;
+}
+.operation-heading .ant-space {
+  flex-shrink: 0;
+}
+.sidebar-password {
+  margin-bottom: 10px;
+  border-radius: 6px;
+  background: #34445a !important;
+  color: #fff !important;
+  text-align: left;
+}
+.sidebar-password:hover {
+  background: #465b75 !important;
+  color: #fff !important;
+}
+.sidebar-logout {
+  border-radius: 6px;
+  background: #a83232 !important;
+  color: #fff !important;
+  text-align: left;
+}
+.sidebar-logout:hover {
+  background: #c94444 !important;
+  color: #fff !important;
+}
+@media (max-width: 760px) {
+  .desktop-dialog-form .ant-form-item {
+    display: block;
+  }
+  .desktop-dialog-form .ant-form-item-label {
+    padding: 0 0 5px;
+    text-align: left;
+  }
+  .desktop-dialog-form .ant-form-item-label > label {
+    height: auto;
+  }
+  .desktop-form-section .ant-card-body {
+    padding: 12px 12px 4px;
+  }
+  .operation-card > .ant-card-body {
+    padding: 12px;
+  }
+}
