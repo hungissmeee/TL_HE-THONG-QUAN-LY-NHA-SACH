@@ -1,12 +1,9 @@
 """Repository SQL/transaction cho nghiệp vụ đổi trả."""
 
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal
 
 from core.sql_support import resolve_connection, restore_and_activate_product
 from core.doi_tra.calculation import calculate_invoice_refund
-
-
-MONEY_QUANT = Decimal("0.01")
 
 
 class ReturnRepository:
