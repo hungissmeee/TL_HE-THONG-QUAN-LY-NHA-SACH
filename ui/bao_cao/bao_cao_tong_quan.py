@@ -69,15 +69,15 @@ class OverviewReportPage(ReportBasePage):
             "Doanh thu theo ngày phát sinh",
             [
                 ("Doanh thu bán hàng", 0, "#60A5FA"),
-                ("Doanh thu sau hoàn theo ngày", 1, "#34D399"),
+                ("Chênh lệch bán hàng và hoàn trong ngày", 1, "#34D399"),
             ],
         )
         self.content_layout.addWidget(self.trend_chart)
 
         trend_note = QLabel(
-            "Doanh thu bán hàng theo ngày lập hóa đơn; tiền hoàn theo ngày "
-            "lập phiếu đổi trả. Số âm thể hiện ngày có tiền hoàn lớn hơn "
-            "doanh thu bán hàng phát sinh trong ngày."
+            "Doanh số bán được nhóm theo ngày lập hóa đơn; tiền hoàn được nhóm theo ngày "
+            "lập phiếu đổi trả. Chỉ tiêu chênh lệch trong ngày là phép đối chiếu "
+            "hai luồng phát sinh, không phải doanh thu thuần theo hóa đơn gốc."
         )
         trend_note.setWordWrap(True)
         trend_note.setStyleSheet("color: #8291A5; font-size: 10px;")
@@ -85,7 +85,7 @@ class OverviewReportPage(ReportBasePage):
 
         self.trend_table = self.make_table([
             "Ngày", "Số hóa đơn", "Số lượng bán",
-            "Doanh thu bán hàng", "Tiền hoàn", "Doanh thu sau hoàn"
+            "Doanh số bán hàng", "Tiền hoàn trong ngày", "Chênh lệch phát sinh trong ngày"
         ])
         self.content_layout.addWidget(self.trend_table)
         self.register_export_table("Doanh thu theo ngày", self.trend_table)
@@ -94,7 +94,7 @@ class OverviewReportPage(ReportBasePage):
         products_title.setStyleSheet("font-weight: bold;")
         self.content_layout.addWidget(products_title)
         self.top_products_table = self.make_table([
-            "Mã sản phẩm", "Tên sản phẩm", "Số lượng bán", "Doanh thu sau khuyến mãi"
+            "Mã sản phẩm", "Tên sản phẩm", "Số lượng bán"
         ])
         self.content_layout.addWidget(self.top_products_table)
         self.register_export_table("Top sản phẩm bán chạy", self.top_products_table)
@@ -140,6 +140,6 @@ class OverviewReportPage(ReportBasePage):
 
         top_rows = self.service.overview_top_products(start_date, end_date)
         self.fill_table(self.top_products_table, [
-            (row[0], row[1], number_text(row[2]), money_text(row[3]))
+            (row[0], row[1], number_text(row[2]))
             for row in top_rows
         ])
