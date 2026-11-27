@@ -165,13 +165,24 @@ class CalendarPopupTests(unittest.TestCase):
 
         self.assertTrue(date_edit.calendarPopup())
         self.assertIsNotNone(month_button)
-        self.assertIsNone(month_button.menu())
+        month_menu = month_button.menu()
+        self.assertIsNotNone(month_menu)
+        self.assertEqual(
+            month_button.styleSheet(),
+            "QToolButton::menu-indicator { image: none; }",
+        )
         self.assertIsNotNone(previous_button)
         self.assertIsNotNone(next_button)
 
         original_month = calendar.monthShown()
         calendar.showNextMonth()
         self.assertNotEqual(calendar.monthShown(), original_month)
+
+        # The month selector's menu remains connected and opens on click.
+        month_button.click()
+        _APP.processEvents()
+        self.assertTrue(month_menu.isVisible())
+        month_menu.close()
 
         date_edit.close()
 

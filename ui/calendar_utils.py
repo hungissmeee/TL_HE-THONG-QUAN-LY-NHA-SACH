@@ -21,8 +21,10 @@ def configure_date_edit_calendar(date_edit):
         MONTH_BUTTON_OBJECT_NAME,
     )
     if month_button is not None:
-        # QToolButton không còn menu nên Qt không vẽ menu-indicator
-        # nhỏ dưới tên tháng. Không ảnh hưởng hai nút tháng trước/sau.
-        month_button.setMenu(None)
+        # Chỉ ẩn hình tam giác menu; giữ nguyên QMenu và popupMode
+        # để người dùng vẫn nhấn tên tháng và chọn tháng như trước.
+        month_button.setStyleSheet(
+            "QToolButton::menu-indicator { image: none; }"
+        )
 
     return calendar
