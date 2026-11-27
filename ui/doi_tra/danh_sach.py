@@ -61,6 +61,7 @@ class ReturnWindow(QWidget):
 
         self.create_button = QPushButton("+ Lập phiếu đổi trả")
         self.create_button.setProperty("buttonRole", "primary")
+        self.create_button.setObjectName("primaryButton")
         self.create_button.setVisible(self.can_manage)
         self.create_button.clicked.connect(self.open_create_dialog)
         top.addWidget(self.create_button)
