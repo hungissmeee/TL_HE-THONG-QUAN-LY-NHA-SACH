@@ -732,6 +732,9 @@ class ReportCenterPage(QWidget):
         date_fmt = workbook.add_format({
             "border": 1, "border_color": "#E0E6EC", "num_format": "dd/mm/yyyy hh:mm",
         })
+        percent_fmt = workbook.add_format({
+            "border": 1, "border_color": "#E0E6EC", "num_format": "0.00%",
+        })
         total_text_fmt = workbook.add_format({
             "bold": True, "bg_color": "#E6EDF3", "top": 1, "bottom": 1,
         })
@@ -796,7 +799,15 @@ class ReportCenterPage(QWidget):
                     worksheet.write_datetime(row_index, col, value, date_fmt)
                 elif isinstance(value, (int, float, Decimal)):
                     number = float(value)
-                    fmt = money_fmt if col in definition.get("money_cols", []) else number_fmt if col in definition.get("number_cols", []) else text_fmt
+                    if col in definition.get("money_cols", []):
+                        fmt = money_fmt
+                    elif col in definition.get("number_cols", []):
+                        fmt = number_fmt
+                    elif col in definition.get("percent_cols", []):
+                        fmt = percent_fmt
+                        number = number / 100.0
+                    else:
+                        fmt = text_fmt
                     worksheet.write_number(row_index, col, number, fmt)
                 else:
                     worksheet.write(row_index, col, str(value), text_fmt)
