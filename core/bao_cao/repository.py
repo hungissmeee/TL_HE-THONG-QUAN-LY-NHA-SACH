@@ -440,7 +440,9 @@ class BaoCaoRepository:
                 SELECT CT.MASP, PN.NGAYNHAP AS NGAY, PN.MAPN AS CHUNG_TU,
                     N'Nhập nhà cung cấp' AS LOAI,
                     SUM(COALESCE(CT.SOLUONG, 0)) AS SL_NHAP,
-                    CAST(0 AS BIGINT) AS SL_XUAT
+                    SUM(COALESCE(CT.SOLUONG, 0) * COALESCE(CT.DONGIA, 0)) AS GT_NHAP,
+                    CAST(0 AS BIGINT) AS SL_XUAT,
+                    CAST(0 AS DECIMAL(18, 2)) AS GT_XUAT
                 FROM dbo.PHIEU_NHAP PN
                 INNER JOIN dbo.CHI_TIET_PHIEU_NHAP CT ON CT.MAPN = PN.MAPN
                 WHERE ISNULL(PN.TRANGTHAI, 1) = 1
@@ -449,9 +451,12 @@ class BaoCaoRepository:
                 UNION ALL
 
                 SELECT CT.MASP, HD.NGAYLAP, HD.MAHD, N'Bán hàng',
-                    CAST(0 AS BIGINT), SUM(COALESCE(CT.SOLUONG, 0))
+                    CAST(0 AS BIGINT), CAST(0 AS DECIMAL(18, 2)),
+                    SUM(COALESCE(CT.SOLUONG, 0)),
+                    SUM(COALESCE(CT.SOLUONG, 0) * COALESCE(SP.GIANHAP, 0))
                 FROM dbo.HOA_DON HD
                 INNER JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
+                INNER JOIN dbo.SAN_PHAM SP ON SP.MASP = CT.MASP
                 WHERE HD.TRANGTHAI = 1
                 GROUP BY CT.MASP, HD.NGAYLAP, HD.MAHD
 
@@ -459,9 +464,12 @@ class BaoCaoRepository:
 
                 SELECT CTDT.MASP, PDT.NGAY_DOI_TRA, PDT.MAPDT,
                     N'Khách trả nhập lại',
-                    SUM(COALESCE(CTDT.SOLUONG, 0)), CAST(0 AS BIGINT)
+                    SUM(COALESCE(CTDT.SOLUONG, 0)),
+                    SUM(COALESCE(CTDT.SOLUONG, 0) * COALESCE(SP.GIANHAP, 0)),
+                    CAST(0 AS BIGINT), CAST(0 AS DECIMAL(18, 2))
                 FROM dbo.PHIEU_DOI_TRA PDT
                 INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT
+                INNER JOIN dbo.SAN_PHAM SP ON SP.MASP = CTDT.MASP
                 WHERE CTDT.HINH_THUC_XU_LY = 0 AND CTDT.TINHTRANGHANG = 1
                 GROUP BY CTDT.MASP, PDT.NGAY_DOI_TRA, PDT.MAPDT
 
@@ -469,9 +477,12 @@ class BaoCaoRepository:
 
                 SELECT CTDT.MASP, PDT.NGAY_DOI_TRA, PDT.MAPDT,
                     N'Xuất đổi hàng', CAST(0 AS BIGINT),
-                    SUM(COALESCE(CTDT.SOLUONG, 0))
+                    CAST(0 AS DECIMAL(18, 2)),
+                    SUM(COALESCE(CTDT.SOLUONG, 0)),
+                    SUM(COALESCE(CTDT.SOLUONG, 0) * COALESCE(SP.GIANHAP, 0))
                 FROM dbo.PHIEU_DOI_TRA PDT
                 INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT
+                INNER JOIN dbo.SAN_PHAM SP ON SP.MASP = CTDT.MASP
                 WHERE CTDT.HINH_THUC_XU_LY = 1
                 GROUP BY CTDT.MASP, PDT.NGAY_DOI_TRA, PDT.MAPDT
             )
@@ -563,7 +574,8 @@ class BaoCaoRepository:
                 WHERE M.NGAY >= B.START_DATE AND M.NGAY < B.END_EXCLUSIVE
             )
             SELECT P.NGAY, P.LOAI, P.CHUNG_TU, P.MASP,
-                COALESCE(SP.TENSP, N''), P.SL_NHAP, P.SL_XUAT,
+                COALESCE(SP.TENSP, N''), P.SL_NHAP, P.GT_NHAP,
+                P.SL_XUAT, P.GT_XUAT,
                 O.TON_DAU + SUM(P.SL_NHAP - P.SL_XUAT) OVER (
                     PARTITION BY P.MASP
                     ORDER BY P.NGAY, P.CHUNG_TU, P.LOAI
