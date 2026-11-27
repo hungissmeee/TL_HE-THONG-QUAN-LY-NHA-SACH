@@ -1,13 +1,12 @@
 """Kiểm thử launcher chạy đồng thời Backend và Frontend."""
 
 import os
-import subprocess
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
 from backend.config import ConfigurationError
-from run_web import _npm_command, load_frontend_options
+from run_web import NpmRuntime, _npm_command, load_frontend_options
 
 
 class WebLauncherTests(unittest.TestCase):
@@ -54,44 +53,49 @@ class WebLauncherTests(unittest.TestCase):
                 load_frontend_options()
 
 
-    def test_windows_npm_command_quotes_program_files_path(self):
-        npm_path = r"C:\Program Files\nodejs\npm.cmd"
-        comspec = r"C:\Windows\System32\cmd.exe"
-        with patch("run_web.os.name", "nt"):
-            with patch.dict(os.environ, {"COMSPEC": comspec}):
-                command = _npm_command(
-                    npm_path,
-                    ["install", "--no-audit", "--no-fund"],
-                )
+    def test_npm_runtime_runs_node_directly_with_paths_containing_spaces(self):
+        runtime = NpmRuntime((
+            "C:\\Program Files\\nodejs\\node.exe",
+            "C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npm-cli.js",
+        ))
+        command = _npm_command(runtime, ["install", "--no-audit", "--no-fund"])
 
-        self.assertEqual(command[0], comspec)
-        self.assertEqual(command[1:4], ["/d", "/s", "/c"])
-        expected_executable = subprocess.list2cmdline([npm_path])
-        self.assertTrue(command[4].startswith(f"call {expected_executable} "))
-        self.assertIn("install --no-audit --no-fund", command[4])
+        self.assertEqual(command[0], "C:\\Program Files\\nodejs\\node.exe")
+        self.assertEqual(
+            command[1],
+            "C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npm-cli.js",
+        )
+        self.assertEqual(command[2:], ["install", "--no-audit", "--no-fund"])
+        self.assertNotIn("cmd.exe", command[0].lower())
+        self.assertNotIn("npm.cmd", command[0].lower())
 
-    def test_windows_npm_command_preserves_dev_server_arguments(self):
-        npm_path = r"C:\Program Files\nodejs\npm.cmd"
-        with patch("run_web.os.name", "nt"):
-            command = _npm_command(
-                npm_path,
-                [
-                    "run", "dev", "--",
-                    "--host", "127.0.0.1",
-                    "--port", "5173",
-                    "--strictPort",
-                ],
-            )
+    def test_npm_runtime_preserves_vite_arguments(self):
+        runtime = NpmRuntime((
+            "C:\\Program Files\\nodejs\\node.exe",
+            "C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npm-cli.js",
+        ))
+        command = _npm_command(
+            runtime,
+            [
+                "run", "dev", "--",
+                "--host", "127.0.0.1",
+                "--port", "5173",
+                "--strictPort",
+            ],
+        )
 
-        expected_executable = subprocess.list2cmdline([npm_path])
-        self.assertIn(f"call {expected_executable}", command[4])
-        self.assertIn("run dev -- --host 127.0.0.1 --port 5173 --strictPort", command[4])
+        self.assertEqual(command[2:], [
+            "run", "dev", "--",
+            "--host", "127.0.0.1",
+            "--port", "5173",
+            "--strictPort",
+        ])
 
-    def test_non_windows_npm_command_does_not_use_cmd_shell(self):
-        args = ["install", "--no-audit"]
-        with patch("run_web.os.name", "posix"):
-            command = _npm_command("/usr/bin/npm", args)
-        self.assertEqual(command, ["/usr/bin/npm", *args])
+    def test_npm_command_accepts_standard_npm_runtime_on_linux(self):
+        runtime = NpmRuntime(("/usr/bin/npm",))
+        command = _npm_command(runtime, ["install", "--no-audit"])
+        self.assertEqual(command, ["/usr/bin/npm", "install", "--no-audit"])
+
 
 
 if __name__ == "__main__":
