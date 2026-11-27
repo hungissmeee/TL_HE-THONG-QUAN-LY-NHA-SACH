@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  Alert, Button, Card, Col, DatePicker, Descriptions, Form, InputNumber,
+  Alert, Button, Card, Col, DatePicker, Form, Input, InputNumber,
   Modal, Popconfirm, Row, Select, Space, Spin, Statistic, Table, Tag, Typography,
   message, type TableColumnsType,
 } from "antd";
@@ -13,7 +13,6 @@ import { useAuth } from "@/features/auth/AuthContext";
 const { Title, Text } = Typography;
 const err = (e: unknown) => e instanceof ApiError ? e.message : "Không thể hoàn tất yêu cầu.";
 const money = (v: unknown) => Number(v ?? 0).toLocaleString("vi-VN") + " ₫";
-const dt = (v: unknown) => v ? dayjs(String(v)).format("DD/MM/YYYY HH:mm") : "—";
 const dateText = (v: unknown) => v ? dayjs(String(v)).format("DD/MM/YYYY") : "—";
 
 function ShiftsPage() {
@@ -210,7 +209,7 @@ function ReportsPage({ reportType }: { reportType: string }) {
       setResult(await operationsApi.report(reportType, {
         start_date: range[0].format("YYYY-MM-DD"),
         end_date: range[1].format("YYYY-MM-DD"),
-        period, sort, threshold, inventory_status, keyword,
+        period, sort, threshold, inventory_status: inventoryStatus, keyword,
       }));
     } catch (e) { message.error(err(e)); }
     finally { setLoading(false); }
