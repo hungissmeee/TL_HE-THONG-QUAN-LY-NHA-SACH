@@ -195,13 +195,7 @@ class CreateImportDialog(QDialog):
             default_sort_column=0
         )
         cart_layout.addWidget(self.cart_table)
-        remove_row = QHBoxLayout()
-        remove_row.addStretch()
-        self.remove_item_button = QPushButton("Bỏ sản phẩm đã chọn")
-        self.remove_item_button.clicked.connect(self.remove_selected_cart_item)
-        remove_row.addWidget(self.remove_item_button)
-        cart_layout.addLayout(remove_row)
-        root.addWidget(cart_box, 2)
+        root.addWidget(cart_box, 3)
 
         bottom = QHBoxLayout()
         total_box = QGroupBox("Tổng giá trị phiếu nhập")
@@ -313,139 +307,201 @@ class CreateImportDialog(QDialog):
             self.load_suppliers(dialog.saved_supplier[0])
 
     def search_products(self, *_):
-        """Tìm sản phẩm có thể nhập kho theo từ khóa."""
+        """Tải danh sách sản phẩm có thể nhập và tạo gợi ý cho ô tìm kiếm."""
         conn = self.db.get_connection()
+        if conn is None:
+            raise RuntimeError("Chưa có kết nối SQL Server.")
         cursor = conn.cursor()
-        keyword = self.product_search.text().strip()
         try:
             cursor.execute("""
                 SELECT MASP, TENSP, DVT, GIANHAP, SLTON, VAT
                 FROM dbo.SAN_PHAM
                 WHERE ISNULL(IS_DELETED, 0) = 0
-                  AND (MASP LIKE ? OR TENSP LIKE ?)
                 ORDER BY TENSP, MASP
-            """, (f"%{keyword}%", f"%{keyword}%"))
-            rows = cursor.fetchall()
-
-            pause_table_sorting(self.product_table)
-
-            self.product_table.setRowCount(0)
+            """)
             self.products = {}
-            for index, row in enumerate(rows):
+            suggestions = []
+            for row in cursor.fetchall():
                 code, name, unit, cost, stock, vat = row
-                self.products[str(code)] = {
-                    "masp": str(code),
+                code = str(code)
+                product = {
+                    "masp": code,
                     "tensp": str(name or ""),
                     "dvt": str(unit or ""),
                     "price": as_decimal(cost),
                     "stock": int(stock or 0),
                     "vat": as_decimal(vat),
                 }
-                self.product_table.insertRow(index)
-                values = [
-                    code, name, unit, money(cost), int(stock or 0),
-                    money(vat)
-                ]
-                for column, value in enumerate(values):
-                    self._set_cell(self.product_table, index, column, value)
+                self.products[code] = product
+                suggestions.append(
+                    f"{code} | {product['tensp']} | Giá nhập hiện tại: {money(cost)}"
+                )
+            self.product_suggestion_model.setStringList(suggestions)
         except Exception as error:
             QMessageBox.critical(self, "Lỗi tải sản phẩm", str(error))
         finally:
-            resume_table_sorting(self.product_table)
             cursor.close()
 
-    def select_product_row(self, row, column):
-        """Đưa sản phẩm được chọn vào khu vực nhập số lượng và đơn giá."""
-        item = self.product_table.item(row, 0)
-        if item is None:
-            return
-        product = self.products.get(item.text())
-        if product:
-            self.price_input.setValue(float(product["price"]))
+    def add_completed_product(self, completion):
+        """Thêm sản phẩm khi người dùng chọn một gợi ý."""
+        code = str(completion or "").split(" | ", 1)[0].strip()
+        if code:
+            self._add_product_to_cart(code)
 
     def add_selected_product(self):
-        """Thêm sản phẩm được chọn vào danh sách chi tiết phiếu nhập."""
-        row = self.product_table.currentRow()
-        if row < 0:
-            QMessageBox.information(self, "Chưa chọn sản phẩm", "Vui lòng chọn sản phẩm cần nhập.")
-            return
-        item = self.product_table.item(row, 0)
-        if item is None:
-            return
-        code = item.text().strip()
-        product = self.products.get(code)
-        if not product:
+        """Thêm sản phẩm theo mã hoặc tên nhập chính xác."""
+        keyword = self.product_search.text().strip().casefold()
+        if not keyword:
             return
 
-        quantity = int(self.quantity_input.value())
-        unit_price = as_decimal(self.price_input.value())
-        if unit_price <= 0:
-            QMessageBox.warning(
-                self, "Đơn giá không hợp lệ",
-                "Vui lòng nhập đơn giá nhập lớn hơn 0."
+        exact = [
+            code for code, product in self.products.items()
+            if keyword in {
+                code.casefold(),
+                product["tensp"].casefold(),
+                f"{code} | {product['tensp']}".casefold(),
+            }
+        ]
+        if len(exact) == 1:
+            self._add_product_to_cart(exact[0])
+            return
+
+        matches = [
+            code for code, product in self.products.items()
+            if keyword in code.casefold() or keyword in product["tensp"].casefold()
+        ]
+        if len(matches) == 1:
+            self._add_product_to_cart(matches[0])
+        elif matches:
+            QMessageBox.information(
+                self,
+                "Chọn sản phẩm",
+                "Có nhiều sản phẩm phù hợp. Hãy chọn một kết quả trong danh sách gợi ý.",
             )
+        else:
+            QMessageBox.information(
+                self,
+                "Không tìm thấy",
+                "Không có sản phẩm phù hợp với từ khóa.",
+            )
+
+    def _add_product_to_cart(self, code):
+        """Thêm sản phẩm vào giỏ; thêm lại cùng mã sẽ tăng số lượng."""
+        product = self.products.get(str(code))
+        if product is None:
             return
 
         if code in self.cart:
-            old = self.cart[code]
-            old_quantity = int(old["quantity"])
-            new_quantity = old_quantity + quantity
-            # Bảng chi tiết có khóa chính (MAPN, MASP), gộp cùng mã SP thành một dòng.
-            total_cost = old["price"] * old_quantity + unit_price * quantity
-            old["price"] = (total_cost / Decimal(new_quantity)).quantize(
-                MONEY_QUANT, rounding=ROUND_HALF_UP
-            )
-            old["quantity"] = new_quantity
+            self.cart[code]["quantity"] += 1
         else:
             self.cart[code] = {
                 **product,
-                "price": unit_price,
-                "quantity": quantity,
+                "price": product["price"],
+                "quantity": 1,
             }
 
         self.refresh_cart()
         self.update_total()
+        self.product_search.clear()
+        self.product_search.setFocus()
 
     def refresh_cart(self):
-        """Cập nhật bảng các sản phẩm dự kiến nhập."""
+        """Cập nhật giỏ hàng với số lượng và đơn giá chỉnh ngay trên từng dòng."""
         pause_table_sorting(self.cart_table)
-
         try:
             self.cart_table.setRowCount(0)
 
             for index, (code, item) in enumerate(self.cart.items()):
-                amount = item["price"] * item["quantity"]
-
                 self.cart_table.insertRow(index)
+                self._set_cell(self.cart_table, index, 0, code)
+                self._set_cell(self.cart_table, index, 1, item["tensp"])
+                self._set_cell(self.cart_table, index, 2, item["dvt"])
+                self._set_cell(self.cart_table, index, 5, money(item["vat"]))
 
-                values = [
-                    code,
-                    item["tensp"],
-                    item["dvt"],
-                    item["quantity"],
-                    money(item["price"]),
-                    money(item["vat"]),
-                    money(amount)
-                ]
+                quantity = QSpinBox(self.cart_table)
+                quantity.setRange(1, 999999)
+                quantity.setValue(int(item["quantity"]))
+                quantity.setMinimumHeight(34)
+                quantity.valueChanged.connect(
+                    lambda value, product_code=code:
+                    self._update_cart_quantity(product_code, value)
+                )
+                self.cart_table.setCellWidget(index, 3, quantity)
 
-                for column, value in enumerate(values):
-                    self._set_cell(
-                        self.cart_table, index, column, value
-                    )
+                price = QDoubleSpinBox(self.cart_table)
+                price.setLocale(QLocale.c())
+                price.setGroupSeparatorShown(False)
+                price.setDecimals(2)
+                price.setRange(0.01, 999999999999.99)
+                price.setSuffix(" đ")
+                price.setValue(float(item["price"]))
+                price.setMinimumHeight(34)
+                price.valueChanged.connect(
+                    lambda value, product_code=code:
+                    self._update_cart_price(product_code, value)
+                )
+                self.cart_table.setCellWidget(index, 4, price)
 
+                self._set_cell(
+                    self.cart_table, index, 6,
+                    money(item["price"] * item["quantity"])
+                )
+
+                remove_button = QPushButton("Bỏ")
+                remove_button.setObjectName("dangerButton")
+                remove_button.clicked.connect(
+                    lambda _checked=False, product_code=code:
+                    self._remove_cart_item(product_code)
+                )
+                self.cart_table.setCellWidget(index, 7, remove_button)
+                self.cart_table.setRowHeight(index, 44)
         finally:
             resume_table_sorting(self.cart_table)
 
-    def remove_selected_cart_item(self):
-        """Xóa sản phẩm đang chọn khỏi chi tiết phiếu nhập."""
-        row = self.cart_table.currentRow()
-        if row < 0:
+    def _update_cart_quantity(self, code, quantity):
+        """Cập nhật số lượng và thành tiền của một mặt hàng trong giỏ."""
+        item = self.cart.get(code)
+        if item is None:
             return
-        item = self.cart_table.item(row, 0)
-        if item:
-            self.cart.pop(item.text(), None)
-            self.refresh_cart()
-            self.update_total()
+        item["quantity"] = int(quantity)
+        self._update_cart_line_total(code)
+        self.update_total()
+
+    def _update_cart_price(self, code, price):
+        """Cập nhật đơn giá nhập đã gồm VAT ngay tại dòng giỏ hàng."""
+        item = self.cart.get(code)
+        if item is None:
+            return
+        item["price"] = as_decimal(price)
+        self._update_cart_line_total(code)
+        self.update_total()
+
+    def _update_cart_line_total(self, code):
+        item = self.cart.get(code)
+        if item is None:
+            return
+        for row in range(self.cart_table.rowCount()):
+            code_item = self.cart_table.item(row, 0)
+            if code_item and code_item.text() == code:
+                amount_item = self.cart_table.item(row, 6)
+                if amount_item is not None:
+                    amount_item.setText(
+                        money(item["price"] * item["quantity"])
+                    )
+                break
+
+    def _remove_cart_item(self, code):
+        """Bỏ trực tiếp sản phẩm khỏi giỏ."""
+        self.cart.pop(code, None)
+        self.refresh_cart()
+        self.update_total()
+
+    def remove_selected_cart_item(self):
+        """Tương thích với lệnh xóa theo dòng đang chọn."""
+        row = self.cart_table.currentRow()
+        item = self.cart_table.item(row, 0) if row >= 0 else None
+        if item is not None:
+            self._remove_cart_item(item.text())
 
     def calculate_total(self):
         """Tính tổng trị giá các dòng hàng trong phiếu nhập."""
