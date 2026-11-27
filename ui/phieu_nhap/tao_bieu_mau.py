@@ -1,6 +1,6 @@
 """CreateImportDialog: thành phần giao diện nghiệp vụ phiếu nhập."""
 
-from PySide6.QtCore import Qt, QLocale
+from PySide6.QtCore import Qt, QLocale, QStringListModel
 from PySide6.QtWidgets import (
     QWidget,
     QDialog,
@@ -143,55 +143,51 @@ class CreateImportDialog(QDialog):
         info_form.addRow("Số HĐ nhà cung cấp:", self.supplier_invoice_input)
         root.addWidget(info_box)
 
-        product_box = QGroupBox("Chọn sản phẩm nhập kho")
+        product_box = QGroupBox("Thêm sản phẩm nhập kho")
         product_layout = QVBoxLayout(product_box)
         search_row = QHBoxLayout()
+
         self.product_search = QLineEdit()
-        self.product_search.setPlaceholderText("Tìm theo mã hoặc tên sản phẩm...")
-        self.product_search.textChanged.connect(self.search_products)
-        self.quantity_input = QSpinBox()
-        self.quantity_input.setRange(1, 999999)
-        self.quantity_input.setValue(1)
-        self.price_input = QDoubleSpinBox()
-        self.price_input.setLocale(QLocale.c())
-        self.price_input.setGroupSeparatorShown(False)
-        self.price_input.setDecimals(2)
-        self.price_input.setRange(0, 999999999999.99)
-        self.price_input.setSuffix(" đ")
-        self.price_input.setToolTip("Đơn giá nhập đã bao gồm VAT.")
-        self.add_product_button = QPushButton("Thêm vào phiếu")
+        self.product_search.setPlaceholderText(
+            "Nhập mã hoặc tên sản phẩm, sau đó chọn gợi ý..."
+        )
+        self.product_search.setMinimumHeight(42)
+        self.product_suggestion_model = QStringListModel(self)
+        self.product_completer = QCompleter(self.product_suggestion_model, self)
+        self.product_completer.setCaseSensitivity(
+            Qt.CaseSensitivity.CaseInsensitive
+        )
+        self.product_completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        self.product_completer.setCompletionMode(
+            QCompleter.CompletionMode.PopupCompletion
+        )
+        self.product_completer.setMaxVisibleItems(12)
+        self.product_search.setCompleter(self.product_completer)
+        self.product_completer.activated.connect(self.add_completed_product)
+        self.product_search.returnPressed.connect(self.add_selected_product)
+
+        self.add_product_button = QPushButton("Thêm")
+        self.add_product_button.setMinimumHeight(42)
         self.add_product_button.clicked.connect(self.add_selected_product)
-        search_row.addWidget(self.product_search, 2)
-        search_row.addWidget(QLabel("Số lượng:"))
-        search_row.addWidget(self.quantity_input)
-        search_row.addWidget(QLabel("Đơn giá nhập:"))
-        search_row.addWidget(self.price_input, 1)
+        search_row.addWidget(self.product_search, 1)
         search_row.addWidget(self.add_product_button)
         product_layout.addLayout(search_row)
 
-        self.product_table = QTableWidget(0, 6)
-        self.product_table.setHorizontalHeaderLabels([
-            "Mã SP", "Tên sản phẩm", "ĐVT", "Giá nhập hiện tại",
-            "Tồn kho", "VAT (%)"
-        ])
-        self._configure_table(
-            self.product_table,
-            stretch_column=1,
-            default_sort_column=1
+        search_hint = QLabel(
+            "Chọn kết quả gợi ý hoặc nhập chính xác mã sản phẩm rồi nhấn Enter. "
+            "Số lượng và đơn giá nhập được chỉnh ngay trong giỏ hàng."
         )
-        self.product_table.cellClicked.connect(self.select_product_row)
-        self.product_table.cellDoubleClicked.connect(
-            lambda *_: self.add_selected_product()
-        )
-        product_layout.addWidget(self.product_table)
-        root.addWidget(product_box, 2)
+        search_hint.setWordWrap(True)
+        search_hint.setStyleSheet("color: #AAB7C8; font-size: 11px;")
+        product_layout.addWidget(search_hint)
+        root.addWidget(product_box)
 
         cart_box = QGroupBox("Sản phẩm trong phiếu nhập")
         cart_layout = QVBoxLayout(cart_box)
-        self.cart_table = QTableWidget(0, 7)
+        self.cart_table = QTableWidget(0, 8)
         self.cart_table.setHorizontalHeaderLabels([
             "Mã SP", "Tên sản phẩm", "ĐVT", "Số lượng",
-            "Đơn giá (đã gồm VAT)", "VAT (%)", "Thành tiền"
+            "Đơn giá nhập (đã gồm VAT)", "VAT (%)", "Thành tiền", "Thao tác"
         ])
         self._configure_table(
             self.cart_table,
