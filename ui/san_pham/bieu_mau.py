@@ -123,7 +123,8 @@ class ProductFormDialog(QDialog):
                         ELSE N'Chưa phân loại'
                     END AS LOAI,
                     S.ISBN, S.NAMXB, S.MANXB,
-                    SPK.NGAYSX, SPK.MATH
+                    SPK.NGAYSX, SPK.MATH,
+                    SP.BARCODE
                 FROM dbo.SAN_PHAM SP
                 LEFT JOIN dbo.SACH S ON S.MASP = SP.MASP
                 LEFT JOIN dbo.SAN_PHAM_KHAC SPK ON SPK.MASP = SP.MASP
@@ -141,7 +142,8 @@ class ProductFormDialog(QDialog):
                 "gianhap": row[3], "giaban": row[4], "slton": row[5],
                 "vat": row[6], "loai": row[7], "isbn": row[8],
                 "namxb": row[9], "manxb": row[10],
-                "ngaysx": row[11], "math": row[12]
+                "ngaysx": row[11], "math": row[12],
+                "barcode": row[13]
             }
 
             cursor.execute(
@@ -190,6 +192,10 @@ class ProductFormDialog(QDialog):
         self.tensp = QLineEdit()
         self.tensp.setMaxLength(150)
 
+        self.barcode = QLineEdit()
+        self.barcode.setMaxLength(50)
+        self.barcode.setPlaceholderText("Quét hoặc nhập mã vạch (không bắt buộc)")
+
         self.dvt = QLineEdit()
         self.dvt.setMaxLength(30)
         self.dvt.setPlaceholderText("Ví dụ: Quyển, Cái, Chiếc")
@@ -235,6 +241,7 @@ class ProductFormDialog(QDialog):
 
         common_form.addRow("Mã sản phẩm:", self.masp)
         common_form.addRow("Tên sản phẩm:", self.tensp)
+        common_form.addRow("Mã vạch:", self.barcode)
         common_form.addRow("Đơn vị tính:", self.dvt)
         common_form.addRow("Giá nhập (tự động):", self.gianhap)
         common_form.addRow("Giá bán:", self.giaban)
@@ -445,6 +452,7 @@ class ProductFormDialog(QDialog):
         p = self.existing
         self.masp.setText(str(p["masp"]))
         self.tensp.setText(p["tensp"] or "")
+        self.barcode.setText(p.get("barcode") or "")
         self.dvt.setText(p["dvt"] or "")
         self.gianhap.setText(str(p["gianhap"] if p["gianhap"] is not None else 0))
         self.giaban.setText(str(p["giaban"] if p["giaban"] is not None else 0))
@@ -495,6 +503,7 @@ class ProductFormDialog(QDialog):
             self.giaban.setFocus()
             return
 
+        barcode = self.barcode.text().strip() or None
         try:
             giaban = self.parse_decimal(self.giaban.text(), "Giá bán")
             vat = self.parse_decimal(self.vat.text() or "0", "VAT")
@@ -528,14 +537,27 @@ class ProductFormDialog(QDialog):
                 masp = self._next_product_code(cursor, lock_table=True)
                 self.masp.setText(masp)
 
+            if barcode:
+                cursor.execute("""
+                    SELECT TOP (1) MASP
+                    FROM dbo.SAN_PHAM
+                    WHERE BARCODE = ?
+                      AND MASP <> ?
+                """, barcode, masp)
+                duplicate = cursor.fetchone()
+                if duplicate is not None:
+                    raise ValueError(
+                        f"Mã vạch {barcode} đã được gán cho sản phẩm {duplicate[0]}."
+                    )
+
             if self.is_edit:
                 # Cập nhật thông tin chung
                 cursor.execute("""
                     UPDATE dbo.SAN_PHAM
-                    SET TENSP = ?, DVT = ?, GIABAN = ?, VAT = ?
+                    SET TENSP = ?, BARCODE = ?, DVT = ?, GIABAN = ?, VAT = ?
                     OUTPUT inserted.MASP
                     WHERE MASP = ? AND ISNULL(IS_DELETED, 0) = 0
-                """, tensp, dvt, giaban, vat, masp)
+                """, tensp, barcode, dvt, giaban, vat, masp)
                 if cursor.fetchone() is None:
                     raise Exception("Sản phẩm không tồn tại hoặc đã bị xóa mềm!")
 
@@ -573,9 +595,9 @@ class ProductFormDialog(QDialog):
                 # Thêm thông tin chung
                 cursor.execute("""
                     INSERT INTO dbo.SAN_PHAM
-                        (MASP, TENSP, DVT, GIANHAP, GIABAN, SLTON, VAT, IS_DELETED)
-                    VALUES (?, ?, ?, 0, ?, 0, ?, 0)
-                """, masp, tensp, dvt, giaban, vat)
+                        (MASP, TENSP, BARCODE, DVT, GIANHAP, GIABAN, SLTON, VAT, IS_DELETED)
+                    VALUES (?, ?, ?, ?, 0, ?, 0, ?, 0)
+                """, masp, tensp, barcode, dvt, giaban, vat)
 
                 if product_type == "book":
                     cursor.execute("""
