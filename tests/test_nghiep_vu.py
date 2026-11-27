@@ -7,11 +7,12 @@ from decimal import Decimal
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtWidgets import QApplication, QTableWidget, QComboBox
+from PySide6.QtWidgets import QApplication, QTableWidget, QComboBox, QDateEdit, QToolButton
 from PySide6.QtGui import QPalette
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QCompleter
 from ui.styles import MAIN_WINDOW_STYLESHEET, apply_app_palette
+from ui.calendar_utils import configure_date_edit_calendar
 
 from database.connection import Database
 from ui.product_table import ProductTableWidget
@@ -140,6 +141,39 @@ class NativeQtControlStyleTests(unittest.TestCase):
             )
         finally:
             _APP.setPalette(original)
+
+
+class CalendarPopupTests(unittest.TestCase):
+    """Lịch popup bỏ mũi tên menu tháng nhưng giữ điều hướng tháng."""
+
+    def test_month_menu_arrow_is_removed_and_month_navigation_remains(self):
+        date_edit = QDateEdit()
+        calendar = configure_date_edit_calendar(date_edit)
+
+        month_button = calendar.findChild(
+            QToolButton,
+            "qt_calendar_monthbutton",
+        )
+        previous_button = calendar.findChild(
+            QToolButton,
+            "qt_calendar_prevmonth",
+        )
+        next_button = calendar.findChild(
+            QToolButton,
+            "qt_calendar_nextmonth",
+        )
+
+        self.assertTrue(date_edit.calendarPopup())
+        self.assertIsNotNone(month_button)
+        self.assertIsNone(month_button.menu())
+        self.assertIsNotNone(previous_button)
+        self.assertIsNotNone(next_button)
+
+        original_month = calendar.monthShown()
+        calendar.showNextMonth()
+        self.assertNotEqual(calendar.monthShown(), original_month)
+
+        date_edit.close()
 
 
 class ProductListColumnTests(unittest.TestCase):
