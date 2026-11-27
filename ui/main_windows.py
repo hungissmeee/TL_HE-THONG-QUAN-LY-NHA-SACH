@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
     QMessageBox, QScrollArea, QToolButton, QFrame
 )
 from PySide6.QtCore import Qt
+from ui.styles import MAIN_WINDOW_STYLESHEET, apply_app_palette
 
 from ui.san_pham import ProductWindow
 from ui.doi_mat_khau import ChangePasswordDialog
@@ -24,7 +25,6 @@ from ui.bao_cao import (
     ShiftReportPage,
 )
 from ui.bao_cao.bao_cao_co_so import ReportBasePage
-from ui.styles import MAIN_WINDOW_STYLESHEET
 from ui.permissions import allowed_pages_for_user
 from ui.phieu_nhap import ImportWindow
 from ui.nha_cung_cap import SupplierWindow
@@ -349,6 +349,7 @@ class MainWindow(QMainWindow):
         # ==================================================
         app = QApplication.instance()
         if app is not None:
+            apply_app_palette(app)
             app.setStyleSheet(MAIN_WINDOW_STYLESHEET)
 
     # ==================================================

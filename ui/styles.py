@@ -1,5 +1,27 @@
 """Bảng màu và stylesheet chung cho giao diện BookHub."""
 
+from PySide6.QtGui import QColor, QPalette
+
+
+def apply_app_palette(app):
+    """Đặt bảng màu tối bằng QPalette, giữ nguyên cách vẽ native của Qt."""
+    palette = app.palette()
+    palette.setColor(QPalette.ColorRole.Window, QColor("#171B24"))
+    palette.setColor(QPalette.ColorRole.WindowText, QColor("#E5E7EB"))
+    palette.setColor(QPalette.ColorRole.Base, QColor("#263448"))
+    palette.setColor(QPalette.ColorRole.AlternateBase, QColor("#202938"))
+    palette.setColor(QPalette.ColorRole.Text, QColor("#E5E7EB"))
+    palette.setColor(QPalette.ColorRole.Button, QColor("#34445A"))
+    palette.setColor(QPalette.ColorRole.ButtonText, QColor("#E5E7EB"))
+    palette.setColor(QPalette.ColorRole.Highlight, QColor("#3B526E"))
+    palette.setColor(QPalette.ColorRole.HighlightedText, QColor("#FFFFFF"))
+    palette.setColor(QPalette.ColorRole.PlaceholderText, QColor("#AAB7C8"))
+    palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, QColor("#8291A5"))
+    palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, QColor("#8291A5"))
+    palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor("#8291A5"))
+    app.setPalette(palette)
+
+
 MAIN_WINDOW_STYLESHEET = """
             QMainWindow {
                 background-color: #171B24;
@@ -227,53 +249,6 @@ MAIN_WINDOW_STYLESHEET = """
                 border: 1px solid #60A5FA;
             }
 
-            /* Bộ điều khiển nhập liệu dùng chung cho toàn bộ form nghiệp vụ. */
-            QComboBox,
-            QDateEdit,
-            QDateTimeEdit,
-            QTimeEdit,
-            QSpinBox,
-            QDoubleSpinBox {
-                background-color: #263448;
-                color: #E5E7EB;
-                border: 1px solid #46546A;
-                border-radius: 5px;
-                padding: 6px 8px;
-                min-height: 18px;
-                selection-background-color: #3B526E;
-                selection-color: white;
-            }
-
-            QComboBox:hover,
-            QDateEdit:hover,
-            QDateTimeEdit:hover,
-            QTimeEdit:hover,
-            QSpinBox:hover,
-            QDoubleSpinBox:hover {
-                border: 1px solid #71839B;
-            }
-
-            QComboBox:focus,
-            QDateEdit:focus,
-            QDateTimeEdit:focus,
-            QTimeEdit:focus,
-            QSpinBox:focus,
-            QDoubleSpinBox:focus {
-                border: 1px solid #60A5FA;
-            }
-
-            QComboBox:disabled,
-            QDateEdit:disabled,
-            QDateTimeEdit:disabled,
-            QTimeEdit:disabled,
-            QSpinBox:disabled,
-            QDoubleSpinBox:disabled,
-            QLineEdit:disabled {
-                background-color: #202938;
-                color: #8291A5;
-                border-color: #344256;
-            }
-
             QComboBox QAbstractItemView {
                 background-color: #202938;
                 color: #E5E7EB;
@@ -368,11 +343,6 @@ MAIN_WINDOW_STYLESHEET = """
                 background-color: #202938;
                 color: #8291A5;
                 border-color: #344256;
-            }
-
-            QCalendarWidget QWidget {
-                background-color: #202938;
-                color: #E5E7EB;
             }
 
             QCalendarWidget QAbstractItemView {

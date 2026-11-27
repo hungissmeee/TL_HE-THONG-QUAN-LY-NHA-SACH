@@ -8,7 +8,8 @@ from decimal import Decimal
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtWidgets import QApplication, QTableWidget
-from ui.styles import MAIN_WINDOW_STYLESHEET
+from PySide6.QtGui import QPalette
+from ui.styles import MAIN_WINDOW_STYLESHEET, apply_app_palette
 
 from database.connection import Database
 from ui.table_sort import (
@@ -61,17 +62,37 @@ class NativeQtControlStyleTests(unittest.TestCase):
 
     def test_combo_spinbox_and_calendar_keep_native_subcontrols(self):
         forbidden_overrides = (
-            "QComboBox::drop-down",
-            "QComboBox::down-arrow",
-            "QAbstractSpinBox::up-button",
-            "QAbstractSpinBox::down-button",
-            "QAbstractSpinBox::up-arrow",
-            "QAbstractSpinBox::down-arrow",
+            "QComboBox",
+            "QDateEdit",
+            "QDateTimeEdit",
+            "QTimeEdit",
+            "QSpinBox",
+            "QDoubleSpinBox",
             "QCalendarWidget QToolButton",
         )
         for selector in forbidden_overrides:
             with self.subTest(selector=selector):
                 self.assertNotIn(selector, MAIN_WINDOW_STYLESHEET)
+
+    def test_dark_palette_uses_standard_qt_roles(self):
+        original = _APP.palette()
+        try:
+            apply_app_palette(_APP)
+            palette = _APP.palette()
+            self.assertEqual(
+                palette.color(QPalette.ColorRole.Base).name(),
+                "#263448",
+            )
+            self.assertEqual(
+                palette.color(QPalette.ColorRole.Button).name(),
+                "#34445a",
+            )
+            self.assertEqual(
+                palette.color(QPalette.ColorRole.Text).name(),
+                "#e5e7eb",
+            )
+        finally:
+            _APP.setPalette(original)
 
 
 class DatabaseUtilityTests(unittest.TestCase):
