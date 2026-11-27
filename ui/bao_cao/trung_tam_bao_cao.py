@@ -6,8 +6,8 @@ from decimal import Decimal
 import xlsxwriter
 from PySide6.QtCore import Qt, QDate
 from PySide6.QtWidgets import (
-    QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QToolButton,
-    QMenu, QTableWidget, QTableWidgetItem, QHeaderView,
+    QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
+    QTableWidget, QTableWidgetItem, QHeaderView,
     QAbstractItemView, QDateEdit, QComboBox, QLineEdit, QSpinBox,
     QFrame, QFileDialog, QMessageBox,
 )
@@ -270,14 +270,15 @@ class ReportCenterPage(QWidget):
             QFrame#reportFilters {
                 background: #202938; border: 1px solid #39465A; border-radius: 5px;
             }
-            QToolButton#reportCategoryButton {
-                color: #D6DEE9; background: #202938;
-                border: 1px solid #39465A; border-radius: 5px;
-                padding: 8px 12px; font-size: 11px; font-weight: 700;
+            QComboBox#reportCategoryCombo,
+            QComboBox#reportTypeCombo {
+                background: #263448; color: #E5E7EB;
+                border: 1px solid #46546A; border-radius: 5px;
+                padding: 7px 9px; min-height: 22px;
             }
-            QToolButton#reportCategoryButton:hover,
-            QToolButton#reportCategoryButton:checked {
-                color: white; background: #34445A; border-color: #536174;
+            QComboBox#reportCategoryCombo:hover,
+            QComboBox#reportTypeCombo:hover {
+                border-color: #71839B;
             }
             QTableWidget#reportTable {
                 background: #202938; alternate-background-color: #263448;
@@ -316,37 +317,40 @@ class ReportCenterPage(QWidget):
         right.setContentsMargins(12, 10, 12, 8)
         right.setSpacing(8)
 
-        # Danh mục báo cáo dạng menu xổ xuống ở đầu trang.
-        self.report_group_buttons = {}
-        self.report_group_menus = {}
-        nav_frame = QFrame()
-        nav_frame.setObjectName("reportNavigation")
-        nav_layout = QHBoxLayout(nav_frame)
-        nav_layout.setContentsMargins(0, 0, 0, 2)
-        nav_layout.setSpacing(7)
-        for group_name, children in self.GROUPS:
-            category_button = QToolButton()
-            category_button.setObjectName("reportCategoryButton")
-            category_button.setText(group_name.replace("BÁO CÁO ", "").title())
-            category_button.setToolButtonStyle(
-                Qt.ToolButtonStyle.ToolButtonTextBesideIcon
-            )
-            category_button.setPopupMode(
-                QToolButton.ToolButtonPopupMode.InstantPopup
-            )
-            category_button.setCheckable(True)
-            category_menu = QMenu(category_button)
-            for report_key, report_title in children:
-                action = category_menu.addAction(report_title)
-                action.triggered.connect(
-                    lambda checked=False, key=report_key: self._select_report(key)
-                )
-            category_button.setMenu(category_menu)
-            nav_layout.addWidget(category_button)
-            self.report_group_buttons[group_name] = category_button
-            self.report_group_menus[group_name] = category_menu
-        nav_layout.addStretch(1)
-        right.addWidget(nav_frame)
+        # Chọn nhóm và loại báo cáo bằng QComboBox giống form hóa đơn.
+        selection_frame = QFrame()
+        selection_frame.setObjectName("reportSelection")
+        selection_layout = QHBoxLayout(selection_frame)
+        selection_layout.setContentsMargins(0, 0, 0, 0)
+        selection_layout.setSpacing(8)
+
+        self.report_category_combo = QComboBox()
+        self.report_category_combo.setObjectName("reportCategoryCombo")
+        self.report_category_combo.setMinimumWidth(175)
+        self.report_category_combo.addItem("Bán hàng", "BÁO CÁO BÁN HÀNG")
+        for group_name, _ in self.GROUPS[1:]:
+            label = group_name.replace("BÁO CÁO ", "").title()
+            self.report_category_combo.addItem(label, group_name)
+
+        self.report_combo = QComboBox()
+        self.report_combo.setObjectName("reportTypeCombo")
+        self.report_combo.setMinimumWidth(230)
+        for report_key, report_title in self.GROUPS[0][1]:
+            self.report_combo.addItem(report_title, report_key)
+
+        self.report_category_combo.currentIndexChanged.connect(
+            self._on_report_category_changed
+        )
+        self.report_combo.currentIndexChanged.connect(
+            self._on_report_combo_changed
+        )
+
+        selection_layout.addWidget(QLabel("Nhóm báo cáo:"))
+        selection_layout.addWidget(self.report_category_combo)
+        selection_layout.addWidget(QLabel("Loại báo cáo:"))
+        selection_layout.addWidget(self.report_combo)
+        selection_layout.addStretch(1)
+        right.addWidget(selection_frame)
 
         self.title_label = QLabel("BÁO CÁO CUỐI NGÀY BÁN HÀNG")
         self.title_label.setObjectName("reportTitle")
@@ -438,6 +442,18 @@ class ReportCenterPage(QWidget):
         self.filter_note.setStyleSheet("color: #AAB7C8; font-size: 9px;")
         right.addWidget(self.filter_note)
 
+        # Một khung bảng duy nhất: tiêu đề nhóm cột, dữ liệu và hàng tổng cộng
+        # nối liền nhau, không có khoảng cách như ba bảng độc lập.
+        self.report_table_frame = QFrame()
+        self.report_table_frame.setObjectName("reportTableFrame")
+        self.report_table_frame.setStyleSheet(
+            "QFrame#reportTableFrame { border: 1px solid #39465A; "
+            "border-radius: 5px; background: #202938; }"
+        )
+        report_table_layout = QVBoxLayout(self.report_table_frame)
+        report_table_layout.setContentsMargins(0, 0, 0, 0)
+        report_table_layout.setSpacing(0)
+
         self.group_header = QTableWidget(1, 0)
         self.group_header.setObjectName("reportGroupHeader")
         self.group_header.setFixedHeight(30)
@@ -448,10 +464,10 @@ class ReportCenterPage(QWidget):
         self.group_header.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.group_header.setStyleSheet(
             "QTableWidget { background: #29374B; color: #E5E7EB; "
-            "border: 1px solid #39465A; font-weight: 700; }"
+            "border: none; border-bottom: 1px solid #39465A; font-weight: 700; }"
         )
         self.group_header.hide()
-        right.addWidget(self.group_header)
+        report_table_layout.addWidget(self.group_header)
 
         self.table = QTableWidget(0, 0)
         self.table.setObjectName("reportTable")
@@ -465,8 +481,9 @@ class ReportCenterPage(QWidget):
         self.table.horizontalHeader().setStretchLastSection(False)
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.table.setFrameShape(QFrame.Shape.NoFrame)
         self.table.setSortingEnabled(True)
-        right.addWidget(self.table, 1)
+        report_table_layout.addWidget(self.table, 1)
 
         self.footer = QTableWidget(1, 0)
         self.footer.setObjectName("reportFooter")
@@ -479,10 +496,12 @@ class ReportCenterPage(QWidget):
         self.footer.setStyleSheet("""
             QTableWidget {
                 background: #29374B; color: #F3F4F6;
-                border: 1px solid #536174; font-weight: 800;
+                border: none; border-top: 1px solid #536174;
+                font-weight: 800;
             }
         """)
-        right.addWidget(self.footer)
+        report_table_layout.addWidget(self.footer)
+        right.addWidget(self.report_table_frame, 1)
         self.table.horizontalHeader().sectionResized.connect(self._sync_footer_widths)
         self.table.horizontalScrollBar().valueChanged.connect(
             self._sync_horizontal_scroll
@@ -522,8 +541,29 @@ class ReportCenterPage(QWidget):
         self.date_from.setDate(start)
         self.date_to.setDate(end)
 
+    def _on_report_category_changed(self, *_):
+        group_name = self.report_category_combo.currentData()
+        group = next(
+            (children for name, children in self.GROUPS if name == group_name),
+            [],
+        )
+        self.report_combo.blockSignals(True)
+        self.report_combo.clear()
+        for report_key, report_title in group:
+            self.report_combo.addItem(report_title, report_key)
+        self.report_combo.blockSignals(False)
+        if group:
+            self._select_report(group[0][0])
+
+    def _on_report_combo_changed(self, *_):
+        report_key = self.report_combo.currentData()
+        if report_key:
+            self._select_report(report_key)
+
     def _select_report(self, key):
         if key not in REPORTS:
+            return
+        if key == self.current_report:
             return
         self.current_report = key
         self._configure_report()
@@ -532,9 +572,29 @@ class ReportCenterPage(QWidget):
         definition = REPORTS[self.current_report]
         self.title_label.setText(definition["title"])
         self.description_label.setText(definition["description"])
-        for group_name, children in self.GROUPS:
-            button = self.report_group_buttons[group_name]
-            button.setChecked(any(key == self.current_report for key, _ in children))
+
+        selected_group = next(
+            (
+                (group_name, children)
+                for group_name, children in self.GROUPS
+                if any(key == self.current_report for key, _ in children)
+            ),
+            self.GROUPS[0],
+        )
+        self.report_category_combo.blockSignals(True)
+        category_index = self.report_category_combo.findData(selected_group[0])
+        self.report_category_combo.setCurrentIndex(max(0, category_index))
+        self.report_category_combo.blockSignals(False)
+
+        self.report_combo.blockSignals(True)
+        self.report_combo.clear()
+        selected_index = 0
+        for index, (report_key, report_title) in enumerate(selected_group[1]):
+            self.report_combo.addItem(report_title, report_key)
+            if report_key == self.current_report:
+                selected_index = index
+        self.report_combo.setCurrentIndex(selected_index)
+        self.report_combo.blockSignals(False)
 
         is_no_date = definition.get("no_date", False)
         for widget in (
