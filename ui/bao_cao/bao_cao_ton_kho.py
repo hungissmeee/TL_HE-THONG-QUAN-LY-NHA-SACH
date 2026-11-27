@@ -66,27 +66,37 @@ class InventoryReportPage(ReportBasePage):
         keyword = self.search_input.text().strip()
 
         where_extra = ""
-        params = [threshold]
+        filter_params = []
         if filter_key == "low":
-            where_extra += " AND COALESCE(SLTON, 0) > 0 AND COALESCE(SLTON, 0) <= ?"
-            params.append(threshold)
+            where_extra += (
+                " AND COALESCE(SP.SLTON, 0) > 0 "
+                "AND COALESCE(SP.SLTON, 0) <= ?"
+            )
+            filter_params.append(threshold)
         elif filter_key == "out":
-            where_extra += " AND COALESCE(SLTON, 0) <= 0"
+            where_extra += " AND COALESCE(SP.SLTON, 0) <= 0"
 
         if keyword:
-            where_extra += " AND (MASP LIKE ? OR TENSP LIKE ?)"
-            params.extend([f"%{keyword}%", f"%{keyword}%"])
+            where_extra += " AND (SP.MASP LIKE ? OR SP.TENSP LIKE ?)"
+            filter_params.extend([f"%{keyword}%", f"%{keyword}%"])
 
-        summary_sql = """
+        summary_sql = f"""
             SELECT
                 COUNT(*),
-                SUM(CASE WHEN COALESCE(SLTON, 0) > 0 AND COALESCE(SLTON, 0) <= ? THEN 1 ELSE 0 END),
-                SUM(CASE WHEN COALESCE(SLTON, 0) <= 0 THEN 1 ELSE 0 END),
-                COALESCE(SUM(COALESCE(GIANHAP, 0) * COALESCE(SLTON, 0)), 0)
-            FROM dbo.SAN_PHAM
-            WHERE COALESCE(IS_DELETED, 0) = 0
+                SUM(CASE
+                    WHEN COALESCE(SP.SLTON, 0) > 0
+                     AND COALESCE(SP.SLTON, 0) <= ? THEN 1 ELSE 0 END),
+                SUM(CASE WHEN COALESCE(SP.SLTON, 0) <= 0 THEN 1 ELSE 0 END),
+                COALESCE(SUM(
+                    COALESCE(SP.GIANHAP, 0) * COALESCE(SP.SLTON, 0)
+                ), 0)
+            FROM dbo.SAN_PHAM SP
+            WHERE COALESCE(SP.IS_DELETED, 0) = 0
+            {where_extra}
         """
-        summary = self.fetch_one(summary_sql, (threshold,))
+        summary = self.fetch_one(
+            summary_sql, (threshold, *filter_params)
+        )
         self.set_stat("products", number_text(summary[0]))
         self.set_stat("low", number_text(summary[1]))
         self.set_stat("out", number_text(summary[2]))
@@ -94,24 +104,24 @@ class InventoryReportPage(ReportBasePage):
 
         sql = f"""
             SELECT
-                MASP,
-                COALESCE(TENSP, N''),
-                COALESCE(DVT, N''),
-                COALESCE(SLTON, 0),
-                COALESCE(GIANHAP, 0),
-                COALESCE(GIABAN, 0),
-                COALESCE(GIANHAP, 0) * COALESCE(SLTON, 0) AS GIATRI_TON,
+                SP.MASP,
+                COALESCE(SP.TENSP, N''),
+                COALESCE(SP.DVT, N''),
+                COALESCE(SP.SLTON, 0),
+                COALESCE(SP.GIANHAP, 0),
+                COALESCE(SP.GIABAN, 0),
+                COALESCE(SP.GIANHAP, 0) * COALESCE(SP.SLTON, 0) AS GIATRI_TON,
                 CASE
-                    WHEN COALESCE(SLTON, 0) <= 0 THEN N'Hết hàng'
-                    WHEN COALESCE(SLTON, 0) <= ? THEN N'Sắp hết'
+                    WHEN COALESCE(SP.SLTON, 0) <= 0 THEN N'Hết hàng'
+                    WHEN COALESCE(SP.SLTON, 0) <= ? THEN N'Sắp hết'
                     ELSE N'Còn hàng'
                 END AS TINH_TRANG
-            FROM dbo.SAN_PHAM
-            WHERE COALESCE(IS_DELETED, 0) = 0
+            FROM dbo.SAN_PHAM SP
+            WHERE COALESCE(SP.IS_DELETED, 0) = 0
             {where_extra}
-            ORDER BY COALESCE(SLTON, 0) ASC, TENSP ASC
+            ORDER BY COALESCE(SP.SLTON, 0) ASC, SP.TENSP ASC
         """
-        rows = self.fetch_all(sql, tuple(params))
+        rows = self.fetch_all(sql, (threshold, *filter_params))
         self.fill_table(self.table, [
             (
                 row[0], row[1], row[2], number_text(row[3]),
