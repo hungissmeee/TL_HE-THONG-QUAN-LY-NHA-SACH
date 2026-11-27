@@ -51,6 +51,11 @@ class BaoCaoService:
     def invoice_report(self, start_date, end_date):
         return self.repository.invoice_report(*self._validate_dates(start_date, end_date))
 
+    def employee_sales_report(self, start_date, end_date):
+        return self.repository.employee_sales_report(
+            *self._validate_dates(start_date, end_date)
+        )
+
     def import_report(self, start_date, end_date):
         return self.repository.import_report(*self._validate_dates(start_date, end_date))
 
