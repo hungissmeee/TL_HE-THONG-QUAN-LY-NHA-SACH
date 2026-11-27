@@ -15,7 +15,7 @@ class OverviewReportPage(ReportBasePage):
         super().__init__(
             db,
             "Tổng quan báo cáo",
-            "Tổng hợp doanh thu, hoàn trả, hóa đơn và nhập hàng trong khoảng thời gian đã chọn.",
+            "Tổng hợp doanh số bán, tiền hoàn, hóa đơn và nhập hàng trong khoảng thời gian đã chọn.",
             use_date_filter=True,
             parent=parent,
         )
@@ -32,8 +32,8 @@ class OverviewReportPage(ReportBasePage):
                     "Tổng tiền ghi nhận trên phiếu đổi trả", "warning",
                 ),
                 (
-                    "net", "Doanh thu sau hoàn", "0 đ",
-                    "Doanh thu bán hàng trừ tiền đã hoàn", "primary",
+                    "net", "Doanh số sau hoàn trong kỳ", "0 đ",
+                    "Doanh số bán trong kỳ trừ tiền hoàn phát sinh trong cùng kỳ", "primary",
                 ),
             ],
             section_title="Kết quả bán hàng",
