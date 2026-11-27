@@ -274,7 +274,12 @@ MAIN_WINDOW_STYLESHEET = """
                 border-color: #344256;
             }
 
-            /* Nút xổ xuống của ComboBox: vẽ mũi tên bằng QSS, không phụ thuộc asset. */
+            /* Chừa chỗ cho mũi tên để chữ không bị nút xổ xuống che mất. */
+            QComboBox {
+                padding-right: 36px;
+            }
+
+            /* Mũi tên tam giác của ComboBox. */
             QComboBox::drop-down {
                 subcontrol-origin: padding;
                 subcontrol-position: top right;
@@ -292,6 +297,8 @@ MAIN_WINDOW_STYLESHEET = """
 
             QComboBox::down-arrow {
                 image: none;
+                subcontrol-origin: content;
+                subcontrol-position: center;
                 width: 0px;
                 height: 0px;
                 border-left: 5px solid transparent;
@@ -309,13 +316,58 @@ MAIN_WINDOW_STYLESHEET = """
                 padding: 3px;
             }
 
-            /* Chỉ áp dụng nút tăng/giảm cho SpinBox số lượng/giá.
-               QDateEdit và QDateTimeEdit giữ nút lịch mặc định của Qt. */
+            /* Ô ngày cần đủ rộng cho dd/MM/yyyy và vùng mở lịch. */
+            QDateEdit,
+            QDateTimeEdit {
+                padding-right: 32px;
+                min-width: 168px;
+            }
+
+            QDateEdit {
+                min-width: 128px;
+            }
+
+            QDateEdit::drop-down,
+            QDateTimeEdit::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 26px;
+                border: none;
+                border-left: 1px solid #46546A;
+                border-top-right-radius: 5px;
+                border-bottom-right-radius: 5px;
+                background-color: #34445A;
+            }
+
+            QDateEdit::drop-down:hover,
+            QDateTimeEdit::drop-down:hover {
+                background-color: #465B75;
+            }
+
+            QDateEdit::down-arrow,
+            QDateTimeEdit::down-arrow {
+                image: none;
+                subcontrol-origin: content;
+                subcontrol-position: center;
+                width: 0px;
+                height: 0px;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-top: 6px solid #E5E7EB;
+            }
+
+            /* Chừa vùng nhập cho hai nút của SpinBox. */
+            QSpinBox,
+            QDoubleSpinBox {
+                padding-right: 28px;
+            }
+
+            /* Nút tăng/giảm chỉ áp dụng cho SpinBox dạng số. */
             QSpinBox::up-button,
             QDoubleSpinBox::up-button {
                 subcontrol-origin: border;
                 subcontrol-position: top right;
-                width: 20px;
+                width: 22px;
                 border: none;
                 border-left: 1px solid #46546A;
                 border-bottom: 1px solid #46546A;
@@ -327,7 +379,7 @@ MAIN_WINDOW_STYLESHEET = """
             QDoubleSpinBox::down-button {
                 subcontrol-origin: border;
                 subcontrol-position: bottom right;
-                width: 20px;
+                width: 22px;
                 border: none;
                 border-left: 1px solid #46546A;
                 border-top: 1px solid #46546A;
@@ -342,9 +394,12 @@ MAIN_WINDOW_STYLESHEET = """
                 background-color: #465B75;
             }
 
+            /* Tam giác hướng lên/xuống, đặt giữa từng nút. */
             QSpinBox::up-arrow,
             QDoubleSpinBox::up-arrow {
                 image: none;
+                subcontrol-origin: content;
+                subcontrol-position: center;
                 width: 0px;
                 height: 0px;
                 border-left: 4px solid transparent;
@@ -355,6 +410,8 @@ MAIN_WINDOW_STYLESHEET = """
             QSpinBox::down-arrow,
             QDoubleSpinBox::down-arrow {
                 image: none;
+                subcontrol-origin: content;
+                subcontrol-position: center;
                 width: 0px;
                 height: 0px;
                 border-left: 4px solid transparent;
