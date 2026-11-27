@@ -414,19 +414,21 @@ class BaoCaoRepository:
         """, (start_date, end_date))
 
     def inventory_report(self, threshold, status, keyword=""):
-        where_extra = ""
-        filter_params = []
+        """Ảnh chụp tồn kho hiện tại; KPI không bị thu hẹp theo bộ lọc trạng thái."""
+        search_sql = ""
+        search_params = []
+        if keyword:
+            search_sql = " AND (SP.MASP LIKE ? OR SP.TENSP LIKE ?)"
+            search_params = [f"%{keyword}%", f"%{keyword}%"]
+
+        row_status_sql = ""
         if status == "low":
-            where_extra += (
+            row_status_sql = (
                 " AND COALESCE(SP.SLTON, 0) > 0 "
                 "AND COALESCE(SP.SLTON, 0) <= ?"
             )
-            filter_params.append(threshold)
         elif status == "out":
-            where_extra += " AND COALESCE(SP.SLTON, 0) <= 0"
-        if keyword:
-            where_extra += " AND (SP.MASP LIKE ? OR SP.TENSP LIKE ?)"
-            filter_params.extend([f"%{keyword}%", f"%{keyword}%"])
+            row_status_sql = " AND COALESCE(SP.SLTON, 0) <= 0"
 
         summary = self._fetch_one(f"""
             SELECT
@@ -437,8 +439,9 @@ class BaoCaoRepository:
                 COALESCE(SUM(COALESCE(SP.GIANHAP, 0) * COALESCE(SP.SLTON, 0)), 0)
             FROM dbo.SAN_PHAM SP
             WHERE COALESCE(SP.IS_DELETED, 0) = 0
-            {where_extra}
-        """, (threshold, *filter_params))
+            {search_sql}
+        """, (threshold, *search_params))
+
         rows = self._fetch_all(f"""
             SELECT
                 SP.MASP, COALESCE(SP.TENSP, N''), COALESCE(SP.DVT, N''),
@@ -452,9 +455,10 @@ class BaoCaoRepository:
                 END
             FROM dbo.SAN_PHAM SP
             WHERE COALESCE(SP.IS_DELETED, 0) = 0
-            {where_extra}
+              {search_sql}
+              {row_status_sql}
             ORDER BY COALESCE(SP.SLTON, 0) ASC, SP.TENSP ASC
-        """, (threshold, *filter_params))
+        """, (threshold, *search_params, *([threshold] if status == "low" else [])))
         return {"summary": summary, "rows": rows}
 
     def product_report(self, start_date, end_date, sort, keyword=""):
