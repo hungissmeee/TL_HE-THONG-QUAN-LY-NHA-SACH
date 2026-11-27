@@ -196,7 +196,7 @@ Chưa tự ý thêm module khách hàng/đăng ký khách hàng vì phạm vi hi
 - [x] Bổ sung kiểm thử service sản phẩm, nhà cung cấp, phiếu nhập, hóa đơn và đổi trả bằng repository giả; kiểm tra cú pháp và toàn bộ unit test qua GitHub Actions (133 test đạt).
 - [ ] Chạy kiểm thử tích hợp trên SQL Server thử nghiệm và kiểm tra thủ công các luồng Desktop trên Windows.
 
-**Ghi chú tiến độ:** Đã tách sản phẩm, danh mục, nhà cung cấp, phiếu nhập, hóa đơn, đổi trả và phần lớn nghiệp vụ hồ sơ/tài khoản nhân viên. Ca làm việc đã có Repository/Service và Desktop dùng Service; khuyến mãi độc lập và báo cáo vẫn cần được tách. Nhân viên đã có Repository/Service; thao tác SQL Login vẫn được giữ sau cổng Admin, chưa mở thành API Web. GitHub Actions đang kiểm thử phiên bản mới; chưa nghiệm thu tích hợp SQL Server thật hoặc kiểm tra thủ công Desktop trên Windows.
+**Ghi chú tiến độ:** Đã tách sản phẩm, danh mục, nhà cung cấp, phiếu nhập, hóa đơn, đổi trả, nhân viên/tài khoản, ca làm việc và khuyến mãi. Desktop đã chuyển các màn hình tương ứng sang Service. Thao tác SQL Login vẫn được giữ sau cổng Admin, chưa mở thành API Web. GitHub Actions đã chạy 168 unit test ở lần kiểm tra trước; đang chạy lại sau khi bổ sung test sinh mã khuyến mãi. Chưa nghiệm thu tích hợp SQL Server thật hoặc kiểm tra thủ công Desktop trên Windows.
 
 **Kết quả:** Desktop vẫn chạy, Backend có thể tái sử dụng cùng service/repository.
 
@@ -246,7 +246,7 @@ Chưa tự ý thêm module khách hàng/đăng ký khách hàng vì phạm vi hi
 - [ ] Thiết kế xác thực Web, phiên đăng nhập và RBAC phía Backend; không tái sử dụng quyền UI làm ranh giới bảo mật.
 - [x] Tách Repository/Service cho lịch ca, đăng ký ca, tạo ca, ghi tiền cuối ca, lịch sử, danh sách nhân viên theo ca và xóa ca; Desktop gọi Service.
 - [ ] Kiểm thử tích hợp SQL Server cho thời gian ca, đăng ký trùng, chốt tiền một lần, hóa đơn liên kết và xóa ca.
-- [ ] Khuyến mãi.
+- [x] Tách Repository/Service cho khuyến mãi: danh sách, lọc, xem chi tiết, tạo, đổi tên và xóa mềm; kiểm tra quyền Admin/Quản lý tại SQL Repository; Desktop gọi Service.
 - [ ] Các báo cáo hiện có, bộ lọc và xuất CSV.
 - [ ] Kiểm thử quyền theo ma trận vai trò.
 
