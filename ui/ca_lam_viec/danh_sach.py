@@ -442,7 +442,7 @@ class ShiftWindow(QWidget):
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
         try:
-            shift_id = self.service.create_shift(dialog.get_values())
+            shift_id = self.service.create_shift(dialog.get_values(), is_manager=self.is_manager)
             QMessageBox.information(self, "Thành công", f"Đã tạo ca làm việc thành công.\\nMã ca: {shift_id}")
             self.refresh_manager_view()
         except ValueError as error:
