@@ -382,17 +382,23 @@ class BaoCaoRepository:
         return {"summary": summary, "rows": rows}
 
     def product_report(self, start_date, end_date, sort, keyword=""):
+        """Báo cáo lượng bán/hoàn/đổi theo sản phẩm.
+
+        Tiền hoàn chỉ được lưu ở cấp PHIEU_DOI_TRA.TONG_TIEN_HOAN.
+        Không phân bổ ngược tiền hoàn theo từng sản phẩm vì chứng từ không
+        lưu đơn giá hoàn riêng cho từng dòng.
+        """
         order_options = {
             "quantity_desc": (
                 "COALESCE(S.SL_BAN, 0) DESC, "
-                "(COALESCE(S.DOANH_THU, 0) - COALESCE(R.TIEN_HOAN, 0)) DESC, SP.TENSP ASC"
+                "COALESCE(S.DOANH_THU, 0) DESC, SP.TENSP ASC"
             ),
             "quantity_asc": (
                 "COALESCE(S.SL_BAN, 0) ASC, "
-                "(COALESCE(S.DOANH_THU, 0) - COALESCE(R.TIEN_HOAN, 0)) ASC, SP.TENSP ASC"
+                "COALESCE(S.DOANH_THU, 0) ASC, SP.TENSP ASC"
             ),
             "revenue_desc": (
-                "(COALESCE(S.DOANH_THU, 0) - COALESCE(R.TIEN_HOAN, 0)) DESC, "
+                "COALESCE(S.DOANH_THU, 0) DESC, "
                 "COALESCE(S.SL_BAN, 0) DESC, SP.TENSP ASC"
             ),
         }
@@ -425,10 +431,7 @@ class BaoCaoRepository:
                     SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 0
                         THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_HOAN_TIEN,
                     SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 1
-                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_DOI_HANG,
-                    SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 0
-                        THEN COALESCE(CTDT.DONGIAHOAN, 0) * COALESCE(CTDT.SOLUONG, 0)
-                        ELSE 0 END) AS TIEN_HOAN
+                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_DOI_HANG
                 FROM dbo.PHIEU_DOI_TRA PDT
                 INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT
                 WHERE PDT.NGAY_DOI_TRA >= CONVERT(date, ?)
@@ -441,8 +444,7 @@ class BaoCaoRepository:
                 COALESCE(S.SO_HD, 0), COALESCE(S.SL_BAN, 0),
                 COALESCE(R.SL_HOAN_TIEN, 0), COALESCE(R.SL_DOI_HANG, 0),
                 COALESCE(S.TIEN_HANG, 0), COALESCE(S.TIEN_GIAM, 0),
-                COALESCE(S.DOANH_THU, 0), COALESCE(R.TIEN_HOAN, 0),
-                COALESCE(S.DOANH_THU, 0) - COALESCE(R.TIEN_HOAN, 0),
+                COALESCE(S.DOANH_THU, 0),
                 COALESCE(SP.SLTON, 0)
             FROM dbo.SAN_PHAM SP
             LEFT JOIN Sales S ON S.MASP = SP.MASP
