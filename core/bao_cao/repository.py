@@ -636,4 +636,8 @@ class BaoCaoRepository:
             WHERE C.NGAYLAM >= CONVERT(date, ?)
               AND C.NGAYLAM < DATEADD(day, 1, CONVERT(date, ?))
             ORDER BY C.NGAYLAM DESC, C.SOCA, C.MACA
-        """, (start_date, end_date, start_date, end_date))
+        """, (
+            start_date, end_date,
+            start_date, end_date,
+            start_date, end_date,
+        ))
