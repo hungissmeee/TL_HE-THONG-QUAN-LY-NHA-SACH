@@ -1099,6 +1099,8 @@ class InvoiceSafetyTests(unittest.TestCase):
         self.assertEqual(Database._odbc_value("pass}word"), "{pass}}word}")
 
     def test_report_navigation_has_only_one_report_center(self):
+        import inspect
+
         all_roles = [
             page
             for pages in MainWindow.ROLE_PAGE_ACCESS.values()
@@ -1111,6 +1113,10 @@ class InvoiceSafetyTests(unittest.TestCase):
             "report_product", "report_shifts",
         ):
             self.assertNotIn(old_page, all_roles)
+
+        source = inspect.getsource(MainWindow.__init__)
+        self.assertIn('"standalone_page": "report_center"', source)
+        self.assertNotIn('"key": "reports"', source)
 
 
 class ShiftDateFormatterTests(unittest.TestCase):
@@ -1150,6 +1156,26 @@ class ReportCenterTests(unittest.TestCase):
         source = inspect.getsource(ReportCenterPage)
         self.assertNotIn("add_stat_cards", source)
         self.assertNotIn("reportPrimaryKpi", source)
+
+    def test_report_center_uses_dark_theme_and_dropdown_categories(self):
+        import inspect
+        from ui.bao_cao.trung_tam_bao_cao import ReportCenterPage
+
+        source = inspect.getsource(ReportCenterPage._build_ui)
+        self.assertIn("reportCategoryButton", source)
+        self.assertIn("QMenu", source)
+        self.assertNotIn("background: #FFFFFF", source)
+        self.assertNotIn("QTreeWidget", source)
+        self.assertIn("ScrollBarAsNeeded", source)
+
+    def test_report_center_syncs_horizontal_scroll_for_totals_and_group_headers(self):
+        import inspect
+        from ui.bao_cao.trung_tam_bao_cao import ReportCenterPage
+
+        source = inspect.getsource(ReportCenterPage)
+        self.assertIn("_sync_horizontal_scroll_range", source)
+        self.assertIn("self.footer.horizontalScrollBar().setValue(value)", source)
+        self.assertIn("self.group_header.horizontalScrollBar().setValue(value)", source)
 
 
 if __name__ == "__main__":
