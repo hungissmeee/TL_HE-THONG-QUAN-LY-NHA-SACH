@@ -82,6 +82,13 @@ class SupplierWindow(QWidget):
         title.setStyleSheet("font-size: 20px; font-weight: bold;")
         header.addWidget(title)
         header.addStretch()
+        self.add_button = QPushButton("+ Thêm nhà cung cấp")
+        self.add_button.setProperty("buttonRole", "primary")
+        self.add_button.setObjectName("primaryButton")
+        self.add_button.clicked.connect(self.add_supplier)
+        self.add_button.setVisible(self.can_manage)
+        header.addWidget(self.add_button)
+
         self.refresh_button = QPushButton("Làm mới")
         self.refresh_button.clicked.connect(self.load_data)
         header.addWidget(self.refresh_button)
@@ -93,15 +100,6 @@ class SupplierWindow(QWidget):
         description.setWordWrap(True)
         description.setStyleSheet("color: #AAB7C8; font-size: 11px;")
         root.addWidget(description)
-
-        actions = QHBoxLayout()
-        self.add_button = QPushButton("+ Thêm nhà cung cấp")
-        self.add_button.setProperty("buttonRole", "primary")
-        self.add_button.setObjectName("primaryButton")
-        self.add_button.clicked.connect(self.add_supplier)
-        actions.addWidget(self.add_button)
-        actions.addStretch()
-        root.addLayout(actions)
 
         search = QHBoxLayout()
         self.search_input = QLineEdit()
@@ -142,10 +140,6 @@ class SupplierWindow(QWidget):
 
         self.total_label = QLabel("Tổng số: 0")
         root.addWidget(self.total_label)
-
-        if not self.can_manage:
-            for button in (self.add_button,):
-                button.hide()
 
     def load_data(self, *_):
         """Tải danh sách nhà cung cấp theo từ khóa và trạng thái đang chọn."""

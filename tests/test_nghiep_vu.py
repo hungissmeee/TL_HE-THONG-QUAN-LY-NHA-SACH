@@ -509,6 +509,53 @@ class SearchableSelectorTests(unittest.TestCase):
         selector.close()
 
 
+class CatalogAddDialogTests(unittest.TestCase):
+    """Kiểm thử popup thêm danh mục dùng chung."""
+
+    def test_add_dialog_builds_fields_and_preserves_auto_generated_code(self):
+        from ui.danh_muc import CatalogAddDialog
+
+        dialog = CatalogAddDialog(
+            CATALOGS["publishers"],
+            code_preview="NXB012",
+        )
+        self.addCleanup(dialog.close)
+
+        self.assertEqual(dialog.windowTitle(), "Thêm nhà xuất bản")
+        self.assertEqual(dialog.inputs["MANXB"].text(), "NXB012")
+        self.assertTrue(dialog.inputs["MANXB"].isReadOnly())
+
+        dialog.inputs["TENNXB"].setText("Nhà xuất bản thử nghiệm")
+        dialog.inputs["DIACHI"].setText("Huế")
+        self.assertEqual(
+            dialog.get_values(),
+            ["NXB012", "Nhà xuất bản thử nghiệm", "Huế"],
+        )
+
+    def test_add_dialog_reuses_one_generic_form_for_each_catalog(self):
+        from ui.danh_muc import CatalogAddDialog
+
+        for catalog_type, config in CATALOGS.items():
+            with self.subTest(catalog_type=catalog_type):
+                dialog = CatalogAddDialog(config)
+                self.assertEqual(
+                    set(dialog.inputs),
+                    {field[0] for field in config["fields"]},
+                )
+                self.assertTrue(dialog.inputs[config["id_column"]].isReadOnly())
+                dialog.close()
+
+    def test_catalog_page_has_no_inline_add_fields(self):
+        page = CatalogPage(SimpleNamespace(), "authors")
+        self.addCleanup(page.close)
+
+        self.assertFalse(hasattr(page, "inputs"))
+        self.assertTrue(hasattr(page, "add_button"))
+        self.assertTrue(hasattr(page, "search_input"))
+        self.assertTrue(hasattr(page, "table"))
+        self.assertEqual(page.add_button.text(), "+ Thêm tác giả")
+
+
 class SupplierPagePermissionTests(unittest.TestCase):
     """Đảm bảo Thu ngân không truy vấn bảng nhà cung cấp khi khởi tạo trang."""
 
