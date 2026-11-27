@@ -87,10 +87,11 @@ class ProductWindow(QWidget):
         root.addLayout(search_layout)
 
         self.table = QTableWidget()
-        self.table.setColumnCount(8)
+        self.table.setColumnCount(10)
         self.table.setHorizontalHeaderLabels([
             "Mã sản phẩm", "Tên sản phẩm", "Loại sản phẩm", "Đơn vị tính",
-            "Giá nhập", "Giá bán", "Số lượng tồn", "VAT (%)"
+            "Giá nhập", "Giá bán", "Số lượng tồn", "VAT (%)",
+            "Mã vạch", "ISBN"
         ])
         prepare_sortable_table(self.table)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -125,6 +126,7 @@ class ProductWindow(QWidget):
                         AND HAS_PERMS_BY_NAME('dbo.SAN_PHAM', 'OBJECT', 'UPDATE', 'DVT', 'COLUMN') = 1
                         AND HAS_PERMS_BY_NAME('dbo.SAN_PHAM', 'OBJECT', 'UPDATE', 'GIABAN', 'COLUMN') = 1
                         AND HAS_PERMS_BY_NAME('dbo.SAN_PHAM', 'OBJECT', 'UPDATE', 'VAT', 'COLUMN') = 1
+                        AND HAS_PERMS_BY_NAME('dbo.SAN_PHAM', 'OBJECT', 'UPDATE', 'BARCODE', 'COLUMN') = 1
                         AND HAS_PERMS_BY_NAME('dbo.SACH', 'OBJECT', 'UPDATE', 'ISBN', 'COLUMN') = 1
                         AND HAS_PERMS_BY_NAME('dbo.SACH', 'OBJECT', 'UPDATE', 'NAMXB', 'COLUMN') = 1
                         AND HAS_PERMS_BY_NAME('dbo.SACH', 'OBJECT', 'UPDATE', 'MANXB', 'COLUMN') = 1
@@ -176,7 +178,9 @@ class ProductWindow(QWidget):
                     SP.GIANHAP,
                     SP.GIABAN,
                     SP.SLTON,
-                    SP.VAT
+                    SP.VAT,
+                    SP.BARCODE,
+                    S.ISBN
                 FROM dbo.SAN_PHAM SP
                 LEFT JOIN dbo.SACH S ON S.MASP = SP.MASP
                 LEFT JOIN dbo.SAN_PHAM_KHAC SPK ON SPK.MASP = SP.MASP
@@ -189,6 +193,7 @@ class ProductWindow(QWidget):
                     AND (
                         SP.MASP LIKE ?
                         OR SP.TENSP LIKE ?
+                        OR SP.BARCODE LIKE ?
                         OR SP.DVT LIKE ?
                         OR (
                             CASE
@@ -240,7 +245,7 @@ class ProductWindow(QWidget):
                 query += " ORDER BY SP.MASP"
                 cursor.execute(
                     query,
-                    pattern, pattern, pattern, pattern,
+                    pattern, pattern, pattern, pattern, pattern,
                     pattern, pattern, pattern,
                     pattern, pattern,
                     pattern, pattern,
@@ -262,7 +267,8 @@ class ProductWindow(QWidget):
                     product[0], product[1], product[2], product[3],
                     self.format_number(product[4]),
                     self.format_number(product[5]),
-                    product[6], self.format_number(product[7])
+                    product[6], self.format_number(product[7]),
+                    product[8], product[9]
                 ]
                 for col_index, value in enumerate(values):
                     item = QTableWidgetItem("" if value is None else str(value))
