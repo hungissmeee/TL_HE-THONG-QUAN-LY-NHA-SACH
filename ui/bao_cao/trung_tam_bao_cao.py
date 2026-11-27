@@ -6,8 +6,8 @@ from decimal import Decimal
 import xlsxwriter
 from PySide6.QtCore import Qt, QDate
 from PySide6.QtWidgets import (
-    QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QTreeWidget,
-    QTreeWidgetItem, QTreeWidgetItemIterator, QTableWidget, QTableWidgetItem, QHeaderView,
+    QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QToolButton,
+    QMenu, QTableWidget, QTableWidgetItem, QHeaderView,
     QAbstractItemView, QDateEdit, QComboBox, QLineEdit, QSpinBox,
     QFrame, QFileDialog, QMessageBox,
 )
@@ -259,58 +259,94 @@ class ReportCenterPage(QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        self.report_tree = QTreeWidget()
-        self.report_tree.setHeaderHidden(True)
-        self.report_tree.setMinimumWidth(218)
-        self.report_tree.setMaximumWidth(250)
-        self.report_tree.setIndentation(14)
-        self.report_tree.setStyleSheet("""
-            QTreeWidget {
-                background: #172333; color: #DCE6F1;
-                border: 0; padding: 8px 4px; font-size: 11px;
-            }
-            QTreeWidget::item { min-height: 31px; padding: 3px 7px; }
-            QTreeWidget::item:selected {
-                background: #087E91; color: white; border-radius: 3px;
-            }
-            QTreeWidget::item:hover { background: #26394D; }
-        """)
-        for group_name, children in self.GROUPS:
-            group = QTreeWidgetItem([group_name])
-            group.setFlags(group.flags() & ~Qt.ItemFlag.ItemIsSelectable)
-            self.report_tree.addTopLevelItem(group)
-            group.setExpanded(True)
-            for key, title in children:
-                item = QTreeWidgetItem([title])
-                item.setData(0, Qt.ItemDataRole.UserRole, key)
-                group.addChild(item)
-        self.report_tree.currentItemChanged.connect(self._on_report_changed)
-        root.addWidget(self.report_tree)
-
         self.right_panel = QWidget()
         self.right_panel.setObjectName("reportPaper")
         self.right_panel.setStyleSheet("""
-            QWidget#reportPaper { background: #F3F6F9; }
-            QLabel#reportTitle { color: #1D2939; font-size: 18px; font-weight: 800; }
-            QLabel#reportDescription { color: #536477; font-size: 10px; }
-            QLabel#reportPeriod { color: #344256; font-size: 11px; font-weight: 600; }
+            QWidget#reportPaper { background: #171B24; }
+            QLabel { color: #D6DEE9; background: transparent; }
+            QLabel#reportTitle { color: #F3F4F6; font-size: 18px; font-weight: 800; }
+            QLabel#reportDescription { color: #AAB7C8; font-size: 10px; }
+            QLabel#reportPeriod { color: #D6DEE9; font-size: 11px; font-weight: 600; }
             QFrame#reportFilters {
-                background: #FFFFFF; border: 1px solid #D6DEE8; border-radius: 4px;
+                background: #202938; border: 1px solid #39465A; border-radius: 5px;
             }
-            QTableWidget {
-                background: #FFFFFF; alternate-background-color: #F4F7FA;
-                color: #263445; gridline-color: #DFE5EC;
-                border: 1px solid #D6DEE8; selection-background-color: #D5EDF3;
-                selection-color: #17313B; font-size: 10px;
+            QToolButton#reportCategoryButton {
+                color: #D6DEE9; background: #202938;
+                border: 1px solid #39465A; border-radius: 5px;
+                padding: 8px 12px; font-size: 11px; font-weight: 700;
             }
+            QToolButton#reportCategoryButton:hover,
+            QToolButton#reportCategoryButton:checked {
+                color: white; background: #34445A; border-color: #536174;
+            }
+            QTableWidget#reportTable {
+                background: #202938; alternate-background-color: #263448;
+                color: #E5E7EB; gridline-color: #344256;
+                border: 1px solid #39465A; selection-background-color: #3B526E;
+                selection-color: #FFFFFF; font-size: 10px;
+            }
+            QTableWidget#reportGroupHeader {
+                background: #29374B; color: #E5E7EB;
+                border: 1px solid #39465A; font-weight: 700;
+            }
+            QTableWidget#reportFooter {
+                background: #29374B; color: #F3F4F6;
+                border: 1px solid #536174; font-weight: 800;
+            }
+            QHeaderView { background: #202938; color: #E5E7EB; }
             QHeaderView::section {
-                background: #E8EEF4; color: #263445; font-weight: 700;
-                border: 1px solid #D3DCE6; padding: 6px 5px;
+                background: #29374B; color: #E5E7EB; font-weight: 700;
+                border: 1px solid #39465A; padding: 7px 6px;
+            }
+            QComboBox, QDateEdit, QSpinBox, QLineEdit {
+                background: #263448; color: #E5E7EB;
+                border: 1px solid #46546A; border-radius: 4px;
+                padding: 6px 7px; min-height: 20px;
+            }
+            QComboBox QAbstractItemView {
+                background: #202938; color: #E5E7EB;
+                selection-background-color: #3B526E;
+            }
+            QToolTip {
+                color: #F3F4F6; background: #29374B;
+                border: 1px solid #536174;
             }
         """)
         right = QVBoxLayout(self.right_panel)
         right.setContentsMargins(12, 10, 12, 8)
         right.setSpacing(8)
+
+        # Danh mục báo cáo dạng menu xổ xuống ở đầu trang.
+        self.report_group_buttons = {}
+        self.report_group_menus = {}
+        nav_frame = QFrame()
+        nav_frame.setObjectName("reportNavigation")
+        nav_layout = QHBoxLayout(nav_frame)
+        nav_layout.setContentsMargins(0, 0, 0, 2)
+        nav_layout.setSpacing(7)
+        for group_name, children in self.GROUPS:
+            category_button = QToolButton()
+            category_button.setObjectName("reportCategoryButton")
+            category_button.setText(group_name.replace("BÁO CÁO ", "").title())
+            category_button.setToolButtonStyle(
+                Qt.ToolButtonStyle.ToolButtonTextBesideIcon
+            )
+            category_button.setPopupMode(
+                QToolButton.ToolButtonPopupMode.InstantPopup
+            )
+            category_button.setCheckable(True)
+            category_menu = QMenu(category_button)
+            for report_key, report_title in children:
+                action = category_menu.addAction(report_title)
+                action.triggered.connect(
+                    lambda checked=False, key=report_key: self._select_report(key)
+                )
+            category_button.setMenu(category_menu)
+            nav_layout.addWidget(category_button)
+            self.report_group_buttons[group_name] = category_button
+            self.report_group_menus[group_name] = category_menu
+        nav_layout.addStretch(1)
+        right.addWidget(nav_frame)
 
         self.title_label = QLabel("BÁO CÁO CUỐI NGÀY BÁN HÀNG")
         self.title_label.setObjectName("reportTitle")
@@ -399,46 +435,51 @@ class ReportCenterPage(QWidget):
 
         self.filter_note = QLabel("")
         self.filter_note.setWordWrap(True)
-        self.filter_note.setStyleSheet("color: #66788A; font-size: 9px;")
+        self.filter_note.setStyleSheet("color: #AAB7C8; font-size: 9px;")
         right.addWidget(self.filter_note)
 
         self.group_header = QTableWidget(1, 0)
+        self.group_header.setObjectName("reportGroupHeader")
         self.group_header.setFixedHeight(30)
         self.group_header.verticalHeader().setVisible(False)
         self.group_header.horizontalHeader().setVisible(False)
         self.group_header.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.group_header.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.group_header.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.group_header.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.group_header.setStyleSheet(
-            "QTableWidget { background: #DCE7F0; color: #263445; "
-            "border: 1px solid #CCD7E2; font-weight: 700; }"
+            "QTableWidget { background: #29374B; color: #E5E7EB; "
+            "border: 1px solid #39465A; font-weight: 700; }"
         )
         self.group_header.hide()
         right.addWidget(self.group_header)
 
         self.table = QTableWidget(0, 0)
+        self.table.setObjectName("reportTable")
         self.table.setAlternatingRowColors(True)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.table.verticalHeader().setVisible(False)
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         self.table.horizontalHeader().setMinimumSectionSize(78)
-        self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.horizontalHeader().setStretchLastSection(False)
+        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.table.setSortingEnabled(True)
         right.addWidget(self.table, 1)
 
         self.footer = QTableWidget(1, 0)
+        self.footer.setObjectName("reportFooter")
         self.footer.setFixedHeight(32)
-        self.footer.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.footer.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.footer.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.footer.verticalHeader().setVisible(False)
         self.footer.horizontalHeader().setVisible(False)
         self.footer.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.footer.setStyleSheet("""
             QTableWidget {
-                background: #E7EEF4; color: #1F2D3D;
-                border: 1px solid #CCD7E2; font-weight: 800;
+                background: #29374B; color: #F3F4F6;
+                border: 1px solid #536174; font-weight: 800;
             }
         """)
         right.addWidget(self.footer)
@@ -479,26 +520,18 @@ class ReportCenterPage(QWidget):
         self.date_to.setDate(end)
 
     def _select_report(self, key):
-        iterator = QTreeWidgetItemIterator(self.report_tree)
-        while iterator.value():
-            item = iterator.value()
-            if item.data(0, Qt.ItemDataRole.UserRole) == key:
-                self.report_tree.setCurrentItem(item)
-                return
-            iterator += 1
-
-    def _on_report_changed(self, current, previous):
-        if current is None:
+        if key not in REPORTS or key == self.current_report:
             return
-        key = current.data(0, Qt.ItemDataRole.UserRole)
-        if key:
-            self.current_report = key
-            self._configure_report()
+        self.current_report = key
+        self._configure_report()
 
     def _configure_report(self):
         definition = REPORTS[self.current_report]
         self.title_label.setText(definition["title"])
         self.description_label.setText(definition["description"])
+        for group_name, children in self.GROUPS:
+            button = self.report_group_buttons[group_name]
+            button.setChecked(any(key == self.current_report for key, _ in children))
 
         is_no_date = definition.get("no_date", False)
         for widget in (
@@ -538,6 +571,24 @@ class ReportCenterPage(QWidget):
         self.table.setHorizontalHeaderLabels(headers)
         self.footer.setColumnCount(len(headers))
         self.footer.setRowCount(1)
+
+        money_cols = set(definition.get("money_cols", []))
+        number_cols = set(definition.get("number_cols", []))
+        date_cols = set(definition.get("date_cols", []))
+        for col, header in enumerate(headers):
+            if col in money_cols:
+                width = 132
+            elif col in number_cols:
+                width = 88
+            elif col in date_cols:
+                width = 132
+            elif any(token in header.lower() for token in ("tên", "nhà cung cấp", "lý do")):
+                width = 168
+            elif "mã" in header.lower():
+                width = 112
+            else:
+                width = 122
+            self.table.setColumnWidth(col, width)
 
         groups = definition.get("group_headers", [])
         self.group_header.clear()
