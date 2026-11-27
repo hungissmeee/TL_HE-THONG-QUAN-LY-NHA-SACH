@@ -10,8 +10,23 @@ class SidebarNavigationMixin:
     """Tập trung cấu hình nhóm menu, nút điều hướng và quyền hiển thị trang."""
 
     def _create_sidebar_groups(self):
-        """Tạo các nhóm menu theo cấu hình khai báo trong sidebar_group_config."""
+        """Tạo nhóm thu gọn và mục điều hướng độc lập theo cấu hình."""
+        self.standalone_page_keys = set()
         for group in self.sidebar_group_config:
+            standalone_page = group.get("standalone_page")
+            if standalone_page:
+                button = QPushButton(group["title"])
+                button.setObjectName("reportCenterNavButton")
+                button.setCheckable(True)
+                button.clicked.connect(
+                    lambda checked=False, key=standalone_page: self.show_page(key)
+                )
+                self.nav_groups_layout.addWidget(button)
+                self.nav_buttons[standalone_page] = button
+                self.danh_sach_to_group[standalone_page] = None
+                self.standalone_page_keys.add(standalone_page)
+                continue
+
             group_key = group["key"]
             expanded = bool(group.get("expanded", False))
 
@@ -94,6 +109,11 @@ class SidebarNavigationMixin:
         self.danh_sachs[key] = page
         self.danh_sach_titles[key] = title
         self.stack.addWidget(page)
+
+        if key in getattr(self, "standalone_page_keys", set()):
+            # Mục độc lập đã được tạo theo thứ tự khai báo menu.
+            # Chỉ cần trang được đăng ký trong QStackedWidget.
+            return
 
         button = QPushButton(title)
         button.setObjectName("navButton")
