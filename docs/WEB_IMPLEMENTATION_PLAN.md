@@ -192,11 +192,11 @@ Chưa tự ý thêm module khách hàng/đăng ký khách hàng vì phạm vi hi
 - [x] Tạo Repository và Service dùng chung cho sản phẩm và bốn nhóm danh mục.
 - [x] Chuyển Desktop gọi Service mới ở danh sách/chi tiết/form sản phẩm và các màn hình danh mục.
 - [x] Tạo Repository/Service cho nhà cung cấp và phiếu nhập; chuyển Desktop dùng Service cho danh sách, biểu mẫu, chi tiết, lập phiếu và hủy phiếu.
-- [x] Giữ SQL có tham số; transaction lập/hủy phiếu nhập và cập nhật tồn kho/giá nhập nằm trong Repository.
-- [x] Bổ sung kiểm thử service sản phẩm, nhà cung cấp và phiếu nhập bằng repository giả; kiểm tra cú pháp và toàn bộ unit test qua GitHub Actions.
+- [x] Giữ SQL có tham số; transaction lập/hủy phiếu nhập và cập nhật tồn kho/giá nhập, lập/hủy hóa đơn và hoàn kho nằm trong Repository.
+- [x] Bổ sung kiểm thử service sản phẩm, nhà cung cấp, phiếu nhập và hóa đơn bằng repository giả; kiểm tra cú pháp và toàn bộ unit test qua GitHub Actions.
 - [ ] Chạy kiểm thử tích hợp trên SQL Server thử nghiệm và kiểm tra thủ công các luồng Desktop trên Windows.
 
-**Ghi chú tiến độ:** Đã tách xong đợt đầu cho sản phẩm, danh mục, nhà cung cấp và phiếu nhập. Các phân hệ khác như hóa đơn, đổi trả, ca làm việc, nhân viên và báo cáo vẫn cần được tách. Chưa nghiệm thu tích hợp SQL Server thật.
+**Ghi chú tiến độ:** Đã tách sản phẩm, danh mục, nhà cung cấp, phiếu nhập và hóa đơn. Các phân hệ đổi trả, ca làm việc, nhân viên, khuyến mãi độc lập và báo cáo vẫn cần được tách. GitHub Actions đã chạy thành công 124 unit test; chưa nghiệm thu tích hợp SQL Server thật hoặc kiểm tra thủ công Desktop trên Windows.
 
 **Kết quả:** Desktop vẫn chạy, Backend có thể tái sử dụng cùng service/repository.
 
