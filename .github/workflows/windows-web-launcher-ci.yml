@@ -1,0 +1,51 @@
+name: Windows Web Launcher CI
+
+on:
+  push:
+    branches:
+      - feature/web-app
+    paths:
+      - "run_web.py"
+      - "tests/test_run_web.py"
+      - ".github/workflows/windows-web-launcher-ci.yml"
+  pull_request:
+    branches:
+      - feature/web-app
+    paths:
+      - "run_web.py"
+      - "tests/test_run_web.py"
+      - ".github/workflows/windows-web-launcher-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-web-launcher-${{ github.ref }}-${{ github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  launcher:
+    name: Check Node/npm launcher on Windows
+    runs-on: windows-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js and npm
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install launcher Python dependency
+        run: python -m pip install python-dotenv
+
+      - name: Test Windows npm CLI detection and launcher
+        run: python -m unittest discover -s tests -p test_run_web.py -v
