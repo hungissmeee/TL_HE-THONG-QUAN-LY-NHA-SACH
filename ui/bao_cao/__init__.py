@@ -7,6 +7,7 @@ from ui.bao_cao.bao_cao_phieu_nhap import ImportReportPage
 from ui.bao_cao.bao_cao_doi_tra import ReturnReportPage
 from ui.bao_cao.bao_cao_ton_kho import InventoryReportPage
 from ui.bao_cao.bao_cao_san_pham import ProductReportPage
+from ui.bao_cao.bao_cao_ca_lam_viec import ShiftReportPage
 
 __all__ = [
     "OverviewReportPage",
@@ -16,4 +17,5 @@ __all__ = [
     "ReturnReportPage",
     "InventoryReportPage",
     "ProductReportPage",
+    "ShiftReportPage",
 ]
