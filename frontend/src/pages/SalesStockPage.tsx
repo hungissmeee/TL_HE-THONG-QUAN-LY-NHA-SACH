@@ -352,13 +352,71 @@ function InvoicesPage() {
   }
 
   const cartColumns: TableColumnsType<CartLine> = [
-    { title: "Sản phẩm", dataIndex: "product_code", key: "product_code", render: (code: string) => lookup?.products.find((p) => p.masp === code)?.tensp || code },
-    { title: "Đơn giá", key: "price", align: "right", render: (_: unknown, line) => money(lookup?.products.find((p) => p.masp === line.product_code)?.price) },
-    { title: "Tồn", key: "stock", align: "right", render: (_: unknown, line) => String(lookup?.products.find((p) => p.masp === line.product_code)?.stock ?? 0) },
-    { title: "Số lượng", key: "quantity", width: 130, render: (_: unknown, line) => <InputNumber min={1} max={lookup?.products.find((p) => p.masp === line.product_code)?.stock} precision={0} value={line.quantity} onChange={(v) => setCart((list) => list.map((x) => x.product_code === line.product_code ? { ...x, quantity: Number(v || 1) } : x))} /> },
-    { title: "Thành tiền", key: "amount", align: "right", render: (_: unknown, line) => money(Number(lookup?.products.find((p) => p.masp === line.product_code)?.price || 0) * line.quantity) },
-    { title: "", key: "remove", width: 60, render: (_: unknown, line) => <Button danger type="text" icon={<StopOutlined />} onClick={() => setCart((list) => list.filter((x) => x.product_code !== line.product_code))} /> },
+    { title: "Mã SP", dataIndex: "product_code", key: "product_code", width: 95 },
+    {
+      title: "Tên sản phẩm",
+      key: "product_name",
+      render: (_: unknown, line) => lookup?.products.find((product) => product.masp === line.product_code)?.tensp || line.product_code,
+    },
+    {
+      title: "ĐVT",
+      key: "unit",
+      width: 70,
+      render: (_: unknown, line) => lookup?.products.find((product) => product.masp === line.product_code)?.dvt || "—",
+    },
+    {
+      title: "Số lượng",
+      key: "quantity",
+      width: 120,
+      render: (_: unknown, line) => (
+        <InputNumber
+          min={1}
+          max={lookup?.products.find((product) => product.masp === line.product_code)?.stock}
+          precision={0}
+          value={line.quantity}
+          onChange={(value) => setCart((list) => list.map((item) => item.product_code === line.product_code ? { ...item, quantity: Number(value || 1) } : item))}
+          style={{ width: "100%" }}
+        />
+      ),
+    },
+    {
+      title: "Đơn giá (đã gồm VAT)",
+      key: "price",
+      align: "right",
+      width: 150,
+      render: (_: unknown, line) => money(lookup?.products.find((product) => product.masp === line.product_code)?.price),
+    },
+    {
+      title: "VAT (%)",
+      key: "vat",
+      align: "right",
+      width: 90,
+      render: (_: unknown, line) => String(lookup?.products.find((product) => product.masp === line.product_code)?.vat ?? 0) + "%",
+    },
+    {
+      title: "Thành tiền",
+      key: "amount",
+      align: "right",
+      width: 140,
+      render: (_: unknown, line) => money(Number(lookup?.products.find((product) => product.masp === line.product_code)?.price || 0) * line.quantity),
+    },
+    {
+      title: "Thao tác",
+      key: "remove",
+      width: 70,
+      render: (_: unknown, line) => <Button danger type="text" icon={<StopOutlined />} aria-label="Xóa sản phẩm" onClick={() => setCart((list) => list.filter((item) => item.product_code !== line.product_code))} />,
+    },
   ];
+
+  const detailSubtotal = detail?.items.reduce(
+    (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0),
+    0,
+  ) || 0;
+  const detailDiscountRate = Number(detail?.header.discount_rate || 0);
+  const detailDiscount = detailSubtotal * detailDiscountRate / 100;
+  const detailTotal = detailSubtotal - detailDiscount;
+  const detailCash = Number(detail?.header.cash || 0);
+  const detailChange = Math.max(detailCash - detailTotal, 0);
 
   const columns: TableColumnsType<DataRow> = [
     { title: "Mã hóa đơn", dataIndex: "mahd", key: "mahd", width: 140 },
@@ -384,41 +442,139 @@ function InvoicesPage() {
       </div>
       <Table<DataRow> rowKey="mahd" columns={columns} dataSource={rows} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }} />
     </Card>
-    <Modal title="Lập hóa đơn bán hàng" open={open} onCancel={() => setOpen(false)} onOk={() => void checkout()} okText="Thanh toán" cancelText="Hủy" confirmLoading={saving} width={980} destroyOnClose>
-      {lookupLoading || !lookup ? <div className="product-modal-loading"><Spin /></div> : <>
-        <Alert className="operation-info" type="info" showIcon message={lookup.active_shift ? "Nhân viên: " + lookup.employee.tennv + " · Ca " + lookup.active_shift.soca + " (" + lookup.active_shift.tgmo + "–" + lookup.active_shift.tgdong + ")" : "Lập hóa đơn theo quyền Admin · " + lookup.employee.tennv} />
-        <div className="operation-toolbar">
-          <Select showSearch optionFilterProp="label" style={{ flex: 1, minWidth: 280 }} placeholder="Quét hoặc tìm mã vạch / ISBN / tên sản phẩm" value={selectedProduct} onChange={setSelectedProduct} options={lookup.products.map((p) => ({ value: p.masp, label: p.masp + " · " + p.tensp + " · " + (p.barcode || p.isbn || "") + " · Tồn " + p.stock }))} />
-          <Button type="primary" onClick={addLine}>Thêm vào giỏ</Button>
-        </div>
-        <Table<CartLine> rowKey="product_code" columns={cartColumns} dataSource={cart} pagination={false} locale={{ emptyText: "Chưa có sản phẩm trong giỏ." }} />
-        <Row gutter={16} className="invoice-checkout">
-          <Col xs={24} md={12}><Text type="secondary">Khuyến mãi</Text><Select allowClear value={promotionCode} onChange={setPromotionCode} style={{ width: "100%" }} placeholder="Không áp dụng" options={lookup.promotions.map((p) => ({ value: String(p[0]), label: String(p[1]) + " · giảm " + p[2] + "%" }))} /></Col>
-          <Col xs={24} md={12}><Text type="secondary">Tiền khách đưa</Text><InputNumber min={0} precision={2} value={cash} onChange={(v) => setCash(v === null ? null : Number(v))} style={{ width: "100%" }} /></Col>
-        </Row>
-        <Descriptions bordered size="small" column={2} className="invoice-totals">
-          <Descriptions.Item label="Tiền hàng">{money(subtotal)}</Descriptions.Item>
-          <Descriptions.Item label={"Giảm giá (" + discount + "%)"}>{money(subtotal - total)}</Descriptions.Item>
-          <Descriptions.Item label="Khách cần trả"><Text strong>{money(total)}</Text></Descriptions.Item>
-          <Descriptions.Item label="Tiền thừa"><Text strong>{cash === null ? "—" : money(Math.max(cash - total, 0))}</Text></Descriptions.Item>
-        </Descriptions>
-      </>}
+    <Modal
+      title="Lập hóa đơn bán hàng"
+      open={open}
+      onCancel={() => setOpen(false)}
+      onOk={() => void checkout()}
+      okText="Thanh toán"
+      cancelText="Hủy"
+      confirmLoading={saving}
+      width={1040}
+      destroyOnClose
+      className="desktop-transaction-modal"
+    >
+      {lookupLoading || !lookup ? <div className="product-modal-loading"><Spin /></div> : (
+        <>
+          <Card size="small" title="Thông tin hóa đơn" className="desktop-form-section">
+            <Descriptions bordered size="small" column={1}>
+              <Descriptions.Item label="Nhân viên">
+                {lookup.employee.tennv} {lookup.employee.manv ? "(" + lookup.employee.manv + ")" : "(Tài khoản hệ thống)"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Ca làm việc">
+                {lookup.active_shift
+                  ? "Ca " + lookup.active_shift.soca + " | Mã ca: " + lookup.active_shift.maca + " | " + dayjs(lookup.active_shift.ngaylam).format("DD/MM/YYYY") + " | " + lookup.active_shift.tgmo + " - " + lookup.active_shift.tgdong
+                  : "Tài khoản Admin – không giới hạn ca làm việc"}
+              </Descriptions.Item>
+            </Descriptions>
+            <Form className="desktop-dialog-form invoice-promotion-form" layout="horizontal" labelCol={{ xs: { span: 24 }, sm: { span: 7 } }} wrapperCol={{ xs: { span: 24 }, sm: { span: 17 } }}>
+              <Form.Item label="Khuyến mãi">
+                <Select
+                  allowClear
+                  value={promotionCode}
+                  onChange={setPromotionCode}
+                  style={{ width: "100%" }}
+                  placeholder="Không áp dụng khuyến mãi"
+                  options={lookup.promotions.map((promotion) => ({
+                    value: String(promotion[0]),
+                    label: String(promotion[1]) + " (" + promotion[2] + "%)",
+                  }))}
+                />
+              </Form.Item>
+            </Form>
+          </Card>
+
+          <Card size="small" title="Thêm sản phẩm" className="desktop-form-section">
+            <div className="transaction-product-search">
+              <Select
+                showSearch
+                optionFilterProp="label"
+                style={{ flex: 1, minWidth: 0 }}
+                placeholder="Quét hoặc tìm mã vạch / ISBN / tên sản phẩm"
+                value={selectedProduct}
+                onChange={setSelectedProduct}
+                options={lookup.products.map((product) => ({
+                  value: product.masp,
+                  label: product.masp + " · " + product.tensp + " · " + (product.barcode || product.isbn || "") + " · Tồn " + product.stock,
+                }))}
+              />
+              <Button type="primary" icon={<PlusOutlined />} onClick={addLine}>Thêm vào giỏ</Button>
+            </div>
+          </Card>
+
+          <Card size="small" title="Giỏ hàng" className="desktop-form-section">
+            <Table<CartLine>
+              rowKey="product_code"
+              columns={cartColumns}
+              dataSource={cart}
+              pagination={false}
+              locale={{ emptyText: "Chưa có sản phẩm trong giỏ." }}
+              scroll={{ x: 850 }}
+            />
+          </Card>
+
+          <Card size="small" title="Thanh toán" className="desktop-form-section transaction-total-card">
+            <Descriptions bordered size="small" column={1}>
+              <Descriptions.Item label="Tiền hàng (đã gồm VAT)">{money(subtotal)}</Descriptions.Item>
+              <Descriptions.Item label={"Giảm giá (" + discount + "%)"}>{money(subtotal - total)}</Descriptions.Item>
+              <Descriptions.Item label="Khách cần trả">
+                <Text strong className="transaction-total-value">{money(total)}</Text>
+              </Descriptions.Item>
+              <Descriptions.Item label="Tiền khách đưa">
+                <InputNumber
+                  min={0}
+                  precision={2}
+                  value={cash}
+                  onChange={(value) => setCash(value === null ? null : Number(value))}
+                  style={{ width: "100%", maxWidth: 280 }}
+                />
+              </Descriptions.Item>
+              <Descriptions.Item label="Tiền thừa">
+                <Text strong>{cash === null ? "—" : money(Math.max(cash - total, 0))}</Text>
+              </Descriptions.Item>
+            </Descriptions>
+          </Card>
+        </>
+      )}
     </Modal>
-    <Modal title="Chi tiết hóa đơn" open={detailOpen} onCancel={() => setDetailOpen(false)} footer={<Button onClick={() => setDetailOpen(false)}>Đóng</Button>} width={820}>
+    <Modal title="Chi tiết hóa đơn" open={detailOpen} onCancel={() => setDetailOpen(false)} footer={<Button onClick={() => setDetailOpen(false)}>Đóng</Button>} width={820} className="desktop-transaction-modal">
       {!detail ? <Spin /> : <>
-        <Descriptions bordered size="small" column={2}>
-          <Descriptions.Item label="Mã hóa đơn">{String(detail.header.mahd)}</Descriptions.Item><Descriptions.Item label="Ngày lập">{dt(detail.header.ngaylap)}</Descriptions.Item>
-          <Descriptions.Item label="Nhân viên">{String(detail.header.tennv || detail.header.manv || "Admin")}</Descriptions.Item><Descriptions.Item label="Ca">{detail.header.soca ? "Ca " + String(detail.header.soca) : "Admin"}</Descriptions.Item>
-          <Descriptions.Item label="Khuyến mãi">{String(detail.header.tenkm || "Không áp dụng")}</Descriptions.Item><Descriptions.Item label="Giảm giá">{String(detail.header.discount_rate || 0)}%</Descriptions.Item>
-          <Descriptions.Item label="Tiền khách đưa">{money(detail.header.cash)}</Descriptions.Item><Descriptions.Item label="Trạng thái">{Number(detail.header.status) ? "Có hiệu lực" : "Đã hủy"}</Descriptions.Item>
-        </Descriptions>
-        <Table<DataRow> className="detail-table" rowKey="masp" pagination={false} dataSource={detail.items} columns={[
-          { title: "Mã SP", dataIndex: "masp", key: "masp" }, { title: "Tên sản phẩm", dataIndex: "tensp", key: "tensp" },
-          { title: "Đơn giá", dataIndex: "price", key: "price", align: "right", render: money }, { title: "SL", dataIndex: "quantity", key: "quantity", align: "right" },
-          { title: "VAT", dataIndex: "vat", key: "vat", align: "right", render: (v: unknown) => String(v) + "%" },
-        ]} />
+        <Card size="small" title="Thông tin hóa đơn" className="desktop-form-section">
+          <Descriptions bordered size="small" column={1}>
+            <Descriptions.Item label="Mã hóa đơn">{String(detail.header.mahd)}</Descriptions.Item>
+            <Descriptions.Item label="Ngày lập">{dt(detail.header.ngaylap)}</Descriptions.Item>
+            <Descriptions.Item label="Nhân viên">{String(detail.header.tennv || detail.header.manv || "Admin")}</Descriptions.Item>
+            <Descriptions.Item label="Vai trò">{String(detail.header.vaitro || "—")}</Descriptions.Item>
+            <Descriptions.Item label="Ca làm việc">
+              {detail.header.soca ? "Ca " + String(detail.header.soca) + " | " + String(detail.header.tgmo || "").slice(0, 5) + " - " + String(detail.header.tgdong || "").slice(0, 5) : "Admin"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Khuyến mãi">{String(detail.header.tenkm || "Không áp dụng")}</Descriptions.Item>
+            <Descriptions.Item label="Trạng thái">{Number(detail.header.status) ? "Có hiệu lực" : "Đã hủy"}</Descriptions.Item>
+          </Descriptions>
+        </Card>
+        <Card size="small" title="Chi tiết sản phẩm" className="desktop-form-section">
+          <Table<DataRow> className="detail-table" rowKey="masp" pagination={false} dataSource={detail.items} columns={[
+            { title: "Mã SP", dataIndex: "masp", key: "masp", width: 90 },
+            { title: "Tên sản phẩm", dataIndex: "tensp", key: "tensp" },
+            { title: "ĐVT", dataIndex: "dvt", key: "dvt", width: 70 },
+            { title: "Đơn giá (đã gồm VAT)", dataIndex: "price", key: "price", align: "right", render: money, width: 150 },
+            { title: "Số lượng", dataIndex: "quantity", key: "quantity", align: "right", width: 85 },
+            { title: "VAT (%)", dataIndex: "vat", key: "vat", align: "right", render: (value: unknown) => String(value ?? 0) + "%", width: 85 },
+            { title: "Thành tiền", key: "amount", align: "right", render: (_: unknown, item: DataRow) => money(Number(item.price || 0) * Number(item.quantity || 0)), width: 140 },
+          ]} />
+        </Card>
+        <Card size="small" title="Thanh toán" className="desktop-form-section transaction-total-card">
+          <Descriptions bordered size="small" column={1}>
+            <Descriptions.Item label="Tiền hàng (đã gồm VAT)">{money(detailSubtotal)}</Descriptions.Item>
+            <Descriptions.Item label={"Giảm giá (" + detailDiscountRate + "%)"}>{money(detailDiscount)}</Descriptions.Item>
+            <Descriptions.Item label="Khách cần trả"><Text strong className="transaction-total-value">{money(detailTotal)}</Text></Descriptions.Item>
+            <Descriptions.Item label="Tiền khách đưa">{money(detailCash)}</Descriptions.Item>
+            <Descriptions.Item label="Tiền thừa">{money(detailChange)}</Descriptions.Item>
+          </Descriptions>
+        </Card>
       </>}
     </Modal>
+  </div>;    </Modal>
   </div>;
 }
 
