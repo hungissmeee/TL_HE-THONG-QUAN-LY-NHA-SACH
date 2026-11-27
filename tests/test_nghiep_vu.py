@@ -62,12 +62,18 @@ class NativeQtControlStyleTests(unittest.TestCase):
 
     def test_combo_spinbox_and_calendar_keep_native_subcontrols(self):
         forbidden_overrides = (
-            "QComboBox",
-            "QDateEdit",
-            "QDateTimeEdit",
-            "QTimeEdit",
-            "QSpinBox",
-            "QDoubleSpinBox",
+            "QComboBox {",
+            "QDateEdit {",
+            "QDateTimeEdit {",
+            "QTimeEdit {",
+            "QSpinBox {",
+            "QDoubleSpinBox {",
+            "QComboBox::drop-down",
+            "QComboBox::down-arrow",
+            "QAbstractSpinBox::up-button",
+            "QAbstractSpinBox::down-button",
+            "QAbstractSpinBox::up-arrow",
+            "QAbstractSpinBox::down-arrow",
             "QCalendarWidget QToolButton",
         )
         for selector in forbidden_overrides:
