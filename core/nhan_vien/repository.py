@@ -171,6 +171,23 @@ class NhanVienRepository:
         finally:
             cursor.close()
 
+    def _resolve_database_name(self, cursor):
+        """Lấy database đang cấu hình; fallback theo DB context của kết nối hiện tại."""
+        database_name = str(
+            getattr(self.connection_source, "database", "") or ""
+        ).strip()
+        if database_name:
+            return database_name
+
+        cursor.execute("SELECT DB_NAME()")
+        row = cursor.fetchone()
+        database_name = str(row[0] or "").strip() if row else ""
+        if not database_name:
+            raise RuntimeError(
+                "Không xác định được database hiện tại để tạo tài khoản nhân viên."
+            )
+        return database_name
+
     def _create_account_with_cursor(self, cursor, employee_code, name, role, phone, password):
         if role not in ROLE_MAP:
             raise ValueError("Vai trò không hợp lệ!")
@@ -198,7 +215,7 @@ class NhanVienRepository:
         password_literal = self.quote_literal(password)
         role_identifier = self.quote_identifier(ROLE_MAP[role])
         database_name = self.quote_identifier(
-            getattr(self.connection_source, "database", "CSDLTEST")
+            self._resolve_database_name(cursor)
         )
 
         cursor.execute(f"""
