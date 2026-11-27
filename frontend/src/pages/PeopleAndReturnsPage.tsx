@@ -10,7 +10,7 @@ import { ApiError } from "@/services/api";
 import {
   operationsApi,
   type ReturnInvoiceItems,
-  type DataRow,
+  type Row as DataRow,
 } from "@/features/operations/operationsApi";
 import { useAuth } from "@/features/auth/AuthContext";
 
