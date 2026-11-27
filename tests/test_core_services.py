@@ -12,6 +12,8 @@ from core.repositories.phieu_nhap_repository import PhieuNhapRepository
 from core.services.phieu_nhap_service import PhieuNhapService
 from core.repositories.hoa_don_repository import HoaDonRepository
 from core.services.hoa_don_service import HoaDonService
+from core.repositories.doi_tra_repository import ReturnRepository
+from core.services.doi_tra_service import ReturnService
 
 
 class FakeProductRepository(SanPhamRepository):
@@ -355,6 +357,97 @@ class InvoiceServiceTests(unittest.TestCase):
             self.repository.cancelled,
             ("HD000001", "NV001", "Thu ngân", False),
         )
+
+
+
+class FakeReturnRepository(ReturnRepository):
+    def __init__(self):
+        self.created = None
+        self.deleted = None
+
+    def create_return(self, payload, username, is_admin=False):
+        self.created = (payload, username, is_admin)
+        return {
+            "return_code": "PDT000001",
+            "invoice_code": payload["invoice_code"],
+            "total_refund": Decimal("180.00"),
+        }
+
+    def delete_return(self, return_code, username, is_admin=False):
+        self.deleted = (return_code, username, is_admin)
+        return True
+
+
+class ReturnServiceTests(unittest.TestCase):
+    def setUp(self):
+        self.repository = FakeReturnRepository()
+        self.service = ReturnService(self.repository)
+
+    def valid_payload(self):
+        return {
+            "invoice_code": " HD000001 ",
+            "reason": "Sản phẩm bị lỗi",
+            "items": [
+                {"product_code": "SP001", "quantity": 2, "condition": 1, "action": 0},
+                {"product_code": "SP002", "quantity": 1, "condition": 0, "action": 1},
+            ],
+        }
+
+    def test_return_payload_is_normalized_and_validated(self):
+        result = self.service.create_return(self.valid_payload(), "NV001")
+        payload, username, is_admin = self.repository.created
+        self.assertEqual(result["return_code"], "PDT000001")
+        self.assertEqual(payload["invoice_code"], "HD000001")
+        self.assertEqual(username, "NV001")
+        self.assertFalse(is_admin)
+        self.assertEqual(len(payload["items"]), 2)
+
+    def test_admin_can_create_return_without_employee_profile(self):
+        self.service.create_return(self.valid_payload(), "admin", is_admin=True)
+        self.assertTrue(self.repository.created[2])
+
+    def test_return_rejects_missing_invoice_or_reason(self):
+        for key, value in (("invoice_code", ""), ("reason", "  ")):
+            data = self.valid_payload()
+            data[key] = value
+            with self.subTest(key=key):
+                with self.assertRaises(ValueError):
+                    self.service.create_return(data, "NV001")
+
+    def test_return_rejects_empty_items(self):
+        data = self.valid_payload()
+        data["items"] = []
+        with self.assertRaisesRegex(ValueError, "ít nhất một"):
+            self.service.create_return(data, "NV001")
+
+    def test_return_rejects_non_positive_quantity(self):
+        data = self.valid_payload()
+        data["items"][0]["quantity"] = 0
+        with self.assertRaisesRegex(ValueError, "lớn hơn 0"):
+            self.service.create_return(data, "NV001")
+
+    def test_return_rejects_exchange_of_intact_goods(self):
+        data = self.valid_payload()
+        data["items"][0]["action"] = 1
+        with self.assertRaisesRegex(ValueError, "hàng trả đã hỏng"):
+            self.service.create_return(data, "NV001")
+
+    def test_return_rejects_duplicate_product_lines(self):
+        data = self.valid_payload()
+        data["items"].append(dict(data["items"][0]))
+        with self.assertRaisesRegex(ValueError, "nhiều lần"):
+            self.service.create_return(data, "NV001")
+
+    def test_return_delete_normalizes_code(self):
+        self.assertTrue(self.service.delete_return(" PDT000001 ", "NV001"))
+        self.assertEqual(self.repository.deleted, ("PDT000001", "NV001", False))
+
+    def test_refund_total_ignores_exchange_lines(self):
+        total = self.service.calculate_refund([
+            {"net_price": "90", "quantity": 2, "action": 0},
+            {"net_price": "50", "quantity": 1, "action": 1},
+        ])
+        self.assertEqual(total, Decimal("180.00"))
 
 
 
