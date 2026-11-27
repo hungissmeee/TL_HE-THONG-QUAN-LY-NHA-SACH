@@ -431,9 +431,8 @@ class EmployeeWindow(QWidget):
     # XÓA DỮ LIỆU FORM
     # ======================================
 
-    @staticmethod
-    def _next_employee_code(cursor, lock_table=False):
-        """Giữ API cũ cho test; sinh mã thuộc Repository."""
+    def _next_employee_code(self, cursor, lock_table=False):
+        """Giữ API tương thích; quy tắc sinh mã thuộc Repository."""
         return NhanVienRepository._next_employee_code(cursor, lock_table)
 
     def refresh_employee_code(self):
