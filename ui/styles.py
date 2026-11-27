@@ -438,10 +438,16 @@ MAIN_WINDOW_STYLESHEET = """
                 border: 1px solid #60758F;
             }
 
-            QPushButton:disabled {
+            QPushButton:not(#navButton):not(#passwordButton):not(#logoutButton):disabled {
                 background-color: #293442;
                 color: #8291A5;
                 border: 1px solid #344256;
+            }
+
+            QPushButton#navButton:disabled,
+            QPushButton#passwordButton:disabled {
+                color: #8291A5;
+                background-color: transparent;
             }
 
             QPushButton:focus {
