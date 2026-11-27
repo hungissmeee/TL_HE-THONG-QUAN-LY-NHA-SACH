@@ -119,13 +119,6 @@ class HoaDonService:
         }
         return self.repository.create_invoice(payload, is_admin=is_admin)
 
-    def can_cancel_invoice(self, invoice_code, username):
-        code = str(invoice_code or "").strip()
-        user = str(username or "").strip()
-        if not code or not user:
-            return False
-        return self.repository.can_cancel_invoice(code, user)
-
     def cancel_invoice(self, invoice_code, username, role, is_admin=False):
         code = str(invoice_code or "").strip()
         if not code:

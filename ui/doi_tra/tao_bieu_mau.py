@@ -37,11 +37,22 @@ class CreateReturnDialog(QDialog):
         self._build_ui()
         self._load_eligible_invoices()
 
-    def _ensure_manager(self):
-        """Xác nhận quyền Quản lý qua tầng xử lý dữ liệu."""
-        self.employee_code = self.service.get_authorized_employee(
-            self.username, self.is_admin
-        )
+    def _ensure_manager(self, cursor=None):
+        """Ủy quyền xác thực vai trò cho Repository."""
+        if cursor is not None:
+            return ReturnRepository.ensure_manager(
+                cursor, self.username, self.is_admin
+            )
+        conn = self.db.get_connection()
+        if conn is None:
+            raise RuntimeError("Chưa có kết nối SQL Server.")
+        cursor = conn.cursor()
+        try:
+            self.employee_code = ReturnRepository.ensure_manager(
+                cursor, self.username, self.is_admin
+            )
+        finally:
+            cursor.close()
 
     def _build_ui(self):
         """Tạo giao diện chọn hóa đơn, sản phẩm và hình thức xử lý."""

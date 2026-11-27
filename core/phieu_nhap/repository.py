@@ -200,39 +200,6 @@ class PhieuNhapRepository:
         finally:
             cursor.close()
 
-    def can_cancel_import(self, import_code, username):
-        """Kiểm tra quyền tự hủy của nhân viên kho trong 5 phút đầu sau khi lập phiếu."""
-        import_code = str(import_code or "").strip()
-        username = str(username or "").strip()
-        if not import_code or not username:
-            return False
-
-        conn = self._connection()
-        cursor = conn.cursor()
-        try:
-            cursor.execute("""
-                SELECT CASE WHEN
-                    PN.TRANGTHAI = 1
-                    AND PN.MANV = ?
-                    AND PN.NGAYNHAP >= DATEADD(MINUTE, -5, SYSDATETIME())
-                    AND PN.NGAYNHAP <= SYSDATETIME()
-                    AND LOWER(ORIGINAL_LOGIN()) = LOWER(?)
-                    AND IS_ROLEMEMBER(N'rl_NhanVienKho') = 1
-                    AND EXISTS (
-                        SELECT 1
-                        FROM dbo.NHAN_VIEN NV
-                        WHERE NV.MANV = ?
-                          AND NV.VAITRO = N'Nhân viên kho'
-                    )
-                THEN 1 ELSE 0 END
-                FROM dbo.PHIEU_NHAP PN
-                WHERE PN.MAPN = ?
-            """, username, username, username, import_code)
-            row = cursor.fetchone()
-            return bool(row and int(row[0] or 0) == 1)
-        finally:
-            cursor.close()
-
     def cancel_import(self, import_code, username, role, is_admin=False):
         """Hủy phiếu và hoàn tác tồn kho/giá nhập trong cùng transaction."""
         conn = self._connection()

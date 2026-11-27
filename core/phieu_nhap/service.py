@@ -90,13 +90,6 @@ class PhieuNhapService:
         }
         return self.repository.create_import(payload)
 
-    def can_cancel_import(self, import_code, username):
-        code = str(import_code or "").strip()
-        user = str(username or "").strip()
-        if not code or not user:
-            return False
-        return self.repository.can_cancel_import(code, user)
-
     def cancel_import(self, import_code, username, role, is_admin=False):
         code = str(import_code or "").strip()
         if not code:

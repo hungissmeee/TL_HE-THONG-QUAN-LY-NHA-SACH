@@ -216,12 +216,29 @@ class ImportWindow(QWidget):
         owner = str(code_item.data(Qt.ItemDataRole.UserRole) or "")
         can_cancel = self.is_warehouse and owner.casefold() == self.username.casefold()
         if can_cancel:
+            conn = self.db.get_connection()
+            if conn is None:
+                return
+            cursor = None
             try:
-                self._selected_can_cancel = self.service.can_cancel_import(
-                    code_item.text(), self.username
-                )
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT CASE
+                        WHEN NGAYNHAP >= DATEADD(MINUTE, -5, SYSDATETIME())
+                         AND NGAYNHAP <= SYSDATETIME()
+                        THEN 1 ELSE 0
+                    END
+                    FROM dbo.PHIEU_NHAP
+                    WHERE MAPN = ? AND MANV = ?
+                      AND ISNULL(TRANGTHAI, 1) = 1
+                """, code_item.text(), self.username)
+                result = cursor.fetchone()
+                self._selected_can_cancel = bool(result and result[0] == 1)
             except Exception:
                 self._selected_can_cancel = False
+            finally:
+                if cursor is not None:
+                    cursor.close()
 
     def cancel_selected_import(self):
         if not self.can_cancel:

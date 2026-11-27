@@ -231,12 +231,30 @@ class InvoiceWindow(QWidget):
 
         # Thu ngân chỉ được hủy hóa đơn của mình trong 5 phút đầu.
         if self.is_cashier and owner_code.casefold() == self.username.casefold():
+            conn = self.db.get_connection()
+            if conn is None:
+                return
+            cursor = conn.cursor()
             try:
-                self._selected_can_cancel = self.service.can_cancel_invoice(
-                    invoice_code, self.username
+                cursor.execute("""
+                    SELECT CASE
+                        WHEN TRANGTHAI = 1
+                         AND MANV = ?
+                         AND NGAYLAP >= DATEADD(MINUTE, -5, SYSDATETIME())
+                         AND NGAYLAP <= SYSDATETIME()
+                        THEN 1 ELSE 0
+                    END
+                    FROM dbo.HOA_DON
+                    WHERE MAHD = ?
+                """, self.username, invoice_code)
+                permission_row = cursor.fetchone()
+                self._selected_can_cancel = bool(
+                    permission_row and permission_row[0] == 1
                 )
             except Exception:
                 self._selected_can_cancel = False
+            finally:
+                cursor.close()
 
     def cancel_selected_invoice(self):
         if not self.can_cancel:
