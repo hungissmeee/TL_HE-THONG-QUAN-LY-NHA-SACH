@@ -12,8 +12,8 @@ from PySide6.QtWidgets import (
 from .dung_chung import MONEY_QUANT, as_decimal, date_text, money
 from ui.permissions import is_admin_account
 from ui.product_table import ProductTableWidget
-from core.repositories.doi_tra_repository import ReturnRepository
-from core.services.doi_tra_service import ReturnService
+from core.doi_tra.truy_van_sql import ReturnRepository
+from core.doi_tra.xu_ly_du_lieu import ReturnService
 
 
 class CreateReturnDialog(QDialog):
@@ -37,22 +37,11 @@ class CreateReturnDialog(QDialog):
         self._build_ui()
         self._load_eligible_invoices()
 
-    def _ensure_manager(self, cursor=None):
-        """Ủy quyền xác thực vai trò cho Repository."""
-        if cursor is not None:
-            return ReturnRepository.ensure_manager(
-                cursor, self.username, self.is_admin
-            )
-        conn = self.db.get_connection()
-        if conn is None:
-            raise RuntimeError("Chưa có kết nối SQL Server.")
-        cursor = conn.cursor()
-        try:
-            self.employee_code = ReturnRepository.ensure_manager(
-                cursor, self.username, self.is_admin
-            )
-        finally:
-            cursor.close()
+    def _ensure_manager(self):
+        """Xác nhận quyền Quản lý qua tầng xử lý dữ liệu."""
+        self.employee_code = self.service.get_authorized_employee(
+            self.username, self.is_admin
+        )
 
     def _build_ui(self):
         """Tạo giao diện chọn hóa đơn, sản phẩm và hình thức xử lý."""

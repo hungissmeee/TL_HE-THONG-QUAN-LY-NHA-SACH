@@ -15,8 +15,8 @@ from PySide6.QtWidgets import (
     QDateTimeEdit,
 )
 from PySide6.QtCore import QDateTime, QLocale
-from core.repositories.khuyen_mai_repository import KhuyenMaiRepository
-from core.services.khuyen_mai_service import KhuyenMaiService
+from core.khuyen_mai.truy_van_sql import KhuyenMaiRepository
+from core.khuyen_mai.xu_ly_du_lieu import KhuyenMaiService
 
 
 class PromotionFormDialog(QDialog):

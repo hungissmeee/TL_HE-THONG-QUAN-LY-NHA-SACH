@@ -1,6 +1,6 @@
 """Service kiểm tra dữ liệu và điều phối nghiệp vụ nhà cung cấp."""
 
-from core.repositories.nha_cung_cap_repository import NhaCungCapRepository
+from core.nha_cung_cap.truy_van_sql import NhaCungCapRepository
 
 
 class NhaCungCapService:

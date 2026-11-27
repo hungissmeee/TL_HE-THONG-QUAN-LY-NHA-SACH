@@ -22,8 +22,8 @@ from ui.product_table import ProductTableWidget
 from .dung_chung import MONEY_QUANT, Decimal, InvalidOperation, ROUND_HALF_UP, money, as_decimal, date_text, time_text
 from ui.permissions import is_admin_account
 from ui.san_pham.tim_kiem import find_matching_product_codes
-from core.repositories.hoa_don_repository import HoaDonRepository
-from core.services.hoa_don_service import HoaDonService
+from core.hoa_don.truy_van_sql import HoaDonRepository
+from core.hoa_don.xu_ly_du_lieu import HoaDonService
 
 
 class CreateInvoiceDialog(QDialog):

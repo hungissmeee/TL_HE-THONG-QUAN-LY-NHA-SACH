@@ -2,7 +2,7 @@
 
 import re
 
-from core.repositories.nhan_vien_repository import NhanVienRepository, ROLE_MAP
+from core.nhan_vien.truy_van_sql import NhanVienRepository, ROLE_MAP
 
 
 class NhanVienService:

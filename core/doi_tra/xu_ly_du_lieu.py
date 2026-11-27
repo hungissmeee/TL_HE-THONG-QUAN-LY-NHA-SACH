@@ -2,7 +2,7 @@
 
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
-from core.repositories.doi_tra_repository import ReturnRepository
+from core.doi_tra.truy_van_sql import ReturnRepository
 
 
 MONEY_QUANT = Decimal("0.01")
@@ -13,6 +13,9 @@ class ReturnService:
         if not isinstance(repository, ReturnRepository):
             raise TypeError("repository phải là ReturnRepository.")
         self.repository = repository
+
+    def get_authorized_employee(self, username, is_admin=False):
+        return self.repository.get_authorized_employee(username, is_admin)
 
     def get_employee_role(self, username):
         return self.repository.get_employee_role(username)

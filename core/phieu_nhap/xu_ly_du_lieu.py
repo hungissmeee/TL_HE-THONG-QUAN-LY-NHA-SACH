@@ -2,7 +2,7 @@
 
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
-from core.repositories.phieu_nhap_repository import PhieuNhapRepository
+from core.phieu_nhap.truy_van_sql import PhieuNhapRepository
 
 
 class PhieuNhapService:
@@ -89,6 +89,13 @@ class PhieuNhapService:
             "total": total.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
         }
         return self.repository.create_import(payload)
+
+    def can_cancel_import(self, import_code, username):
+        code = str(import_code or "").strip()
+        user = str(username or "").strip()
+        if not code or not user:
+            return False
+        return self.repository.can_cancel_import(code, user)
 
     def cancel_import(self, import_code, username, role, is_admin=False):
         code = str(import_code or "").strip()

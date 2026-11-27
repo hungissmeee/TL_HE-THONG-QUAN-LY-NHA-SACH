@@ -202,7 +202,7 @@ class ProductListColumnTests(unittest.TestCase):
 
     def test_isbn_remains_searchable_and_visible_in_book_details(self):
         import inspect
-        from core.repositories.san_pham_repository import SanPhamRepository
+        from core.san_pham.truy_van_sql import SanPhamRepository
         from ui.san_pham.chi_tiet import ProductDetailDialog
 
         repository_source = inspect.getsource(SanPhamRepository.list_products)
@@ -577,7 +577,7 @@ class CodeGenerationTests(unittest.TestCase):
 
     def test_catalog_code_uses_configured_prefix_and_table_lock(self):
         cursor = FakeCursor(7)
-        from core.repositories.catalog_repository import CatalogRepository
+        from core.danh_muc.truy_van_sql import CatalogRepository
         repository = CatalogRepository(None, "authors")
 
         code = repository._next_code(cursor, lock_table=True)
@@ -589,7 +589,7 @@ class CodeGenerationTests(unittest.TestCase):
     def test_supplier_code_uses_ncc_prefix_and_table_lock(self):
         cursor = FakeCursor(12)
 
-        from core.repositories.nha_cung_cap_repository import NhaCungCapRepository
+        from core.nha_cung_cap.truy_van_sql import NhaCungCapRepository
         code = NhaCungCapRepository._next_code(cursor, lock_table=True)
 
         self.assertEqual(code, "NCC013")
@@ -598,7 +598,7 @@ class CodeGenerationTests(unittest.TestCase):
     def test_product_code_uses_sp_prefix_and_table_lock(self):
         cursor = FakeCursor(9)
 
-        from core.repositories.san_pham_repository import SanPhamRepository
+        from core.san_pham.truy_van_sql import SanPhamRepository
         code = SanPhamRepository._next_product_code(cursor, lock_table=True)
 
         self.assertEqual(code, "SP010")
@@ -617,7 +617,7 @@ class CodeGenerationTests(unittest.TestCase):
     def test_import_code_uses_six_digit_suffix_and_table_lock(self):
         cursor = FakeCursor(12)
 
-        from core.repositories.phieu_nhap_repository import PhieuNhapRepository
+        from core.phieu_nhap.truy_van_sql import PhieuNhapRepository
         code = PhieuNhapRepository._next_import_code(cursor)
 
         self.assertEqual(code, "PN000013")
@@ -626,7 +626,7 @@ class CodeGenerationTests(unittest.TestCase):
     def test_promotion_code_uses_km_prefix_six_digit_suffix_and_table_lock(self):
         cursor = FakeCursor(42)
 
-        from core.repositories.khuyen_mai_repository import KhuyenMaiRepository
+        from core.khuyen_mai.truy_van_sql import KhuyenMaiRepository
         code = KhuyenMaiRepository._next_code(cursor)
 
         self.assertEqual(code, "KM000043")

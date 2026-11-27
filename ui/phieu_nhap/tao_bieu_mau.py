@@ -25,8 +25,8 @@ from .dung_chung import MONEY_QUANT, Decimal, ROUND_HALF_UP, money, as_decimal
 from .tao_nha_cung_cap import CreateSupplierDialog
 from ui.permissions import is_admin_account
 from ui.san_pham.tim_kiem import find_matching_product_codes
-from core.repositories.phieu_nhap_repository import PhieuNhapRepository
-from core.services.phieu_nhap_service import PhieuNhapService
+from core.phieu_nhap.truy_van_sql import PhieuNhapRepository
+from core.phieu_nhap.xu_ly_du_lieu import PhieuNhapService
 
 
 class CreateImportDialog(QDialog):

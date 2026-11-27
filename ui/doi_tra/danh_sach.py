@@ -15,8 +15,8 @@ from ui.table_sort import (
 from .dung_chung import date_text, money
 from .tao_bieu_mau import CreateReturnDialog
 from .chi_tiet import ReturnDetailDialog
-from core.repositories.doi_tra_repository import ReturnRepository
-from core.services.doi_tra_service import ReturnService
+from core.doi_tra.truy_van_sql import ReturnRepository
+from core.doi_tra.xu_ly_du_lieu import ReturnService
 
 
 class ReturnWindow(QWidget):
@@ -123,39 +123,6 @@ class ReturnWindow(QWidget):
 
         self.total_label = QLabel("Tổng số phiếu đổi trả: 0")
         root.addWidget(self.total_label)
-
-    @staticmethod
-    def _build_inventory_reversal_actions(details):
-        """Xác định biến động kho cần đảo khi xóa phiếu đổi trả.
-
-        Hoàn tiền hàng nguyên vẹn: trừ lại lượng đã nhập về kho.
-        Đổi hàng hỏng: cộng lại lượng hàng mới đã xuất để đổi.
-        Hoàn tiền hàng hỏng: không làm thay đổi tồn kho.
-        """
-        actions = []
-        for detail in details:
-            product_code = str(detail[0] or "").strip()
-            quantity = int(detail[1] or 0)
-            condition = detail[2]
-            action = detail[3]
-
-            if not product_code or quantity <= 0:
-                raise ValueError("Chi tiết đổi trả có mã sản phẩm hoặc số lượng không hợp lệ.")
-            if condition not in (0, 1) or action not in (0, 1):
-                raise ValueError(
-                    f"Chi tiết sản phẩm {product_code} thiếu tình trạng hàng hoặc hình thức xử lý hợp lệ."
-                )
-
-            if action == 1:
-                if condition != 0:
-                    raise ValueError(
-                        f"Sản phẩm {product_code}: dữ liệu đổi hàng không hợp lệ vì hàng trả không bị hỏng."
-                    )
-                actions.append((product_code, quantity, "ADD"))
-            elif condition == 1:
-                actions.append((product_code, quantity, "SUBTRACT"))
-
-        return actions
 
     def clear_filters(self):
         """Xóa từ khóa và đưa khoảng ngày về 30 ngày gần nhất."""

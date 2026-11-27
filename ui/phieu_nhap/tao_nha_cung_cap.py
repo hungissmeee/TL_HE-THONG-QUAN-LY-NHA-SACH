@@ -1,5 +1,8 @@
 """CreateSupplierDialog: thành phần giao diện nghiệp vụ phiếu nhập."""
 
+from core.nha_cung_cap.truy_van_sql import NhaCungCapRepository
+from core.nha_cung_cap.xu_ly_du_lieu import NhaCungCapService
+
 from PySide6.QtWidgets import (
     QDialog,
     QLabel,
@@ -20,6 +23,7 @@ class CreateSupplierDialog(QDialog):
     def __init__(self, db, parent=None):
         super().__init__(parent)
         self.db = db
+        self.service = NhaCungCapService(NhaCungCapRepository(db))
         self.saved_supplier = None
         self.setWindowTitle("Thêm nhà cung cấp")
         self.setMinimumWidth(460)
@@ -58,52 +62,22 @@ class CreateSupplierDialog(QDialog):
         root.addLayout(buttons)
 
     def save_supplier(self):
-        name = self.name_input.text().strip()
-        if not name:
-            QMessageBox.warning(self, "Thiếu thông tin", "Vui lòng nhập tên nhà cung cấp.")
-            return
-
-        conn = self.db.get_connection()
-        if conn is None:
-            QMessageBox.warning(self, "Thông báo", "Chưa có kết nối SQL Server.")
-            return
-
-        cursor = conn.cursor()
+        """Lưu nhà cung cấp qua Service; giao diện không tự truy vấn SQL."""
+        payload = {
+            "name": self.name_input.text(),
+            "phone": self.phone_input.text(),
+            "address": self.address_input.text(),
+            "tax": self.tax_input.text(),
+        }
         try:
-            cursor.execute("""
-                SELECT COALESCE(
-                    MAX(TRY_CONVERT(BIGINT, SUBSTRING(MANCC, 4, 17))), 0
-                )
-                FROM dbo.NHA_CUNG_CAP WITH (TABLOCKX, HOLDLOCK)
-                WHERE UPPER(LEFT(MANCC, 3)) = 'NCC'
-                  AND TRY_CONVERT(BIGINT, SUBSTRING(MANCC, 4, 17)) IS NOT NULL
-            """)
-            next_number = int(cursor.fetchone()[0] or 0) + 1
-            code = f"NCC{next_number:03d}"
-            cursor.execute("""
-                INSERT INTO dbo.NHA_CUNG_CAP
-                    (MANCC, SDT, TENNCC, DIACHI, MST, IS_DELETED)
-                VALUES (?, ?, ?, ?, ?, 0)
-            """, (
-                code,
-                self.phone_input.text().strip() or None,
-                name,
-                self.address_input.text().strip() or None,
-                self.tax_input.text().strip() or None,
-            ))
-            conn.commit()
+            code = self.service.save_supplier(payload)
+            name = str(payload["name"]).strip()
             self.saved_supplier = (code, name)
             QMessageBox.information(
                 self, "Thành công", f"Đã thêm nhà cung cấp {code} - {name}."
             )
             self.accept()
+        except (ValueError, LookupError) as error:
+            QMessageBox.warning(self, "Thông tin chưa hợp lệ", str(error))
         except Exception as error:
-            conn.rollback()
             QMessageBox.critical(self, "Không thể thêm nhà cung cấp", str(error))
-        finally:
-            cursor.close()
-
-
-
-
-

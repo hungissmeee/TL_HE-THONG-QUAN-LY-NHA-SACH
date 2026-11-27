@@ -29,8 +29,8 @@ from ui.table_sort import (
 from .dung_chung import money, date_text
 from .tao_bieu_mau import CreateImportDialog
 from .chi_tiet import ImportDetailDialog
-from core.repositories.phieu_nhap_repository import PhieuNhapRepository
-from core.services.phieu_nhap_service import PhieuNhapService
+from core.phieu_nhap.truy_van_sql import PhieuNhapRepository
+from core.phieu_nhap.xu_ly_du_lieu import PhieuNhapService
 
 
 IMPORT_VIEW_ROLES = frozenset({"quản lý", "nhân viên kho", "kế toán"})
@@ -216,26 +216,12 @@ class ImportWindow(QWidget):
         owner = str(code_item.data(Qt.ItemDataRole.UserRole) or "")
         can_cancel = self.is_warehouse and owner.casefold() == self.username.casefold()
         if can_cancel:
-            conn = self.db.get_connection()
-            if conn is None:
-                return
-            cursor = None
             try:
-                cursor = conn.cursor()
-                cursor.execute("""
-                    SELECT CASE WHEN NGAYNHAP >= DATEADD(MINUTE, -5, SYSDATETIME())
-                                     AND NGAYNHAP <= SYSDATETIME()
-                                THEN 1 ELSE 0 END
-                    FROM dbo.PHIEU_NHAP WHERE MAPN = ? AND MANV = ?
-                      AND ISNULL(TRANGTHAI, 1) = 1
-                """, code_item.text(), self.username)
-                result = cursor.fetchone()
-                self._selected_can_cancel = bool(result and result[0] == 1)
+                self._selected_can_cancel = self.service.can_cancel_import(
+                    code_item.text(), self.username
+                )
             except Exception:
                 self._selected_can_cancel = False
-            finally:
-                if cursor is not None:
-                    cursor.close()
 
     def cancel_selected_import(self):
         if not self.can_cancel:

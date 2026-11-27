@@ -1,7 +1,7 @@
 """SupplierFormDialog: thành phần giao diện nghiệp vụ."""
 
-from core.repositories.nha_cung_cap_repository import NhaCungCapRepository
-from core.services.nha_cung_cap_service import NhaCungCapService
+from core.nha_cung_cap.truy_van_sql import NhaCungCapRepository
+from core.nha_cung_cap.xu_ly_du_lieu import NhaCungCapService
 
 from PySide6.QtWidgets import (
     QDialog,

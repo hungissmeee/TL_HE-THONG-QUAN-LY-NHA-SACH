@@ -33,8 +33,8 @@ from ui.table_sort import (
 from .tao_bieu_mau import ShiftCreateDialog
 from .chi_tiet import ShiftDetailDialog
 from ui.permissions import is_admin_account
-from core.repositories.ca_lam_viec_repository import CaLamViecRepository
-from core.services.ca_lam_viec_service import CaLamViecService
+from core.ca_lam_viec.truy_van_sql import CaLamViecRepository
+from core.ca_lam_viec.xu_ly_du_lieu import CaLamViecService
 
 
 class ShiftWindow(QWidget):

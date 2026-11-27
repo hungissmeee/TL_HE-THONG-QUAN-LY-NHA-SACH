@@ -4,24 +4,24 @@ import unittest
 from datetime import date, datetime
 from decimal import Decimal
 
-from core.repositories.san_pham_repository import SanPhamRepository
-from core.services.san_pham_service import SanPhamService
-from core.repositories.nha_cung_cap_repository import NhaCungCapRepository
-from core.services.nha_cung_cap_service import NhaCungCapService
-from core.repositories.phieu_nhap_repository import PhieuNhapRepository
-from core.services.phieu_nhap_service import PhieuNhapService
-from core.repositories.hoa_don_repository import HoaDonRepository
-from core.services.hoa_don_service import HoaDonService
-from core.repositories.doi_tra_repository import ReturnRepository
-from core.services.doi_tra_service import ReturnService
-from core.repositories.nhan_vien_repository import NhanVienRepository
-from core.services.nhan_vien_service import NhanVienService
-from core.repositories.ca_lam_viec_repository import CaLamViecRepository
-from core.services.ca_lam_viec_service import CaLamViecService
-from core.repositories.khuyen_mai_repository import KhuyenMaiRepository
-from core.services.khuyen_mai_service import KhuyenMaiService
-from core.repositories.bao_cao_repository import BaoCaoRepository
-from core.services.bao_cao_service import BaoCaoService
+from core.san_pham.truy_van_sql import SanPhamRepository
+from core.san_pham.xu_ly_du_lieu import SanPhamService
+from core.nha_cung_cap.truy_van_sql import NhaCungCapRepository
+from core.nha_cung_cap.xu_ly_du_lieu import NhaCungCapService
+from core.phieu_nhap.truy_van_sql import PhieuNhapRepository
+from core.phieu_nhap.xu_ly_du_lieu import PhieuNhapService
+from core.hoa_don.truy_van_sql import HoaDonRepository
+from core.hoa_don.xu_ly_du_lieu import HoaDonService
+from core.doi_tra.truy_van_sql import ReturnRepository
+from core.doi_tra.xu_ly_du_lieu import ReturnService
+from core.nhan_vien.truy_van_sql import NhanVienRepository
+from core.nhan_vien.xu_ly_du_lieu import NhanVienService
+from core.ca_lam_viec.truy_van_sql import CaLamViecRepository
+from core.ca_lam_viec.xu_ly_du_lieu import CaLamViecService
+from core.khuyen_mai.truy_van_sql import KhuyenMaiRepository
+from core.khuyen_mai.xu_ly_du_lieu import KhuyenMaiService
+from core.bao_cao.truy_van_sql import BaoCaoRepository
+from core.bao_cao.xu_ly_du_lieu import BaoCaoService
 
 
 class FakeProductRepository(SanPhamRepository):
@@ -843,7 +843,7 @@ class ReportServiceTests(unittest.TestCase):
 
     def test_report_repository_exposes_only_public_fetch_helpers(self):
         import inspect
-        from core.repositories.bao_cao_repository import BaoCaoRepository
+        from core.bao_cao.truy_van_sql import BaoCaoRepository
 
         source = inspect.getsource(BaoCaoRepository)
         self.assertIn("def fetch_all(", source)

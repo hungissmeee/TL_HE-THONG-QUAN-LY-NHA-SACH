@@ -7,8 +7,8 @@ from PySide6.QtWidgets import (
 )
 from .dung_chung import date_text, money
 from ui.table_sort import set_table_minimum_section_size
-from core.repositories.doi_tra_repository import ReturnRepository
-from core.services.doi_tra_service import ReturnService
+from core.doi_tra.truy_van_sql import ReturnRepository
+from core.doi_tra.xu_ly_du_lieu import ReturnService
 
 
 class ReturnDetailDialog(QDialog):

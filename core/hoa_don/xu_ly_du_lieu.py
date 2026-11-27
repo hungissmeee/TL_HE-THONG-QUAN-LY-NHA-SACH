@@ -2,7 +2,7 @@
 
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
-from core.repositories.hoa_don_repository import HoaDonRepository
+from core.hoa_don.truy_van_sql import HoaDonRepository
 
 
 MONEY_QUANT = Decimal("0.01")
@@ -118,6 +118,13 @@ class HoaDonService:
             "change": (cash - total).quantize(MONEY_QUANT, rounding=ROUND_HALF_UP),
         }
         return self.repository.create_invoice(payload, is_admin=is_admin)
+
+    def can_cancel_invoice(self, invoice_code, username):
+        code = str(invoice_code or "").strip()
+        user = str(username or "").strip()
+        if not code or not user:
+            return False
+        return self.repository.can_cancel_invoice(code, user)
 
     def cancel_invoice(self, invoice_code, username, role, is_admin=False):
         code = str(invoice_code or "").strip()

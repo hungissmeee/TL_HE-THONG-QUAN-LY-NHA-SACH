@@ -78,48 +78,59 @@ Dự án xây dựng giải pháp quản lý tập trung cho mô hình kinh doan
 
 # 4. Cấu trúc mã nguồn hiện tại
 
-Giao diện được tổ chức theo nhóm chức năng. Mỗi package chứa các thành phần liên quan; `danh_sach.py` quản lý trang danh sách, các tệp `tao_bieu_mau.py`, `chi_tiet.py` chứa hộp thoại nghiệp vụ và `dung_chung.py` chứa phần dùng chung trong nhóm.
+Mã nguồn được tổ chức theo từng phân hệ nghiệp vụ. Trong mỗi phân hệ của `core/`, hai tệp có tên cố định giúp nhận biết ngay trách nhiệm: `xu_ly_du_lieu.py` chứa Service và quy tắc nghiệp vụ; `truy_van_sql.py` chứa Repository và câu lệnh SQL.
 
 ```text
 .
 ├── main.py
 ├── database/
 │   ├── connection.py
-│   └── script.sql
-├── tests/
-│   ├── test_dinh_dang.py
-│   ├── test_import.py
-│   └── test_giao_dien.py
-└── ui/
-    ├── main_windows.py
-    ├── login.py
-    ├── tai_khoan.py
-    ├── nhan_vien.py
-    ├── danh_muc.py
-    ├── doi_mat_khau.py
-    ├── formatters.py
-    ├── styles.py
-    ├── table_sort.py
-    ├── hoa_don/
-    ├── phieu_nhap/
-    ├── san_pham/
-    ├── nha_cung_cap/
-    ├── ca_lam_viec/
-    └── bao_cao/
+│   ├── script.sql
+│   └── migrations/
+├── core/
+│   ├── hoa_don/
+│   │   ├── xu_ly_du_lieu.py
+│   │   └── truy_van_sql.py
+│   ├── phieu_nhap/
+│   ├── san_pham/
+│   ├── doi_tra/
+│   ├── nha_cung_cap/
+│   ├── nhan_vien/
+│   ├── ca_lam_viec/
+│   ├── khuyen_mai/
+│   ├── danh_muc/
+│   ├── bao_cao/
+│   ├── catalog_config.py
+│   └── sql_support.py
+├── ui/
+│   ├── main_windows.py
+│   ├── sidebar_navigation.py
+│   ├── nhan_vien/
+│   │   ├── danh_sach.py
+│   │   └── chi_tiet.py
+│   ├── hoa_don/
+│   ├── phieu_nhap/
+│   ├── san_pham/
+│   ├── nha_cung_cap/
+│   ├── ca_lam_viec/
+│   ├── doi_tra/
+│   ├── khuyen_mai/
+│   └── bao_cao/
+└── tests/
 ```
 
-Các module legacy có tiền tố `f` đã được loại bỏ. Các tên kỹ thuật quen thuộc `ui/`, `tests/`, `database/`, `connection.py`, `main.py` và `main_windows.py` được giữ nguyên. Tên package và module theo nghiệp vụ nhà sách dùng tiếng Việt không dấu, viết theo `snake_case`.
+Các thư mục `core/repositories/` và `core/services/` được giữ dưới dạng lớp tương thích import cũ; code mới nên import trực tiếp từ package nghiệp vụ tương ứng. Ví dụ: `core.hoa_don.xu_ly_du_lieu` và `core.hoa_don.truy_van_sql`.
 
 ## 4.1. Quy ước phân chia trách nhiệm
 
-- `ui/main_windows.py`: khởi tạo cửa sổ chính, sidebar, điều hướng và phân quyền hiển thị.
-- `database/connection.py`: kết nối SQL Server, quản lý tài khoản và quyền SQL.
-- `ui/formatters.py`: định dạng tiền, ngày tháng và số liệu dùng chung.
-- `ui/styles.py`: stylesheet của cửa sổ chính, tách khỏi logic điều hướng.
-- `ui/table_sort.py`: sắp xếp dữ liệu trong bảng.
-- Các package nghiệp vụ: tách trang danh sách, form và hộp thoại chi tiết.
+- `ui/`: nhận thao tác, hiển thị dữ liệu và gọi Service; không tự mở cursor hoặc viết SQL.
+- `core/<phan_he>/xu_ly_du_lieu.py`: kiểm tra đầu vào, tính toán và điều phối quy tắc nghiệp vụ.
+- `core/<phan_he>/truy_van_sql.py`: truy vấn, đọc/ghi SQL Server và transaction của thao tác dữ liệu.
+- `database/connection.py`: kết nối SQL Server và quản lý các thao tác tài khoản/role ở cấp SQL Server.
+- `core/sql_support.py`: tiện ích dùng chung để phân giải nguồn kết nối.
+- `ui/sidebar_navigation.py`: nhóm menu, điều hướng trang và quyền hiển thị sidebar.
+- `ui/formatters.py`, `ui/styles.py`, `ui/table_sort.py`: tiện ích hiển thị dùng chung.
 - `ui/bao_cao/`: các trang báo cáo dùng chung lớp nền `ReportBasePage`.
-
 ## 4.2. Nguyên tắc refactor
 
 - Giữ nguyên câu SQL, tên bảng/cột, quy tắc tính tiền, cập nhật tồn kho và phân quyền khi chỉ thực hiện refactor cấu trúc.

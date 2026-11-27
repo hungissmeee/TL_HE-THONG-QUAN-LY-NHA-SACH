@@ -71,8 +71,19 @@ Cấu trúc dưới đây là đích dự kiến, có thể điều chỉnh sau 
 project/
 ├── database/                 # Kết nối và script SQL hiện tại
 ├── core/
-│   ├── services/             # Quy tắc nghiệp vụ dùng chung
-│   └── repositories/         # Truy vấn SQL, truy cập dữ liệu
+│   ├── hoa_don/
+│   │   ├── xu_ly_du_lieu.py  # Service nghiệp vụ
+│   │   └── truy_van_sql.py   # Repository SQL
+│   ├── phieu_nhap/
+│   ├── san_pham/
+│   ├── doi_tra/
+│   ├── nha_cung_cap/
+│   ├── nhan_vien/
+│   ├── ca_lam_viec/
+│   ├── khuyen_mai/
+│   ├── danh_muc/
+│   ├── bao_cao/
+│   └── common/               # Cấu hình và tiện ích dùng chung
 ├── backend/
 │   ├── app/
 │   │   ├── main.py
@@ -97,8 +108,8 @@ project/
 
 ### Quy tắc phân lớp
 
-- **Repository:** chỉ đảm nhiệm đọc/ghi dữ liệu; không chứa logic giao diện và không quyết định quyền người dùng.
-- **Service:** chứa quy tắc nghiệp vụ, kiểm tra trạng thái, tính tiền, cập nhật tồn kho và điều phối transaction.
+- **`xu_ly_du_lieu.py` (Service):** chứa quy tắc nghiệp vụ, kiểm tra đầu vào, tính tiền và điều phối các bước xử lý.
+- **`truy_van_sql.py` (Repository):** đảm nhiệm truy vấn SQL, đọc/ghi dữ liệu và transaction; các kiểm tra cần khóa/trạng thái mới nhất phải nằm trong cùng transaction.
 - **API Router:** nhận request, xác thực đầu vào, gọi service và chuyển kết quả thành response; không viết truy vấn SQL dài trực tiếp trong router.
 - **Schema:** định nghĩa dữ liệu vào/ra; không trả thông tin nhạy cảm như mật khẩu, chuỗi kết nối hoặc dữ liệu nội bộ không cần thiết.
 - **Frontend:** không chứa bí mật hoặc thông tin kết nối SQL; không tự tính lại kết quả tài chính để thay thế Backend.
