@@ -309,8 +309,10 @@ MAIN_WINDOW_STYLESHEET = """
                 padding: 3px;
             }
 
-            /* Hai nút tăng/giảm của SpinBox được tách và định vị rõ ràng. */
-            QAbstractSpinBox::up-button {
+            /* Chỉ áp dụng nút tăng/giảm cho SpinBox số lượng/giá.
+               QDateEdit và QDateTimeEdit giữ nút lịch mặc định của Qt. */
+            QSpinBox::up-button,
+            QDoubleSpinBox::up-button {
                 subcontrol-origin: border;
                 subcontrol-position: top right;
                 width: 20px;
@@ -321,7 +323,8 @@ MAIN_WINDOW_STYLESHEET = """
                 background-color: #34445A;
             }
 
-            QAbstractSpinBox::down-button {
+            QSpinBox::down-button,
+            QDoubleSpinBox::down-button {
                 subcontrol-origin: border;
                 subcontrol-position: bottom right;
                 width: 20px;
@@ -332,12 +335,15 @@ MAIN_WINDOW_STYLESHEET = """
                 background-color: #34445A;
             }
 
-            QAbstractSpinBox::up-button:hover,
-            QAbstractSpinBox::down-button:hover {
+            QSpinBox::up-button:hover,
+            QSpinBox::down-button:hover,
+            QDoubleSpinBox::up-button:hover,
+            QDoubleSpinBox::down-button:hover {
                 background-color: #465B75;
             }
 
-            QAbstractSpinBox::up-arrow {
+            QSpinBox::up-arrow,
+            QDoubleSpinBox::up-arrow {
                 image: none;
                 width: 0px;
                 height: 0px;
@@ -346,7 +352,8 @@ MAIN_WINDOW_STYLESHEET = """
                 border-bottom: 5px solid #E5E7EB;
             }
 
-            QAbstractSpinBox::down-arrow {
+            QSpinBox::down-arrow,
+            QDoubleSpinBox::down-arrow {
                 image: none;
                 width: 0px;
                 height: 0px;
@@ -355,11 +362,13 @@ MAIN_WINDOW_STYLESHEET = """
                 border-top: 5px solid #E5E7EB;
             }
 
-            QAbstractSpinBox:disabled::up-arrow {
+            QSpinBox:disabled::up-arrow,
+            QDoubleSpinBox:disabled::up-arrow {
                 border-bottom-color: #8291A5;
             }
 
-            QAbstractSpinBox:disabled::down-arrow {
+            QSpinBox:disabled::down-arrow,
+            QDoubleSpinBox:disabled::down-arrow {
                 border-top-color: #8291A5;
             }
 
