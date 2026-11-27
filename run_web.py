@@ -66,6 +66,11 @@ def load_frontend_options() -> FrontendOptions:
 
 def _find_npm() -> str:
     """Tìm npm trên Windows, Linux hoặc macOS."""
+    if not shutil.which("node"):
+        raise SystemExit(
+            "[BookHub] Không tìm thấy Node.js. Hãy cài Node.js bản LTS rồi mở Terminal mới."
+        )
+
     candidates = ("npm.cmd", "npm") if os.name == "nt" else ("npm",)
     for candidate in candidates:
         path = shutil.which(candidate)
