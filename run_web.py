@@ -173,7 +173,7 @@ def _stop_process(running: RunningProcess) -> None:
 
 def _check_python_dependencies() -> None:
     missing = [
-        name for name in ("uvicorn", "fastapi", "pyodbc", "dotenv")
+        name for name in ("uvicorn", "fastapi", "pyodbc", "dotenv", "jwt")
         if find_spec(name) is None
     ]
     if missing:
