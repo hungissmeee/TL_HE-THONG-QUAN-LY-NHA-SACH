@@ -621,6 +621,15 @@ class CodeGenerationTests(unittest.TestCase):
         self.assertEqual(code, "PN000013")
         self.assertIn("dbo.PHIEU_NHAP WITH (TABLOCKX, HOLDLOCK)", cursor.sql)
 
+    def test_promotion_code_uses_km_prefix_six_digit_suffix_and_table_lock(self):
+        cursor = FakeCursor(42)
+
+        from core.repositories.khuyen_mai_repository import KhuyenMaiRepository
+        code = KhuyenMaiRepository._next_code(cursor)
+
+        self.assertEqual(code, "KM000043")
+        self.assertIn("dbo.CHUONG_TRINH_KM WITH (TABLOCKX, HOLDLOCK)", cursor.sql)
+
     def test_catalogs_have_unique_table_and_code_prefix_configuration(self):
         tables = [config["table"] for config in CATALOGS.values()]
         prefixes = [config["code_prefix"] for config in CATALOGS.values()]
