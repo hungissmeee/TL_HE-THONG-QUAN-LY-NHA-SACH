@@ -68,7 +68,7 @@ class CaLamViecService:
 
     def list_shift_history(self, period="all"):
         if period not in {"all", "today", "7days", "30days"}:
-            raise ValueError("Khoảng thời gian lịch sử ca không hợp lệ.")
+            raise ValueError("khoảng thời gian lịch sử ca không hợp lệ.")
         return self.repository.list_shift_history(period)
 
     def get_shift_roster(self, shift_id):
