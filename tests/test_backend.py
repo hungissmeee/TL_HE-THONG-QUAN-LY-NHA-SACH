@@ -7,16 +7,23 @@ from pathlib import Path
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
+import jwt
+import pyodbc
 
 from backend.config import ConfigurationError, Settings, load_settings
 from backend.database import (
+    AuthenticationRejectedError,
     DatabaseUnavailableError,
     build_connection_string,
     create_connection,
+    create_employee_auth_connection,
 )
+from backend.authentication import authenticate_employee
+from backend.security import CurrentUser, create_access_token
 from backend.dependencies import get_db_connection
 from backend.main import create_app
 from database.connection import Database
+
 from run_backend import load_server_options
 
 
@@ -316,6 +323,191 @@ class BackendHealthTests(unittest.TestCase):
         self.assertIn("/api/v1/health/live", paths)
         self.assertIsNone(app.docs_url)
         self.assertIsNone(app.redoc_url)
+
+
+
+class BackendAuthenticationTests(unittest.TestCase):
+    def setUp(self):
+        patcher = patch("backend.config.ENV_FILE", Path(".missing-auth-test-env"))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.env = {
+            "BOOKHUB_WEB_ENV": "test",
+            "BOOKHUB_WEB_JWT_SECRET": "test-secret-that-is-long-enough-for-hs256",
+        }
+
+    def test_employee_authentication_reads_role_from_sql_server(self):
+        # MANV, TENNV, VAITRO, SDT, admin, manager, cashier, warehouse, accounting
+        row = ("NV001", "Nhân viên A", "Thu ngân", "0900000000", 0, 0, 1, 0, 0)
+        connection = FakeConnection(FakeCursor(row=row))
+        with patch(
+            "backend.authentication.create_employee_auth_connection",
+            return_value=connection,
+        ):
+            employee = authenticate_employee(
+                make_settings(), "NV001", "employee-password"
+            )
+
+        self.assertEqual(employee.employee_code, "NV001")
+        self.assertEqual(employee.role, "Thu ngân")
+        self.assertEqual(employee.role_code, "rl_ThuNgan")
+        self.assertTrue(connection.fake_cursor.closed)
+        self.assertTrue(connection.rollback_called)
+        self.assertTrue(connection.closed)
+
+    def test_employee_authentication_rejects_employee_without_role(self):
+        row = ("NV001", "Nhân viên A", "Thu ngân", "0900000000", 0, 0, 0, 0, 0)
+        connection = FakeConnection(FakeCursor(row=row))
+        with patch(
+            "backend.authentication.create_employee_auth_connection",
+            return_value=connection,
+        ):
+            with self.assertRaises(AuthenticationRejectedError):
+                authenticate_employee(make_settings(), "NV001", "employee-password")
+        self.assertTrue(connection.closed)
+
+    def test_employee_authentication_rejects_missing_employee_profile(self):
+        connection = FakeConnection(FakeCursor(row=None))
+        with patch(
+            "backend.authentication.create_employee_auth_connection",
+            return_value=connection,
+        ):
+            with self.assertRaises(AuthenticationRejectedError):
+                authenticate_employee(make_settings(), "unknown", "password")
+
+    def test_employee_auth_connection_uses_submitted_credentials(self):
+        settings = make_settings()
+        expected = object()
+        with patch(
+            "backend.database.pyodbc.connect", return_value=expected
+        ) as connect:
+            result = create_employee_auth_connection(settings, "NV001", "employee-secret")
+        self.assertIs(result, expected)
+        connection_string = connect.call_args.args[0]
+        self.assertIn("UID={NV001};", connection_string)
+        self.assertIn("PWD={employee-secret};", connection_string)
+        self.assertFalse(connect.call_args.kwargs["autocommit"])
+
+    def test_employee_auth_connection_maps_sql_login_rejection(self):
+        with patch(
+            "backend.database.pyodbc.connect",
+            side_effect=pyodbc.Error("28000", "Login failed (18456)"),
+        ):
+            with self.assertRaises(AuthenticationRejectedError):
+                create_employee_auth_connection(make_settings(), "NV001", "wrong")
+
+    def test_employee_auth_connection_maps_non_auth_odbc_errors_to_503_type(self):
+        with patch(
+            "backend.database.pyodbc.connect",
+            side_effect=pyodbc.Error("08001", "SQL Server is unavailable"),
+        ):
+            with self.assertRaises(DatabaseUnavailableError):
+                create_employee_auth_connection(make_settings(), "NV001", "password")
+
+    def test_access_token_contains_employee_identity_and_expiration(self):
+        user = CurrentUser(
+            employee_code="NV001",
+            full_name="Nhân viên A",
+            role="Thu ngân",
+            role_code="rl_ThuNgan",
+        )
+        with patch.dict(os.environ, self.env, clear=True):
+            token, expires_in = create_access_token(user)
+            payload = jwt.decode(
+                token,
+                self.env["BOOKHUB_WEB_JWT_SECRET"],
+                algorithms=["HS256"],
+                audience="bookhub-web",
+                issuer="bookhub-api",
+            )
+        self.assertEqual(expires_in, 1800)
+        self.assertEqual(payload["sub"], "NV001")
+        self.assertEqual(payload["role_code"], "rl_ThuNgan")
+
+    def test_login_returns_access_token_and_me_accepts_it(self):
+        from backend.authentication import AuthenticatedEmployee
+
+        employee = AuthenticatedEmployee(
+            employee_code="NV001",
+            full_name="Nhân viên A",
+            role="Thu ngân",
+            role_code="rl_ThuNgan",
+            phone="0900000000",
+        )
+        app = create_app()
+        with patch.dict(os.environ, self.env, clear=True):
+            with patch(
+                "backend.api.routes.auth.authenticate_employee",
+                return_value=employee,
+            ):
+                client = TestClient(app)
+                response = client.post(
+                    "/api/v1/auth/login",
+                    json={"username": "NV001", "password": "employee-password"},
+                )
+            self.assertEqual(response.status_code, 200)
+            data = response.json()
+            self.assertEqual(data["user"]["employee_code"], "NV001")
+            self.assertEqual(data["user"]["role_code"], "rl_ThuNgan")
+            self.assertEqual(data["token_type"], "bearer")
+            me = client.get(
+                "/api/v1/auth/me",
+                headers={"Authorization": f"Bearer {data['access_token']}"},
+            )
+        self.assertEqual(me.status_code, 200)
+        self.assertEqual(me.json()["employee_code"], "NV001")
+        self.assertEqual(me.json()["role"], "Thu ngân")
+
+    def test_login_returns_401_for_rejected_credentials(self):
+        app = create_app()
+        with patch.dict(os.environ, self.env, clear=True):
+            with patch(
+                "backend.api.routes.auth.authenticate_employee",
+                side_effect=AuthenticationRejectedError("private SQL detail"),
+            ):
+                response = TestClient(app).post(
+                    "/api/v1/auth/login",
+                    json={"username": "NV001", "password": "wrong"},
+                )
+        self.assertEqual(response.status_code, 401)
+        self.assertNotIn("private SQL detail", response.text)
+
+    def test_login_returns_503_when_jwt_secret_is_missing(self):
+        from backend.authentication import AuthenticatedEmployee
+
+        employee = AuthenticatedEmployee(
+            employee_code="NV001",
+            full_name="Nhân viên A",
+            role="Thu ngân",
+            role_code="rl_ThuNgan",
+            phone=None,
+        )
+        app = create_app()
+        with patch.dict(os.environ, {"BOOKHUB_WEB_ENV": "test"}, clear=True):
+            with patch(
+                "backend.api.routes.auth.authenticate_employee",
+                return_value=employee,
+            ):
+                response = TestClient(app).post(
+                    "/api/v1/auth/login",
+                    json={"username": "NV001", "password": "correct"},
+                )
+        self.assertEqual(response.status_code, 503)
+
+    def test_me_requires_bearer_token(self):
+        with patch.dict(os.environ, self.env, clear=True):
+            response = TestClient(create_app()).get("/api/v1/auth/me")
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.headers["www-authenticate"], "Bearer")
+
+    def test_me_rejects_invalid_token_signature(self):
+        with patch.dict(os.environ, self.env, clear=True):
+            response = TestClient(create_app()).get(
+                "/api/v1/auth/me",
+                headers={"Authorization": "Bearer not.a.valid.jwt"},
+            )
+        self.assertEqual(response.status_code, 401)
+
 
 
 class BackendLauncherTests(unittest.TestCase):
