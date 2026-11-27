@@ -224,6 +224,7 @@ class CreateInvoiceDialog(QDialog):
         actions = QVBoxLayout()
         actions.addStretch()
         self.save_button = QPushButton("Lưu hóa đơn")
+        self.save_button.setProperty("buttonRole", "primary")
         self.save_button.clicked.connect(self.save_invoice)
         self.cancel_button = QPushButton("Đóng")
         self.cancel_button.clicked.connect(self.reject)
