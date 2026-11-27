@@ -1,7 +1,7 @@
 """Cửa sổ chính, điều hướng giữa các chức năng và áp dụng quyền của nhân viên."""
 
 from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QLabel, QPushButton,
+    QApplication, QMainWindow, QWidget, QLabel, QPushButton,
     QVBoxLayout, QHBoxLayout, QStackedWidget,
     QMessageBox, QScrollArea, QToolButton, QFrame
 )
@@ -347,7 +347,9 @@ class MainWindow(QMainWindow):
         # ==================================================
         # DARK THEME
         # ==================================================
-        self.setStyleSheet(MAIN_WINDOW_STYLESHEET)
+        app = QApplication.instance()
+        if app is not None:
+            app.setStyleSheet(MAIN_WINDOW_STYLESHEET)
 
     # ==================================================
     # TẠO CÁC NHÓM SIDEBAR (NHÓM ĐƯỢC KHAI BÁO TRONG CODE)
