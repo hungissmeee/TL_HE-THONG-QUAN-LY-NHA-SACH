@@ -166,6 +166,42 @@ class BackendHealthTests(unittest.TestCase):
         self.assertEqual(connection.fake_cursor.executed[0][0], "SELECT 1")
         self.assertTrue(connection.fake_cursor.closed)
 
+    def test_database_dependency_rolls_back_and_closes_connection(self):
+        env = {
+            "BOOKHUB_WEB_SQL_SERVER": "localhost",
+            "BOOKHUB_WEB_SQL_DATABASE": "CSDLTEST",
+            "BOOKHUB_WEB_SQL_USERNAME": "bookhub_web",
+            "BOOKHUB_WEB_SQL_PASSWORD": "test-secret",
+        }
+        connection = FakeConnection()
+        with patch.dict(os.environ, env, clear=True):
+            with patch("backend.dependencies.create_connection", return_value=connection):
+                dependency = get_db_connection()
+                yielded = next(dependency)
+                self.assertIs(yielded, connection)
+                with self.assertRaises(StopIteration):
+                    next(dependency)
+
+        self.assertTrue(connection.rollback_called)
+        self.assertTrue(connection.closed)
+
+    def test_cors_uses_configured_origins(self):
+        with patch.dict(
+            os.environ,
+            {"BOOKHUB_WEB_ALLOWED_ORIGINS": "https://web.example.test"},
+            clear=True,
+        ):
+            app = create_app()
+        middleware = [
+            item for item in app.user_middleware
+            if item.cls.__name__ == "CORSMiddleware"
+        ]
+        self.assertEqual(len(middleware), 1)
+        self.assertEqual(
+            middleware[0].kwargs["allow_origins"],
+            ["https://web.example.test"],
+        )
+
     def test_readiness_returns_503_without_database_configuration(self):
         with patch.dict(os.environ, {}, clear=True):
             app = create_app()
