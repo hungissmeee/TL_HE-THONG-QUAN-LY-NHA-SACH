@@ -22,6 +22,8 @@ from ui.table_sort import (
 from .chi_tiet import ProductDetailDialog
 from .bieu_mau import ProductFormDialog
 from ui.formatters import format_product_number
+from core.repositories.san_pham_repository import SanPhamRepository, ProductHasStockError
+from core.services.san_pham_service import SanPhamService
 
 
 PRODUCT_TABLE_HEADERS = (
@@ -37,6 +39,7 @@ class ProductWindow(QWidget):
         """Khởi tạo trang sản phẩm, tải dữ liệu và áp dụng quyền của nhân viên."""
         super().__init__()
         self.db = db
+        self.service = SanPhamService(SanPhamRepository(db))
         self.can_edit_products = False
         self.can_delete_products = False
         self.setObjectName("productPage")
@@ -108,181 +111,41 @@ class ProductWindow(QWidget):
         root.addWidget(self.total_label)
 
     def update_permissions(self):
-        """Kiểm tra quyền thực tế cho các bảng liên quan."""
-        conn = self.db.get_connection()
-        cursor = None
         try:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT
-                    CASE WHEN
-                        HAS_PERMS_BY_NAME('dbo.SAN_PHAM', 'OBJECT', 'INSERT') = 1
-                        AND HAS_PERMS_BY_NAME('dbo.SACH', 'OBJECT', 'INSERT') = 1
-                        AND HAS_PERMS_BY_NAME('dbo.SAN_PHAM_KHAC', 'OBJECT', 'INSERT') = 1
-                        AND HAS_PERMS_BY_NAME('dbo.THUOC_TG', 'OBJECT', 'INSERT') = 1
-                        AND HAS_PERMS_BY_NAME('dbo.THUOC_TL', 'OBJECT', 'INSERT') = 1
-                    THEN 1 ELSE 0 END,
-                    CASE WHEN
-                        HAS_PERMS_BY_NAME('dbo.SAN_PHAM', 'OBJECT', 'UPDATE', 'TENSP', 'COLUMN') = 1
-                        AND HAS_PERMS_BY_NAME('dbo.SAN_PHAM', 'OBJECT', 'UPDATE', 'DVT', 'COLUMN') = 1
-                        AND HAS_PERMS_BY_NAME('dbo.SAN_PHAM', 'OBJECT', 'UPDATE', 'GIABAN', 'COLUMN') = 1
-                        AND HAS_PERMS_BY_NAME('dbo.SAN_PHAM', 'OBJECT', 'UPDATE', 'VAT', 'COLUMN') = 1
-                        AND HAS_PERMS_BY_NAME('dbo.SAN_PHAM', 'OBJECT', 'UPDATE', 'BARCODE', 'COLUMN') = 1
-                        AND HAS_PERMS_BY_NAME('dbo.SACH', 'OBJECT', 'UPDATE', 'ISBN', 'COLUMN') = 1
-                        AND HAS_PERMS_BY_NAME('dbo.SACH', 'OBJECT', 'UPDATE', 'NAMXB', 'COLUMN') = 1
-                        AND HAS_PERMS_BY_NAME('dbo.SACH', 'OBJECT', 'UPDATE', 'MANXB', 'COLUMN') = 1
-                        AND HAS_PERMS_BY_NAME('dbo.SAN_PHAM_KHAC', 'OBJECT', 'UPDATE', 'NGAYSX', 'COLUMN') = 1
-                        AND HAS_PERMS_BY_NAME('dbo.SAN_PHAM_KHAC', 'OBJECT', 'UPDATE', 'MATH', 'COLUMN') = 1
-                        AND HAS_PERMS_BY_NAME('dbo.THUOC_TG', 'OBJECT', 'DELETE') = 1
-                        AND HAS_PERMS_BY_NAME('dbo.THUOC_TG', 'OBJECT', 'INSERT') = 1
-                        AND HAS_PERMS_BY_NAME('dbo.THUOC_TL', 'OBJECT', 'DELETE') = 1
-                        AND HAS_PERMS_BY_NAME('dbo.THUOC_TL', 'OBJECT', 'INSERT') = 1
-                    THEN 1 ELSE 0 END,
-                    CASE WHEN
-                        HAS_PERMS_BY_NAME('dbo.SAN_PHAM', 'OBJECT', 'UPDATE', 'IS_DELETED', 'COLUMN') = 1
-                    THEN 1 ELSE 0 END
-            """)
-            row = cursor.fetchone()
-            self.add_button.setVisible(bool(row[0]))
-            self.can_edit_products = bool(row[1])
-            self.can_delete_products = bool(row[2])
+            permissions = self.service.get_permissions()
+            self.add_button.setVisible(permissions['can_add'])
+            self.can_edit_products = permissions['can_edit']
+            self.can_delete_products = permissions['can_delete']
         except Exception:
-            is_admin = (self.db.username or "").lower() == "admin"
+            is_admin = (self.db.username or '').lower() == 'admin'
             self.add_button.setVisible(is_admin)
             self.can_edit_products = is_admin
             self.can_delete_products = is_admin
-        finally:
-            if cursor is not None:
-                cursor.close()
 
     def load_products(self):
-        """Tải danh sách sản phẩm theo từ khóa tìm kiếm."""
-        conn = self.db.get_connection()
-        if conn is None:
-            QMessageBox.warning(self, "Thông báo", "Chưa có kết nối database!")
-            return
-
-        keyword = self.search_input.text().strip()
-        cursor = None
         try:
-            cursor = conn.cursor()
-            query = """
-                SELECT
-                    SP.MASP,
-                    SP.TENSP,
-                    CASE
-                        WHEN S.MASP IS NOT NULL THEN N'Sách'
-                        WHEN SPK.MASP IS NOT NULL THEN N'Sản phẩm khác'
-                        ELSE N'Chưa phân loại'
-                    END AS LOAI,
-                    SP.DVT,
-                    SP.GIANHAP,
-                    SP.GIABAN,
-                    SP.SLTON,
-                    SP.VAT,
-                    SP.BARCODE
-                FROM dbo.SAN_PHAM SP
-                LEFT JOIN dbo.SACH S ON S.MASP = SP.MASP
-                LEFT JOIN dbo.SAN_PHAM_KHAC SPK ON SPK.MASP = SP.MASP
-                WHERE ISNULL(SP.IS_DELETED, 0) = 0
-            """
-
-            if keyword:
-                pattern = f"%{keyword}%"
-                query += """
-                    AND (
-                        SP.MASP LIKE ?
-                        OR SP.TENSP LIKE ?
-                        OR SP.BARCODE LIKE ?
-                        OR SP.DVT LIKE ?
-                        OR (
-                            CASE
-                                WHEN S.MASP IS NOT NULL THEN N'Sách'
-                                WHEN SPK.MASP IS NOT NULL THEN N'Sản phẩm khác'
-                                ELSE N'Chưa phân loại'
-                            END
-                        ) LIKE ?
-                        OR EXISTS (
-                            SELECT 1
-                            FROM dbo.SACH S2
-                            LEFT JOIN dbo.NHA_XUAT_BAN NXB
-                                ON NXB.MANXB = S2.MANXB
-                            WHERE S2.MASP = SP.MASP
-                              AND (
-                                  S2.ISBN LIKE ?
-                                  OR NXB.MANXB LIKE ?
-                                  OR NXB.TENNXB LIKE ?
-                              )
-                        )
-                        OR EXISTS (
-                            SELECT 1
-                            FROM dbo.THUOC_TG TTG
-                            JOIN dbo.TAC_GIA TG ON TG.MATG = TTG.MATG
-                            WHERE TTG.MASP = SP.MASP
-                              AND (TG.MATG LIKE ? OR TG.TENTG LIKE ?)
-                        )
-                        OR EXISTS (
-                            SELECT 1
-                            FROM dbo.THUOC_TL TTL
-                            JOIN dbo.THE_LOAI TL ON TL.MATL = TTL.MATL
-                            WHERE TTL.MASP = SP.MASP
-                              AND (TL.MATL LIKE ? OR TL.TENTL LIKE ?)
-                        )
-                        OR EXISTS (
-                            SELECT 1
-                            FROM dbo.SAN_PHAM_KHAC SPK2
-                            LEFT JOIN dbo.THUONG_HIEU TH
-                                ON TH.MATH = SPK2.MATH
-                            WHERE SPK2.MASP = SP.MASP
-                              AND (
-                                  TH.MATH LIKE ?
-                                  OR TH.TENTH LIKE ?
-                                  OR TH.XUATXU LIKE ?
-                              )
-                        )
-                    )
-                """
-                query += " ORDER BY SP.MASP"
-                cursor.execute(
-                    query,
-                    pattern, pattern, pattern, pattern, pattern,
-                    pattern, pattern, pattern,
-                    pattern, pattern,
-                    pattern, pattern,
-                    pattern, pattern, pattern
-                )
-            else:
-                query += " ORDER BY SP.MASP"
-                cursor.execute(query)
-
-            products = cursor.fetchall()
-
+            products = self.service.list_products(self.search_input.text().strip())
             pause_table_sorting(self.table)
-
             self.table.setRowCount(0)
-
             for row_index, product in enumerate(products):
                 self.table.insertRow(row_index)
                 values = [
-                    product[0], product[1], product[2], product[3],
-                    self.format_number(product[4]),
-                    self.format_number(product[5]),
-                    product[6], self.format_number(product[7]),
-                    product[8]
+                    product['masp'], product['tensp'], product['loai'], product['dvt'],
+                    self.format_number(product['gianhap']),
+                    self.format_number(product['giaban']),
+                    product['slton'], self.format_number(product['vat']), product['barcode']
                 ]
                 for col_index, value in enumerate(values):
-                    item = QTableWidgetItem("" if value is None else str(value))
+                    item = QTableWidgetItem('' if value is None else str(value))
                     if col_index in (4, 5, 6, 7):
                         item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                     self.table.setItem(row_index, col_index, item)
-
-            self.total_label.setText(f"Tổng số sản phẩm: {len(products)}")
-        except Exception as e:
-            QMessageBox.critical(self, "Lỗi", f"Không thể tải danh sách sản phẩm!\n{e}")
+            self.total_label.setText(f'Tổng số sản phẩm: {len(products)}')
+        except Exception as error:
+            QMessageBox.critical(self, 'Lỗi', f'Không thể tải danh sách sản phẩm!\\n{error}')
         finally:
-            if cursor is not None:
-                cursor.close()
             resume_table_sorting(self.table)
+
     def clear_search(self):
         """Xóa từ khóa và tải lại toàn bộ sản phẩm."""
         self.search_input.clear()
@@ -310,42 +173,14 @@ class ProductWindow(QWidget):
             self.open_product_detail_by_code(item.text())
 
     def open_product_detail_by_code(self, masp):
-        """Tìm sản phẩm theo mã rồi mở cửa sổ chi tiết."""
-        cursor = None
         try:
-            cursor = self.db.get_connection().cursor()
-            cursor.execute("""
-                SELECT
-                    SP.MASP, SP.TENSP,
-                    CASE
-                        WHEN S.MASP IS NOT NULL THEN N'Sách'
-                        WHEN SPK.MASP IS NOT NULL THEN N'Sản phẩm khác'
-                        ELSE N'Chưa phân loại'
-                    END AS LOAI,
-                    SP.DVT, SP.GIANHAP, SP.GIABAN, SP.SLTON, SP.VAT,
-                    SP.BARCODE
-                FROM dbo.SAN_PHAM SP
-                LEFT JOIN dbo.SACH S ON S.MASP = SP.MASP
-                LEFT JOIN dbo.SAN_PHAM_KHAC SPK ON SPK.MASP = SP.MASP
-                WHERE SP.MASP = ?
-                  AND ISNULL(SP.IS_DELETED, 0) = 0
-            """, masp)
-            row = cursor.fetchone()
-            if row is None:
-                QMessageBox.warning(self, "Thông báo", "Không tìm thấy sản phẩm!")
+            product = self.service.get_product_detail(masp)
+            if product is None:
+                QMessageBox.warning(self, 'Thông báo', 'Không tìm thấy sản phẩm!')
                 return
-            product = {
-                "masp": row[0], "tensp": row[1], "loai": row[2],
-                "dvt": row[3], "gianhap": row[4], "giaban": row[5],
-                "slton": row[6], "vat": row[7], "barcode": row[8]
-            }
-        except Exception as e:
-            QMessageBox.critical(self, "Lỗi", f"Không thể lấy chi tiết sản phẩm!\n{e}")
+        except Exception as error:
+            QMessageBox.critical(self, 'Lỗi', f'Không thể lấy chi tiết sản phẩm!\\n{error}')
             return
-        finally:
-            if cursor is not None:
-                cursor.close()
-
         dialog = ProductDetailDialog(
             self.db, product, self,
             can_edit=self.can_edit_products,
@@ -355,95 +190,30 @@ class ProductWindow(QWidget):
             self.load_products()
 
     def delete_product_by_code(self, masp, product_name=None):
-        """Xóa mềm sản phẩm theo mã; được gọi từ popup chi tiết."""
         if not self.can_delete_products:
-            QMessageBox.warning(
-                self, "Không có quyền",
-                "Tài khoản của bạn không có quyền xóa sản phẩm."
-            )
+            QMessageBox.warning(self, 'Không có quyền', 'Tài khoản của bạn không có quyền xóa sản phẩm.')
             return False
-
         display_name = product_name or masp
-        confirm = QMessageBox.warning(
-            self,
-            "Xác nhận xóa sản phẩm",
-            f"Bạn có chắc muốn xóa sản phẩm {masp} - {display_name}?\n\n"
-            "Sản phẩm sẽ được đánh dấu xóa mềm (IS_DELETED = 1). "
-            "Thông tin sách/sản phẩm khác và lịch sử hóa đơn, phiếu nhập vẫn được giữ.",
+        answer = QMessageBox.warning(
+            self, 'Xác nhận xóa sản phẩm',
+            f'Bạn có chắc muốn xóa sản phẩm {masp} - {display_name}?\\n\\nSản phẩm sẽ được đánh dấu xóa mềm.',
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No
         )
-
-        if confirm != QMessageBox.StandardButton.Yes:
+        if answer != QMessageBox.StandardButton.Yes:
             return False
-
-        cursor = None
-        conn = self.db.get_connection()
         try:
-            if conn is None:
-                raise Exception("Chưa có kết nối database!")
-
-            cursor = conn.cursor()
-
-            # Khóa dòng sản phẩm trong transaction để không thể phát sinh
-            # giao dịch nhập/bán làm thay đổi tồn kho giữa lúc kiểm tra và xóa.
-            cursor.execute("""
-                SELECT TENSP, ISNULL(SLTON, 0)
-                FROM dbo.SAN_PHAM WITH (UPDLOCK, HOLDLOCK)
-                WHERE MASP = ?
-                  AND ISNULL(IS_DELETED, 0) = 0
-            """, masp)
-            product_row = cursor.fetchone()
-
-            if product_row is None:
-                raise RuntimeError(
-                    "Sản phẩm không tồn tại hoặc đã được xóa trước đó!"
-                )
-
-            stock_quantity = int(product_row[1] or 0)
-            if stock_quantity > 0:
-                conn.rollback()
-                QMessageBox.warning(
-                    self,
-                    "Không thể xóa sản phẩm",
-                    f"Sản phẩm {masp} - {product_row[0] or display_name} "
-                    f"vẫn còn {stock_quantity} sản phẩm trong kho. "
-                    "Vui lòng xử lý hết tồn kho trước khi xóa.",
-                )
-                return False
-
-            cursor.execute("""
-                UPDATE dbo.SAN_PHAM
-                SET IS_DELETED = 1
-                OUTPUT inserted.MASP
-                WHERE MASP = ?
-                  AND ISNULL(IS_DELETED, 0) = 0
-                  AND ISNULL(SLTON, 0) = 0
-            """, masp)
-
-            if cursor.fetchone() is None:
-                raise RuntimeError(
-                    "Không thể xóa sản phẩm. Vui lòng tải lại dữ liệu và thử lại."
-                )
-
-            conn.commit()
-            QMessageBox.information(
-                self, "Thành công", f"Đã xóa sản phẩm {masp}."
-            )
+            self.service.soft_delete_product(masp)
+            QMessageBox.information(self, 'Thành công', f'Đã xóa sản phẩm {masp}.')
             self.load_products()
             return True
-
-        except Exception as e:
-            if conn is not None:
-                conn.rollback()
-            QMessageBox.critical(
-                self, "Lỗi xóa sản phẩm", str(e)
-            )
+        except ProductHasStockError as error:
+            QMessageBox.warning(self, 'Không thể xóa sản phẩm', str(error))
+            return False
+        except Exception as error:
+            QMessageBox.critical(self, 'Lỗi xóa sản phẩm', str(error))
             return False
 
-        finally:
-            if cursor is not None:
-                cursor.close()
 
     def open_add_dialog(self):
         """Mở biểu mẫu thêm sản phẩm mới."""
