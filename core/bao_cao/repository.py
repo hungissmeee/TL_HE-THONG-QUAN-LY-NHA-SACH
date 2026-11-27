@@ -449,7 +449,7 @@ class BaoCaoRepository:
 
     def product_report_summary(self, start_date, end_date):
         """Tổng hợp toàn kỳ: số lượng, doanh thu và tổng thu sau hoàn."""
-        return self._fetch_one("""
+        row = self._fetch_one("""
             WITH InvoiceSubtotals AS (
                 SELECT
                     HD.MAHD,
@@ -514,6 +514,17 @@ class BaoCaoRepository:
             start_date, end_date,
             start_date, end_date,
         ))
+        row = row or (0, 0, 0, 0, 0, 0, 0, 0)
+        return {
+            "sold": row[0] or 0,
+            "refund_quantity": row[1] or 0,
+            "exchange_quantity": row[2] or 0,
+            "intact_quantity": row[3] or 0,
+            "damaged_quantity": row[4] or 0,
+            "gross_revenue": row[5] or 0,
+            "refund_amount": row[6] or 0,
+            "net_revenue": row[7] or 0,
+        }
 
     def shift_report(self, start_date, end_date):
         return self._fetch_all("""
