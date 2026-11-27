@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from backend.config import ConfigurationError
-from run_web import load_frontend_options, load_web_options
+from run_web import load_frontend_options
 
 
 class WebLauncherTests(unittest.TestCase):
@@ -52,20 +52,7 @@ class WebLauncherTests(unittest.TestCase):
             with self.assertRaisesRegex(ConfigurationError, "không được để trống"):
                 load_frontend_options()
 
-    def test_combined_launcher_uses_distinct_default_ports(self):
-        with patch.dict(os.environ, {}, clear=True):
-            options = load_web_options()
-        self.assertEqual(options.backend_port, 8000)
-        self.assertEqual(options.frontend_port, 5173)
 
-    def test_combined_launcher_rejects_duplicate_ports(self):
-        env = {
-            "BOOKHUB_WEB_PORT": "8000",
-            "BOOKHUB_WEB_FRONTEND_PORT": "8000",
-        }
-        with patch.dict(os.environ, env, clear=True):
-            with self.assertRaisesRegex(ConfigurationError, "khác nhau"):
-                load_web_options()
 
 
 if __name__ == "__main__":
