@@ -23,6 +23,8 @@ from ui.table_sort import (
 )
 from .bieu_mau import SupplierFormDialog
 from .chi_tiet import SupplierDetailDialog
+from core.repositories.nha_cung_cap_repository import NhaCungCapRepository
+from core.services.nha_cung_cap_service import NhaCungCapService
 
 
 SUPPLIER_VIEW_ROLES = frozenset({"quản lý", "nhân viên kho", "kế toán"})
@@ -41,6 +43,7 @@ class SupplierWindow(QWidget):
     def __init__(self, db):
         super().__init__()
         self.db = db
+        self.service = NhaCungCapService(NhaCungCapRepository(db))
         self.username = (getattr(db, "username", "") or "").strip()
         self.employee_role = self._get_employee_role()
         self.is_admin = self.username.casefold() == "admin"
@@ -53,23 +56,10 @@ class SupplierWindow(QWidget):
             self.load_data()
 
     def _get_employee_role(self):
-        """Lấy vai trò của nhân viên để xác định quyền quản lý nhà cung cấp."""
-        if (self.username or "").casefold() == "admin":
-            return "Quản lý"
-        conn = self.db.get_connection()
-        if conn is None or not self.username:
-            return ""
-        cursor = None
         try:
-            cursor = conn.cursor()
-            cursor.execute("SELECT VAITRO FROM dbo.NHAN_VIEN WHERE MANV = ?", self.username)
-            row = cursor.fetchone()
-            return str(row[0] or "") if row else ""
+            return self.service.get_employee_role(self.username)
         except Exception:
             return ""
-        finally:
-            if cursor is not None:
-                cursor.close()
 
     def _build_ui(self):
         """Tạo bộ lọc, bảng nhà cung cấp và các nút thao tác."""
@@ -142,56 +132,32 @@ class SupplierWindow(QWidget):
         root.addWidget(self.total_label)
 
     def load_data(self, *_):
-        """Tải danh sách nhà cung cấp theo từ khóa và trạng thái đang chọn."""
         if not self.can_view:
             return
-
-        conn = self.db.get_connection()
-        if conn is None:
-            QMessageBox.warning(self, "Thông báo", "Chưa có kết nối SQL Server.")
-            return
-        cursor = None
         try:
-            cursor = conn.cursor()
-            sql = """
-                SELECT MANCC, TENNCC, SDT, DIACHI, MST, ISNULL(IS_DELETED, 0)
-                FROM dbo.NHA_CUNG_CAP
-                WHERE 1 = 1
-            """
-            params = []
-            if not self.show_inactive_check.isChecked():
-                sql += " AND ISNULL(IS_DELETED, 0) = 0"
-            keyword = self.search_input.text().strip()
-            if keyword:
-                like = f"%{keyword}%"
-                sql += " AND (MANCC LIKE ? OR TENNCC LIKE ? OR SDT LIKE ? OR DIACHI LIKE ? OR MST LIKE ?)"
-                params.extend([like] * 5)
-            sql += " ORDER BY CASE WHEN ISNULL(IS_DELETED, 0) = 0 THEN 0 ELSE 1 END, TENNCC, MANCC"
-
-            cursor.execute(sql, *params)
-            rows = cursor.fetchall()
-
+            rows = self.service.list_suppliers(
+                self.search_input.text().strip(),
+                self.show_inactive_check.isChecked(),
+            )
             pause_table_sorting(self.table)
-
             self.table.setRowCount(0)
             for row_index, row in enumerate(rows):
                 self.table.insertRow(row_index)
-                values = [row[0], row[1], row[2], row[3], row[4],
-                          "Ngừng hoạt động" if bool(row[5]) else "Đang hoạt động"]
-                for col_index, value in enumerate(values):
+                values = [
+                    row[0], row[1], row[2], row[3], row[4],
+                    "Ngừng hoạt động" if bool(row[5]) else "Đang hoạt động",
+                ]
+                for column, value in enumerate(values):
                     item = QTableWidgetItem("" if value is None else str(value))
-                    if col_index == 0:
+                    if column == 0:
                         item.setData(Qt.ItemDataRole.UserRole, str(row[0]))
                         item.setTextAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
-                    self.table.setItem(row_index, col_index, item)
+                    self.table.setItem(row_index, column, item)
             self.total_label.setText(f"Tổng số: {len(rows)} nhà cung cấp")
         except Exception as error:
             QMessageBox.critical(self, "Lỗi tải dữ liệu", str(error))
         finally:
             resume_table_sorting(self.table)
-
-            if cursor is not None:
-                cursor.close()
 
     def clear_search(self):
         """Xóa từ khóa và tải lại danh sách nhà cung cấp."""
@@ -212,18 +178,7 @@ class SupplierWindow(QWidget):
         return str(code if code is not None else item.text()).strip() or None
 
     def _get_supplier(self, code):
-        """Lấy thông tin đầy đủ của một nhà cung cấp từ SQL Server."""
-        conn = self.db.get_connection()
-        cursor = conn.cursor()
-        try:
-            cursor.execute("""
-                SELECT MANCC, TENNCC, SDT, DIACHI, MST, ISNULL(IS_DELETED, 0)
-                FROM dbo.NHA_CUNG_CAP WHERE MANCC = ?
-            """, code)
-            row = cursor.fetchone()
-            return tuple(row) if row else None
-        finally:
-            cursor.close()
+        return self.service.get_supplier(code)
 
     def add_supplier(self):
         """Mở biểu mẫu tạo nhà cung cấp mới và làm mới danh sách sau khi lưu."""
@@ -276,7 +231,6 @@ class SupplierWindow(QWidget):
         self.load_data()
 
     def _set_supplier_status(self, inactive):
-        """Cập nhật trạng thái hoạt động của nhà cung cấp mà không xóa dữ liệu."""
         if not self.can_manage:
             QMessageBox.warning(self, "Không có quyền", "Chỉ Quản lý/Admin được thay đổi trạng thái nhà cung cấp.")
             return
@@ -286,34 +240,19 @@ class SupplierWindow(QWidget):
         action = "ngừng hoạt động" if inactive else "kích hoạt lại"
         answer = QMessageBox.question(
             self, "Xác nhận",
-            f"Bạn có chắc muốn {action} nhà cung cấp {code}?\n\n"
-            "Lịch sử phiếu nhập vẫn được giữ nguyên.",
+            f"Bạn có chắc muốn {action} nhà cung cấp {code}?\\n\\nLịch sử phiếu nhập vẫn được giữ nguyên.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.No,
         )
         if answer != QMessageBox.StandardButton.Yes:
             return
-
-        conn = self.db.get_connection()
-        cursor = None
         try:
-            cursor = conn.cursor()
-            cursor.execute("""
-                UPDATE dbo.NHA_CUNG_CAP
-                SET IS_DELETED = ?
-                WHERE MANCC = ? AND ISNULL(IS_DELETED, 0) = ?
-            """, (1 if inactive else 0, code, 0 if inactive else 1))
-            if cursor.rowcount != 1:
+            if not self.service.set_supplier_status(code, inactive):
                 raise RuntimeError("Trạng thái nhà cung cấp đã thay đổi hoặc không tìm thấy dữ liệu.")
-            conn.commit()
             QMessageBox.information(self, "Thành công", f"Đã {action} nhà cung cấp {code}.")
             self.load_data()
         except Exception as error:
-            conn.rollback()
             QMessageBox.critical(self, "Không thể cập nhật", str(error))
-        finally:
-            if cursor is not None:
-                cursor.close()
 
     def deactivate_supplier(self):
         """Chuyển nhà cung cấp sang trạng thái ngừng hoạt động sau khi xác nhận."""
