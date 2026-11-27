@@ -158,9 +158,7 @@ class ImportDetailDialog(QDialog):
         buttons.addStretch()
         if self.on_cancel is not None and self.header["status"] == 1:
             cancel_button = QPushButton("Hủy phiếu nhập")
-            cancel_button.setStyleSheet(
-                "QPushButton { background-color: #A83232; color: white; }"
-            )
+            cancel_button.setProperty("buttonRole", "danger")
             cancel_button.clicked.connect(self.cancel_import)
             buttons.addWidget(cancel_button)
 
