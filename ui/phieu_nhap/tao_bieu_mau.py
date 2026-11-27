@@ -25,6 +25,8 @@ from .dung_chung import MONEY_QUANT, Decimal, ROUND_HALF_UP, money, as_decimal
 from .tao_nha_cung_cap import CreateSupplierDialog
 from ui.permissions import is_admin_account
 from ui.san_pham.tim_kiem import find_matching_product_codes
+from core.repositories.phieu_nhap_repository import PhieuNhapRepository
+from core.services.phieu_nhap_service import PhieuNhapService
 
 
 class CreateImportDialog(QDialog):
@@ -33,6 +35,7 @@ class CreateImportDialog(QDialog):
     def __init__(self, db, parent=None):
         super().__init__(parent)
         self.db = db
+        self.service = PhieuNhapService(PhieuNhapRepository(db))
         self.username = (getattr(db, "username", "") or "").strip()
         self.is_admin = is_admin_account(self.username)
         self.employee = None
@@ -52,29 +55,7 @@ class CreateImportDialog(QDialog):
         self.update_total()
 
     def _load_employee(self):
-        """Lấy thông tin nhân viên lập phiếu nhập từ tài khoản hiện tại."""
-        conn = self.db.get_connection()
-        if conn is None:
-            raise RuntimeError("Chưa có kết nối SQL Server.")
-        cursor = conn.cursor()
-        try:
-            cursor.execute("""
-                SELECT MANV, TENNV, VAITRO
-                FROM dbo.NHAN_VIEN
-                WHERE MANV = ?
-            """, self.username)
-            row = cursor.fetchone()
-            if row is None and not self.is_admin:
-                raise RuntimeError(
-                    "Tài khoản đăng nhập chưa có hồ sơ tương ứng trong NHAN_VIEN."
-                )
-            self.employee = {
-                "manv": row[0] if row else None,
-                "tennv": (row[1] or row[0]) if row else "Admin",
-                "vaitro": (row[2] or "") if row else "Quản lý",
-            }
-        finally:
-            cursor.close()
+        self.employee = self.service.get_employee(self.username, self.is_admin)
 
     def _build_ui(self):
         """Tạo biểu mẫu chọn nhà cung cấp, sản phẩm và số lượng nhập."""
@@ -237,31 +218,18 @@ class CreateImportDialog(QDialog):
         return str(code).strip() if code else None
 
     def load_suppliers(self, selected_code=None):
-        """Tải nhà cung cấp đang hoạt động để chọn cho phiếu nhập."""
-        conn = self.db.get_connection()
-        cursor = conn.cursor()
-        try:
-            cursor.execute("""
-                SELECT MANCC, TENNCC
-                FROM dbo.NHA_CUNG_CAP
-                WHERE ISNULL(IS_DELETED, 0) = 0
-                ORDER BY TENNCC, MANCC
-            """)
-            rows = cursor.fetchall()
-            self.supplier_combo.clear()
-            self.suppliers = {}
-            for row in rows:
-                code, name = str(row[0]), str(row[1] or "")
-                self.suppliers[code] = name
-                self.supplier_combo.addItem(f"{name} ({code})", code)
-            if selected_code:
-                index = self.supplier_combo.findData(selected_code)
-                if index >= 0:
-                    self.supplier_combo.setCurrentIndex(index)
-            if not rows:
-                self.supplier_combo.addItem("Chưa có nhà cung cấp", None)
-        finally:
-            cursor.close()
+        rows = self.service.list_suppliers_for_import()
+        self.supplier_combo.clear()
+        self.suppliers = {}
+        for code, name in rows:
+            self.suppliers[code] = name
+            self.supplier_combo.addItem(f"{name} ({code})", code)
+        if selected_code:
+            index = self.supplier_combo.findData(selected_code)
+            if index >= 0:
+                self.supplier_combo.setCurrentIndex(index)
+        if not rows:
+            self.supplier_combo.addItem("Chưa có nhà cung cấp", None)
 
     def add_supplier(self):
         """Mở hộp thoại thêm nhanh nhà cung cấp và cập nhật danh sách lựa chọn."""
@@ -270,48 +238,27 @@ class CreateImportDialog(QDialog):
             self.load_suppliers(dialog.saved_supplier[0])
 
     def search_products(self, *_):
-        """Tải danh sách sản phẩm có thể nhập và tạo gợi ý cho ô tìm kiếm."""
-        conn = self.db.get_connection()
-        if conn is None:
-            raise RuntimeError("Chưa có kết nối SQL Server.")
-        cursor = conn.cursor()
-        try:
-            cursor.execute("""
-                SELECT
-                    SP.MASP, SP.TENSP, SP.DVT, SP.GIANHAP,
-                    SP.SLTON, SP.VAT, SP.BARCODE, S.ISBN
-                FROM dbo.SAN_PHAM SP
-                LEFT JOIN dbo.SACH S ON S.MASP = SP.MASP
-                WHERE ISNULL(SP.IS_DELETED, 0) = 0
-                ORDER BY SP.TENSP, SP.MASP
-            """)
-            self.products = {}
-            suggestions = []
-            for row in cursor.fetchall():
-                code, name, unit, cost, stock, vat, barcode, isbn = row
-                code = str(code)
-                product = {
-                    "masp": code,
-                    "tensp": str(name or ""),
-                    "dvt": str(unit or ""),
-                    "price": as_decimal(cost),
-                    "stock": int(stock or 0),
-                    "vat": as_decimal(vat),
-                    "barcode": str(barcode or "").strip(),
-                    "isbn": str(isbn or "").strip(),
-                }
-                self.products[code] = product
-                suggestions.append(
-                    f"{code} | {product['tensp']} | "
-                    f"Mã vạch: {product['barcode'] or '—'} | "
-                    f"ISBN: {product['isbn'] or '—'} | "
-                    f"Giá nhập hiện tại: {money(cost)}"
-                )
-            self.product_suggestion_model.setStringList(suggestions)
-        except Exception as error:
-            QMessageBox.critical(self, "Lỗi tải sản phẩm", str(error))
-        finally:
-            cursor.close()
+        products = self.service.list_products_for_import()
+        self.products = {}
+        suggestions = []
+        for product in products:
+            code = str(product["masp"])
+            product["masp"] = code
+            product["tensp"] = str(product["tensp"] or "")
+            product["dvt"] = str(product["dvt"] or "")
+            product["price"] = as_decimal(product["price"])
+            product["stock"] = int(product["stock"] or 0)
+            product["vat"] = as_decimal(product["vat"])
+            product["barcode"] = str(product["barcode"] or "").strip()
+            product["isbn"] = str(product["isbn"] or "").strip()
+            self.products[code] = product
+            suggestions.append(
+                f"{code} | {product['tensp']} | "
+                f"Mã vạch: {product['barcode'] or '—'} | "
+                f"ISBN: {product['isbn'] or '—'} | "
+                f"Giá nhập hiện tại: {money(product['price'])}"
+            )
+        self.product_suggestion_model.setStringList(suggestions)
 
     def _reset_product_search(self):
         """Đóng gợi ý, xóa nội dung và trả focus về ô tìm kiếm."""
@@ -477,165 +424,55 @@ class CreateImportDialog(QDialog):
         """Cập nhật tổng tiền phiếu nhập trên giao diện."""
         self.total_label.setText(money(self.calculate_total()))
 
-    def _next_import_code(self, cursor):
-        """Sinh mã phiếu nhập tiếp theo theo quy tắc hiện có."""
-        cursor.execute("""
-            SELECT COALESCE(
-                MAX(TRY_CONVERT(BIGINT, SUBSTRING(MAPN, 3, 18))), 0
-            )
-            FROM dbo.PHIEU_NHAP WITH (TABLOCKX, HOLDLOCK)
-            WHERE UPPER(LEFT(MAPN, 2)) = 'PN'
-              AND TRY_CONVERT(BIGINT, SUBSTRING(MAPN, 3, 18)) IS NOT NULL
-        """)
-        next_number = int(cursor.fetchone()[0] or 0) + 1
-        code = f"PN{next_number:06d}"
-        if len(code) > 20:
-            raise ValueError("Đã vượt giới hạn độ dài mã phiếu nhập.")
-        return code
-
     def save_import(self):
-        """Kiểm tra dữ liệu và ghi phiếu nhập cùng chi tiết, bảo đảm cập nhật tồn kho trong giao dịch."""
         supplier_code = self._selected_supplier_code()
         if not supplier_code:
-            QMessageBox.warning(
-                self, "Thiếu nhà cung cấp",
-                "Vui lòng nhập mã hoặc tên, sau đó chọn một nhà cung cấp "
-                "trong danh sách gợi ý."
-            )
+            QMessageBox.warning(self, "Thiếu nhà cung cấp", "Vui lòng chọn nhà cung cấp.")
             return
         if not self.cart:
-            QMessageBox.warning(
-                self, "Chưa có sản phẩm", "Phiếu nhập chưa có sản phẩm nào."
-            )
+            QMessageBox.warning(self, "Chưa có sản phẩm", "Phiếu nhập chưa có sản phẩm nào.")
             return
-
-        invalid_prices = [
-            item["tensp"] for item in self.cart.values()
-            if as_decimal(item["price"]) <= 0
-        ]
-        if invalid_prices:
-            QMessageBox.warning(
-                self,
-                "Đơn giá chưa hợp lệ",
-                "Vui lòng nhập đơn giá lớn hơn 0 cho:\n"
-                + "\n".join(invalid_prices[:10]),
-            )
-            return
-
-        supplier_invoice = self.supplier_invoice_input.text().strip() or None
         total = self.calculate_total()
         answer = QMessageBox.question(
-            self,
-            "Xác nhận lập phiếu nhập",
-            f"Nhà cung cấp: {self.suppliers.get(supplier_code, '')}\n"
-            f"Số mặt hàng: {len(self.cart)}\n"
-            f"Tổng giá trị: {money(total)} đồng\n\n"
+            self, "Xác nhận lập phiếu nhập",
+            f"Nhà cung cấp: {self.suppliers.get(supplier_code, '')}\\n"
+            f"Số mặt hàng: {len(self.cart)}\\n"
+            f"Tổng giá trị: {money(total)} đồng\\n\\n"
             "Khi lưu, tồn kho và giá nhập bình quân sẽ được cập nhật. Tiếp tục?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.Yes
+            QMessageBox.StandardButton.Yes,
         )
         if answer != QMessageBox.StandardButton.Yes:
             return
-
-        conn = self.db.get_connection()
-        if conn is None:
-            QMessageBox.warning(self, "Thông báo", "Chưa có kết nối SQL Server.")
-            return
-        cursor = conn.cursor()
+        payload = {
+            "supplier_code": supplier_code,
+            "supplier_invoice": self.supplier_invoice_input.text().strip() or None,
+            "employee_code": self.employee.get("manv"),
+            "import_type": self.import_type_combo.currentText(),
+            "items": [
+                {
+                    "product_code": code,
+                    "quantity": item["quantity"],
+                    "price": item["price"],
+                    "vat": item["vat"],
+                }
+                for code, item in self.cart.items()
+            ],
+        }
         try:
-            if supplier_invoice:
-                cursor.execute("""
-                    SELECT 1
-                    FROM dbo.PHIEU_NHAP WITH (UPDLOCK, HOLDLOCK)
-                    WHERE MANCC = ? AND SHDNCC = ?
-                      AND ISNULL(TRANGTHAI, 1) = 1
-                """, supplier_code, supplier_invoice)
-                if cursor.fetchone():
-                    raise ValueError(
-                        "Số hóa đơn nhà cung cấp này đã được ghi nhận cho nhà cung cấp đã chọn."
-                    )
-
-            import_code = self._next_import_code(cursor)
-            cursor.execute("""
-                INSERT INTO dbo.PHIEU_NHAP
-                    (MAPN, NGAYNHAP, LOAIPHIEUNHAP, SHDNCC,
-                     TONGTRIGIA, MANV, MANCC, TRANGTHAI)
-                VALUES (?, SYSDATETIME(), ?, ?, ?, ?, ?, 1)
-            """, (
-                import_code,
-                self.import_type_combo.currentText(),
-                supplier_invoice,
-                total,
-                self.employee["manv"],
-                supplier_code,
-            ))
-
-            for code, item in self.cart.items():
-                quantity = int(item["quantity"])
-                price = item["price"]
-
-                # GIANHAP được cập nhật theo giá nhập bình quân gia quyền,
-                # với đơn giá đã gồm VAT để thống nhất với cách lưu GIABAN.
-                cursor.execute("""
-                    UPDATE dbo.SAN_PHAM
-                    SET
-                        GIANHAP = CAST(
-                            (
-                                CAST(ISNULL(SLTON, 0) AS DECIMAL(18, 2))
-                                * CAST(ISNULL(GIANHAP, 0) AS DECIMAL(18, 2))
-                                + CAST(? AS DECIMAL(18, 2))
-                                  * CAST(? AS DECIMAL(10, 0))
-                            )
-                            / NULLIF(
-                                CAST(ISNULL(SLTON, 0) AS DECIMAL(18, 2))
-                                + CAST(? AS DECIMAL(18, 2)), 0
-                            )
-                            AS DECIMAL(15, 2)
-                        ),
-                        SLTON = ISNULL(SLTON, 0) + ?
-                    WHERE MASP = ?
-                      AND ISNULL(IS_DELETED, 0) = 0
-                """, (price, quantity, quantity, quantity, code))
-                if cursor.rowcount != 1:
-                    raise RuntimeError(
-                        f"Không tìm thấy sản phẩm {code} hoặc sản phẩm đã bị ngừng sử dụng."
-                    )
-
-                cursor.execute("""
-                    INSERT INTO dbo.CHI_TIET_PHIEU_NHAP
-                        (MAPN, MASP, DONGIA, SOLUONG, VAT)
-                    VALUES (?, ?, ?, ?, ?)
-                """, (import_code, code, price, quantity, item["vat"]))
-
-            conn.commit()
+            import_code = self.service.create_import(payload)
             self.saved_import_code = import_code
             QMessageBox.information(
                 self, "Lập phiếu nhập thành công",
-                f"Đã tạo phiếu nhập {import_code}.\n"
-                f"Tổng giá trị: {money(total)} đồng.\n"
-                "Tồn kho và giá nhập bình quân đã được cập nhật."
+                f"Đã tạo phiếu nhập {import_code}.\\n"
+                f"Tổng giá trị: {money(total)} đồng.\\n"
+                "Tồn kho và giá nhập bình quân đã được cập nhật.",
             )
             self.accept()
-        except ValueError as error:
-            conn.rollback()
+        except (ValueError, LookupError) as error:
             QMessageBox.warning(self, "Thông tin chưa hợp lệ", str(error))
         except Exception as error:
-            conn.rollback()
-            message = str(error)
-            if "permission" in message.lower() or "denied" in message.lower():
-                message += (
-                    "\n\nTài khoản cần quyền SELECT/INSERT trên PHIEU_NHAP, "
-                    "CHI_TIET_PHIEU_NHAP và quyền UPDATE cột SLTON, GIANHAP "
-                    "trên SAN_PHAM."
-                )
             QMessageBox.critical(
                 self, "Không thể lập phiếu nhập",
-                f"{message}\n\nGiao dịch đã được hoàn tác; tồn kho không bị cập nhật dở dang."
+                f"{error}\\n\\nGiao dịch đã được hoàn tác; tồn kho không bị cập nhật dở dang.",
             )
-        finally:
-            cursor.close()
-
-
-
-
-
