@@ -2,21 +2,15 @@
 
 Frontend React + TypeScript + Vite, dùng Ant Design và theme tối đồng bộ với ứng dụng Desktop.
 
-## Chạy lần đầu
+## Chạy toàn bộ Web
 
-Tại thư mục gốc dự án:
+Tại thư mục gốc dự án, chỉ cần chạy:
 
-    cd frontend
-    npm install
-    npm run dev
+    python run_web.py
 
-Mở địa chỉ Vite hiển thị (mặc định http://127.0.0.1:5173).
+Launcher tự kiểm tra Node.js/npm, tự cài dependencies frontend nếu chưa có, rồi chạy Backend và Frontend cùng lúc. Nhấn `Ctrl+C` để dừng cả hai. Giao diện mặc định ở `http://127.0.0.1:5173`.
 
-Backend cần chạy song song ở cửa sổ Terminal khác:
-
-    python run_backend.py
-
-Vite proxy các request /api/v1 sang Backend theo BOOKHUB_WEB_HOST và BOOKHUB_WEB_PORT trong file .env gốc. Trình duyệt dùng cùng origin với Vite trong quá trình phát triển, không cần cấu hình CORS riêng cho Vite.
+Không cần chạy `run_backend.py` riêng khi dùng `run_web.py`. Lệnh `npm run dev` bên dưới chỉ cần khi muốn phát triển/tách riêng Frontend.
 
 ## Cấu hình
 
