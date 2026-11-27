@@ -19,7 +19,7 @@ from backend.database import (
     create_employee_auth_connection,
 )
 from backend.authentication import authenticate_employee
-from backend.security import CurrentUser, create_access_token
+from backend.security import CurrentUser, create_access_token, require_roles
 from backend.dependencies import get_db_connection
 from backend.main import create_app
 from database.connection import Database
@@ -457,6 +457,41 @@ class BackendAuthenticationTests(unittest.TestCase):
         self.assertEqual(me.status_code, 200)
         self.assertEqual(me.json()["employee_code"], "NV001")
         self.assertEqual(me.json()["role"], "Thu ngân")
+
+
+    def test_role_dependency_allows_configured_role(self):
+        checker = require_roles("rl_ThuNgan")
+        user = CurrentUser(
+            employee_code="NV001",
+            full_name="Thu ngân A",
+            role="Thu ngân",
+            role_code="rl_ThuNgan",
+        )
+        self.assertIs(checker(user), user)
+
+    def test_role_dependency_rejects_other_roles(self):
+        from fastapi import HTTPException
+
+        checker = require_roles("rl_QuanLy")
+        user = CurrentUser(
+            employee_code="NV001",
+            full_name="Thu ngân A",
+            role="Thu ngân",
+            role_code="rl_ThuNgan",
+        )
+        with self.assertRaises(HTTPException) as context:
+            checker(user)
+        self.assertEqual(context.exception.status_code, 403)
+
+    def test_admin_bypasses_role_specific_dependency(self):
+        checker = require_roles("rl_ThuNgan")
+        admin = CurrentUser(
+            employee_code="admin",
+            full_name="Quản trị viên",
+            role="Quản trị hệ thống",
+            role_code="admin",
+        )
+        self.assertIs(checker(admin), admin)
 
     def test_login_returns_401_for_rejected_credentials(self):
         app = create_app()
