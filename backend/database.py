@@ -70,6 +70,11 @@ def create_employee_auth_connection(settings: Settings, username: str, password:
         raise DatabaseUnavailableError(
             "Không thể kết nối SQL Server trong bước xác thực."
         ) from exc
+    except OSError as exc:
+        raise DatabaseUnavailableError(
+            "Không thể kết nối SQL Server trong bước xác thực."
+        ) from exc
+
 
 def create_connection(settings: Settings):
     """Mở kết nối SQL Server; lỗi chi tiết chỉ được ghi ở log phía máy chủ."""
