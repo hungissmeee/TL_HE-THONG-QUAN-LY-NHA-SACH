@@ -19,20 +19,20 @@ class InvoiceReportPage(ReportBasePage):
             ("total", "Tổng số hóa đơn", "0",
              "Tất cả hóa đơn trong kỳ", "neutral"),
             ("valid", "Hóa đơn hợp lệ", "0",
-             "Được ghi nhận doanh thu", "positive"),
+             "Được ghi nhận doanh số bán", "positive"),
             ("cancelled", "Hóa đơn đã hủy", "0",
              "Không ghi nhận doanh thu", "negative"),
-            ("revenue", "Doanh thu trước hoàn", "0 đ",
+            ("revenue", "Doanh số trước hoàn", "0 đ",
              "Hóa đơn hợp lệ sau khuyến mãi", "positive"),
             ("refund", "Tiền đã hoàn", "0 đ",
              "Tổng tiền hoàn gắn với các hóa đơn trong kỳ", "warning"),
-            ("net", "Doanh thu sau hoàn", "0 đ",
+            ("net", "Còn lại sau hoàn", "0 đ",
              "Doanh thu hợp lệ trừ tiền hoàn lũy kế", "primary"),
         ], primary_key="net")
         self.table = self.make_table([
             "Mã hóa đơn", "Ngày lập", "Nhân viên", "Mã ca",
             "Tiền hàng", "Tỷ lệ giảm", "Tiền giảm", "Thành tiền",
-            "Doanh thu ghi nhận", "Số phiếu đổi trả", "SL hoàn tiền",
+            "Doanh số ghi nhận", "Số phiếu đổi trả", "SL hoàn tiền",
             "SL đổi hàng", "Tiền đã hoàn", "Doanh thu sau hoàn",
             "Khách đưa", "Tiền thừa", "Trạng thái"
         ])
