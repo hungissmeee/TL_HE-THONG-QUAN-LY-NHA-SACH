@@ -120,8 +120,7 @@ class HoaDonRepository:
                 SELECT
                     HD.MAHD, HD.NGAYLAP, HD.MANV, NV.TENNV,
                     HD.MACA, C.SOCA, HD.TIENKHACHDUA,
-                    COALESCE(SUM(CT.DONGIA * CT.SOLUONG), 0)
-                        * (1 - COALESCE(KM.TYLEGIAM, 0) / 100.0) AS TOTAL_AMOUNT,
+                    COALESCE(SUM(CT.THANHTIENSAUGIAM), 0) AS TOTAL_AMOUNT,
                     HD.TRANGTHAI
                 FROM dbo.HOA_DON HD
                 LEFT JOIN dbo.NHAN_VIEN NV ON NV.MANV = HD.MANV
@@ -155,7 +154,6 @@ class HoaDonRepository:
             sql += """
                 GROUP BY HD.MAHD, HD.NGAYLAP, HD.MANV, NV.TENNV,
                          HD.MACA, C.SOCA, HD.TIENKHACHDUA, HD.TRANGTHAI,
-                         KM.TYLEGIAM
                 ORDER BY HD.NGAYLAP DESC, HD.MAHD DESC
             """
             cursor.execute(sql, *params)
@@ -190,7 +188,8 @@ class HoaDonRepository:
             ))
             cursor.execute("""
                 SELECT CT.MASP, SP.TENSP, SP.DVT,
-                       CT.DONGIA, CT.SOLUONG, CT.VAT
+                       CT.DONGIA, CT.SOLUONG, CT.VAT,
+                       CT.THANHTIEN, CT.THANHTIENSAUGIAM
                 FROM dbo.CHI_TIET_HOA_DON CT
                 LEFT JOIN dbo.SAN_PHAM SP ON SP.MASP = CT.MASP
                 WHERE CT.MAHD = ?
@@ -205,6 +204,8 @@ class HoaDonRepository:
                     "price": item[3],
                     "quantity": item[4],
                     "vat": item[5],
+                    "line_total": item[6],
+                    "line_total_after_discount": item[7],
                 })
             return {"header": header, "items": items}
         finally:
@@ -335,10 +336,12 @@ class HoaDonRepository:
                     )
                 cursor.execute("""
                     INSERT INTO dbo.CHI_TIET_HOA_DON
-                        (MAHD, MASP, DONGIA, SOLUONG, VAT)
-                    VALUES (?, ?, ?, ?, ?)
+                        (MAHD, MASP, DONGIA, SOLUONG, VAT,
+                         THANHTIEN, THANHTIENSAUGIAM)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                 """, invoice_code, product_code, item["price"],
-                     item["quantity"], item["vat"])
+                     item["quantity"], item["vat"], item["line_total"],
+                     item["line_total_after_discount"])
 
             conn.commit()
             return invoice_code
