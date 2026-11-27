@@ -231,7 +231,9 @@ class BaoCaoRepository:
             LEFT JOIN dbo.NHAN_VIEN NV ON NV.MANV = HD.MANV
             LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
             OUTER APPLY (
-                SELECT SUM(COALESCE(CT.THANHTIEN, 0)) AS TIEN_HANG
+                SELECT
+                    SUM(COALESCE(CT.THANHTIEN, 0)) AS TIEN_HANG,
+                    SUM(COALESCE(CT.THANHTIENSAUGIAM, 0)) AS TIEN_SAU_GIAM
                 FROM dbo.CHI_TIET_HOA_DON CT WHERE CT.MAHD = HD.MAHD
             ) S
             OUTER APPLY (
