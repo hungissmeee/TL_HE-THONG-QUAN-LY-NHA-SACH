@@ -144,7 +144,10 @@ class CreateReturnDialog(QDialog):
         # Các cột điều khiển được chừa riêng không gian cho nút và mũi tên.
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        # Giữ cột tên sản phẩm đủ rộng; khi thiếu chỗ, bảng cuộn ngang
+        # thay vì co cột và cắt nội dung.
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
+        self.table.setColumnWidth(1, 210)
         control_column_widths = {
             5: 116,  # Số lượng: chừa chỗ cho hai nút tăng/giảm
             6: 202,  # Tình trạng hàng: hiển thị đủ "Còn nguyên vẹn"
@@ -326,7 +329,9 @@ class CreateReturnDialog(QDialog):
                     remaining, "", "", "", money(0)
                 ]
                 for column, value in enumerate(values):
-                    self.table.setItem(row, column, QTableWidgetItem(str(value)))
+                    cell_item = QTableWidgetItem(str(value))
+                    cell_item.setToolTip(str(value))
+                    self.table.setItem(row, column, cell_item)
 
                 # Giữ nguyên mẫu dùng trong hóa đơn và phiếu nhập:
                 # tạo control với bảng làm parent, gắn trực tiếp vào cell,
@@ -396,13 +401,17 @@ class CreateReturnDialog(QDialog):
             amount_item = self.table.item(controls["row"], 8)
 
             if quantity > 0 and action == 1 and condition != 0:
-                amount_item.setText("Chỉ đổi hàng đã hỏng")
+                amount_item.setText("Không hợp lệ")
+                amount_item.setToolTip(
+                    "Chỉ được đổi sản phẩm khi hàng khách trả đã hỏng."
+                )
                 continue
 
             amount = controls["net_price"] * quantity if action == 0 else Decimal("0")
             amount = amount.quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
             total += amount
             amount_item.setText(money(amount))
+            amount_item.setToolTip(f"Tiền hoàn dự kiến: {money(amount)}")
         self.total_label.setText(f"Tổng tiền hoàn: {money(total)} đ")
 
     def save_return(self):
