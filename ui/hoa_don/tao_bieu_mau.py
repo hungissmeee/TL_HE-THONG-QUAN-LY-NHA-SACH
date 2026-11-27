@@ -134,7 +134,7 @@ class CreateInvoiceDialog(QDialog):
         self.cart_table = ProductTableWidget(
             [
                 "Mã SP", "Tên sản phẩm", "Số lượng",
-                "Đơn giá (đã gồm VAT)", "VAT (%)", "Thành tiền", "Thao tác"
+                "Đơn giá (đã gồm VAT)", "VAT (%)", "Thành tiền", "Sau giảm", "Thao tác"
             ],
             stretch_column=1,
             parent=self,
@@ -294,6 +294,10 @@ class CreateInvoiceDialog(QDialog):
             self._set_cell(self.cart_table, row_index, 3, money(item["price"]))
             self._set_cell(self.cart_table, row_index, 4, money(item["vat"]))
             self._set_cell(self.cart_table, row_index, 5, money(line_total))
+            self._set_cell(
+                self.cart_table, row_index, 6,
+                money(item.get("line_total_after_discount", line_total))
+            )
 
             quantity = QSpinBox(self.cart_table)
             quantity.setRange(1, max(1, int(item["stock"])))
@@ -310,7 +314,7 @@ class CreateInvoiceDialog(QDialog):
                 lambda _checked=False, product_code=masp:
                 self._remove_cart_item(product_code)
             )
-            self.cart_table.setCellWidget(row_index, 6, remove_button)
+            self.cart_table.setCellWidget(row_index, 7, remove_button)
 
     def _update_cart_quantity(self, masp, quantity):
         """Đồng bộ số lượng ở giỏ và cập nhật thành tiền, tổng thanh toán."""
@@ -345,7 +349,7 @@ class CreateInvoiceDialog(QDialog):
             self._remove_cart_item(item.text())
 
     def _calculate_totals(self):
-        """Tính tiền từ đơn giá đã bao gồm VAT, không cộng VAT lần nữa."""
+        """Tính tiền và phân bổ giảm giá hóa đơn về từng dòng sản phẩm."""
         subtotal = sum(
             (
                 item["price"] * item["quantity"]
@@ -361,14 +365,32 @@ class CreateInvoiceDialog(QDialog):
         discount = (
             subtotal * discount_rate / Decimal("100")
         ).quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
-        total = (subtotal - discount).quantize(
-            MONEY_QUANT, rounding=ROUND_HALF_UP
+        allocated = HoaDonService.allocate_invoice_discount(
+            self.cart, discount
         )
+        total = sum(
+            (line["line_total_after_discount"] for line in allocated.values()),
+            Decimal("0.00"),
+        ).quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
+
+        for code, line in allocated.items():
+            if code in self.cart:
+                self.cart[code].update(line)
         return subtotal, discount, total
 
     def update_totals(self, *_):
         """Hiển thị lại tổng tiền và số tiền khách cần thanh toán."""
         subtotal, discount, total = self._calculate_totals()
+        for row in range(self.cart_table.rowCount()):
+            code_item = self.cart_table.item(row, 0)
+            if code_item is None:
+                continue
+            item = self.cart.get(code_item.text())
+            if item is not None:
+                self._set_cell(
+                    self.cart_table, row, 6,
+                    money(item.get("line_total_after_discount", 0))
+                )
         self.subtotal_label.setText(money(subtotal))
         self.discount_label.setText(money(discount))
         self.total_label.setText(money(total))
