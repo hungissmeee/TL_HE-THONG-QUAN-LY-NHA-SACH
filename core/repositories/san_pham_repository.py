@@ -3,6 +3,10 @@
 from core.sql_support import resolve_connection
 
 
+class DuplicateProductBarcodeError(ValueError):
+    """Mã vạch đã được sử dụng bởi một sản phẩm khác."""
+
+
 class ProductHasStockError(RuntimeError):
     """Sản phẩm không thể xóa mềm vì vẫn còn số lượng tồn."""
 
@@ -507,11 +511,27 @@ class SanPhamRepository:
                 """, barcode, code)
                 duplicate = cursor.fetchone()
                 if duplicate is not None:
-                    raise ValueError(
+                    raise DuplicateProductBarcodeError(
                         f"Mã vạch {barcode} đã được gán cho sản phẩm {duplicate[0]}."
                     )
 
             if product_code:
+                cursor.execute("""
+                    SELECT
+                        CASE
+                            WHEN EXISTS (SELECT 1 FROM dbo.SACH WHERE MASP = ?) THEN 'book'
+                            WHEN EXISTS (SELECT 1 FROM dbo.SAN_PHAM_KHAC WHERE MASP = ?) THEN 'other'
+                            ELSE 'unclassified'
+                        END
+                    FROM dbo.SAN_PHAM
+                    WHERE MASP = ? AND ISNULL(IS_DELETED, 0) = 0
+                """, code, code, code)
+                existing_type = cursor.fetchone()
+                if existing_type is None:
+                    raise LookupError("Sản phẩm không tồn tại hoặc đã bị xóa mềm!")
+                if existing_type[0] != data["product_type"]:
+                    raise ValueError("Không thể thay đổi loại sản phẩm khi chỉnh sửa.")
+
                 cursor.execute("""
                     UPDATE dbo.SAN_PHAM
                     SET TENSP = ?, BARCODE = ?, DVT = ?, GIABAN = ?, VAT = ?
