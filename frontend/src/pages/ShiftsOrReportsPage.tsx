@@ -151,16 +151,16 @@ function ShiftsPage() {
       </Row>
       <Card bordered={false} className="operation-card">
         <div className="operation-list-heading"><Title level={4}>Ca đang diễn ra</Title><Button icon={<ReloadOutlined />} onClick={() => void load()}>Làm mới</Button></div>
-        <Table<DataRow> rowKey="maca" columns={currentColumns} dataSource={current} loading={loading} pagination={false} locale={{ emptyText: "Hiện không có ca đang diễn ra." }} / scroll={{ x: "max-content" }} tableLayout="auto">
+        <Table<DataRow> rowKey="maca" columns={currentColumns} dataSource={current} loading={loading} pagination={false} locale={{ emptyText: "Hiện không có ca đang diễn ra." }}  scroll={{ x: "max-content" }} tableLayout="auto" />
       </Card>
       <Card bordered={false} className="operation-card">
         <div className="operation-toolbar"><Title level={4}>Lịch sử ca</Title><Select value={period} style={{ width: 180 }} options={[{ value: "all", label: "Tất cả" }, { value: "today", label: "Hôm nay" }, { value: "7days", label: "7 ngày gần nhất" }, { value: "30days", label: "30 ngày gần nhất" }]} onChange={setPeriod} /></div>
-        <Table<DataRow> rowKey="maca" columns={managerColumns} dataSource={history} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }} / scroll={{ x: "max-content" }} tableLayout="auto">
+        <Table<DataRow> rowKey="maca" columns={managerColumns} dataSource={history} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }}  scroll={{ x: "max-content" }} tableLayout="auto" />
       </Card>
     </> : <Card bordered={false} className="operation-card">
       <Alert type="info" showIcon message={isAccountant ? "Kế toán có thể đăng ký ca đang diễn ra và ghi tiền cuối ca sau khi ca kết thúc." : "Chỉ đăng ký được ca đang diễn ra; không thể đăng ký trùng ca."} />
       <div className="operation-list-heading"><Title level={4}>Ca của bạn</Title><Button icon={<ReloadOutlined />} onClick={() => void load()}>Làm mới</Button></div>
-      <Table<DataRow> rowKey="maca" columns={employeeColumns} dataSource={mine} loading={loading} pagination={false} locale={{ emptyText: "Hiện không có ca phù hợp để đăng ký hoặc chốt." }} / scroll={{ x: "max-content" }} tableLayout="auto">
+      <Table<DataRow> rowKey="maca" columns={employeeColumns} dataSource={mine} loading={loading} pagination={false} locale={{ emptyText: "Hiện không có ca phù hợp để đăng ký hoặc chốt." }}  scroll={{ x: "max-content" }} tableLayout="auto" />
     </Card>}
     <Modal
       title="Tạo ca làm việc"
@@ -226,7 +226,7 @@ function ShiftsPage() {
           { title: "Họ tên", dataIndex: "tennv", key: "tennv" },
           { title: "Vai trò", dataIndex: "vaitro", key: "vaitro", width: 140 },
           { title: "SĐT", dataIndex: "sdt", key: "sdt", width: 130 },
-        ]} / scroll={{ x: "max-content" }} tableLayout="auto">
+        ]}  scroll={{ x: "max-content" }} tableLayout="auto" />
       </Card>
     </Modal>
     <Modal title="Ghi tiền cuối ca" open={Boolean(closingShift)} onCancel={() => setClosingShift(null)} onOk={() => void submitClosingCash()} okText="Ghi nhận" cancelText="Hủy" confirmLoading={closingSaving} width={560} className="desktop-entity-modal">
