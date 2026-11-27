@@ -11,7 +11,7 @@ class ProductReportPage(ReportBasePage):
         super().__init__(
             db,
             "Báo cáo sản phẩm",
-            "Phân tích lượng bán, lượng đổi/trả, tiền hoàn và doanh thu ròng theo sản phẩm. Tồn kho là số hiện tại.",
+            "Lượng bán nhóm theo ngày lập hóa đơn; lượng và tiền hoàn nhóm theo ngày xử lý phiếu đổi trả. Tồn kho là số hiện tại.",
             True,
             parent,
         )
