@@ -91,3 +91,19 @@ def get_current_user(
             detail="Phiên đăng nhập không hợp lệ hoặc đã hết hạn.",
             headers={"WWW-Authenticate": "Bearer"},
         ) from None
+
+def require_roles(*allowed_role_codes: str):
+    """Tạo dependency bảo vệ route theo role code; admin có toàn quyền."""
+    allowed = frozenset(allowed_role_codes)
+    if not allowed:
+        raise ValueError("Phải chỉ định ít nhất một vai trò được phép.")
+
+    def check_role(current_user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
+        if current_user.role_code != "admin" and current_user.role_code not in allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền thực hiện chức năng này.",
+            )
+        return current_user
+
+    return check_role
