@@ -37,7 +37,7 @@ class ReturnWindow(QWidget):
             self.username, self.employee_role
         )
         # Phiếu đổi trả liên quan đến tiền hoàn thực tế; nhân viên không được xóa lịch sử.
-        self.can_delete = self.is_admin
+        self.can_delete = self.can_delete_return(self.username)
         self._build_ui()
         self.load_returns()
 
@@ -46,6 +46,11 @@ class ReturnWindow(QWidget):
             return self.service.get_employee_role(self.username)
         except Exception:
             return ""
+
+    @staticmethod
+    def can_delete_return(username):
+        """Chỉ Admin được xóa cứng phiếu đổi trả; giữ lịch sử cho các vai trò khác."""
+        return is_admin_account(username)
 
     @staticmethod
     def can_view_returns(username, employee_role):
