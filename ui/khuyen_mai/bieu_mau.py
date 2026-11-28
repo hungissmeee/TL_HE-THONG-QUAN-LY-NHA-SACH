@@ -74,7 +74,7 @@ class PromotionFormDialog(QDialog):
             "trên ô ngày giờ."
         )
         time_hint.setWordWrap(True)
-        time_hint.setStyleSheet("color: #AAB7C8; font-size: 11px;")
+        time_hint.setStyleSheet("color: #AAB7C8; font-size: 13px;")
         form.addRow("", time_hint)
 
         root.addLayout(form)
@@ -82,10 +82,10 @@ class PromotionFormDialog(QDialog):
         note = QLabel(
             "Sau khi tạo, tỷ lệ giảm và thời hạn được giữ cố định để "
             "không làm thay đổi cách tính của hóa đơn cũ. Muốn ngừng áp dụng, "
-            "hãy xóa mềm chương trình ở danh sách."
+            "hãy ngừng áp dụng chương trình trong danh sách."
         )
         note.setWordWrap(True)
-        note.setStyleSheet("color: #AAB7C8; font-size: 11px;")
+        note.setStyleSheet("color: #AAB7C8; font-size: 13px;")
         root.addWidget(note)
 
         buttons = QDialogButtonBox(
