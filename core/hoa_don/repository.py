@@ -2,7 +2,6 @@
 
 from decimal import Decimal
 
-from core.audit_log import write_audit_log
 from core.sql_support import resolve_connection, restore_and_activate_product
 
 
@@ -350,28 +349,6 @@ class HoaDonRepository:
                 """, invoice_code, product_code, item["price"],
                      item["quantity"], item["vat"], cost_snapshots[product_code])
 
-            write_audit_log(
-                cursor,
-                "HOA_DON",
-                "INSERT",
-                {"MAHD": invoice_code},
-                before=None,
-                after={
-                    "MANV": employee.get("manv"),
-                    "MACA": shift["maca"] if shift else None,
-                    "TIENKHACHDUA": payload["cash"],
-                    "CHI_TIET": [
-                        {
-                            "MASP": code,
-                            "SOLUONG": item["quantity"],
-                            "DONGIA": item["price"],
-                            "VAT": item["vat"],
-                            "GIAVON": cost_snapshots[code],
-                        }
-                        for code, item in payload["cart"].items()
-                    ],
-                },
-            )
             conn.commit()
             return invoice_code
         except Exception:
@@ -448,20 +425,6 @@ class HoaDonRepository:
             """, invoice_code)
             if cursor.rowcount != 1:
                 raise RuntimeError("Không thể cập nhật trạng thái hóa đơn.")
-            write_audit_log(
-                cursor,
-                "HOA_DON",
-                "CANCEL",
-                {"MAHD": invoice_code},
-                before={
-                    "TRANGTHAI": 1,
-                    "CHI_TIET": [
-                        {"MASP": row[0], "SOLUONG": row[1]}
-                        for row in items
-                    ],
-                },
-                after={"TRANGTHAI": 0},
-            )
             conn.commit()
             return True
         except Exception:
