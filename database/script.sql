@@ -3,7 +3,7 @@
 
     Chay mot lan bang tai khoan DBA (sysadmin hoac tai khoan co quyen tao database/login).
     Nhap mat khau muon dung vao bien @AdminPassword tai muc 2 truoc khi chay.
-    File se tao SQL Server Login admin neu chua co, hoac cap nhat mat khau neu login da ton tai.
+    File se tao SQL Server Login admin neu chua co; neu da co thi giu nguyen mat khau.
     File tao database, bang, rang buoc, role, login/user admin va cap quyen.
     Khong tao du lieu mau hoac tai khoan nhan vien.
 */
@@ -13,7 +13,7 @@ GO
 
 -- 2. Tao SQL Server Login admin
 -- SUA GIA TRI @AdminPassword THANH MAT KHAU BAN MUON DUNG TRUOC KHI CHAY.
--- Neu Login admin da ton tai, script se cap nhat mat khau theo gia tri nay.
+-- Neu Login admin da ton tai, script giu nguyen mat khau hien tai.
 USE master;
 GO
 
@@ -21,39 +21,36 @@ DECLARE @AdminPassword NVARCHAR(128) = N'NHAP_MAT_KHAU_CUA_BAN';
 DECLARE @AdminPasswordLiteral NVARCHAR(258);
 DECLARE @AdminLoginSql NVARCHAR(MAX);
 
-IF @AdminPassword IS NULL
-   OR @AdminPassword = N'NHAP_MAT_KHAU_CUA_BAN'
-   OR LEN(@AdminPassword) < 8
-BEGIN
-    THROW 50001, N'Hay nhap mat khau admin rieng (toi thieu 8 ky tu) vao bien @AdminPassword truoc khi chay script.', 1;
-END;
-
--- Escape mat khau thanh SQL string literal an toan.
-SET @AdminPasswordLiteral = QUOTENAME(@AdminPassword, '''');
-
-IF @AdminPasswordLiteral IS NULL
-BEGIN
-    THROW 50002, N'Mat khau admin khong hop le hoac vuot qua do dai cho phep.', 1;
-END;
-
 IF SUSER_ID(N'admin') IS NULL
 BEGIN
+    IF @AdminPassword IS NULL
+       OR @AdminPassword = N'NHAP_MAT_KHAU_CUA_BAN'
+       OR LEN(@AdminPassword) < 8
+    BEGIN
+        THROW 50001, N'Hay nhap mat khau admin rieng (toi thieu 8 ky tu) vao bien @AdminPassword truoc khi chay script.', 1;
+    END;
+
+    -- Escape mat khau thanh SQL string literal an toan.
+    SET @AdminPasswordLiteral = QUOTENAME(@AdminPassword, '''');
+
+    IF @AdminPasswordLiteral IS NULL
+    BEGIN
+        THROW 50002, N'Mat khau admin khong hop le hoac vuot qua do dai cho phep.', 1;
+    END;
+
     SET @AdminLoginSql =
         N'CREATE LOGIN [admin] WITH PASSWORD = '
         + @AdminPasswordLiteral
         + N', CHECK_POLICY = ON, CHECK_EXPIRATION = OFF,'
         + N' DEFAULT_DATABASE = [CSDLQLNHASACH];';
+
+    EXEC sys.sp_executesql @AdminLoginSql;
+    PRINT N'Da tao SQL Server Login admin bang mat khau da nhap.';
 END
 ELSE
 BEGIN
-    SET @AdminLoginSql =
-        N'ALTER LOGIN [admin] WITH PASSWORD = '
-        + @AdminPasswordLiteral
-        + N', CHECK_POLICY = ON, CHECK_EXPIRATION = OFF;';
+    PRINT N'SQL Server Login admin da ton tai; giu nguyen mat khau hien tai.';
 END;
-
-EXEC sys.sp_executesql @AdminLoginSql;
-PRINT N'Da tao/cap nhat SQL Server Login admin.';
 GO
 
 -- 3. Chuyen vao database vua tao
