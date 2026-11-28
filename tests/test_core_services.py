@@ -1422,9 +1422,11 @@ class ReportServiceTests(unittest.TestCase):
         class CaptureRepository(BaoCaoRepository):
             def __init__(self):
                 self.sql = ""
+                self.params = ()
 
             def _fetch_all(self, sql, params=()):
                 self.sql = sql
+                self.params = params
                 return []
 
         repository = CaptureRepository()
@@ -1448,11 +1450,17 @@ class ReportServiceTests(unittest.TestCase):
         )
         self.assertIn("TIEN_HANG_LUY_KE", repository.sql)
         self.assertIn("TIEN_HANG_TRUOC", repository.sql)
+        self.assertIn("CAST(TIEN_GIAM_HD AS DECIMAL(18, 2))", repository.sql)
         self.assertIn("SUM(TIEN_HANG_DONG - TIEN_GIAM_DONG) AS DOANH_THU_THUAN", repository.sql)
         self.assertIn("SUM(SO_LUONG) AS SL_BAN", repository.sql)
         self.assertNotIn(
             "COALESCE(CT.SOLUONG, 0) * COALESCE(CT.DONGIA, 0)\n                        * (1 - COALESCE(KM.TYLEGIAM, 0) / 100.0)",
             repository.sql,
+        )
+        self.assertEqual(repository.sql.count("?"), 4)
+        self.assertEqual(
+            repository.params,
+            ("2026-01-01", "2026-01-31", "2026-01-01", "2026-01-31"),
         )
 
     def test_stock_movement_uses_historical_opening_and_return_date_adjustments(self):
