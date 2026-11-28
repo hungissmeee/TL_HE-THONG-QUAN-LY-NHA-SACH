@@ -580,28 +580,6 @@ class SearchableSelectorTests(unittest.TestCase):
         self.assertEqual(selector.search_input.text(), "Nhà xuất bản")
         selector.close()
 
-    def test_multi_select_keeps_search_query_and_focus_after_each_selection(self):
-        selector = SearchableMultiSelect()
-        selector.set_options([
-            ("TG001", "Tác giả A", False),
-            ("TG002", "Tác giả B", False),
-        ])
-        selector.show()
-        selector.search_input.setFocus()
-        selector.search_input.setText("Tác giả")
-        selector._last_query = "Tác giả"
-
-        selector._toggle_label("TG001 - Tác giả A")
-        QApplication.processEvents()
-
-        self.assertEqual(selector.search_input.text(), "Tác giả")
-        self.assertTrue(selector.search_input.hasFocus())
-        self.assertEqual(selector.checked_codes(), ["TG001"])
-        self.assertTrue(
-            any("TG002" in label for label in selector._populate_results("Tác giả"))
-        )
-        selector.close()
-
     def test_multi_select_summary_stays_compact_and_names_remain_in_tooltip(self):
         selector = SearchableMultiSelect()
         selector.set_options([

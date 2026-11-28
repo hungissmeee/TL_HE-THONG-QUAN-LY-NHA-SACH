@@ -119,6 +119,25 @@ class SearchableSingleSelect(QWidget):
         return self._selected_code
 
 
+class _CompleterSearchLineEdit(QLineEdit):
+    """Ô tìm kiếm mở gợi ý native khi được focus hoặc được bấm vào."""
+
+    def _show_completions(self):
+        completer = self.completer()
+        if completer is None or not self.isVisible() or not self.hasFocus():
+            return
+        completer.setCompletionPrefix(self.text())
+        completer.complete()
+
+    def focusInEvent(self, event):
+        super().focusInEvent(event)
+        QTimer.singleShot(0, self._show_completions)
+
+    def mousePressEvent(self, event):
+        super().mousePressEvent(event)
+        QTimer.singleShot(0, self._show_completions)
+
+
 class SearchableMultiSelect(QWidget):
     """Ô tìm kiếm dùng QCompleter native để chọn nhiều mục."""
 
@@ -129,7 +148,7 @@ class SearchableMultiSelect(QWidget):
         self._last_query = ""
         self._label_to_code = {}
 
-        self.search_input = QLineEdit(self)
+        self.search_input = _CompleterSearchLineEdit(self)
         self.search_input.setPlaceholderText(placeholder)
         self.search_input.textEdited.connect(self._on_search)
 
@@ -139,8 +158,7 @@ class SearchableMultiSelect(QWidget):
         self.completer.activated[str].connect(self._toggle_label)
 
         self.selected_label = QLabel("Chưa chọn mục nào", self)
-        self.selected_label.setWordWrap(False)
-        self.selected_label.setMaximumHeight(22)
+        self.selected_label.setWordWrap(True)
         self.selected_label.setStyleSheet("color: #AAB7C8; font-size: 13px;")
 
         layout = QVBoxLayout(self)
@@ -169,6 +187,7 @@ class SearchableMultiSelect(QWidget):
         self.search_input.clear()
         self.completer.popup().hide()
         self._refresh_completion_model()
+        self.completer.setCompletionPrefix("")
         self._update_selected_label()
 
     def _on_search(self, text):
@@ -218,37 +237,35 @@ class SearchableMultiSelect(QWidget):
         else:
             self.selected_codes.add(code)
 
-        # QCompleter có thể đặt nội dung mục vừa chọn vào QLineEdit.
-        # Khôi phục từ khóa gốc để người dùng tiếp tục gõ/chọn mục khác.
+        # Sau khi chọn, xóa từ khóa để người dùng có thể tìm mục tiếp theo.
+        self._last_query = ""
         self._refresh_completion_model()
-        self.search_input.setText(self._last_query)
+        self.completer.setCompletionPrefix("")
+        self.search_input.clear()
         self.search_input.setFocus(Qt.FocusReason.OtherFocusReason)
-        self.search_input.setCursorPosition(len(self._last_query))
         self._update_selected_label()
 
-        if self._last_query.strip():
-            QTimer.singleShot(0, self._reopen_completer)
+        # Giữ popup native mở lại với toàn bộ lựa chọn, kể cả khi chưa gõ từ khóa.
+        QTimer.singleShot(0, self._reopen_completer)
 
     def _reopen_completer(self):
         if not self.isVisible() or not self.search_input.hasFocus():
             return
-        self.completer.setCompletionPrefix(self._last_query)
+        self.completer.setCompletionPrefix(self.search_input.text())
         self.completer.complete()
 
     def _update_selected_label(self):
         selected_names = [
-            f"{code} - {name}"
+            name
             for code, name, _ in self.options
             if code in self.selected_codes
         ]
         text = (
-            f"Đã chọn {len(selected_names)} mục"
+            "Đã chọn: " + ", ".join(selected_names)
             if selected_names else "Chưa chọn mục nào"
         )
         self.selected_label.setText(text)
-        self.selected_label.setToolTip(
-            "\n".join(selected_names) if selected_names else text
-        )
+        self.selected_label.setToolTip(text)
 
     def checked_codes(self):
         return [
