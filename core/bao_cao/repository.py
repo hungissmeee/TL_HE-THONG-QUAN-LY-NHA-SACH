@@ -80,8 +80,10 @@ class BaoCaoRepository:
                 INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT
                 GROUP BY PDT.MAHD
             )
-            SELECT I.MAHD, N'Khách lẻ' AS KHACH_HANG, I.TENNV, I.NGAYLAP,
+            SELECT I.MAHD, I.NGAYLAP, I.TENNV,
                 CASE WHEN I.SOCA IS NULL THEN N'—' ELSE CONCAT(N'Ca ', I.SOCA) END,
+                N'Khách lẻ',
+                CASE WHEN I.TRANGTHAI = 1 THEN N'Hợp lệ' ELSE N'Đã hủy' END,
                 I.SO_DONG, I.SO_LUONG, I.TIEN_HANG,
                 ROUND(I.TIEN_HANG * I.TYLEGIAM / 100.0, 2) AS TIEN_GIAM,
                 CASE WHEN I.TRANGTHAI = 1
@@ -98,8 +100,7 @@ class BaoCaoRepository:
                         I.TIEN_HANG - ROUND(I.TIEN_HANG * I.TYLEGIAM / 100.0, 2)
                         THEN COALESCE(I.TIENKHACHDUA, 0)
                           - (I.TIEN_HANG - ROUND(I.TIEN_HANG * I.TYLEGIAM / 100.0, 2))
-                        ELSE 0 END ELSE 0 END AS TIEN_THUA,
-                CASE WHEN I.TRANGTHAI = 1 THEN N'Hợp lệ' ELSE N'Đã hủy' END
+                        ELSE 0 END ELSE 0 END AS TIEN_THUA
             FROM InvoiceLines I
             LEFT JOIN ReturnHeaders RH ON RH.MAHD = I.MAHD
             LEFT JOIN ReturnLines RL ON RL.MAHD = I.MAHD
@@ -259,8 +260,8 @@ class BaoCaoRepository:
                   AND PDT.NGAY_DOI_TRA < DATEADD(day, 1, CONVERT(date, ?))
                 GROUP BY CTDT.MASP
             )
-            SELECT SP.MASP, COALESCE(SP.BARCODE, N''), COALESCE(BK.ISBN, N''),
-                COALESCE(SP.TENSP, N''), COALESCE(SP.DVT, N''),
+            SELECT SP.MASP, COALESCE(SP.TENSP, N''), COALESCE(SP.DVT, N''),
+                COALESCE(SP.BARCODE, N''), COALESCE(BK.ISBN, N''),
                 COALESCE(S.SO_HD, 0), COALESCE(S.SL_BAN, 0),
                 COALESCE(R.SL_HOAN, 0), COALESCE(R.SL_DOI, 0),
                 COALESCE(SP.SLTON, 0)
@@ -362,10 +363,11 @@ class BaoCaoRepository:
             params.extend([f"%{keyword}%"] * 5)
         return self._fetch_all(f"""
             SELECT PN.MAPN, PN.NGAYNHAP, COALESCE(PN.LOAIPHIEUNHAP, N''),
-                COALESCE(NCC.TENNCC, PN.MANCC, N''), COALESCE(PN.SHDNCC, N''),
-                COALESCE(NV.TENNV, PN.MANV, N''), CT.MASP, COALESCE(SP.TENSP, N''),
-                COALESCE(CT.SOLUONG, 0), COALESCE(CT.DONGIA, 0),
-                COALESCE(CT.SOLUONG, 0) * COALESCE(CT.DONGIA, 0)
+                COALESCE(NCC.TENNCC, PN.MANCC, N''), CT.MASP,
+                COALESCE(SP.TENSP, N''), COALESCE(CT.SOLUONG, 0),
+                COALESCE(CT.DONGIA, 0),
+                COALESCE(CT.SOLUONG, 0) * COALESCE(CT.DONGIA, 0),
+                COALESCE(PN.SHDNCC, N''), COALESCE(NV.TENNV, PN.MANV, N'')
             FROM dbo.PHIEU_NHAP PN
             INNER JOIN dbo.CHI_TIET_PHIEU_NHAP CT ON CT.MAPN = PN.MAPN
             LEFT JOIN dbo.SAN_PHAM SP ON SP.MASP = CT.MASP
