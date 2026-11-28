@@ -141,12 +141,11 @@ class PromotionWindow(QWidget):
         root.addLayout(header)
 
         description = QLabel(
-            "Tỷ lệ giảm và thời gian áp dụng được giữ cố định sau khi tạo. "
-            "Có thể đổi tên; xóa khuyến mãi chỉ chuyển sang trạng thái "
-            "ngừng áp dụng để giữ nguyên lịch sử hóa đơn."
+            "Tỷ lệ giảm và thời gian áp dụng đã lập được giữ nguyên trên hóa đơn cũ. "
+            "Khi xóa chương trình, chương trình sẽ ngừng áp dụng và lịch sử hóa đơn vẫn được giữ."
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: #AAB7C8; font-size: 11px;")
+        description.setStyleSheet("color: #AAB7C8; font-size: 13px;")
         root.addWidget(description)
 
         search = QHBoxLayout()
