@@ -1,18 +1,16 @@
 ﻿/*
-    KHOI TAO CSDL QUAN LY NHA SACH
-    Script don gian theo cach trinh bay co ban trong mon CSDL.
+    KHOI TAO CAU TRUC CSDL QUAN LY NHA SACH
 
-    Chay mot lan tren SQL Server, bang tai khoan co quyen tao database va login.
-    Truoc khi chay, thay mat khau mau cua tai khoan admin bang mat khau rieng.
-    Script chi tao cau truc, cac role, tai khoan admin va ho so admin;
-    khong them du lieu mau va khong tao tai khoan nhan vien mau.
+    Chay mot lan bang tai khoan DBA co quyen tao database, bang va role.
+    SQL Server login admin phai duoc DBA tao truoc khi chay file nay.
+    File tao database, bang, rang buoc, role va user database admin;
+    khong tao du lieu mau hoac tai khoan nhan vien.
 */
 -- 1. Tao database
 CREATE DATABASE CSDLQLNHASACH;
 GO
 
--- 2. Tao tai khoan dang nhap admin o cap SQL Server
--- Tai khoan SQL admin can duoc DBA tao truoc khi chay schema nay.
+-- 2. Tai khoan SQL admin da duoc DBA tao truoc.
 -- 3. Chuyen vao database vua tao
 USE CSDLQLNHASACH;
 GO
