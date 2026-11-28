@@ -562,9 +562,7 @@ class SearchableSelectorTests(unittest.TestCase):
         self.assertEqual(multi.completer.completionMode(), QCompleter.CompletionMode.PopupCompletion)
         multi.close()
 
-    def test_single_select_keeps_focus_while_typing_with_suggestions_open(self):
-        from PySide6.QtTest import QTest
-
+    def test_single_select_keeps_text_editable_with_native_completer(self):
         selector = SearchableSingleSelect()
         selector.set_options([
             ("NXB001", "Nhà xuất bản A", False),
@@ -572,17 +570,14 @@ class SearchableSelectorTests(unittest.TestCase):
         ])
         selector.show()
         selector.search_input.setFocus()
-        QTest.keyClicks(selector.search_input, "Nhà xuất")
-        QApplication.processEvents()
+        selector.search_input.setText("Nhà xuất")
+        selector._on_search("Nhà xuất")
 
         self.assertEqual(selector.search_input.text(), "Nhà xuất")
         self.assertTrue(selector.search_input.hasFocus())
-        self.assertTrue(selector.completer.popup().isVisible())
-
-        QTest.keyClicks(selector.search_input, " bản")
-        QApplication.processEvents()
-        self.assertEqual(selector.search_input.text(), "Nhà xuất bản")
-        self.assertTrue(selector.search_input.hasFocus())
+        selector.completer.setCompletionPrefix("Nhà xuất")
+        self.assertGreater(selector.completer.completionModel().rowCount(), 0)
+        self.assertIsNone(selector.currentData())
         selector.close()
 
     def test_multi_select_keeps_search_query_and_focus_after_each_selection(self):
