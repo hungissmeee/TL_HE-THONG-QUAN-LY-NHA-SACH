@@ -232,14 +232,8 @@ class BaoCaoRepository:
             "month": "DATEFROMPARTS(YEAR(PDT.NGAY_DOI_TRA), MONTH(PDT.NGAY_DOI_TRA), 1)",
             "year": "DATEFROMPARTS(YEAR(PDT.NGAY_DOI_TRA), 1, 1)",
         }
-        cash_periods = {
-            "day": "CAST(C.NGAYLAM AS date)",
-            "month": "DATEFROMPARTS(YEAR(C.NGAYLAM), MONTH(C.NGAYLAM), 1)",
-            "year": "DATEFROMPARTS(YEAR(C.NGAYLAM), 1, 1)",
-        }
         sales_key = period_expressions[period]
         return_key = return_expressions[period]
-        cash_key = cash_periods[period]
         return self._fetch_all(f"""
             WITH InvoiceTotals AS (
                 SELECT HD.MAHD, HD.NGAYLAP,
@@ -269,10 +263,6 @@ class BaoCaoRepository:
             ),
             ReturnDetails AS (
                 SELECT {return_key} AS KY,
-                    SUM(CASE
-                        WHEN ISNULL(CTDT.TINHTRANGHANG, 1) = 0
-                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0
-                    END) AS SL_HANG_HONG,
                     SUM(CASE
                         WHEN ISNULL(CTDT.TINHTRANGHANG, 1) = 0
                         THEN COALESCE(CTDT.SOLUONG, 0)
@@ -313,56 +303,33 @@ class BaoCaoRepository:
                   AND PDT.NGAY_DOI_TRA < DATEADD(day, 1, CONVERT(date, ?))
                 GROUP BY {return_key}
             ),
-            ShiftCash AS (
-                SELECT {cash_key} AS KY,
-                    CASE
-                        WHEN SUM(CASE WHEN C.TMCUOICA IS NULL THEN 1 ELSE 0 END) > 0
-                        THEN CAST(NULL AS DECIMAL(18, 2))
-                        ELSE SUM(
-                            COALESCE(C.TMCUOICA, 0) - COALESCE(C.TMDAUCA, 0)
-                        )
-                    END AS TIEN_MAT_THUC_TE
-                FROM dbo.CA_LAM_VIEC C
-                WHERE C.NGAYLAM >= CONVERT(date, ?)
-                  AND C.NGAYLAM < DATEADD(day, 1, CONVERT(date, ?))
-                GROUP BY {cash_key}
-            ),
             Periods AS (
                 SELECT KY FROM Sales
                 UNION
                 SELECT KY FROM ReturnDetails
                 UNION
                 SELECT KY FROM Refunds
-                UNION
-                SELECT KY FROM ShiftCash
             ),
             Totals AS (
                 SELECT P.KY,
                     COALESCE(S.SL_BAN, 0) AS SL_BAN,
                     COALESCE(S.DOANH_THU_BAN, 0) AS DOANH_THU_BAN,
-                    COALESCE(F.TIEN_HOAN, 0) AS TIEN_HOAN,
-                    COALESCE(S.DOANH_THU_BAN, 0)
-                        - COALESCE(F.TIEN_HOAN, 0) AS DOANH_THU_THUAN,
-                    C.TIEN_MAT_THUC_TE,
                     COALESCE(S.GIA_VON, 0)
                         + COALESCE(D.DIEU_CHINH_GIA_VON, 0) AS GIA_VON,
-                    COALESCE(D.SL_HANG_HONG, 0) AS SL_HANG_HONG,
-                    COALESCE(D.GT_HANG_HONG, 0) AS GT_HANG_HONG
+                    COALESCE(D.GT_HANG_HONG, 0) AS GT_HANG_HONG,
+                    COALESCE(F.TIEN_HOAN, 0) AS TIEN_HOAN
                 FROM Periods P
                 LEFT JOIN Sales S ON S.KY = P.KY
                 LEFT JOIN ReturnDetails D ON D.KY = P.KY
                 LEFT JOIN Refunds F ON F.KY = P.KY
-                LEFT JOIN ShiftCash C ON C.KY = P.KY
             )
-            SELECT KY, SL_BAN, DOANH_THU_BAN, TIEN_HOAN,
-                DOANH_THU_THUAN, TIEN_MAT_THUC_TE, GIA_VON,
-                SL_HANG_HONG, GT_HANG_HONG,
-                DOANH_THU_THUAN - GIA_VON - GT_HANG_HONG
+            SELECT KY, SL_BAN, DOANH_THU_BAN, GIA_VON,
+                GT_HANG_HONG, TIEN_HOAN,
+                DOANH_THU_BAN - GIA_VON - GT_HANG_HONG - TIEN_HOAN
                     AS LOI_NHUAN_UOC_TINH
             FROM Totals
             ORDER BY KY
         """, (
-            start_date, end_date,
             start_date, end_date,
             start_date, end_date,
             start_date, end_date,
