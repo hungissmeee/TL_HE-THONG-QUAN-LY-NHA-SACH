@@ -1338,6 +1338,27 @@ class ReportCenterTests(unittest.TestCase):
         self.assertIn("report_table_layout.addWidget(self.footer)", source)
         self.assertNotIn("right.addWidget(self.footer)", source)
 
+    def test_ui_uses_readable_font_sizes_and_hides_implementation_notes(self):
+        import inspect
+        from ui.styles import MAIN_WINDOW_STYLESHEET
+        from ui.bao_cao.trung_tam_bao_cao import REPORTS, ReportCenterPage
+        from ui.login import LoginDialog
+        from ui.doi_mat_khau import ChangePasswordDialog
+
+        self.assertIn("font-size: 13px;", MAIN_WINDOW_STYLESHEET)
+        self.assertNotIn("font-size: 10px;", MAIN_WINDOW_STYLESHEET)
+        self.assertNotIn("font-size: 11px;", MAIN_WINDOW_STYLESHEET)
+        self.assertTrue(all("description" not in report for report in REPORTS.values()))
+
+        report_ui = inspect.getsource(ReportCenterPage._build_ui)
+        self.assertNotIn("description_label", report_ui)
+        self.assertNotIn("filter_note", report_ui)
+
+        login_ui = inspect.getsource(LoginDialog.__init__)
+        self.assertNotIn("SQL Server", login_ui)
+        password_ui = inspect.getsource(ChangePasswordDialog.__init__)
+        self.assertNotIn("SQL SERVER", password_ui)
+
     def test_report_horizontal_scroll_keeps_group_header_and_footer_aligned_at_right_edge(self):
         import inspect
         from ui.bao_cao.trung_tam_bao_cao import ReportCenterPage
@@ -1357,7 +1378,7 @@ class ReportCenterTests(unittest.TestCase):
         range_source = inspect.getsource(
             ReportCenterPage._sync_horizontal_scroll_range
         )
-        self.assertIn("source.horizontalHeader().offset()", range_source)
+        self.assertIn("self.table.horizontalHeader().offset()", range_source)
         self.assertIn("target.horizontalHeader().setOffset(source_offset)", range_source)
         self.assertIn("scrollbar.setRange(source_minimum, source_maximum)", range_source)
 
