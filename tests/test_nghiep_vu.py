@@ -1146,6 +1146,7 @@ class ReportCenterTests(unittest.TestCase):
         self.assertIn("stock_card", REPORTS)
         self.assertIn("daily_sales", REPORTS)
         self.assertIn("sales_time", REPORTS)
+        self.assertIn("cash_flow", REPORTS)
         self.assertIn("import_product", REPORTS)
         source = inspect.getsource(ReportCenterPage.export_xlsx)
         self.assertIn(".xlsx", source)
@@ -1205,10 +1206,10 @@ class ReportCenterTests(unittest.TestCase):
             REPORTS["stock_movement"]["headers"],
             [
                 "Mã hàng", "Tên hàng", "ĐVT",
-                "Đầu kỳ - Số lượng", "Đầu kỳ - Giá trị*",
-                "Nhập kho - Số lượng", "Nhập kho - Giá trị",
-                "Xuất kho - Số lượng", "Xuất kho - Giá trị*",
-                "Cuối kỳ - Số lượng", "Cuối kỳ - Giá trị*",
+                "Số lượng", "Giá trị*",
+                "Số lượng", "Giá trị",
+                "Số lượng", "Giá trị*",
+                "Số lượng", "Giá trị*",
             ],
         )
         self.assertEqual(
@@ -1225,11 +1226,30 @@ class ReportCenterTests(unittest.TestCase):
             REPORTS["stock_card"]["headers"],
             [
                 "Mã hàng", "Tên hàng", "Ngày chứng từ", "Số chứng từ",
-                "Diễn giải", "ĐVT", "Đơn giá", "Nhập - Số lượng",
-                "Nhập - Giá trị", "Xuất - Số lượng", "Xuất - Giá trị",
-                "Tồn - Số lượng", "Tồn - Giá trị*",
+                "Loại chứng từ", "Diễn giải", "ĐVT", "Đơn giá",
+                "Số lượng", "Giá trị", "Số lượng", "Giá trị",
+                "Số lượng", "Giá trị*",
             ],
         )
+        self.assertEqual(
+            REPORTS["stock_card"]["group_headers"],
+            [
+                (0, 1, "Thông tin hàng hóa"),
+                (2, 7, "Thông tin chứng từ"),
+                (8, 9, "Nhập kho"),
+                (10, 11, "Xuất kho"),
+                (12, 13, "Tồn kho"),
+            ],
+        )
+        self.assertEqual(
+            REPORTS["sales_time"]["headers"],
+            [
+                "Thời gian", "SL đơn bán", "Tổng tiền hàng",
+                "Giảm giá HĐ", "Doanh số", "Tiền hoàn",
+                "Doanh số sau hoàn theo kỳ",
+            ],
+        )
+        self.assertTrue(REPORTS["cash_flow"]["period"])
 
     def test_period_selector_refreshes_period_label_and_wrapped_table_headers(self):
         import inspect
