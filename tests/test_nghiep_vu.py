@@ -1261,7 +1261,7 @@ class ReportCenterTests(unittest.TestCase):
             REPORTS["revenue"]["headers"],
             [
                 "Thời gian", "Số lượng bán", "Doanh thu bán",
-                "Giá vốn hàng bán", "SL hàng hỏng", "Giá trị hàng hỏng",
+                "Giá vốn ước tính", "SL hàng hỏng", "Giá trị hàng hỏng ước tính",
                 "Tiền hoàn", "Doanh thu thuần", "Lợi nhuận ước tính",
             ],
         )
