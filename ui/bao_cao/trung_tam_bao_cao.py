@@ -386,7 +386,7 @@ class ReportCenterPage(QWidget):
         self.period_combo.addItem("Theo ngày", "day")
         self.period_combo.addItem("Theo tháng", "month")
         self.period_combo.addItem("Theo năm", "year")
-        self.period_combo.currentIndexChanged.connect(self.refresh_data)
+        self.period_combo.currentIndexChanged.connect(self._on_period_changed)
         filter_layout.addWidget(self.period_combo)
 
         self.stock_status_combo = QComboBox()
@@ -475,6 +475,8 @@ class ReportCenterPage(QWidget):
         self.table.verticalHeader().setVisible(False)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         self.table.horizontalHeader().setMinimumSectionSize(78)
+        self.table.horizontalHeader().setMinimumHeight(46)
+        self.table.horizontalHeader().setWordWrap(True)
         self.table.horizontalHeader().setStretchLastSection(False)
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
@@ -616,6 +618,12 @@ class ReportCenterPage(QWidget):
             ),
         }
         self.filter_note.setText(note_by_report.get(self.current_report, ""))
+        self.refresh_data()
+
+    def _on_period_changed(self, *_):
+        if self.current_report != "sales_time":
+            return
+        self._build_table_headers(REPORTS[self.current_report])
         self.refresh_data()
 
     def _active_headers(self, definition):
