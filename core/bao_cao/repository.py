@@ -561,12 +561,14 @@ class BaoCaoRepository:
                     CASE
                         WHEN TIEN_HANG_HD > 0 THEN
                             ROUND(
-                                TIEN_GIAM_HD * TIEN_HANG_LUY_KE
-                                / NULLIF(TIEN_HANG_HD, 0), 2
+                                CAST(TIEN_GIAM_HD AS DECIMAL(18, 2))
+                                * CAST(TIEN_HANG_LUY_KE AS DECIMAL(18, 2))
+                                / NULLIF(CAST(TIEN_HANG_HD AS DECIMAL(18, 2)), 0), 2
                             )
                             - ROUND(
-                                TIEN_GIAM_HD * TIEN_HANG_TRUOC
-                                / NULLIF(TIEN_HANG_HD, 0), 2
+                                CAST(TIEN_GIAM_HD AS DECIMAL(18, 2))
+                                * CAST(TIEN_HANG_TRUOC AS DECIMAL(18, 2))
+                                / NULLIF(CAST(TIEN_HANG_HD AS DECIMAL(18, 2)), 0), 2
                             )
                         ELSE 0
                     END AS TIEN_GIAM_DONG
