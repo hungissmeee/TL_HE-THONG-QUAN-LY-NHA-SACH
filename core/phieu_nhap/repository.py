@@ -214,8 +214,8 @@ class PhieuNhapRepository:
 
     @staticmethod
     def _assert_modify_permission(header, username, role, is_admin=False):
-        """Dùng lại quyền sửa chứng từ hiện tại: quản lý mọi phiếu, kho theo chủ phiếu/5 phút."""
-        status, owner, within_five_minutes = header
+        """Sửa chi tiết theo quyền SQL hiện tại; thời hạn 5 phút chỉ áp dụng cho hủy phiếu."""
+        status, _owner, _within_five_minutes = header
         if int(status or 0) != 1:
             raise ValueError("Phiếu nhập đã bị hủy, không được chỉnh sửa nữa.")
         role = str(role or "").strip().casefold()
@@ -224,12 +224,7 @@ class PhieuNhapRepository:
         manager = role == "quản lý"
         warehouse = role == "nhân viên kho"
         if not (admin or manager or warehouse):
-            raise PermissionError("Tài khoản không có quyền chỉnh sửa phiếu nhập.")
-        if warehouse and not (admin or manager):
-            if str(owner or "").strip().casefold() != username.casefold():
-                raise PermissionError("Nhân viên kho chỉ được chỉnh sửa phiếu do mình lập.")
-            if int(within_five_minutes or 0) != 1:
-                raise PermissionError("Nhân viên kho chỉ được chỉnh sửa phiếu do mình lập trong vòng 5 phút.")
+            raise PermissionError("Tài khoản không có quyền chỉnh sửa chi tiết phiếu nhập.")
 
     def update_import_header(
         self, import_code, supplier_code, supplier_invoice,
