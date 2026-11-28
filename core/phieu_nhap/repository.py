@@ -585,6 +585,20 @@ class PhieuNhapRepository:
                         (MAPN, MASP, DONGIA, SOLUONG, VAT)
                     VALUES (?, ?, ?, ?, ?)
                 """, import_code, code, price, quantity, item["vat"])
+            write_audit_log(
+                cursor,
+                "PHIEU_NHAP",
+                "INSERT",
+                {"MAPN": import_code},
+                before=None,
+                after={
+                    "MANCC": supplier_code,
+                    "SHDNCC": supplier_invoice,
+                    "MANV": payload["employee_code"],
+                    "TONGTRIGIA": payload["total"],
+                    "CHI_TIET": payload["items"],
+                },
+            )
             conn.commit()
             return import_code
         except Exception:
