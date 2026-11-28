@@ -11,6 +11,8 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtWidgets import QApplication, QTableWidget, QComboBox, QDateEdit, QToolButton
 from PySide6.QtGui import QPalette
 from PySide6.QtCore import Qt, QPoint
+from PySide6.QtTest import QTest
+from unittest.mock import patch
 from PySide6.QtWidgets import QCompleter
 from ui.styles import (
     MAIN_WINDOW_STYLESHEET, apply_app_palette, configure_app_theme,
@@ -48,6 +50,7 @@ from ui.sidebar_navigation import SidebarNavigationMixin
 from ui.permissions import is_admin_account, allowed_pages_for_user
 from ui.doi_tra.tao_bieu_mau import CreateReturnDialog
 from ui.doi_tra.danh_sach import ReturnWindow
+from ui.login import LoginWindow
 
 
 _APP = QApplication.instance() or QApplication([])
@@ -68,6 +71,71 @@ class FakeCursor:
 
     def fetchone(self):
         return (self.last_number,)
+
+
+class LoginWindowTests(unittest.TestCase):
+    """Kiểm thử thông báo đăng nhập và phím Enter."""
+
+    def test_login_errors_are_mapped_to_friendly_messages(self):
+        cases = [
+            (
+                Exception(
+                    "[28000] [Microsoft][ODBC Driver 18 for SQL Server] "
+                    "[SQL Server]Login failed for user 'NV001'. (18456)"
+                ),
+                "Tài khoản hoặc mật khẩu không chính xác.",
+            ),
+            (
+                Exception(
+                    "[28000] [Microsoft][SQL Server]Login failed for user 'NV001'. "
+                    "Reason: The account is disabled. (18470)"
+                ),
+                "Tài khoản đã bị vô hiệu hóa.",
+            ),
+            (
+                Exception("[42000] [SQL Server]Cannot open database requested by the login. (4060)"),
+                "không thể truy cập cơ sở dữ liệu",
+            ),
+            (
+                Exception("HYT00", "[HYT00] Login timeout expired"),
+                "Không thể kết nối đến SQL Server.",
+            ),
+        ]
+        for error, expected in cases:
+            with self.subTest(error=str(error)):
+                self.assertIn(
+                    expected.casefold(),
+                    LoginWindow.login_error_message(error).casefold(),
+                )
+
+    def test_unknown_sql_error_does_not_leak_raw_diagnostics(self):
+        error = Exception("[42000] internal SQL detail with server path")
+        message = LoginWindow.login_error_message(error)
+        self.assertNotIn("internal SQL detail", message)
+        self.assertNotIn("server path", message)
+        self.assertIn("liên hệ quản trị viên", message.casefold())
+
+    def test_enter_from_password_submits_login(self):
+        with patch.object(LoginWindow, "login") as login:
+            window = LoginWindow(SimpleNamespace())
+            self.addCleanup(window.close)
+            window.password.setText("secret")
+            window.show()
+            window.password.setFocus()
+            _APP.processEvents()
+            QTest.keyClick(window.password, Qt.Key.Key_Return)
+            login.assert_called_once_with()
+
+    def test_enter_from_username_moves_focus_to_password(self):
+        window = LoginWindow(SimpleNamespace())
+        self.addCleanup(window.close)
+        window.username.setText("NV001")
+        window.password.clear()
+        window.show()
+        window.username.setFocus()
+        _APP.processEvents()
+        QTest.keyClick(window.username, Qt.Key.Key_Return)
+        self.assertIs(window.focusWidget(), window.password)
 
 
 class NativeQtControlStyleTests(unittest.TestCase):
