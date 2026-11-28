@@ -1289,11 +1289,25 @@ class ReportCenterTests(unittest.TestCase):
         self.assertIn("sales_time", REPORTS)
         self.assertIn("revenue", REPORTS)
         self.assertIn("revenue_by_shift", REPORTS)
+        self.assertIn("shift", REPORTS)
+        self.assertEqual(REPORTS["shift"]["method"], "shift_report")
+        self.assertEqual(len(REPORTS["shift"]["headers"]), 14)
         self.assertNotIn("cash_flow", REPORTS)
         self.assertIn("import_product", REPORTS)
         source = inspect.getsource(ReportCenterPage.export_xlsx)
         self.assertIn(".xlsx", source)
         self.assertNotIn(".csv", source)
+
+    def test_every_report_menu_item_has_a_report_definition(self):
+        from ui.bao_cao.trung_tam_bao_cao import ReportCenterPage, REPORTS
+
+        menu_keys = {
+            key
+            for _group_name, items in ReportCenterPage.GROUPS
+            for key, _title in items
+        }
+        self.assertTrue(menu_keys)
+        self.assertEqual(menu_keys - set(REPORTS), set())
 
     def test_report_filters_keep_keyword_search_without_employee_selector(self):
         import inspect
