@@ -26,50 +26,51 @@ from ui.table_sort import SORT_ROLE, SortableTableWidgetItem
 REPORTS = {
     "daily_sales": {
         "title": "BÁO CÁO CUỐI NGÀY BÁN HÀNG",
-        "description": "Theo dõi từng chứng từ bán hàng, thời gian, số lượng, doanh thu, giảm giá, thực thu và các khoản đổi trả liên quan.",
+        "description": "Theo dõi hóa đơn, doanh thu, giảm giá, thực thu và tiền hoàn liên quan; không hiển thị số lượng phiếu hoặc dòng đổi trả.",
         "method": "daily_sales_report",
         "headers": [
             "Mã chứng từ", "Thời gian", "SL sản phẩm", "Doanh thu",
-            "Giảm giá", "Thực thu", "Số phiếu trả", "SL hoàn tiền",
-            "SL đổi hàng", "Giá trị trả lại", "Doanh thu sau hoàn",
-            "Khách đưa", "Tiền thừa", "Nhân viên", "Ca", "Trạng thái",
+            "Giảm giá", "Thực thu", "Tiền hoàn", "Doanh thu sau hoàn",
+            "Tiền thừa", "Nhân viên", "Ca", "Trạng thái",
             "Số dòng", "Loại chứng từ",
         ],
-        "money_cols": [3, 4, 5, 9, 10, 11, 12],
-        "number_cols": [2, 6, 7, 8, 16],
+        "money_cols": [3, 4, 5, 6, 7, 8],
+        "number_cols": [2, 12],
         "date_cols": [1],
-        "sum_cols": [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+        "sum_cols": [2, 3, 4, 5, 6, 7, 8],
         "search": True,
     },
+
     "sales_time": {
         "title": "BÁO CÁO BÁN HÀNG THEO THỜI GIAN",
-        "description": "Doanh số được nhóm theo ngày lập hóa đơn; phiếu trả được nhóm theo ngày xử lý. Chênh lệch theo kỳ không phải doanh thu thuần theo hóa đơn gốc.",
+        "description": "Tổng hợp số hóa đơn, tiền hàng, giảm giá, doanh số và tiền hoàn theo ngày, tháng hoặc năm; không cộng số lượng hàng bán và số phiếu đổi trả.",
         "method": "sales_by_period_report",
         "headers": [
-            "Thời gian", "SL đơn bán", "SL bán", "Tổng tiền hàng",
-            "Giảm giá HĐ", "Doanh số", "SL phiếu trả", "SL hàng trả",
-            "Giá trị hoàn", "Doanh số sau hoàn theo kỳ",
+            "Thời gian", "SL đơn bán", "Tổng tiền hàng",
+            "Giảm giá HĐ", "Doanh số", "Tiền hoàn",
+            "Doanh số sau hoàn theo kỳ",
         ],
-        "money_cols": [3, 4, 5, 8, 9],
-        "number_cols": [1, 2, 6, 7],
+        "money_cols": [2, 3, 4, 5, 6],
+        "number_cols": [1],
         "date_cols": [0],
-        "sum_cols": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+        "sum_cols": [1, 2, 3, 4, 5, 6],
         "period": True,
     },
+
     "sales_employee": {
         "title": "BÁO CÁO BÁN HÀNG THEO NHÂN VIÊN",
-        "description": "Doanh số ghi theo nhân viên lập hóa đơn; số phiếu đổi trả và tiền hoàn ghi theo nhân viên trực tiếp xử lý phiếu.",
+        "description": "Doanh số ghi theo nhân viên lập hóa đơn; tiền hoàn ghi theo nhân viên trực tiếp xử lý phiếu đổi trả.",
         "method": "sales_by_employee_report",
         "headers": [
-            "Mã NV", "Tên nhân viên", "SL hóa đơn", "SL bán",
-            "Tiền hàng", "Giảm giá", "Doanh số", "SL phiếu trả",
-            "SL hoàn tiền", "SL đổi hàng", "Tiền đã hoàn",
+            "Mã NV", "Tên nhân viên", "SL hóa đơn",
+            "Tiền hàng", "Giảm giá", "Doanh số", "Tiền hoàn",
         ],
-        "money_cols": [4, 5, 6, 10],
-        "number_cols": [2, 3, 7, 8, 9],
-        "sum_cols": [2, 3, 4, 5, 6, 7, 8, 9, 10],
+        "money_cols": [3, 4, 5, 6],
+        "number_cols": [2],
+        "sum_cols": [2, 3, 4, 5, 6],
         "search": True,
     },
+
     "sales_product": {
         "title": "BÁO CÁO BÁN HÀNG THEO SẢN PHẨM",
         "description": "Tổng hợp số lượng và doanh số theo từng mặt hàng. Hệ thống chưa quản lý hồ sơ khách hàng nên không tách doanh số theo từng khách.",
@@ -86,19 +87,20 @@ REPORTS = {
     },
     "promotion": {
         "title": "BÁO CÁO HIỆU QUẢ KHUYẾN MÃI",
-        "description": "Tổng hợp theo hóa đơn gốc trong kỳ; tiền hoàn được cộng lũy kế theo hóa đơn thuộc chương trình.",
+        "description": "Tổng hợp theo hóa đơn hợp lệ trong kỳ; tiền hoàn được cộng lũy kế theo hóa đơn thuộc chương trình.",
         "method": "promotion_report",
         "headers": [
             "Mã khuyến mãi", "Tên chương trình", "Tỷ lệ giảm",
             "SL hóa đơn", "Tiền hàng", "Tiền giảm", "Doanh số",
-            "Số phiếu trả", "Tiền hoàn lũy kế", "Còn lại sau hoàn",
+            "Tiền hoàn lũy kế", "Còn lại sau hoàn",
         ],
-        "money_cols": [4, 5, 6, 8, 9],
-        "number_cols": [3, 7],
+        "money_cols": [4, 5, 6, 7, 8],
+        "number_cols": [3],
         "percent_cols": [2],
-        "sum_cols": [3, 4, 5, 6, 7, 8, 9],
+        "sum_cols": [3, 4, 5, 6, 7, 8],
         "search": True,
     },
+
     "import_detail": {
         "title": "BÁO CÁO CHI TIẾT NHẬP HÀNG",
         "description": "Chi tiết từng dòng hàng trên phiếu nhập còn hiệu lực trong kỳ đã chọn.",
@@ -174,14 +176,14 @@ REPORTS = {
     },
     "stock_movement": {
         "title": "BÁO CÁO NHẬP – XUẤT – TỒN KHO",
-        "description": "Tồn đầu/cuối được tái dựng từ số tồn hiện tại và chứng từ còn hiệu lực. Tổng nhập gồm nhập nhà cung cấp và hàng hoàn tiền nguyên vẹn được nhập lại; tổng xuất gồm bán hàng và hàng xuất đổi. Giá trị tồn và giá trị xuất ước tính theo giá nhập hiện tại.",
+        "description": "Nhập kho chỉ lấy từ phiếu nhập hợp lệ; xuất kho chỉ lấy từ hóa đơn hợp lệ. Hàng trả không được gộp vào nhập/xuất; hàng hỏng không được nhập lại kho. Giá trị tồn và xuất ước tính theo giá nhập hiện tại.",
         "method": "stock_movement_report",
         "headers": [
             "Mã hàng", "Tên hàng", "ĐVT",
-            "Đầu kỳ - Số lượng", "Đầu kỳ - Giá trị*",
-            "Nhập kho - Số lượng", "Nhập kho - Giá trị",
-            "Xuất kho - Số lượng", "Xuất kho - Giá trị*",
-            "Cuối kỳ - Số lượng", "Cuối kỳ - Giá trị*",
+            "Số lượng", "Giá trị*",
+            "Số lượng", "Giá trị",
+            "Số lượng", "Giá trị*",
+            "Số lượng", "Giá trị*",
         ],
         "number_cols": [3, 5, 7, 9],
         "money_cols": [4, 6, 8, 10],
@@ -195,37 +197,46 @@ REPORTS = {
         ],
         "search": True,
     },
+
     "stock_card": {
         "title": "BÁO CÁO XUẤT NHẬP TỒN CHI TIẾT (THẺ KHO)",
-        "description": "Theo dõi số dư đầu kỳ và từng lần nhập, xuất, cùng số tồn sau giao dịch. Giá trị nhập lấy theo đơn giá chứng từ; giá trị tồn và xuất ước tính theo giá nhập hiện lưu.",
+        "description": "Theo dõi số dư đầu kỳ và từng lần nhập theo phiếu nhập, xuất theo hóa đơn hợp lệ. Không hiển thị phiếu đổi trả trong sổ nhập/xuất.",
         "method": "stock_card_report",
         "headers": [
             "Mã hàng", "Tên hàng", "Ngày chứng từ", "Số chứng từ",
-            "Diễn giải", "ĐVT", "Đơn giá", "Nhập - Số lượng",
-            "Nhập - Giá trị", "Xuất - Số lượng", "Xuất - Giá trị",
-            "Tồn - Số lượng", "Tồn - Giá trị*",
+            "Loại chứng từ", "Diễn giải", "ĐVT", "Đơn giá",
+            "Số lượng", "Giá trị", "Số lượng", "Giá trị",
+            "Số lượng", "Giá trị*",
         ],
-        "number_cols": [7, 9, 11],
-        "money_cols": [6, 8, 10, 12],
+        "number_cols": [8, 10, 12],
+        "money_cols": [7, 9, 11, 13],
         "date_cols": [2],
-        "sum_cols": [7, 8, 9, 10],
+        "sum_cols": [8, 9, 10, 11],
+        "group_headers": [
+            (0, 1, "Thông tin hàng hóa"),
+            (2, 7, "Thông tin chứng từ"),
+            (8, 9, "Nhập kho"),
+            (10, 11, "Xuất kho"),
+            (12, 13, "Tồn kho"),
+        ],
         "search": True,
     },
-    "shift": {
-        "title": "BÁO CÁO CUỐI CA",
-        "description": "Số hóa đơn và doanh số theo ca; tiền cuối ca là số kiểm kê được ghi nhận, không tự động đồng nhất với doanh số.",
-        "method": "shift_report",
+
+    "cash_flow": {
+        "title": "BÁO CÁO TỔNG HỢP THU – CHI",
+        "description": "Tiền thu lấy từ hóa đơn hợp lệ sau giảm giá. Tiền chi gồm trị giá phiếu nhập hợp lệ và tiền hoàn khách; chưa bao gồm các khoản chi phí vận hành không được lưu trong CSDL.",
+        "method": "cash_flow_report",
         "headers": [
-            "Mã ca", "Ngày làm", "Ca", "Giờ mở", "Giờ đóng",
-            "Lượt nhân viên", "SL hóa đơn", "SL bán", "Doanh số",
-            "Số phiếu trả", "Tiền hoàn", "Tiền đầu ca",
-            "Tiền cuối ca", "Trạng thái chốt",
+            "Thời gian", "Tiền thu bán hàng", "Tiền chi nhập hàng",
+            "Tiền hoàn khách", "Tổng tiền chi", "Chênh lệch thu – chi",
         ],
-        "money_cols": [8, 10, 11, 12],
-        "number_cols": [5, 6, 7, 9],
-        "date_cols": [1],
-        "sum_cols": [5, 6, 7, 8, 9, 10, 11, 12],
+        "money_cols": [1, 2, 3, 4, 5],
+        "date_cols": [0],
+        "sum_cols": [1, 2, 3, 4, 5],
+        "period": True,
     },
+
+
 }
 
 
@@ -239,6 +250,9 @@ class ReportCenterPage(QWidget):
             ("sales_employee", "Bán hàng theo nhân viên"),
             ("sales_product", "Bán hàng theo sản phẩm"),
             ("promotion", "Hiệu quả khuyến mãi"),
+        ]),
+        ("BÁO CÁO THU CHI", [
+            ("cash_flow", "Tổng thu – chi theo thời gian"),
         ]),
         ("BÁO CÁO HÀNG HÓA / KHO", [
             ("stock_movement", "Báo cáo nhập xuất tồn"),
@@ -640,14 +654,14 @@ class ReportCenterPage(QWidget):
         self.refresh_data()
 
     def _on_period_changed(self, *_):
-        if self.current_report != "sales_time":
+        if not REPORTS[self.current_report].get("period"):
             return
         self._build_table_headers(REPORTS[self.current_report])
         self.refresh_data()
 
     def _active_headers(self, definition):
         headers = list(definition["headers"])
-        if self.current_report == "sales_time":
+        if definition.get("period"):
             period_headers = {
                 "day": "Ngày",
                 "month": "Tháng",
@@ -734,8 +748,8 @@ class ReportCenterPage(QWidget):
         start, end = self._date_values()
         if self.current_report == "daily_sales":
             return self.service.daily_sales_report(start, end, None, keyword)
-        if self.current_report == "sales_time":
-            return self.service.sales_by_period_report(
+        if definition.get("period"):
+            return getattr(self.service, method)(
                 start, end, self.period_combo.currentData()
             )
         if method in {
@@ -772,7 +786,7 @@ class ReportCenterPage(QWidget):
     def _format_value(self, value, column, definition):
         if value is None:
             return ""
-        if self.current_report == "sales_time" and column == 0:
+        if definition.get("period") and column == 0:
             if hasattr(value, "strftime"):
                 formats = {"day": "%d/%m/%Y", "month": "%m/%Y", "year": "%Y"}
                 return value.strftime(
@@ -1011,7 +1025,7 @@ class ReportCenterPage(QWidget):
                         value = datetime.combine(value, datetime.min.time())
                     fmt = (
                         period_date_fmt
-                        if self.current_report == "sales_time" and col == 0
+                        if definition.get("period") and col == 0
                         else date_fmt
                     )
                     worksheet.write_datetime(row_index, col, value, fmt)
