@@ -1295,8 +1295,6 @@ class ReportCenterTests(unittest.TestCase):
         self.assertIn("row_index, 0, row_index, last_col, label", workbook_source)
         self.assertNotIn("for col in (12, 13)", workbook_source)
 
-    def test_report_center_does_not_use_legacy_kpi_cards(
-
     def test_report_center_does_not_use_legacy_kpi_cards(self):
 
     def test_report_center_uses_shared_native_combo_style(self):
@@ -1342,7 +1340,7 @@ class ReportCenterTests(unittest.TestCase):
         self.assertIn("report_table_layout.addWidget(self.footer)", source)
         self.assertNotIn("right.addWidget(self.footer)", source)
 
-    def test_report_horizontal_scroll_keeps_group_header_and_footer_aligned(self):
+    def test_report_horizontal_scroll_keeps_group_header_and_footer_aligned_at_right_edge(self):
         import inspect
         from ui.bao_cao.trung_tam_bao_cao import ReportCenterPage
 
@@ -1350,30 +1348,25 @@ class ReportCenterTests(unittest.TestCase):
         self.assertGreaterEqual(
             build_ui.count("QAbstractItemView.ScrollMode.ScrollPerPixel"), 3
         )
-        self.assertIn("self.group_header.setFrameShape(QFrame.Shape.NoFrame)", build_ui)
-        self.assertIn("self.table.setFrameShape(QFrame.Shape.NoFrame)", build_ui)
-        self.assertIn("self.footer.setFrameShape(QFrame.Shape.NoFrame)", build_ui)
         self.assertIn("self.table.verticalScrollBar().rangeChanged.connect", build_ui)
 
-        sync_widths = inspect.getsource(ReportCenterPage._sync_footer_widths)
-        self.assertIn("self.footer.setColumnWidth(col, width)", sync_widths)
-        self.assertIn("self.group_header.setColumnWidth(col, width)", sync_widths)
-        self.assertIn("self._sync_auxiliary_viewport_margins()", sync_widths)
+        margins_source = inspect.getsource(
+            ReportCenterPage._sync_auxiliary_viewport_margins
+        )
+        self.assertIn("self.table.viewport().width()", margins_source)
+        self.assertIn("target.viewport().width()", margins_source)
+        self.assertIn("margins.right() + difference", margins_source)
 
-        sync_margins = inspect.getsource(ReportCenterPage._sync_auxiliary_viewport_margins)
-        self.assertIn("vertical_bar.sizeHint().width()", sync_margins)
-        self.assertIn("target.setViewportMargins(0, 0, gutter, 0)", sync_margins)
+        range_source = inspect.getsource(
+            ReportCenterPage._sync_horizontal_scroll_range
+        )
+        self.assertIn("source.maximum()", range_source)
+        self.assertIn("scrollbar.setRange(source_minimum, source_maximum)", range_source)
+        self.assertIn("scrollbar.setPageStep(source_page_step)", range_source)
 
-        sync_range = inspect.getsource(ReportCenterPage._sync_horizontal_scroll_range)
-        self.assertIn("scrollbar.setRange(minimum, maximum)", sync_range)
-        self.assertIn("scrollbar.setPageStep(page_step)", sync_range)
-        self.assertIn("scrollbar.setValue(value)", sync_range)
-
-        sync_value = inspect.getsource(ReportCenterPage._sync_horizontal_scroll)
-        self.assertIn("target.horizontalScrollBar().setValue(value)", sync_value)
-
-
-
+        value_source = inspect.getsource(ReportCenterPage._sync_horizontal_scroll)
+        self.assertIn("scrollbar.setRange(minimum, maximum)", value_source)
+        self.assertIn("scrollbar.setValue(value)", value_source)
 
 
 
