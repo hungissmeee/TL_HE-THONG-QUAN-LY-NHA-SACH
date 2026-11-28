@@ -223,9 +223,9 @@ class BaoCaoRepository:
 
     def revenue_report(self, start_date, end_date, period="day"):
         period_expressions = {
-            "day": "CAST(HD.NGAYLAP AS date)",
-            "month": "DATEFROMPARTS(YEAR(HD.NGAYLAP), MONTH(HD.NGAYLAP), 1)",
-            "year": "DATEFROMPARTS(YEAR(HD.NGAYLAP), 1, 1)",
+            "day": "CAST(NGAYLAP AS date)",
+            "month": "DATEFROMPARTS(YEAR(NGAYLAP), MONTH(NGAYLAP), 1)",
+            "year": "DATEFROMPARTS(YEAR(NGAYLAP), 1, 1)",
         }
         return_expressions = {
             "day": "CAST(PDT.NGAY_DOI_TRA AS date)",
