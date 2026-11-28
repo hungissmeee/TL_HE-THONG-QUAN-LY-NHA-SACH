@@ -910,28 +910,56 @@ class ReportCenterPage(QWidget):
         self._sync_horizontal_scroll_range(source.minimum(), source.maximum())
 
     def _sync_auxiliary_viewport_margins(self, *_):
-        vertical_bar = self.table.verticalScrollBar()
-        gutter = (
-            vertical_bar.sizeHint().width()
-            if vertical_bar.maximum() > vertical_bar.minimum()
-            else 0
-        )
+        """
+        Make auxiliary viewports exactly as wide as the data viewport.
+        Measuring the real viewports avoids a small accumulated difference at
+        the far-right end on platforms with different scrollbar metrics.
+        """
+        if not hasattr(self, "table") or not hasattr(self, "footer"):
+            return
+        target_width = self.table.viewport().width()
         for target in (self.footer, self.group_header):
-            target.setViewportMargins(0, 0, gutter, 0)
+            margins = target.viewportMargins()
+            current_width = target.viewport().width()
+            difference = current_width - target_width
+            right_margin = max(0, margins.right() + difference)
+            if right_margin != margins.right():
+                target.setViewportMargins(
+                    margins.left(),
+                    margins.top(),
+                    right_margin,
+                    margins.bottom(),
+                )
 
-    def _sync_horizontal_scroll_range(self, minimum, maximum):
+    def _sync_horizontal_scroll_range(self, minimum=None, maximum=None):
         source = self.table.horizontalScrollBar()
-        page_step = source.pageStep()
-        value = source.value()
+        source_minimum = source.minimum()
+        source_maximum = source.maximum()
+        source_page_step = source.pageStep()
+        source_single_step = source.singleStep()
+        source_value = source.value()
         for target in (self.footer, self.group_header):
             scrollbar = target.horizontalScrollBar()
-            scrollbar.setRange(minimum, maximum)
-            scrollbar.setPageStep(page_step)
-            scrollbar.setValue(value)
+            scrollbar.setRange(source_minimum, source_maximum)
+            scrollbar.setPageStep(source_page_step)
+            scrollbar.setSingleStep(source_single_step)
+            scrollbar.setValue(source_value)
 
     def _sync_horizontal_scroll(self, value):
+        source = self.table.horizontalScrollBar()
+        minimum = source.minimum()
+        maximum = source.maximum()
+        page_step = source.pageStep()
+        single_step = source.singleStep()
         for target in (self.footer, self.group_header):
-            target.horizontalScrollBar().setValue(value)
+            scrollbar = target.horizontalScrollBar()
+            # Re-apply the range as well as the value. Qt can recalculate the
+            # auxiliary view's own range after a resize/layout; copying only
+            # value then causes a shortfall visible only at the right edge.
+            scrollbar.setRange(minimum, maximum)
+            scrollbar.setPageStep(page_step)
+            scrollbar.setSingleStep(single_step)
+            scrollbar.setValue(value)
 
     def export_xlsx(self):
         if not self.rows:
