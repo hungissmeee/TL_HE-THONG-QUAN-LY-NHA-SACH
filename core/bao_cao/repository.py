@@ -47,10 +47,9 @@ class BaoCaoRepository:
         return self._fetch_all(f"""
             WITH InvoiceLines AS (
                 SELECT HD.MAHD, HD.NGAYLAP, HD.MANV, HD.MACA,
-                    HD.TIENKHACHDUA, HD.TRANGTHAI,
+                    HD.TRANGTHAI,
                     COALESCE(NV.TENNV, HD.MANV, N'') AS TENNV,
                     C.SOCA,
-                    COUNT(CT.MASP) AS SO_DONG,
                     COALESCE(SUM(CT.SOLUONG), 0) AS SO_LUONG,
                     COALESCE(SUM(COALESCE(CT.DONGIA, 0)
                         * COALESCE(CT.SOLUONG, 0)), 0) AS TIEN_HANG,
@@ -64,8 +63,7 @@ class BaoCaoRepository:
                   AND HD.NGAYLAP < DATEADD(day, 1, CONVERT(date, ?))
                   {employee_sql}
                 GROUP BY HD.MAHD, HD.NGAYLAP, HD.MANV, HD.MACA,
-                         HD.TIENKHACHDUA, HD.TRANGTHAI, NV.TENNV,
-                         C.SOCA, KM.TYLEGIAM
+                         HD.TRANGTHAI, NV.TENNV, C.SOCA, KM.TYLEGIAM
             ),
             ReturnHeaders AS (
                 SELECT MAHD, SUM(COALESCE(TONG_TIEN_HOAN, 0)) AS TIEN_HOAN
@@ -81,16 +79,10 @@ class BaoCaoRepository:
                 CASE WHEN I.TRANGTHAI = 1
                     THEN I.TIEN_HANG - ROUND(I.TIEN_HANG * I.TYLEGIAM / 100.0, 2)
                          - COALESCE(RH.TIEN_HOAN, 0) ELSE 0 END AS DOANH_THU_SAU_HOAN,
-                CASE WHEN I.TRANGTHAI = 1
-                    THEN CASE WHEN COALESCE(I.TIENKHACHDUA, 0) >
-                        I.TIEN_HANG - ROUND(I.TIEN_HANG * I.TYLEGIAM / 100.0, 2)
-                        THEN COALESCE(I.TIENKHACHDUA, 0)
-                          - (I.TIEN_HANG - ROUND(I.TIEN_HANG * I.TYLEGIAM / 100.0, 2))
-                        ELSE 0 END ELSE 0 END AS TIEN_THUA,
                 I.TENNV,
                 CASE WHEN I.SOCA IS NULL THEN N'—' ELSE CONCAT(N'Ca ', I.SOCA) END,
                 CASE WHEN I.TRANGTHAI = 1 THEN N'Hợp lệ' ELSE N'Đã hủy' END,
-                I.SO_DONG, N'Bán hàng'
+                N'Bán hàng'
             FROM InvoiceLines I
             LEFT JOIN ReturnHeaders RH ON RH.MAHD = I.MAHD
             WHERE 1 = 1 {search_sql}
@@ -690,7 +682,7 @@ class BaoCaoRepository:
                 SELECT SP.MASP, COALESCE(SP.TENSP, N'') AS TENSP,
                     CAST(NULL AS DATETIME) AS NGAY,
                     CAST(NULL AS VARCHAR(20)) AS CHUNG_TU,
-                    N'Số dư đầu kỳ' AS LOAI_CHUNG_TU,
+                    N'' AS LOAI_CHUNG_TU,
                     N'Số dư đầu kỳ' AS DIEN_GIAI,
                     COALESCE(SP.DVT, N'') AS DVT,
                     COALESCE(SP.GIANHAP, 0) AS DON_GIA,
