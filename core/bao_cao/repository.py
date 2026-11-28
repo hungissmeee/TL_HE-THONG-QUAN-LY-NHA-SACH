@@ -679,18 +679,41 @@ class BaoCaoRepository:
                 INNER JOIN Opening O ON O.MASP = P.MASP
             ),
             AllRows AS (
-                SELECT P.MASP, COALESCE(SP.TENSP, N'') AS TENSP,
-                    P.NGAY, P.CHUNG_TU, P.LOAI_CHUNG_TU, P.LOAI AS DIEN_GIAI,
+                SELECT SP.MASP, COALESCE(SP.TENSP, N'') AS TENSP,
+                    CAST(NULL AS DATETIME) AS NGAY,
+                    CAST(NULL AS VARCHAR(20)) AS CHUNG_TU,
+                    CAST(N'' AS NVARCHAR(100)) AS LOAI_CHUNG_TU,
+                    N'Số dư đầu kỳ' AS DIEN_GIAI,
                     COALESCE(SP.DVT, N'') AS DVT,
+                    COALESCE(SP.GIANHAP, 0) AS DON_GIA,
+                    CAST(0 AS BIGINT) AS SL_NHAP,
+                    CAST(0 AS DECIMAL(18, 2)) AS GT_NHAP,
+                    CAST(0 AS BIGINT) AS SL_XUAT,
+                    CAST(0 AS DECIMAL(18, 2)) AS GT_XUAT,
+                    O.TON_DAU AS TON_SAU,
+                    O.TON_DAU * COALESCE(SP.GIANHAP, 0) AS GT_TON,
+                    COALESCE(SP.BARCODE, N'') AS BARCODE,
+                    0 AS SORT_ORDER
+                FROM Opening O
+                INNER JOIN dbo.SAN_PHAM SP ON SP.MASP = O.MASP
+                WHERE COALESCE(SP.IS_DELETED, 0) = 0
+                   OR EXISTS (SELECT 1 FROM Movements M WHERE M.MASP = SP.MASP)
+
+                UNION ALL
+
+                SELECT P.MASP, COALESCE(SP.TENSP, N''),
+                    P.NGAY, P.CHUNG_TU, P.LOAI_CHUNG_TU, P.LOAI,
+                    COALESCE(SP.DVT, N''),
                     CASE
                         WHEN P.SL_NHAP > 0 THEN P.GT_NHAP / NULLIF(P.SL_NHAP, 0)
                         WHEN P.SL_XUAT > 0 THEN P.GT_XUAT / NULLIF(P.SL_XUAT, 0)
                         ELSE COALESCE(SP.GIANHAP, 0)
-                    END AS DON_GIA,
+                    END,
                     P.SL_NHAP, P.GT_NHAP, P.SL_XUAT, P.GT_XUAT,
                     P.TON_SAU,
-                    P.TON_SAU * COALESCE(SP.GIANHAP, 0) AS GT_TON,
-                    COALESCE(SP.BARCODE, N'') AS BARCODE
+                    P.TON_SAU * COALESCE(SP.GIANHAP, 0),
+                    COALESCE(SP.BARCODE, N''),
+                    1 AS SORT_ORDER
                 FROM RunningMovements P
                 INNER JOIN dbo.SAN_PHAM SP ON SP.MASP = P.MASP
             )
@@ -700,7 +723,7 @@ class BaoCaoRepository:
                 A.TON_SAU, A.GT_TON
             FROM AllRows A
             WHERE 1 = 1 {search_sql}
-            ORDER BY A.MASP, A.NGAY, A.CHUNG_TU, A.LOAI_CHUNG_TU
+            ORDER BY A.MASP, A.SORT_ORDER, A.NGAY, A.CHUNG_TU, A.LOAI_CHUNG_TU
         """
         return self._fetch_all(sql, tuple(params))
 
