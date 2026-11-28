@@ -120,7 +120,11 @@ class SearchableSingleSelect(QWidget):
 
 
 class _CompleterSearchLineEdit(QLineEdit):
-    """Ô tìm kiếm mở gợi ý native khi được focus hoặc được bấm vào."""
+    """Chỉ mở danh sách native khi người dùng bấm trực tiếp vào ô tìm kiếm.
+
+    Không tự mở lại khi nhận focus vì popup QCompleter có thể tạm chuyển focus
+    trong lúc đóng, dẫn đến hiện tượng popup nhấp nháy.
+    """
 
     def _show_completions(self):
         completer = self.completer()
@@ -129,17 +133,13 @@ class _CompleterSearchLineEdit(QLineEdit):
         completer.setCompletionPrefix(self.text())
         completer.complete()
 
-    def focusInEvent(self, event):
-        super().focusInEvent(event)
-        QTimer.singleShot(0, self._show_completions)
-
     def mousePressEvent(self, event):
         super().mousePressEvent(event)
         QTimer.singleShot(0, self._show_completions)
 
 
 class SearchableMultiSelect(QWidget):
-    """Ô tìm kiếm dùng QCompleter native để chọn nhiều mục."""
+    """Ô tìm kiếm native để chọn nhiều mục từ danh mục SQL Server."""
 
     def __init__(self, placeholder="Tìm để chọn...", parent=None):
         super().__init__(parent)
@@ -154,6 +154,7 @@ class SearchableMultiSelect(QWidget):
 
         self._model = QStringListModel(self)
         self.completer = _make_completer(self, self._model)
+        self.completer.setModelSorting(QCompleter.ModelSorting.UnsortedModel)
         self.search_input.setCompleter(self.completer)
         self.completer.activated[str].connect(self._toggle_label)
 
@@ -186,25 +187,60 @@ class SearchableMultiSelect(QWidget):
         self._last_query = ""
         self.search_input.clear()
         self.completer.popup().hide()
-        self._refresh_completion_model()
-        self.completer.setCompletionPrefix("")
+        self._refresh_completion_model("")
         self._update_selected_label()
 
     def _on_search(self, text):
         self._last_query = text
+        # Sắp xếp lại model trước khi QCompleter lọc kết quả.
+        self._refresh_completion_model(text)
 
-    def _populate_results(self, keyword=""):
-        """Trả về lựa chọn khớp từ khóa mà không tự quản lý popup."""
-        keyword = (keyword or "").strip().casefold()
-        return [
-            label for label, _ in self._completion_entries()
-            if not keyword or keyword in label.casefold()
-        ]
+    @staticmethod
+    def _search_rank(name, code, keyword):
+        """Ưu tiên tên khớp chính xác, bắt đầu bằng từ khóa, rồi chứa từ khóa."""
+        query = (keyword or "").strip().casefold()
+        if not query:
+            return 0
+        normalized_name = name.casefold()
+        normalized_code = code.casefold()
+        if normalized_name == query:
+            return 0
+        if normalized_name.startswith(query):
+            return 1
+        if any(word.startswith(query) for word in normalized_name.split()):
+            return 2
+        if query in normalized_name:
+            return 3
+        if normalized_code.startswith(query):
+            return 4
+        if query in normalized_code:
+            return 5
+        return 6
 
-    def _completion_entries(self):
+    def _completion_entries(self, keyword=""):
+        """Trả về model đã ưu tiên kết quả tìm kiếm hoặc các mục đã chọn."""
+        query = (keyword or "").strip()
+        indexed_options = list(enumerate(self.options))
+
+        if query:
+            indexed_options.sort(
+                key=lambda entry: (
+                    self._search_rank(entry[1][1], entry[1][0], query),
+                    entry[0],
+                )
+            )
+        else:
+            # Khi ô tìm kiếm trống, đưa những mục đã chọn lên đầu danh sách.
+            indexed_options.sort(
+                key=lambda entry: (
+                    0 if entry[1][0] in self.selected_codes else 1,
+                    entry[0],
+                )
+            )
+
         entries = []
         self._label_to_code = {}
-        for code, name, is_deleted in self.options:
+        for _, (code, name, is_deleted) in indexed_options:
             marker = "✓ " if code in self.selected_codes else ""
             suffix = " (đã xóa mềm)" if is_deleted else ""
             label = f"{marker}{code} - {name}{suffix}"
@@ -212,11 +248,17 @@ class SearchableMultiSelect(QWidget):
             self._label_to_code[label] = code
         return entries
 
-    def _refresh_completion_model(self):
-        self._model.setStringList(
-            [label for label, _ in self._completion_entries()]
-        )
-        self.completer.setCompletionPrefix(self._last_query)
+    def _populate_results(self, keyword=""):
+        """Trả về danh sách theo đúng thứ tự popup sẽ hiển thị."""
+        return [
+            label for label, _ in self._completion_entries(keyword)
+            if not keyword or keyword.casefold() in label.casefold()
+        ]
+
+    def _refresh_completion_model(self, keyword=""):
+        entries = self._completion_entries(keyword)
+        self._model.setStringList([label for label, _ in entries])
+        self.completer.setCompletionPrefix(keyword or "")
 
     def _toggle_item(self, item):
         """Giữ tương thích cho các luồng gọi nội bộ bằng chuỗi hoặc QModelIndex."""
@@ -232,27 +274,26 @@ class SearchableMultiSelect(QWidget):
         code = self._label_to_code.get(str(label))
         if code is None:
             return
+
         if code in self.selected_codes:
             self.selected_codes.remove(code)
         else:
             self.selected_codes.add(code)
 
-        # Sau khi chọn, xóa từ khóa để người dùng có thể tìm mục tiếp theo.
+        # Cập nhật thứ tự danh sách và tên đã chọn ngay sau khi bật/tắt mục.
         self._last_query = ""
-        self._refresh_completion_model()
-        self.completer.setCompletionPrefix("")
-        self.search_input.clear()
-        self.search_input.setFocus(Qt.FocusReason.OtherFocusReason)
+        self._refresh_completion_model("")
         self._update_selected_label()
 
-        # Giữ popup native mở lại với toàn bộ lựa chọn, kể cả khi chưa gõ từ khóa.
-        QTimer.singleShot(0, self._reopen_completer)
+        # QCompleter có thể ghi completion vào QLineEdit sau signal activated.
+        # Xóa ở event loop kế tiếp để không bị Qt ghi đè lại nội dung vừa chọn.
+        QTimer.singleShot(0, self._finish_selection)
 
-    def _reopen_completer(self):
-        if not self.isVisible() or not self.search_input.hasFocus():
-            return
-        self.completer.setCompletionPrefix(self.search_input.text())
-        self.completer.complete()
+    def _finish_selection(self):
+        self._last_query = ""
+        self.search_input.clear()
+        self.completer.setCompletionPrefix("")
+        self.completer.popup().hide()
 
     def _update_selected_label(self):
         selected_names = [

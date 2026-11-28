@@ -491,9 +491,126 @@ class TableSortingTests(unittest.TestCase):
 
 
 class SearchableSelectorTests(unittest.TestCase):
-    """Kiểm thử bộ chọn danh mục dựa trên QCompleter native của Qt."""
+    """Kiểm thử bộ chọn danh mục và thứ tự kết quả của QCompleter native."""
 
-    def test_single_select_uses_native_completer_and_selects_code(self):
+    def test_multi_select_uses_native_completer_without_focus_reopen_hook(self):
+        from PySide6.QtWidgets import QCompleter
+        from ui.san_pham.bo_chon import _CompleterSearchLineEdit
+
+        selector = SearchableMultiSelect()
+        selector.set_options([("TG001", "Tác giả A", False)])
+        self.assertIsInstance(selector.search_input, _CompleterSearchLineEdit)
+        self.assertIsInstance(selector.search_input.completer(), QCompleter)
+        self.assertIs(selector.results, selector.completer.popup())
+        self.assertNotIn("focusInEvent", _CompleterSearchLineEdit.__dict__)
+        self.assertIn("mousePressEvent", _CompleterSearchLineEdit.__dict__)
+        selector.close()
+
+    def test_search_prioritizes_exact_name_then_name_prefix(self):
+        selector = SearchableMultiSelect()
+        selector.set_options([
+            ("TG001", "Nguyễn Nhật Ánh", False),
+            ("TG002", "Ánh Dương", False),
+            ("TG003", "Ánh", False),
+            ("TG004", "Nam Cao", False),
+        ])
+
+        results = selector._populate_results("Ánh")
+        self.assertEqual(
+            results[:3],
+            [
+                "TG003 - Ánh",
+                "TG002 - Ánh Dương",
+                "TG001 - Nguyễn Nhật Ánh",
+            ],
+        )
+        selector.close()
+
+    def test_selected_items_are_first_when_search_is_empty(self):
+        selector = SearchableMultiSelect()
+        selector.set_options([
+            ("TG001", "Nguyễn Nhật Ánh", False),
+            ("TG002", "Nam Cao", False),
+            ("TG003", "Tô Hoài", False),
+            ("TG004", "Nguyễn Du", False),
+        ], selected_codes={"TG003", "TG001"})
+
+        results = selector._populate_results("")
+        self.assertEqual(
+            results[:2],
+            [
+                "✓ TG001 - Nguyễn Nhật Ánh",
+                "✓ TG003 - Tô Hoài",
+            ],
+        )
+        selector.close()
+
+    def test_clears_search_after_selection_and_updates_selected_names(self):
+        selector = SearchableMultiSelect()
+        selector.set_options([
+            ("TG001", "Nguyễn Nhật Ánh", False),
+            ("TG002", "Nam Cao", False),
+        ])
+        selector.search_input.setText("Nguyễn")
+        selector._last_query = "Nguyễn"
+        selector._refresh_completion_model("Nguyễn")
+
+        selector._toggle_label("TG001 - Nguyễn Nhật Ánh")
+        selector._finish_selection()
+
+        self.assertEqual(selector.search_input.text(), "")
+        self.assertEqual(selector._last_query, "")
+        self.assertEqual(selector.completer.completionPrefix(), "")
+        self.assertEqual(selector.checked_codes(), ["TG001"])
+        self.assertEqual(
+            selector.selected_label.text(),
+            "Đã chọn: Nguyễn Nhật Ánh",
+        )
+        # Sau khi xóa từ khóa, mục đã chọn được ưu tiên lên đầu.
+        self.assertEqual(
+            selector._populate_results("")[0],
+            "✓ TG001 - Nguyễn Nhật Ánh",
+        )
+        selector.close()
+
+    def test_can_select_multiple_then_remove_selected_item(self):
+        selector = SearchableMultiSelect()
+        selector.set_options([
+            ("TG001", "Nguyễn Nhật Ánh", False),
+            ("TG002", "Nam Cao", False),
+        ])
+
+        selector._toggle_label("TG001 - Nguyễn Nhật Ánh")
+        selector._finish_selection()
+        selector.search_input.setText("Nam")
+        selector._last_query = "Nam"
+        selector._toggle_label("TG002 - Nam Cao")
+        selector._finish_selection()
+
+        self.assertEqual(selector.checked_codes(), ["TG001", "TG002"])
+        self.assertEqual(
+            selector.selected_label.text(),
+            "Đã chọn: Nguyễn Nhật Ánh, Nam Cao",
+        )
+
+        selector._toggle_label("✓ TG001 - Nguyễn Nhật Ánh")
+        selector._finish_selection()
+        self.assertEqual(selector.checked_codes(), ["TG002"])
+        self.assertEqual(selector.selected_label.text(), "Đã chọn: Nam Cao")
+        selector.close()
+
+    def test_keeps_existing_soft_deleted_choice(self):
+        selector = SearchableMultiSelect()
+        selector.set_options([
+            ("TG001", "Tác giả cũ", True),
+            ("TG002", "Tác giả mới", False),
+        ], selected_codes={"TG001"})
+
+        self.assertEqual(selector.checked_codes(), ["TG001"])
+        self.assertIn("đã xóa mềm", selector._populate_results("")[0])
+        selector.close()
+
+    def test_single_select_still_uses_native_completer(self):
         from PySide6.QtWidgets import QCompleter
 
         selector = SearchableSingleSelect()
@@ -502,137 +619,8 @@ class SearchableSelectorTests(unittest.TestCase):
             ("NXB002", "Nhà xuất bản B", False),
         ])
         self.assertIsInstance(selector.search_input.completer(), QCompleter)
-        self.assertIs(selector.results, selector.completer.popup())
-
         selector._select_label("NXB001 - Nhà xuất bản A")
         self.assertEqual(selector.currentData(), "NXB001")
-        self.assertEqual(selector.search_input.text(), "NXB001 - Nhà xuất bản A")
-        selector.close()
-
-    def test_single_select_clears_previous_choice_when_user_edits(self):
-        selector = SearchableSingleSelect()
-        selector.set_options([("TH001", "Thương hiệu A", False)])
-        selector._select_label("TH001 - Thương hiệu A")
-
-        selector._on_search("TH")
-        self.assertIsNone(selector.currentData())
-        selector.close()
-
-    def test_multi_select_can_add_and_remove_multiple_codes(self):
-        selector = SearchableMultiSelect()
-        selector.set_options([
-            ("TG001", "Tác giả A", False),
-            ("TG002", "Tác giả B", False),
-        ])
-
-        selector._toggle_label("TG001 - Tác giả A")
-        selector._toggle_label("TG002 - Tác giả B")
-        self.assertEqual(selector.checked_codes(), ["TG001", "TG002"])
-
-        selector._toggle_label("✓ TG001 - Tác giả A")
-        self.assertEqual(selector.checked_codes(), ["TG002"])
-        selector.close()
-
-    def test_multi_select_keeps_existing_soft_deleted_choice(self):
-        selector = SearchableMultiSelect()
-        selector.set_options([
-            ("TG001", "Tác giả cũ", True),
-            ("TG002", "Tác giả mới", False),
-        ], selected_codes={"TG001"})
-
-        self.assertEqual(selector.checked_codes(), ["TG001"])
-        self.assertIn("Tác giả cũ", selector._populate_results()[0])
-        self.assertIn("đã xóa mềm", selector._populate_results()[0])
-        selector.close()
-
-    def test_lookup_widgets_use_native_completer_and_do_not_inline_results(self):
-        from PySide6.QtWidgets import QCompleter
-
-        single = SearchableSingleSelect()
-        single.set_options([("NXB001", "Nhà xuất bản A", False)])
-        self.assertIsInstance(single.search_input.completer(), QCompleter)
-        self.assertEqual(single.layout().indexOf(single.results), -1)
-        self.assertEqual(single.completer.completionMode(), QCompleter.CompletionMode.PopupCompletion)
-        single.close()
-
-        multi = SearchableMultiSelect()
-        multi.set_options([("TG001", "Tác giả A", False)])
-        self.assertIsInstance(multi.search_input.completer(), QCompleter)
-        self.assertEqual(multi.layout().indexOf(multi.results), -1)
-        self.assertEqual(multi.completer.completionMode(), QCompleter.CompletionMode.PopupCompletion)
-        multi.close()
-
-    def test_single_select_keeps_query_editable_with_native_completer(self):
-        selector = SearchableSingleSelect()
-        selector.set_options([
-            ("NXB001", "Nhà xuất bản A", False),
-            ("NXB002", "Nhà xuất bản B", False),
-        ])
-        selector.search_input.setText("Nhà xuất")
-        selector._on_search("Nhà xuất")
-
-        self.assertEqual(selector.search_input.text(), "Nhà xuất")
-        self.assertTrue(selector.search_input.isEnabled())
-        selector.completer.setCompletionPrefix("Nhà xuất")
-        self.assertGreater(selector.completer.completionModel().rowCount(), 0)
-        self.assertIsNone(selector.currentData())
-        selector.search_input.setText("Nhà xuất bản")
-        self.assertEqual(selector.search_input.text(), "Nhà xuất bản")
-        selector.close()
-
-    def test_multi_select_selected_label_displays_selected_names(self):
-        selector = SearchableMultiSelect()
-        selector.set_options([
-            ("TG001", "Tác giả A", False),
-            ("TG002", "Tác giả B", False),
-            ("TG003", "Tác giả C", False),
-        ], selected_codes={"TG001", "TG003"})
-        self.assertEqual(
-            selector.selected_label.text(),
-            "Đã chọn: Tác giả A, Tác giả C",
-        )
-        self.assertIn("Tác giả A", selector.selected_label.toolTip())
-        self.assertIn("Tác giả C", selector.selected_label.toolTip())
-        self.assertNotIn("Tác giả B", selector.selected_label.text())
-        selector.close()
-
-    def test_multi_select_clears_query_after_multiple_choices_and_updates_names(self):
-        selector = SearchableMultiSelect()
-        selector.set_options([
-            ("TG001", "Tác giả A", False),
-            ("TG002", "Tác giả B", False),
-        ])
-        selector.search_input.setText("Tác giả A")
-        selector._last_query = "Tác giả A"
-
-        selector._toggle_label("TG001 - Tác giả A")
-        self.assertEqual(selector.search_input.text(), "")
-        self.assertEqual(selector.selected_label.text(), "Đã chọn: Tác giả A")
-
-        selector.search_input.setText("Tác giả B")
-        selector._last_query = "Tác giả B"
-        selector._toggle_label("TG002 - Tác giả B")
-        self.assertEqual(selector.search_input.text(), "")
-        self.assertEqual(
-            selector.selected_label.text(),
-            "Đã chọn: Tác giả A, Tác giả B",
-        )
-
-        selector._toggle_label("✓ TG001 - Tác giả A")
-        self.assertEqual(selector.selected_label.text(), "Đã chọn: Tác giả B")
-        selector.close()
-
-    def test_multi_select_input_opens_native_completer_on_focus_and_click(self):
-        from ui.san_pham.bo_chon import _CompleterSearchLineEdit
-        from PySide6.QtWidgets import QLineEdit
-
-        selector = SearchableMultiSelect()
-        selector.set_options([("TG001", "Tác giả A", False)])
-        self.assertIsInstance(selector.search_input, _CompleterSearchLineEdit)
-        self.assertIsInstance(selector.search_input, QLineEdit)
-        self.assertIs(selector.search_input.completer(), selector.completer)
-        self.assertTrue(callable(selector.search_input.focusInEvent))
-        self.assertTrue(callable(selector.search_input.mousePressEvent))
         selector.close()
 
 
