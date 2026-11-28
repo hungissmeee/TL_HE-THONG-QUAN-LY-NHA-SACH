@@ -174,7 +174,7 @@ REPORTS = {
     },
     "stock_movement": {
         "title": "BÁO CÁO NHẬP – XUẤT – TỒN KHO",
-        "description": "Tồn đầu/cuối được tái dựng từ số tồn hiện tại và chứng từ còn hiệu lực. Giá trị tồn, xuất bán, hàng trả và đổi hàng là ước tính theo giá nhập hiện tại; trị giá nhập NCC lấy giá trên phiếu nhập.",
+        "description": "Tồn đầu/cuối được tái dựng từ số tồn hiện tại và chứng từ còn hiệu lực. Tổng nhập gồm nhập nhà cung cấp và hàng hoàn tiền nguyên vẹn được nhập lại; tổng xuất gồm bán hàng và hàng xuất đổi. Giá trị tồn và giá trị xuất ước tính theo giá nhập hiện tại.",
         "method": "stock_movement_report",
         "headers": [
             "Mã hàng", "Tên hàng", "ĐVT",
@@ -624,11 +624,12 @@ class ReportCenterPage(QWidget):
         note_by_report = {
             "stock_movement": (
                 "CSDL chưa có nhật ký điều chỉnh kho riêng; tồn đầu/tồn cuối được tái dựng từ SLTON và chứng từ. "
-                "Thành tiền tồn, khách trả, xuất bán và xuất đổi là ước tính theo giá nhập hiện lưu; trị giá nhập NCC lấy theo phiếu nhập."
+                "Tổng nhập gồm nhập NCC (theo đơn giá phiếu nhập) và hàng hoàn tiền nguyên vẹn nhập lại (ước tính theo giá nhập hiện lưu); "
+                "tổng xuất gồm bán hàng và hàng xuất đổi (ước tính theo giá nhập hiện lưu)."
             ),
             "stock_card": (
                 "Tồn đầu và tồn sau giao dịch được tái dựng từ SLTON cùng chứng từ đã lưu. "
-                "Giá trị nhập NCC (†) lấy theo đơn giá phiếu nhập; khách trả nhập lại và giá trị xuất ( * ) ước tính theo giá nhập hiện lưu."
+                "Giá trị nhập nhà cung cấp lấy theo đơn giá phiếu nhập; giá trị tồn và xuất ước tính theo giá nhập hiện lưu."
             ),
             "current_inventory": (
                 "Đây là ảnh chụp số tồn hiện tại. Giá trị tồn được ước tính bằng số lượng tồn nhân giá nhập hiện lưu; "
