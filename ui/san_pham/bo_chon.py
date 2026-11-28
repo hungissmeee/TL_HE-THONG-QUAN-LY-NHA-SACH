@@ -169,7 +169,7 @@ class SearchableMultiSelect(QWidget):
 
         self.selected_label = QLabel("Chưa chọn mục nào")
         self.selected_label.setWordWrap(True)
-        self.selected_label.setStyleSheet("color: #AAB7C8; font-size: 11px;")
+        self.selected_label.setStyleSheet("color: #AAB7C8; font-size: 13px;")
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
