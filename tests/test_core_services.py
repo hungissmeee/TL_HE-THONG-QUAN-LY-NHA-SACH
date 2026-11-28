@@ -1030,7 +1030,7 @@ class ReportServiceTests(unittest.TestCase):
              "%HD%", "%HD%", "%HD%", "%HD%"),
         )
 
-    def test_daily_sales_projection_matches_report_column_order(self):
+    def test_daily_sales_projection_matches_pos_report_column_order(self):
         class CaptureRepository(BaoCaoRepository):
             def __init__(self):
                 self.sql = ""
@@ -1045,11 +1045,13 @@ class ReportServiceTests(unittest.TestCase):
         repository.daily_sales_report("2026-01-01", "2026-01-31", None, "NV01")
         select = repository.sql.split("FROM InvoiceLines I", 1)[0]
         ordered_tokens = [
-            "SELECT CAST(I.NGAYLAP AS date), I.MAHD, N'Bán hàng', I.TENNV,",
-            "CASE WHEN I.SOCA IS NULL",
-            "I.SO_DONG, I.SO_LUONG, I.TIEN_HANG,",
+            "SELECT I.MAHD, I.NGAYLAP, I.SO_LUONG, I.TIEN_HANG,",
+            "ROUND(I.TIEN_HANG * I.TYLEGIAM / 100.0, 2)",
+            "AS THUC_THU",
             "COALESCE(RH.SO_PHIEU_TRA, 0)",
             "COALESCE(I.TIENKHACHDUA, 0)",
+            "I.TENNV,",
+            "I.SO_DONG, N'Bán hàng'",
         ]
         positions = [select.index(token) for token in ordered_tokens]
         self.assertEqual(positions, sorted(positions))
@@ -1081,6 +1083,30 @@ class ReportServiceTests(unittest.TestCase):
         ]
         positions = [select.index(token) for token in ordered_tokens]
         self.assertEqual(positions, sorted(positions))
+
+    def test_current_inventory_projection_starts_with_quantity_and_stock_value(self):
+        class CaptureRepository(BaoCaoRepository):
+            def __init__(self):
+                self.sql = ""
+                self.params = None
+
+            def _fetch_all(self, sql, params=()):
+                self.sql = sql
+                self.params = params
+                return []
+
+        repository = CaptureRepository()
+        repository.current_inventory_report(5, "all", "BOOK")
+        self.assertIn("ROW_NUMBER() OVER", repository.sql)
+        self.assertIn("AS STT", repository.sql)
+        self.assertIn(
+            "COALESCE(SP.SLTON, 0) * COALESCE(SP.GIANHAP, 0)",
+            repository.sql,
+        )
+        self.assertEqual(
+            repository.params,
+            (5, "%BOOK%", "%BOOK%", "%BOOK%"),
+        )
 
     def test_import_product_report_uses_only_persisted_purchase_values(self):
         class CaptureRepository(BaoCaoRepository):
