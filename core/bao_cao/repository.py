@@ -221,6 +221,126 @@ class BaoCaoRepository:
             start_date, end_date,
         ))
 
+    def revenue_report(self, start_date, end_date, period="day"):
+        period_expressions = {
+            "day": "CAST(HD.NGAYLAP AS date)",
+            "month": "DATEFROMPARTS(YEAR(HD.NGAYLAP), MONTH(HD.NGAYLAP), 1)",
+            "year": "DATEFROMPARTS(YEAR(HD.NGAYLAP), 1, 1)",
+        }
+        return_expressions = {
+            "day": "CAST(PDT.NGAY_DOI_TRA AS date)",
+            "month": "DATEFROMPARTS(YEAR(PDT.NGAY_DOI_TRA), MONTH(PDT.NGAY_DOI_TRA), 1)",
+            "year": "DATEFROMPARTS(YEAR(PDT.NGAY_DOI_TRA), 1, 1)",
+        }
+        sales_key = period_expressions[period]
+        return_key = return_expressions[period]
+        return self._fetch_all(f"""
+            WITH InvoiceTotals AS (
+                SELECT HD.MAHD, HD.NGAYLAP,
+                    COALESCE(KM.TYLEGIAM, 0) AS TYLEGIAM,
+                    SUM(COALESCE(CT.SOLUONG, 0)) AS SL_BAN,
+                    SUM(COALESCE(CT.SOLUONG, 0)
+                        * COALESCE(CT.DONGIA, 0)) AS TIEN_HANG,
+                    SUM(COALESCE(CT.SOLUONG, 0)
+                        * COALESCE(SP.GIANHAP, 0)) AS GIA_VON
+                FROM dbo.HOA_DON HD
+                INNER JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
+                INNER JOIN dbo.SAN_PHAM SP ON SP.MASP = CT.MASP
+                LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
+                WHERE HD.TRANGTHAI = 1
+                  AND HD.NGAYLAP >= CONVERT(date, ?)
+                  AND HD.NGAYLAP < DATEADD(day, 1, CONVERT(date, ?))
+                GROUP BY HD.MAHD, HD.NGAYLAP, KM.TYLEGIAM
+            ),
+            Sales AS (
+                SELECT {sales_key} AS KY,
+                    SUM(SL_BAN) AS SL_BAN,
+                    SUM(TIEN_HANG
+                        - ROUND(TIEN_HANG * TYLEGIAM / 100.0, 2)) AS DOANH_THU_BAN,
+                    SUM(GIA_VON) AS GIA_VON
+                FROM InvoiceTotals
+                GROUP BY {sales_key}
+            ),
+            ReturnDetails AS (
+                SELECT {return_key} AS KY,
+                    SUM(CASE
+                        WHEN ISNULL(CTDT.TINHTRANGHANG, 1) = 0
+                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0
+                    END) AS SL_HANG_HONG,
+                    SUM(CASE
+                        WHEN ISNULL(CTDT.TINHTRANGHANG, 1) = 0
+                        THEN COALESCE(CTDT.SOLUONG, 0)
+                            * COALESCE(SP.GIANHAP, 0)
+                        ELSE 0
+                    END) AS GT_HANG_HONG,
+                    SUM(
+                        CASE
+                            WHEN ISNULL(CTDT.TINHTRANGHANG, 1) = 0
+                              OR (
+                                  ISNULL(CTDT.HINH_THUC_XU_LY, 0) = 0
+                                  AND ISNULL(CTDT.TINHTRANGHANG, 1) = 1
+                              )
+                            THEN -COALESCE(CTDT.SOLUONG, 0)
+                                * COALESCE(SP.GIANHAP, 0)
+                            ELSE 0
+                        END
+                        + CASE
+                            WHEN ISNULL(CTDT.HINH_THUC_XU_LY, 0) = 1
+                            THEN COALESCE(CTDT.SOLUONG, 0)
+                                * COALESCE(SP.GIANHAP, 0)
+                            ELSE 0
+                        END
+                    ) AS DIEU_CHINH_GIA_VON
+                FROM dbo.PHIEU_DOI_TRA PDT
+                INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT
+                    ON CTDT.MAPDT = PDT.MAPDT
+                INNER JOIN dbo.SAN_PHAM SP ON SP.MASP = CTDT.MASP
+                WHERE PDT.NGAY_DOI_TRA >= CONVERT(date, ?)
+                  AND PDT.NGAY_DOI_TRA < DATEADD(day, 1, CONVERT(date, ?))
+                GROUP BY {return_key}
+            ),
+            Refunds AS (
+                SELECT {return_key} AS KY,
+                    SUM(COALESCE(PDT.TONG_TIEN_HOAN, 0)) AS TIEN_HOAN
+                FROM dbo.PHIEU_DOI_TRA PDT
+                WHERE PDT.NGAY_DOI_TRA >= CONVERT(date, ?)
+                  AND PDT.NGAY_DOI_TRA < DATEADD(day, 1, CONVERT(date, ?))
+                GROUP BY {return_key}
+            ),
+            Periods AS (
+                SELECT KY FROM Sales
+                UNION
+                SELECT KY FROM ReturnDetails
+                UNION
+                SELECT KY FROM Refunds
+            ),
+            Totals AS (
+                SELECT P.KY,
+                    COALESCE(S.SL_BAN, 0) AS SL_BAN,
+                    COALESCE(S.DOANH_THU_BAN, 0) AS DOANH_THU_BAN,
+                    COALESCE(S.GIA_VON, 0)
+                        + COALESCE(D.DIEU_CHINH_GIA_VON, 0) AS GIA_VON,
+                    COALESCE(D.SL_HANG_HONG, 0) AS SL_HANG_HONG,
+                    COALESCE(D.GT_HANG_HONG, 0) AS GT_HANG_HONG,
+                    COALESCE(F.TIEN_HOAN, 0) AS TIEN_HOAN
+                FROM Periods P
+                LEFT JOIN Sales S ON S.KY = P.KY
+                LEFT JOIN ReturnDetails D ON D.KY = P.KY
+                LEFT JOIN Refunds F ON F.KY = P.KY
+            )
+            SELECT KY, SL_BAN, DOANH_THU_BAN, GIA_VON,
+                SL_HANG_HONG, GT_HANG_HONG, TIEN_HOAN,
+                DOANH_THU_BAN - TIEN_HOAN AS DOANH_THU_THUAN,
+                DOANH_THU_BAN - TIEN_HOAN - GIA_VON - GT_HANG_HONG
+                    AS LOI_NHUAN_UOC_TINH
+            FROM Totals
+            ORDER BY KY
+        """, (
+            start_date, end_date,
+            start_date, end_date,
+            start_date, end_date,
+        ))
+
     def sales_by_employee_report(self, start_date, end_date, keyword=""):
         search_sql = ""
         params = [start_date, end_date, start_date, end_date]
