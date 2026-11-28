@@ -291,12 +291,25 @@ class PhieuNhapRepository:
         conn = self._connection()
         cursor = conn.cursor()
         try:
+            # Không tin vai trò do UI truyền lên; kiểm tra principal SQL thực.
             cursor.execute("""
-                SELECT TRANGTHAI, MANV,
-                       CASE WHEN NGAYNHAP >= DATEADD(MINUTE, -5, SYSDATETIME())
-                                  AND NGAYNHAP <= SYSDATETIME()
-                            THEN 1 ELSE 0 END,
-                       NGAYNHAP
+                SELECT CASE
+                    WHEN USER_NAME() = N'admin' THEN 1
+                    WHEN IS_ROLEMEMBER(N'rl_QuanLy') = 1
+                     AND EXISTS (
+                         SELECT 1 FROM dbo.NHAN_VIEN
+                         WHERE MANV = USER_NAME()
+                           AND MANV = ? AND VAITRO = N'Quản lý'
+                     )
+                    THEN 1 ELSE 0
+                END
+            """, str(username or "").strip())
+            permission = cursor.fetchone()
+            if permission is None or int(permission[0] or 0) != 1:
+                raise PermissionError("Chỉ Quản lý/Admin được hủy phiếu nhập.")
+
+            cursor.execute("""
+                SELECT TRANGTHAI, NGAYNHAP
                 FROM dbo.PHIEU_NHAP WITH (UPDLOCK, HOLDLOCK)
                 WHERE MAPN = ?
             """, import_code)
@@ -559,18 +572,6 @@ class PhieuNhapRepository:
                 raise LookupError("Không tìm thấy phiếu nhập.")
             if int(header[0] or 0) != 1:
                 raise ValueError("Phiếu nhập đã bị hủy trước đó.")
-            role = str(role or "").strip().casefold()
-            admin = bool(is_admin) or str(username or "").strip().casefold() == "admin"
-            manager = role == "quản lý"
-            warehouse = role == "nhân viên kho"
-            if not (admin or manager or warehouse):
-                raise PermissionError("Tài khoản không có quyền hủy phiếu nhập.")
-            if warehouse and not (admin or manager):
-                if str(header[1] or "").strip().casefold() != str(username or "").strip().casefold():
-                    raise PermissionError("Nhân viên kho chỉ được hủy phiếu do mình lập.")
-                if int(header[2] or 0) != 1:
-                    raise PermissionError("Nhân viên kho chỉ được hủy phiếu do mình lập trong vòng 5 phút.")
-
             cursor.execute("""
                 SELECT MASP, SUM(ISNULL(SOLUONG, 0)),
                        SUM(ISNULL(SOLUONG, 0) * ISNULL(DONGIA, 0))
@@ -605,7 +606,7 @@ class PhieuNhapRepository:
             for detail in details:
                 product_code = str(detail[0])
                 if self._has_later_stock_movement(
-                    cursor, import_code, product_code, header[3]
+                    cursor, import_code, product_code, header[1]
                 ):
                     raise ValueError(
                         f"Không thể hủy phiếu nhập vì sản phẩm {product_code} "
