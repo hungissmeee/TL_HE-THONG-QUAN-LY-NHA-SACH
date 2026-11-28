@@ -399,8 +399,8 @@ class MainWindow(SidebarNavigationMixin, QMainWindow):
                 self.account_phone.setText("")
         except Exception as error:
             self.account_name.setText(username or "Tài khoản")
-            self.account_id.setText("Không tải được thông tin")
-            self.account_role.setText(str(error))
+            self.account_id.setText("Không thể tải thông tin tài khoản")
+            self.account_role.setText("Vui lòng thử lại hoặc liên hệ quản trị viên.")
             self.account_phone.setText("")
 
     def logout(self):
