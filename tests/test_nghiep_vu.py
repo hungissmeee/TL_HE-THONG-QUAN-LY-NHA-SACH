@@ -1165,6 +1165,21 @@ class ReportCenterTests(unittest.TestCase):
         from ui.bao_cao.trung_tam_bao_cao import REPORTS
 
         self.assertEqual(
+            REPORTS["daily_sales"]["headers"][:6],
+            [
+                "Mã chứng từ", "Thời gian", "SL sản phẩm",
+                "Doanh thu", "Giảm giá", "Thực thu",
+            ],
+        )
+        self.assertEqual(
+            REPORTS["current_inventory"]["headers"],
+            [
+                "STT", "Mã hàng", "Tên hàng hóa", "ĐVT", "Số lượng tồn",
+                "Giá trị tồn*", "Giá nhập hiện tại", "Giá bán", "Mã vạch",
+                "Tình trạng",
+            ],
+        )
+        self.assertEqual(
             REPORTS["import_detail"]["headers"],
             [
                 "Mã phiếu nhập", "Ngày nhập", "Loại phiếu", "Nhà cung cấp",
