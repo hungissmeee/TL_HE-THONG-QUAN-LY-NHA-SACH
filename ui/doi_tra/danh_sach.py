@@ -33,6 +33,9 @@ class ReturnWindow(QWidget):
             self.is_admin
             or self.employee_role.casefold() == "quản lý"
         )
+        self.can_view = self.can_view_returns(
+            self.username, self.employee_role
+        )
         self._build_ui()
         self.load_returns()
 
@@ -41,6 +44,15 @@ class ReturnWindow(QWidget):
             return self.service.get_employee_role(self.username)
         except Exception:
             return ""
+
+    @staticmethod
+    def can_view_returns(username, employee_role):
+        """Cho phép Kế toán đọc lịch sử đổi trả; chỉ Quản lý/Admin được thao tác."""
+        return (
+            is_admin_account(username)
+            or str(employee_role or "").strip().casefold()
+            in {"quản lý", "kế toán"}
+        )
 
     def _build_ui(self):
         root = QVBoxLayout(self)
@@ -65,9 +77,9 @@ class ReturnWindow(QWidget):
         top.addWidget(refresh_button)
         root.addLayout(top)
 
-        if not self.can_manage:
+        if not self.can_view:
             notice = QLabel(
-                "Chức năng đổi trả chỉ dành cho tài khoản có vai trò Quản lý."
+                "Bạn không có quyền xem chức năng đổi trả."
             )
             notice.setAlignment(Qt.AlignmentFlag.AlignCenter)
             notice.setStyleSheet("font-size: 15px; color: #B45309;")
@@ -132,9 +144,9 @@ class ReturnWindow(QWidget):
         self.load_returns()
 
     def load_returns(self):
-        if not self.can_manage:
+        if not self.can_view:
             self.table.setRowCount(0)
-            self.total_label.setText("Không có quyền truy cập chức năng đổi trả.")
+            self.total_label.setText("Không có quyền xem dữ liệu đổi trả.")
             return
         if self.from_date.date() > self.to_date.date():
             QMessageBox.warning(self, "Khoảng ngày không hợp lệ", "Ngày bắt đầu không được lớn hơn ngày kết thúc.")
@@ -213,7 +225,7 @@ class ReturnWindow(QWidget):
 
     def open_detail(self, row, _column=0):
         """Mở hộp thoại chi tiết phiếu đang chọn."""
-        if not self.can_manage or row < 0:
+        if not self.can_view or row < 0:
             return
         cell = self.table.item(row, 0)
         if cell is None:
