@@ -518,22 +518,68 @@ class BaoCaoRepository:
             """
             params.extend([f"%{keyword}%"] * 4)
         return self._fetch_all(f"""
-            WITH Sales AS (
-                SELECT CT.MASP,
-                    COUNT(DISTINCT HD.MAHD) AS SO_HD,
-                    SUM(COALESCE(CT.SOLUONG, 0)) AS SL_BAN,
-                    SUM(COALESCE(CT.SOLUONG, 0) * COALESCE(CT.DONGIA, 0)) AS DOANH_SO,
-                    SUM(
+            WITH InvoiceLineBase AS (
+                SELECT HD.MAHD, CT.MASP,
+                    CAST(
                         COALESCE(CT.SOLUONG, 0) * COALESCE(CT.DONGIA, 0)
-                        * (1 - COALESCE(KM.TYLEGIAM, 0) / 100.0)
-                    ) AS DOANH_THU_THUAN
+                        AS DECIMAL(28, 2)
+                    ) AS TIEN_HANG_DONG,
+                    COALESCE(KM.TYLEGIAM, 0) AS TYLEGIAM
                 FROM dbo.HOA_DON HD
                 INNER JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
                 LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
                 WHERE HD.TRANGTHAI = 1
                   AND HD.NGAYLAP >= CONVERT(date, ?)
                   AND HD.NGAYLAP < DATEADD(day, 1, CONVERT(date, ?))
-                GROUP BY CT.MASP
+            ),
+            InvoiceLineRunning AS (
+                SELECT MAHD, MASP, TIEN_HANG_DONG, TYLEGIAM,
+                    SUM(TIEN_HANG_DONG) OVER (
+                        PARTITION BY MAHD
+                    ) AS TIEN_HANG_HD,
+                    SUM(TIEN_HANG_DONG) OVER (
+                        PARTITION BY MAHD
+                        ORDER BY MASP
+                        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+                    ) AS TIEN_HANG_LUY_KE,
+                    COALESCE(SUM(TIEN_HANG_DONG) OVER (
+                        PARTITION BY MAHD
+                        ORDER BY MASP
+                        ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+                    ), 0) AS TIEN_HANG_TRUOC
+                FROM InvoiceLineBase
+            ),
+            InvoiceLineDiscount AS (
+                SELECT MAHD, MASP, TIEN_HANG_DONG,
+                    TIEN_HANG_HD, TIEN_HANG_LUY_KE, TIEN_HANG_TRUOC,
+                    ROUND(TIEN_HANG_HD * TYLEGIAM / 100.0, 2) AS TIEN_GIAM_HD
+                FROM InvoiceLineRunning
+            ),
+            AllocatedDiscount AS (
+                SELECT MAHD, MASP, TIEN_HANG_DONG,
+                    CASE
+                        WHEN TIEN_HANG_HD > 0 THEN
+                            ROUND(
+                                TIEN_GIAM_HD * TIEN_HANG_LUY_KE
+                                / NULLIF(TIEN_HANG_HD, 0), 2
+                            )
+                            - ROUND(
+                                TIEN_GIAM_HD * TIEN_HANG_TRUOC
+                                / NULLIF(TIEN_HANG_HD, 0), 2
+                            )
+                        ELSE 0
+                    END AS TIEN_GIAM_DONG
+                FROM InvoiceLineDiscount
+            ),
+            Sales AS (
+                SELECT MASP,
+                    COUNT(DISTINCT MAHD) AS SO_HD,
+                    SUM(TIEN_HANG_DONG * 0 + 1) AS SO_DONG,
+                    SUM(TIEN_HANG_DONG) AS SL_TIEN_HANG,
+                    SUM(TIEN_HANG_DONG) AS DOANH_SO,
+                    SUM(TIEN_HANG_DONG - TIEN_GIAM_DONG) AS DOANH_THU_THUAN
+                FROM AllocatedDiscount
+                GROUP BY MASP
             ),
             Returns AS (
                 SELECT CTDT.MASP,
