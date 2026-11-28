@@ -1279,13 +1279,21 @@ class ReportCenterTests(unittest.TestCase):
         sync_source = inspect.getsource(ReportCenterPage._sync_footer_widths)
         self.assertIn("self.group_header.setColumnWidth(col, width)", sync_source)
 
-    def test_report_center_does_not_use_legacy_kpi_cards(self):
+    def test_stock_card_opening_balance_row_is_merged_except_stock_columns(self):
         import inspect
         from ui.bao_cao.trung_tam_bao_cao import ReportCenterPage
 
-        source = inspect.getsource(ReportCenterPage)
-        self.assertNotIn("add_stat_cards", source)
-        self.assertNotIn("reportPrimaryKpi", source)
+        fill_table_source = inspect.getsource(ReportCenterPage._fill_table)
+        self.assertIn('str(values[5] or "") == "Số dư đầu kỳ"', fill_table_source)
+        self.assertIn("self.table.setSpan(row, 0, 1, 12)", fill_table_source)
+        self.assertIn("self.table.setSortingEnabled(self.current_report != \"stock_card\")", fill_table_source)
+
+        workbook_source = inspect.getsource(ReportCenterPage._write_workbook)
+        self.assertIn("worksheet.merge_range(", workbook_source)
+        self.assertIn("row_index, 0, row_index, 11, label", workbook_source)
+        self.assertIn("for col in (12, 13)", workbook_source)
+
+    def test_report_center_does_not_use_legacy_kpi_cards(self):
 
     def test_report_center_uses_shared_native_combo_style(self):
         import inspect
