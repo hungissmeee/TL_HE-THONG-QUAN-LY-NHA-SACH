@@ -61,7 +61,7 @@ class LoginWindow(QWidget):
         parts = getattr(error, "args", ()) or ()
         diagnostic = " ".join(str(part) for part in parts) or str(error)
         normalized = diagnostic.casefold()
-        error_codes = set(re.findall(r"\\((\\d{4,6})\\)", diagnostic))
+        error_codes = set(re.findall(r"\((\d{1,6})\)", diagnostic))
         sql_state = str(parts[0]).strip().upper() if parts else ""
 
         if "18470" in error_codes or "account is disabled" in normalized:
