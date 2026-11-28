@@ -36,7 +36,7 @@ class PhieuNhapService:
             include_return_history = (
                 bool(is_admin)
                 or str(username or "").strip().casefold() == "admin"
-                or role in {"quản lý", "kế toán"}
+                or role in {"quản lý", "nhân viên kho", "kế toán"}
             )
         return self.repository.get_import_detail(
             code, include_return_history=include_return_history
