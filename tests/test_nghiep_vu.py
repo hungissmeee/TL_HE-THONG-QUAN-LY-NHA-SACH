@@ -888,6 +888,7 @@ class InputValidationTests(unittest.TestCase):
         self.assertIn("invoices", MainWindow.ROLE_PAGE_ACCESS["Thu ngân"])
         self.assertIn("imports", MainWindow.ROLE_PAGE_ACCESS["Nhân viên kho"])
         self.assertIn("returns", MainWindow.ROLE_PAGE_ACCESS["Quản lý"])
+        self.assertIn("returns", MainWindow.ROLE_PAGE_ACCESS["Kế toán"])
         self.assertIn("report_center", MainWindow.ROLE_PAGE_ACCESS["Quản lý"])
         self.assertIn("report_center", MainWindow.ROLE_PAGE_ACCESS["Kế toán"])
         self.assertNotIn("report_center", MainWindow.ROLE_PAGE_ACCESS["Thu ngân"])
@@ -932,6 +933,19 @@ class ImportPagePermissionTests(unittest.TestCase):
 
     def test_admin_can_view_import_page(self):
         self.assertTrue(can_view_imports("admin", ""))
+
+
+class ReturnPagePermissionTests(unittest.TestCase):
+    """Kế toán chỉ được xem lịch sử đổi trả, không có quyền lập/xóa phiếu."""
+
+    def test_accountant_can_view_return_history(self):
+        self.assertTrue(ReturnWindow.can_view_returns("KT01", "Kế toán"))
+
+    def test_only_manager_and_admin_can_manage_returns(self):
+        self.assertFalse(ReturnWindow.can_view_returns("TN01", "Thu ngân"))
+        self.assertFalse(ReturnWindow.can_view_returns("KHO01", "Nhân viên kho"))
+        self.assertTrue(ReturnWindow.can_view_returns("QL01", "Quản lý"))
+        self.assertTrue(ReturnWindow.can_view_returns("admin", ""))
 
 
 class ReturnDialogInputTests(unittest.TestCase):
