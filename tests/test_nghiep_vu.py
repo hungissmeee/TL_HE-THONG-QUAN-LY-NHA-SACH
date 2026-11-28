@@ -581,6 +581,47 @@ class SearchableSelectorTests(unittest.TestCase):
         self.assertIn("Tác giả B", selector.selected_label.toolTip())
         selector.close()
 
+    def test_single_select_popup_dismisses_on_outside_click(self):
+        from ui.san_pham.bo_chon import _show_lookup_popup
+
+        selector = SearchableSingleSelect()
+        selector.set_options([("NXB001", "Nhà xuất bản A", False)])
+        selector.resize(360, 120)
+        selector.show()
+        selector._populate_results()
+        _show_lookup_popup(selector.search_input, selector.results)
+        QApplication.processEvents()
+
+        self.assertTrue(selector.results.isVisible())
+        outside = selector.mapToGlobal(QPoint(selector.width() - 2, selector.height() - 2))
+        selector._popup_dismiss_filter.dismiss_if_outside(outside)
+        self.assertFalse(selector.results.isVisible())
+        selector.close()
+
+    def test_multi_select_popup_stays_open_for_anchor_or_popup_click_and_closes_outside(self):
+        from ui.san_pham.bo_chon import _show_lookup_popup
+
+        selector = SearchableMultiSelect()
+        selector.set_options([("TG001", "Tác giả A", False)])
+        selector.resize(360, 120)
+        selector.show()
+        selector._populate_results()
+        _show_lookup_popup(selector.search_input, selector.results)
+        QApplication.processEvents()
+
+        popup_point = selector.results.frameGeometry().center()
+        selector._popup_dismiss_filter.dismiss_if_outside(popup_point)
+        self.assertTrue(selector.results.isVisible())
+
+        anchor_point = selector.search_input.mapToGlobal(QPoint(4, 4))
+        selector._popup_dismiss_filter.dismiss_if_outside(anchor_point)
+        self.assertTrue(selector.results.isVisible())
+
+        outside = selector.mapToGlobal(QPoint(selector.width() - 2, selector.height() - 2))
+        selector._popup_dismiss_filter.dismiss_if_outside(outside)
+        self.assertFalse(selector.results.isVisible())
+        selector.close()
+
 
 class CatalogAddDialogTests(unittest.TestCase):
     """Kiểm thử popup thêm danh mục dùng chung."""
