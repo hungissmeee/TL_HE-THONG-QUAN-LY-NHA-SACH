@@ -53,6 +53,12 @@ class BaoCaoService:
             raise ValueError("Kiểu tổng hợp thời gian không hợp lệ.")
         return self.repository.cash_flow_report(start, end, period)
 
+    def revenue_report(self, start_date, end_date, period="day"):
+        start, end = self.validate_dates(start_date, end_date)
+        if period not in {"day", "month", "year"}:
+            raise ValueError("Kiểu tổng hợp thời gian không hợp lệ.")
+        return self.repository.revenue_report(start, end, period)
+
     def sales_by_employee_report(self, start_date, end_date, keyword=""):
         start, end = self.validate_dates(start_date, end_date)
         return self.repository.sales_by_employee_report(start, end, self._keyword(keyword))
