@@ -314,7 +314,6 @@ class SanPhamRepository:
                     CASE WHEN
                         HAS_PERMS_BY_NAME('dbo.SAN_PHAM', 'OBJECT', 'UPDATE', 'TENSP', 'COLUMN') = 1
                         AND HAS_PERMS_BY_NAME('dbo.SAN_PHAM', 'OBJECT', 'UPDATE', 'DVT', 'COLUMN') = 1
-                        AND HAS_PERMS_BY_NAME('dbo.SAN_PHAM', 'OBJECT', 'UPDATE', 'GIABAN', 'COLUMN') = 1
                         AND HAS_PERMS_BY_NAME('dbo.SAN_PHAM', 'OBJECT', 'UPDATE', 'VAT', 'COLUMN') = 1
                         AND HAS_PERMS_BY_NAME('dbo.SAN_PHAM', 'OBJECT', 'UPDATE', 'BARCODE', 'COLUMN') = 1
                         AND HAS_PERMS_BY_NAME('dbo.SACH', 'OBJECT', 'UPDATE', 'ISBN', 'COLUMN') = 1
@@ -394,13 +393,27 @@ class SanPhamRepository:
                     )
 
             if product_code:
-                cursor.execute("""
-                    UPDATE dbo.SAN_PHAM
-                    SET TENSP = ?, BARCODE = ?, DVT = ?, GIABAN = ?, VAT = ?
-                    OUTPUT inserted.MASP
-                    WHERE MASP = ? AND ISNULL(IS_DELETED, 0) = 0
-                """, data["tensp"], barcode, data["dvt"], data["giaban"],
-                     data["vat"], code)
+                can_update_sale_price = cursor.execute("""
+                    SELECT HAS_PERMS_BY_NAME(
+                        'dbo.SAN_PHAM', 'OBJECT', 'UPDATE', 'GIABAN', 'COLUMN'
+                    )
+                """).fetchone()[0] == 1
+                if can_update_sale_price:
+                    cursor.execute("""
+                        UPDATE dbo.SAN_PHAM
+                        SET TENSP = ?, BARCODE = ?, DVT = ?, GIABAN = ?, VAT = ?
+                        OUTPUT inserted.MASP
+                        WHERE MASP = ? AND ISNULL(IS_DELETED, 0) = 0
+                    """, data["tensp"], barcode, data["dvt"], data["giaban"],
+                         data["vat"], code)
+                else:
+                    # Nhan vien kho duoc sua thong tin san pham nhung khong sua gia ban.
+                    cursor.execute("""
+                        UPDATE dbo.SAN_PHAM
+                        SET TENSP = ?, BARCODE = ?, DVT = ?, VAT = ?
+                        OUTPUT inserted.MASP
+                        WHERE MASP = ? AND ISNULL(IS_DELETED, 0) = 0
+                    """, data["tensp"], barcode, data["dvt"], data["vat"], code)
                 if cursor.fetchone() is None:
                     raise LookupError("Sản phẩm không tồn tại hoặc đã bị xóa mềm!")
 
