@@ -3,7 +3,6 @@
 from PySide6.QtCore import (
     Qt,
     QDate,
-    QTimer,
 )
 from PySide6.QtWidgets import (
     QWidget,
@@ -55,19 +54,12 @@ class InvoiceWindow(QWidget):
             self.username.casefold() == "admin"
             or self.employee_role.casefold() in {"quản lý", "thu ngân"}
         )
-        # Admin/Quản lý được hủy mọi hóa đơn; Thu ngân chỉ được hủy hóa đơn mình lập.
+        # Hủy hóa đơn chỉ dành cho Admin/Quản lý; Thu ngân chỉ được lập và xem.
         self.is_admin = self.username.casefold() == "admin"
         self.is_manager = self.employee_role.casefold() == "quản lý"
-        self.is_cashier = self.employee_role.casefold() == "thu ngân"
-        self.can_cancel = self.is_admin or self.is_manager or self.is_cashier
+        self.can_cancel = self.is_admin or self.is_manager
         self._build_ui()
         self.load_invoices()
-
-        # Tự kiểm tra lại quyền hủy định kỳ để nút tự khóa khi hết 5 phút.
-        self._cancel_permission_timer = QTimer(self)
-        self._cancel_permission_timer.setInterval(5000)
-        self._cancel_permission_timer.timeout.connect(self.update_action_buttons)
-        self._cancel_permission_timer.start()
 
     def _get_employee_role(self):
         try:
@@ -204,7 +196,7 @@ class InvoiceWindow(QWidget):
             resume_table_sorting(self.table)
 
     def update_action_buttons(self):
-        """Xác định quyền hủy hóa đơn đang chọn để truyền vào popup chi tiết."""
+        """Chỉ Admin/Quản lý được hủy hóa đơn đang có hiệu lực."""
         row = self.table.currentRow()
         self._selected_can_cancel = False
         if not self.can_cancel or row < 0:
@@ -217,44 +209,7 @@ class InvoiceWindow(QWidget):
             and status_item.text() == "Đã thanh toán"
         )
         invoice_code = invoice_item.text().strip() if invoice_item else ""
-        owner_code = (
-            str(invoice_item.data(Qt.ItemDataRole.UserRole) or "").strip()
-            if invoice_item is not None else ""
-        )
-        if not is_active or not invoice_code:
-            return
-
-        # Admin/Quản lý được hủy mọi hóa đơn còn hiệu lực.
-        if self.is_admin or self.is_manager:
-            self._selected_can_cancel = True
-            return
-
-        # Thu ngân chỉ được hủy hóa đơn của mình trong 5 phút đầu.
-        if self.is_cashier and owner_code.casefold() == self.username.casefold():
-            conn = self.db.get_connection()
-            if conn is None:
-                return
-            cursor = conn.cursor()
-            try:
-                cursor.execute("""
-                    SELECT CASE
-                        WHEN TRANGTHAI = 1
-                         AND MANV = ?
-                         AND NGAYLAP >= DATEADD(MINUTE, -5, SYSDATETIME())
-                         AND NGAYLAP <= SYSDATETIME()
-                        THEN 1 ELSE 0
-                    END
-                    FROM dbo.HOA_DON
-                    WHERE MAHD = ?
-                """, self.username, invoice_code)
-                permission_row = cursor.fetchone()
-                self._selected_can_cancel = bool(
-                    permission_row and permission_row[0] == 1
-                )
-            except Exception:
-                self._selected_can_cancel = False
-            finally:
-                cursor.close()
+        self._selected_can_cancel = bool(is_active and invoice_code)
 
     def cancel_selected_invoice(self):
         if not self.can_cancel:
@@ -269,15 +224,10 @@ class InvoiceWindow(QWidget):
         if item is None or status is None:
             return
         invoice_code = item.text().strip()
-        owner_code = str(item.data(Qt.ItemDataRole.UserRole) or "").strip()
         if status.text() != "Đã thanh toán":
             QMessageBox.information(self, "Không thể hủy", "Hóa đơn đã bị hủy hoặc không có trạng thái hợp lệ.")
             self.update_action_buttons()
             return
-        if self.is_cashier and not self.is_admin and not self.is_manager:
-            if owner_code.casefold() != self.username.casefold():
-                QMessageBox.warning(self, "Không có quyền", "Thu ngân chỉ được hủy hóa đơn do chính mình lập.")
-                return
         answer = QMessageBox.question(
             self, "Xác nhận hủy hóa đơn",
             f"Bạn có chắc chắn muốn hủy hóa đơn {invoice_code}?\n\n"
