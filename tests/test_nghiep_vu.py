@@ -1146,6 +1146,7 @@ class ReportCenterTests(unittest.TestCase):
         self.assertIn("stock_card", REPORTS)
         self.assertIn("daily_sales", REPORTS)
         self.assertIn("sales_time", REPORTS)
+        self.assertIn("import_product", REPORTS)
         source = inspect.getsource(ReportCenterPage.export_xlsx)
         self.assertIn(".xlsx", source)
         self.assertNotIn(".csv", source)
@@ -1167,22 +1168,51 @@ class ReportCenterTests(unittest.TestCase):
             REPORTS["import_detail"]["headers"],
             [
                 "Mã phiếu nhập", "Ngày nhập", "Loại phiếu", "Nhà cung cấp",
-                "Mã hàng", "Tên hàng", "Số lượng", "Đơn giá nhập",
-                "Thành tiền", "Số HĐ NCC", "Nhân viên lập",
+                "Mã hàng", "Tên hàng", "ĐVT", "Số lượng",
+                "Đơn giá nhập", "Thành tiền", "Số HĐ NCC", "Nhân viên lập",
             ],
         )
         self.assertEqual(
-            REPORTS["sales_product"]["headers"][:5],
-            ["Mã hàng", "Tên hàng", "Đơn vị", "Mã vạch", "ISBN"],
+            REPORTS["sales_product"]["headers"][:6],
+            [
+                "Mã hàng", "Tên hàng", "ĐVT", "Số lượng bán",
+                "Doanh số bán", "Doanh thu thuần",
+            ],
+        )
+        self.assertEqual(
+            REPORTS["import_product"]["headers"][:6],
+            [
+                "Mã hàng", "Tên hàng", "ĐVT", "Số lượng mua",
+                "Giá trị mua", "Đơn giá bình quân",
+            ],
+        )
+        self.assertEqual(
+            REPORTS["stock_movement"]["headers"],
+            [
+                "Mã hàng", "Tên hàng", "ĐVT",
+                "Đầu kỳ - Số lượng", "Đầu kỳ - Giá trị*",
+                "Nhập kho - Số lượng", "Nhập kho - Giá trị",
+                "Xuất kho - Số lượng", "Xuất kho - Giá trị*",
+                "Cuối kỳ - Số lượng", "Cuối kỳ - Giá trị*",
+            ],
         )
         self.assertEqual(
             REPORTS["stock_movement"]["group_headers"],
             [
                 (0, 2, "Thông tin hàng hóa"),
-                (3, 4, "Tồn đầu kỳ"),
-                (5, 8, "Tăng tồn trong kỳ"),
-                (9, 12, "Giảm tồn trong kỳ"),
-                (13, 14, "Tồn cuối kỳ"),
+                (3, 4, "Đầu kỳ"),
+                (5, 6, "Nhập kho trong kỳ"),
+                (7, 8, "Xuất kho trong kỳ"),
+                (9, 10, "Cuối kỳ"),
+            ],
+        )
+        self.assertEqual(
+            REPORTS["stock_card"]["headers"],
+            [
+                "Mã hàng", "Tên hàng", "Ngày chứng từ", "Số chứng từ",
+                "Diễn giải", "ĐVT", "Đơn giá", "Nhập - Số lượng",
+                "Nhập - Giá trị", "Xuất - Số lượng", "Xuất - Giá trị",
+                "Tồn - Số lượng", "Tồn - Giá trị*",
             ],
         )
 
