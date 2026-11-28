@@ -1321,6 +1321,9 @@ class ReportServiceTests(unittest.TestCase):
 
         repository = CaptureRepository()
         repository.revenue_report("2026-01-01", "2026-01-31", "month")
+        sales_cte = repository.sql.split("Sales AS (", 1)[1].split("ReturnDetails AS (", 1)[0]
+        self.assertIn("DATEFROMPARTS(YEAR(NGAYLAP), MONTH(NGAYLAP), 1)", sales_cte)
+        self.assertNotIn("HD.NGAYLAP", sales_cte)
         self.assertIn("SUM(COALESCE(CT.SOLUONG, 0)) AS SL_BAN", repository.sql)
         self.assertIn("CT.DONGIA", repository.sql)
         self.assertIn("SP.GIANHAP", repository.sql)
