@@ -150,6 +150,20 @@ REPORTS = {
         "sum_cols": [5, 6, 7, 8, 9, 10],
         "search": True,
     },
+    "shift": {
+        "title": "BÁO CÁO CA LÀM VIỆC",
+        "method": "shift_report",
+        "headers": [
+            "Mã ca", "Ngày làm", "Ca", "Giờ bắt đầu", "Giờ kết thúc",
+            "Lượt nhân viên đăng ký", "Số hóa đơn", "Số lượng bán",
+            "Doanh số", "Số phiếu đổi trả", "Tiền hoàn",
+            "Tiền đầu ca", "Tiền cuối ca", "Trạng thái",
+        ],
+        "number_cols": [5, 6, 7, 9],
+        "money_cols": [8, 10, 11, 12],
+        "date_cols": [1],
+        "sum_cols": [5, 6, 7, 8, 9, 10, 11, 12],
+    },
     "current_inventory": {
         "title": "BÁO CÁO TỒN KHO HIỆN TẠI",
         "method": "current_inventory_report",
