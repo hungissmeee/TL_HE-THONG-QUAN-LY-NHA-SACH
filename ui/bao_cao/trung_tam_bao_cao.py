@@ -211,16 +211,18 @@ REPORTS = {
         "search": True,
     },
 
-    "cash_flow": {
-        "title": "BÁO CÁO TỔNG HỢP THU – CHI",
-        "method": "cash_flow_report",
+    "revenue": {
+        "title": "BÁO CÁO DOANH THU",
+        "method": "revenue_report",
         "headers": [
-            "Thời gian", "Tiền thu bán hàng", "Tiền chi nhập hàng",
-            "Tiền hoàn khách", "Tổng tiền chi", "Chênh lệch thu – chi",
+            "Thời gian", "Số lượng bán", "Doanh thu bán",
+            "Giá vốn hàng bán", "SL hàng hỏng", "Giá trị hàng hỏng",
+            "Tiền hoàn", "Doanh thu thuần", "Lợi nhuận ước tính",
         ],
-        "money_cols": [1, 2, 3, 4, 5],
+        "number_cols": [1, 4],
+        "money_cols": [2, 3, 5, 6, 7, 8],
         "date_cols": [0],
-        "sum_cols": [1, 2, 3, 4, 5],
+        "sum_cols": [1, 2, 3, 4, 5, 6, 7, 8],
         "period": True,
     },
 
@@ -239,8 +241,8 @@ class ReportCenterPage(QWidget):
             ("sales_product", "Bán hàng theo sản phẩm"),
             ("promotion", "Hiệu quả khuyến mãi"),
         ]),
-        ("BÁO CÁO THU CHI", [
-            ("cash_flow", "Tổng thu – chi theo thời gian"),
+        ("BÁO CÁO DOANH THU", [
+            ("revenue", "Doanh thu theo thời gian"),
         ]),
         ("BÁO CÁO HÀNG HÓA / KHO", [
             ("stock_movement", "Báo cáo nhập xuất tồn"),
