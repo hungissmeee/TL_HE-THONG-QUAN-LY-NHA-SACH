@@ -32,6 +32,14 @@ from core.hoa_don.repository import HoaDonRepository
 from core.hoa_don.service import HoaDonService
 
 
+def can_cancel_invoices(username, employee_role):
+    """Chỉ Admin/Quản lý được hủy hóa đơn đã lập."""
+    return (
+        str(username or "").strip().casefold() == "admin"
+        or str(employee_role or "").strip().casefold() == "quản lý"
+    )
+
+
 class InvoiceWindow(QWidget):
     """Trang danh sách hóa đơn, tìm kiếm, lập hóa đơn, xem chi tiết và xử lý hủy theo quyền."""
 
@@ -57,7 +65,7 @@ class InvoiceWindow(QWidget):
         # Hủy hóa đơn chỉ dành cho Admin/Quản lý; Thu ngân chỉ được lập và xem.
         self.is_admin = self.username.casefold() == "admin"
         self.is_manager = self.employee_role.casefold() == "quản lý"
-        self.can_cancel = self.is_admin or self.is_manager
+        self.can_cancel = can_cancel_invoices(self.username, self.employee_role)
         self._build_ui()
         self.load_invoices()
 
