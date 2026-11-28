@@ -1346,24 +1346,23 @@ class ReportCenterTests(unittest.TestCase):
         self.assertGreaterEqual(
             build_ui.count("QAbstractItemView.ScrollMode.ScrollPerPixel"), 3
         )
-        self.assertIn("self.table.verticalScrollBar().rangeChanged.connect", build_ui)
+        self.assertIn("self.table.horizontalHeader().geometriesChanged.connect", build_ui)
 
         margins_source = inspect.getsource(
             ReportCenterPage._sync_auxiliary_viewport_margins
         )
-        self.assertIn("self.table.viewport().width()", margins_source)
-        self.assertIn("target.viewport().width()", margins_source)
-        self.assertIn("margins.right() + difference", margins_source)
+        self.assertIn("vertical_bar.width() or vertical_bar.sizeHint().width()", margins_source)
+        self.assertIn("target.setViewportMargins(0, 0, gutter, 0)", margins_source)
 
         range_source = inspect.getsource(
             ReportCenterPage._sync_horizontal_scroll_range
         )
-        self.assertIn("source.maximum()", range_source)
+        self.assertIn("source.horizontalHeader().offset()", range_source)
+        self.assertIn("target.horizontalHeader().setOffset(source_offset)", range_source)
         self.assertIn("scrollbar.setRange(source_minimum, source_maximum)", range_source)
-        self.assertIn("scrollbar.setPageStep(source_page_step)", range_source)
 
         value_source = inspect.getsource(ReportCenterPage._sync_horizontal_scroll)
-        self.assertIn("scrollbar.setRange(minimum, maximum)", value_source)
+        self.assertIn("target.horizontalHeader().setOffset(source_offset)", value_source)
         self.assertIn("scrollbar.setValue(value)", value_source)
 
 
