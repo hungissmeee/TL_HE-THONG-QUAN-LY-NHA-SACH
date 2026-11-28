@@ -476,7 +476,8 @@ class ReportCenterPage(QWidget):
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         self.table.horizontalHeader().setMinimumSectionSize(78)
         self.table.horizontalHeader().setMinimumHeight(46)
-        self.table.horizontalHeader().setWordWrap(True)
+        # QHeaderView của PySide6 không hỗ trợ setWordWrap; chiều rộng cột
+        # đã được tính theo tiêu đề và tooltip giữ nội dung đầy đủ khi cần.
         self.table.horizontalHeader().setStretchLastSection(False)
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
