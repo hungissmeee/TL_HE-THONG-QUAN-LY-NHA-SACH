@@ -573,7 +573,7 @@ class BaoCaoRepository:
                     * COALESCE(SP.GIANHAP, 0)
             FROM dbo.SAN_PHAM SP
             LEFT JOIN MovementSummary M ON M.MASP = SP.MASP
-            WHERE COALESCE(SP.IS_DELETED, 0) = 0 OR M.MASP IS NOT NULL
+            WHERE (COALESCE(SP.IS_DELETED, 0) = 0 OR M.MASP IS NOT NULL)
             {search_sql}
             ORDER BY SP.TENSP, SP.MASP
         """
