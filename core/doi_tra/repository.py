@@ -18,30 +18,24 @@ class ReturnRepository:
     @staticmethod
     def ensure_manager(cursor, username, is_admin=False):
         """Xác nhận quyền từ SQL role và hồ sơ nhân viên; Admin được miễn hồ sơ."""
-        if is_admin or str(username or "").strip().casefold() == "admin":
-            cursor.execute(
-                "SELECT MANV FROM dbo.NHAN_VIEN WHERE MANV = ?",
-                username,
-            )
-            row = cursor.fetchone()
-            return row[0] if row else None
-
         cursor.execute("""
             SELECT CASE
+                WHEN USER_NAME() = N'admin' THEN 1
                 WHEN IS_ROLEMEMBER(N'rl_QuanLy') = 1
                  AND EXISTS (
                      SELECT 1 FROM dbo.NHAN_VIEN
-                     WHERE MANV = ? AND VAITRO = N'Quản lý'
+                     WHERE MANV = USER_NAME()
+                       AND MANV = ? AND VAITRO = N'Quản lý'
                  )
                 THEN 1 ELSE 0
             END
-        """, username)
+        """, str(username or "").strip())
         row = cursor.fetchone()
         if row is None or int(row[0] or 0) != 1:
             raise PermissionError(
-                "Chỉ tài khoản thuộc vai trò Quản lý được xử lý đổi trả."
+                "Chỉ tài khoản Quản lý/Admin được xử lý đổi trả."
             )
-        return str(username or "").strip()
+        return "admin" if str(username or "").strip().casefold() == "admin" else str(username or "").strip()
 
     def get_employee_role(self, username):
         if str(username or "").strip().casefold() == "admin":
@@ -540,7 +534,13 @@ class ReturnRepository:
         conn = self._connection()
         cursor = conn.cursor()
         try:
-            self.ensure_manager(cursor, username, is_admin)
+            cursor.execute(
+                "SELECT CASE WHEN USER_NAME() = N'admin' THEN 1 ELSE 0 END"
+            )
+            admin_row = cursor.fetchone()
+            if admin_row is None or int(admin_row[0] or 0) != 1:
+                raise PermissionError("Chỉ Admin được xóa phiếu đổi trả.")
+
             cursor.execute("""
                 SELECT MAPDT
                 FROM dbo.PHIEU_DOI_TRA WITH (UPDLOCK, HOLDLOCK)
