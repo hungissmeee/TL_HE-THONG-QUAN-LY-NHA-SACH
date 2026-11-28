@@ -900,6 +900,10 @@ class FakeReportRepository(BaoCaoRepository):
         self.calls.append(("stock_card_report", start, end, keyword))
         return []
 
+    def cash_flow_report(self, start, end, period="day"):
+        self.calls.append(("cash_flow_report", start, end, period))
+        return []
+
     def shift_report(self, start, end):
         self.calls.append(("shift_report", start, end))
         return []
@@ -912,7 +916,7 @@ class ReportServiceTests(unittest.TestCase):
 
     def test_service_exposes_defined_report_methods(self):
         for method in (
-            "daily_sales_report", "sales_by_period_report",
+            "daily_sales_report", "sales_by_period_report", "cash_flow_report",
             "sales_by_employee_report", "sales_by_product_report",
             "promotion_report", "return_detail_report",
             "import_detail_report", "import_product_report", "import_supplier_report",
@@ -954,6 +958,17 @@ class ReportServiceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "thời gian"):
             self.service.sales_by_period_report(
                 "2026-01-01", "2026-01-31", "day; DROP TABLE HOA_DON"
+            )
+
+    def test_cash_flow_report_delegates_and_validates_period(self):
+        self.service.cash_flow_report("2026-01-01", "2026-01-31", "month")
+        self.assertEqual(
+            self.repository.calls[-1],
+            ("cash_flow_report", "2026-01-01", "2026-01-31", "month"),
+        )
+        with self.assertRaisesRegex(ValueError, "thời gian"):
+            self.service.cash_flow_report(
+                "2026-01-01", "2026-01-31", "invalid"
             )
 
     def test_keyword_length_is_limited(self):
@@ -1024,6 +1039,8 @@ class ReportServiceTests(unittest.TestCase):
         self.assertIn("I.TENNV LIKE ?", repository.sql)
         self.assertNotIn("NV.TENNV LIKE ?", repository.sql)
         self.assertIn("SUM(COALESCE(TONG_TIEN_HOAN, 0))", repository.sql)
+        self.assertNotIn("ReturnLines AS", repository.sql)
+        self.assertNotIn("SO_PHIEU_TRA", repository.sql)
         self.assertEqual(
             repository.params,
             ("2026-01-01", "2026-01-31", "NV01",
@@ -1048,13 +1065,15 @@ class ReportServiceTests(unittest.TestCase):
             "SELECT I.MAHD, I.NGAYLAP, I.SO_LUONG, I.TIEN_HANG,",
             "ROUND(I.TIEN_HANG * I.TYLEGIAM / 100.0, 2)",
             "AS THUC_THU",
-            "COALESCE(RH.SO_PHIEU_TRA, 0)",
-            "COALESCE(I.TIENKHACHDUA, 0)",
+            "COALESCE(RH.TIEN_HOAN, 0)",
+            "AS DOANH_THU_SAU_HOAN",
+            "AS TIEN_THUA",
             "I.TENNV,",
             "I.SO_DONG, N'Bán hàng'",
         ]
         positions = [select.index(token) for token in ordered_tokens]
         self.assertEqual(positions, sorted(positions))
+        self.assertNotIn("COALESCE(RH.SO_PHIEU_TRA, 0)", select)
         self.assertEqual(
             repository.params,
             ("2026-01-01", "2026-01-31",
@@ -1205,6 +1224,36 @@ class ReportServiceTests(unittest.TestCase):
         self.assertIn("LEFT JOIN Sales S ON S.MACA = C.MACA", repository.sql)
         self.assertIn("LEFT JOIN Returns R ON R.MACA = C.MACA", repository.sql)
 
+    def test_cash_flow_report_aggregates_sales_imports_and_refunds(self):
+        class CaptureRepository(BaoCaoRepository):
+            def __init__(self):
+                self.sql = ""
+                self.params = None
+
+            def _fetch_all(self, sql, params=()):
+                self.sql = sql
+                self.params = params
+                return []
+
+        repository = CaptureRepository()
+        repository.cash_flow_report("2026-01-01", "2026-01-31", "month")
+        self.assertIn("FROM dbo.HOA_DON HD", repository.sql)
+        self.assertIn("PN.TONGTRIGIA", repository.sql)
+        self.assertIn("FROM dbo.PHIEU_DOI_TRA PDT", repository.sql)
+        self.assertIn("PDT.TONG_TIEN_HOAN", repository.sql)
+        self.assertIn("ISNULL(PN.TRANGTHAI, 1) = 1", repository.sql)
+        self.assertIn("FULL", repository.sql) if False else None
+        self.assertNotIn("TIENKHACHDUA", repository.sql)
+        self.assertEqual(repository.sql.count("?"), 6)
+        self.assertEqual(
+            repository.params,
+            (
+                "2026-01-01", "2026-01-31",
+                "2026-01-01", "2026-01-31",
+                "2026-01-01", "2026-01-31",
+            ),
+        )
+
     def test_employee_report_does_not_multiply_return_header_amounts(self):
         class CaptureRepository(BaoCaoRepository):
             def __init__(self):
@@ -1219,14 +1268,14 @@ class ReportServiceTests(unittest.TestCase):
         repository = CaptureRepository()
         repository.sales_by_employee_report("2026-01-01", "2026-01-31")
         self.assertIn("ReturnHeaders AS", repository.sql)
-        self.assertIn("ReturnLines AS", repository.sql)
+        self.assertNotIn("ReturnLines AS", repository.sql)
         self.assertIn("SUM(COALESCE(TONG_TIEN_HOAN, 0))", repository.sql)
         self.assertEqual(
             repository.params,
             ("2026-01-01", "2026-01-31",
-             "2026-01-01", "2026-01-31",
              "2026-01-01", "2026-01-31"),
         )
+
 
 
 if __name__ == "__main__":
