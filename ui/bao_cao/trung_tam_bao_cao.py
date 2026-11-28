@@ -26,19 +26,19 @@ from ui.table_sort import SORT_ROLE, SortableTableWidgetItem
 REPORTS = {
     "daily_sales": {
         "title": "BÁO CÁO CUỐI NGÀY BÁN HÀNG",
-        "description": "Chi tiết hóa đơn, số lượng bán, giảm giá, tiền hoàn và số tiền còn lại theo hóa đơn gốc.",
+        "description": "Theo dõi từng chứng từ bán hàng, thời gian, số lượng, doanh thu, giảm giá, thực thu và các khoản đổi trả liên quan.",
         "method": "daily_sales_report",
         "headers": [
-            "Ngày hạch toán", "Số chứng từ", "Loại chứng từ", "Nhân viên",
-            "Ca", "Trạng thái", "Số mặt hàng", "SL bán", "Tổng doanh thu",
-            "Giảm giá", "Doanh thu thuần", "Số phiếu trả", "SL hoàn tiền",
+            "Mã chứng từ", "Thời gian", "SL sản phẩm", "Doanh thu",
+            "Giảm giá", "Thực thu", "Số phiếu trả", "SL hoàn tiền",
             "SL đổi hàng", "Giá trị trả lại", "Doanh thu sau hoàn",
-            "Khách thanh toán", "Tiền thừa",
+            "Khách đưa", "Tiền thừa", "Nhân viên", "Ca", "Trạng thái",
+            "Số dòng", "Loại chứng từ",
         ],
-        "money_cols": [8, 9, 10, 14, 15, 16, 17],
-        "number_cols": [6, 7, 11, 12, 13],
-        "date_cols": [0],
-        "sum_cols": list(range(6, 18)),
+        "money_cols": [3, 4, 5, 9, 10, 11, 12],
+        "number_cols": [2, 6, 7, 8, 16],
+        "date_cols": [1],
+        "sum_cols": [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
         "search": True,
     },
     "sales_time": {
@@ -158,16 +158,16 @@ REPORTS = {
     },
     "current_inventory": {
         "title": "BÁO CÁO TỒN KHO HIỆN TẠI",
-        "description": "Ảnh chụp số lượng tồn hiện tại; giá trị tồn ước tính theo giá nhập đang lưu trên sản phẩm.",
+        "description": "Bảng kê hàng hóa đang tồn với số lượng và giá trị ước tính theo giá nhập hiện lưu. Hệ thống không quản lý nhóm tài sản máy móc, thiết bị.",
         "method": "current_inventory_report",
         "headers": [
-            "Mã hàng", "Mã vạch", "Tên hàng", "Đơn vị",
-            "Số lượng tồn", "Giá nhập hiện tại", "Giá bán",
-            "Giá trị tồn ước tính", "Tình trạng",
+            "STT", "Mã hàng", "Tên hàng hóa", "ĐVT", "Số lượng tồn",
+            "Giá trị tồn*", "Giá nhập hiện tại", "Giá bán", "Mã vạch",
+            "Tình trạng",
         ],
         "money_cols": [5, 6, 7],
-        "number_cols": [4],
-        "sum_cols": [4, 7],
+        "number_cols": [0, 4],
+        "sum_cols": [4, 5],
         "search": True,
         "stock_filter": True,
         "no_date": True,
@@ -632,8 +632,8 @@ class ReportCenterPage(QWidget):
                 "Giá trị nhập nhà cung cấp lấy theo đơn giá phiếu nhập; giá trị tồn và xuất ước tính theo giá nhập hiện lưu."
             ),
             "current_inventory": (
-                "Đây là ảnh chụp số tồn hiện tại. Giá trị tồn được ước tính bằng số lượng tồn nhân giá nhập hiện lưu; "
-                "không phải giá vốn lịch sử và không gồm điều chỉnh tồn thực hiện ngoài hệ thống."
+                "Báo cáo chỉ liệt kê hàng hóa trong danh mục SAN_PHAM; CSDL không quản lý tài sản máy móc, thiết bị. "
+                "Giá trị tồn (*) ước tính bằng số lượng tồn nhân giá nhập hiện lưu, không phải giá vốn lịch sử."
             ),
         }
         self.filter_note.setText(note_by_report.get(self.current_report, ""))
