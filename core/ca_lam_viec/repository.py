@@ -1,5 +1,9 @@
 """Repository SQL và transaction cho ca làm việc."""
 
+from datetime import datetime, timedelta
+from decimal import Decimal, InvalidOperation
+
+from core.audit_log import write_audit_log
 from core.sql_support import resolve_connection
 
 
@@ -192,13 +196,74 @@ class CaLamViecRepository:
             cursor.close()
 
     def record_closing_cash(self, shift_id, username, closing_cash):
-        """Kế toán ghi tiền cuối ca sau thời điểm kết thúc, chỉ một lần."""
+        """Kế toán chốt tiền cuối ca sau giờ kết thúc; mỗi ca chỉ chốt một lần."""
+        username = str(username or "").strip()
+        try:
+            cash = Decimal(str(closing_cash))
+        except (InvalidOperation, TypeError, ValueError):
+            raise ValueError("Tiền cuối ca phải là số hợp lệ.")
+        if not cash.is_finite() or cash < 0:
+            raise ValueError("Tiền cuối ca phải là số không âm.")
+
         conn = self._connection()
         cursor = conn.cursor()
-        sql = "EXEC dbo.usp_GhiTienCuoiCa ?, ?, ?;"
         try:
-            cursor.execute(
-                sql, int(shift_id), str(username or "").strip(), closing_cash
+            cursor.execute("""
+                SELECT
+                    CASE
+                        WHEN LOWER(USER_NAME()) = N'admin' THEN 1
+                        WHEN LOWER(USER_NAME()) = LOWER(?)
+                         AND LOWER(ORIGINAL_LOGIN()) = LOWER(?)
+                         AND IS_ROLEMEMBER(N'rl_KeToan') = 1
+                         AND EXISTS (
+                             SELECT 1 FROM dbo.NHAN_VIEN
+                             WHERE MANV = ? AND LTRIM(RTRIM(VAITRO)) = N'Kế toán'
+                         )
+                        THEN 1 ELSE 0
+                    END,
+                    SYSDATETIME()
+            """, username, username, username)
+            auth = cursor.fetchone()
+            if auth is None or int(auth[0] or 0) != 1:
+                raise PermissionError("Chỉ Kế toán hoặc Admin được chốt tiền cuối ca.")
+            server_now = auth[1]
+
+            cursor.execute("""
+                SELECT NGAYLAM, TGMO, TGDONG, TMCUOICA
+                FROM dbo.CA_LAM_VIEC WITH (UPDLOCK, HOLDLOCK)
+                WHERE MACA = ?
+            """, int(shift_id))
+            shift = cursor.fetchone()
+            if shift is None:
+                raise LookupError("Ca làm việc không còn tồn tại.")
+            work_date, start_time, end_time, existing_cash = shift
+            if work_date is None or start_time is None or end_time is None:
+                raise ValueError("Ca làm việc chưa có ngày hoặc giờ làm hợp lệ.")
+
+            work_day = work_date.date() if isinstance(work_date, datetime) else work_date
+            end_at = datetime.combine(work_day, end_time)
+            if end_time <= start_time:
+                end_at += timedelta(days=1)
+            if server_now < end_at:
+                raise ValueError("Chỉ được ghi tiền sau khi ca đã kết thúc.")
+            if existing_cash is not None:
+                raise ValueError("Tiền cuối ca đã được ghi. Mỗi ca chỉ được chốt một lần.")
+
+            cursor.execute("""
+                UPDATE dbo.CA_LAM_VIEC
+                SET TMCUOICA = ?
+                WHERE MACA = ? AND TMCUOICA IS NULL
+            """, cash, int(shift_id))
+            if cursor.rowcount != 1:
+                raise RuntimeError("Không thể chốt ca. Vui lòng tải lại dữ liệu.")
+
+            write_audit_log(
+                cursor,
+                "CA_LAM_VIEC",
+                "UPDATE",
+                {"MACA": int(shift_id)},
+                before={"TMCUOICA": existing_cash},
+                after={"TMCUOICA": cash},
             )
             conn.commit()
             return True
