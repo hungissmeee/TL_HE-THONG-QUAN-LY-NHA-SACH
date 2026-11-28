@@ -506,41 +506,6 @@ class SearchableSelectorTests(unittest.TestCase):
         self.assertIn("mousePressEvent", _CompleterSearchLineEdit.__dict__)
         selector.close()
 
-    def test_repeated_click_does_not_restart_visible_completer_popup(self):
-        from unittest.mock import patch
-        from ui.san_pham.bo_chon import _CompleterSearchLineEdit
-
-        selector = SearchableMultiSelect()
-        selector.set_options([("TG001", "Tác giả A", False)])
-        line_edit = selector.search_input
-
-        with patch("ui.san_pham.bo_chon.QTimer.singleShot") as schedule:
-            # Người dùng bấm lần nữa khi popup vẫn mở: không gọi complete lại.
-            line_edit._schedule_completion_after_press(True)
-            schedule.assert_not_called()
-
-            # Popup đang đóng: lần bấm này mới được phép mở danh sách.
-            line_edit._schedule_completion_after_press(False)
-            schedule.assert_called_once_with(0, line_edit._show_completions)
-
-        selector.close()
-
-    def test_show_completions_is_noop_when_popup_already_visible(self):
-        from unittest.mock import patch
-
-        selector = SearchableMultiSelect()
-        selector.set_options([("TG001", "Tác giả A", False)])
-        line_edit = selector.search_input
-        line_edit.show()
-        line_edit.setFocus()
-
-        with patch.object(selector.results, "isVisible", return_value=True), \
-             patch.object(selector.completer, "complete") as complete:
-            line_edit._show_completions()
-            complete.assert_not_called()
-
-        selector.close()
-
     def test_search_prioritizes_exact_name_then_name_prefix(self):
         selector = SearchableMultiSelect()
         selector.set_options([

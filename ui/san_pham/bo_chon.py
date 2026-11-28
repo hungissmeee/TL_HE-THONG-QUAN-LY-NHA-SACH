@@ -130,26 +130,12 @@ class _CompleterSearchLineEdit(QLineEdit):
         completer = self.completer()
         if completer is None or not self.isVisible() or not self.hasFocus():
             return
-        popup = completer.popup()
-        # Popup đang mở thì không gọi complete() lần nữa, tránh nhấp nháy.
-        if popup.isVisible():
-            return
         completer.setCompletionPrefix(self.text())
         completer.complete()
 
-    def _schedule_completion_after_press(self, popup_was_visible):
-        # Chỉ mở khi popup đang đóng trước thao tác bấm.
-        if popup_was_visible:
-            return
-        QTimer.singleShot(0, self._show_completions)
-
     def mousePressEvent(self, event):
-        completer = self.completer()
-        popup_was_visible = (
-            completer is not None and completer.popup().isVisible()
-        )
         super().mousePressEvent(event)
-        self._schedule_completion_after_press(popup_was_visible)
+        QTimer.singleShot(0, self._show_completions)
 
 
 class SearchableMultiSelect(QWidget):
