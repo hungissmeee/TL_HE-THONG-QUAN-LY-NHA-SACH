@@ -484,6 +484,7 @@ class BaoCaoRepository:
             ORDER BY COALESCE(SP.TENSP, N''), SP.MASP
         """, tuple(params))
 
+    @staticmethod
     def _stock_movements_cte():
         return """
             WITH Bounds AS (
