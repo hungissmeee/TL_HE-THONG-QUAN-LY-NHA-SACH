@@ -328,6 +328,9 @@ class SanPhamRepository:
                     THEN 1 ELSE 0 END,
                     CASE WHEN
                         HAS_PERMS_BY_NAME('dbo.SAN_PHAM', 'OBJECT', 'UPDATE', 'IS_DELETED', 'COLUMN') = 1
+                    THEN 1 ELSE 0 END,
+                    CASE WHEN
+                        HAS_PERMS_BY_NAME('dbo.SAN_PHAM', 'OBJECT', 'UPDATE', 'GIABAN', 'COLUMN') = 1
                     THEN 1 ELSE 0 END
             """)
             row = cursor.fetchone()
@@ -335,6 +338,7 @@ class SanPhamRepository:
                 "can_add": bool(row[0]),
                 "can_edit": bool(row[1]),
                 "can_delete": bool(row[2]),
+                "can_edit_sale_price": bool(row[3]),
             }
         finally:
             cursor.close()
