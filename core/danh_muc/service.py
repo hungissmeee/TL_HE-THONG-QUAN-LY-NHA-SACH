@@ -25,6 +25,9 @@ class CatalogService:
             raise ValueError("Mã danh mục không hợp lệ.")
         return self.repository.update_record(record_id, values)
 
+    def can_soft_delete(self):
+        return self.repository.can_soft_delete()
+
     def soft_delete(self, record_id):
         if not str(record_id or "").strip():
             raise ValueError("Mã danh mục không hợp lệ.")
