@@ -162,7 +162,7 @@ REPORTS = {
         "number_cols": [5, 6, 7, 9],
         "money_cols": [8, 10, 11, 12],
         "date_cols": [1],
-        "sum_cols": [5, 6, 7, 8, 9, 10, 11, 12],
+        "sum_cols": [5, 6, 7, 8, 9, 10],
     },
     "current_inventory": {
         "title": "BÁO CÁO TỒN KHO HIỆN TẠI",
