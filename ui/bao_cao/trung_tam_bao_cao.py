@@ -812,8 +812,22 @@ class ReportCenterPage(QWidget):
         for values in self.rows:
             row = self.table.rowCount()
             self.table.insertRow(row)
+            is_opening_balance = (
+                self.current_report == "stock_card"
+                and len(values) >= 14
+                and str(values[5] or "") == "Số dư đầu kỳ"
+            )
             for col, value in enumerate(values):
-                item = SortableTableWidgetItem(self._format_value(value, col, definition))
+                display_value = value
+                if is_opening_balance and col == 0:
+                    product_code = str(values[0] or "").strip()
+                    product_name = str(values[1] or "").strip()
+                    display_value = (
+                        f"Số dư đầu kỳ — {product_code} — {product_name}"
+                    )
+                item = SortableTableWidgetItem(
+                    self._format_value(display_value, col, definition)
+                )
                 item.setData(Qt.ItemDataRole.UserRole, value)
                 item.setData(SORT_ROLE, value)
                 item.setToolTip(str(value) if value is not None else "")
@@ -821,7 +835,11 @@ class ReportCenterPage(QWidget):
                 if col in definition.get("money_cols", []) or col in definition.get("number_cols", []):
                     item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 self.table.setItem(row, col, item)
-        self.table.setSortingEnabled(True)
+            if is_opening_balance:
+                self.table.setSpan(row, 0, 1, 12)
+        # Sorting can detach spans from their opening-balance rows. The report
+        # is already ordered by product and voucher chronology by its SQL query.
+        self.table.setSortingEnabled(self.current_report != "stock_card")
         self._fit_columns_to_content()
         self._fill_footer()
         self._sync_footer_widths()
@@ -936,6 +954,10 @@ class ReportCenterPage(QWidget):
             "text_wrap": True,
         })
         text_fmt = workbook.add_format({"border": 1, "border_color": "#E0E6EC"})
+        opening_balance_fmt = workbook.add_format({
+            "bold": True, "border": 1, "border_color": "#E0E6EC",
+            "bg_color": "#EAF0F5", "valign": "vcenter",
+        })
         number_fmt = workbook.add_format({
             "border": 1, "border_color": "#E0E6EC", "num_format": "#,##0",
         })
@@ -1018,6 +1040,27 @@ class ReportCenterPage(QWidget):
             worksheet.set_column(col, col, min(width, 42))
 
         for row_index, row in enumerate(self.rows, start=data_row):
+            is_opening_balance = (
+                self.current_report == "stock_card"
+                and len(row) >= 14
+                and str(row[5] or "") == "Số dư đầu kỳ"
+            )
+            if is_opening_balance:
+                label = (
+                    f"Số dư đầu kỳ — {str(row[0] or '').strip()} — "
+                    f"{str(row[1] or '').strip()}"
+                )
+                worksheet.merge_range(
+                    row_index, 0, row_index, 11, label, opening_balance_fmt
+                )
+                # Only write opening inventory quantity and value. The other
+                # merged cells intentionally do not show receipt/issue values.
+                for col in (12, 13):
+                    value = row[col]
+                    fmt = number_fmt if col in definition.get("number_cols", []) else money_fmt
+                    worksheet.write_number(row_index, col, float(value or 0), fmt)
+                continue
+
             for col, value in enumerate(row):
                 if value is None:
                     worksheet.write_blank(row_index, col, None, text_fmt)
