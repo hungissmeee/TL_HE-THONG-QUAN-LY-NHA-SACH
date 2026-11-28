@@ -8,12 +8,16 @@ from PySide6.QtCore import (
     Qt,
     QDate,
     QPoint,
+    QRect,
+    QEvent,
+    QObject,
 )
 from PySide6.QtGui import (
     QDoubleValidator,
     QIntValidator,
 )
 from PySide6.QtWidgets import (
+    QApplication,
     QWidget,
     QDialog,
     QLabel,
@@ -38,6 +42,36 @@ from ui.table_sort import (
     pause_table_sorting,
     resume_table_sorting,
 )
+
+
+class _LookupPopupDismissFilter(QObject):
+    """Đóng popup khi nhấn bên ngoài, nhưng không chặn cú nhấn của widget đích."""
+
+    def __init__(self, anchor, popup):
+        super().__init__(anchor)
+        self.anchor = anchor
+        self.popup = popup
+
+    def dismiss_if_outside(self, global_position):
+        if not self.popup.isVisible():
+            return
+
+        popup_rect = self.popup.frameGeometry()
+        anchor_rect = QRect(
+            self.anchor.mapToGlobal(QPoint(0, 0)),
+            self.anchor.size(),
+        )
+        if (
+            not popup_rect.contains(global_position)
+            and not anchor_rect.contains(global_position)
+        ):
+            self.popup.hide()
+
+    def eventFilter(self, watched, event):
+        if event.type() == QEvent.Type.MouseButtonPress:
+            self.dismiss_if_outside(event.globalPosition().toPoint())
+        # Không tiêu thụ sự kiện: widget được nhấn bên dưới vẫn nhận click bình thường.
+        return False
 
 
 def _show_lookup_popup(anchor, popup):
@@ -98,6 +132,12 @@ class SearchableSingleSelect(QWidget):
         self.results.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.results.itemClicked.connect(self._select_item)
         self.results.hide()
+        self._popup_dismiss_filter = _LookupPopupDismissFilter(
+            self.search_input, self.results
+        )
+        app = QApplication.instance()
+        if app is not None:
+            app.installEventFilter(self._popup_dismiss_filter)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -207,6 +247,12 @@ class SearchableMultiSelect(QWidget):
         self.results.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.results.itemClicked.connect(self._toggle_item)
         self.results.hide()
+        self._popup_dismiss_filter = _LookupPopupDismissFilter(
+            self.search_input, self.results
+        )
+        app = QApplication.instance()
+        if app is not None:
+            app.installEventFilter(self._popup_dismiss_filter)
 
         self.selected_label = QLabel("Chưa chọn mục nào")
         self.selected_label.setWordWrap(False)

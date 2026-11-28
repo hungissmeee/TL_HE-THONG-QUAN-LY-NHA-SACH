@@ -10,7 +10,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtWidgets import QApplication, QTableWidget, QComboBox, QDateEdit, QToolButton
 from PySide6.QtGui import QPalette
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QPoint
 from PySide6.QtWidgets import QCompleter
 from ui.styles import (
     MAIN_WINDOW_STYLESHEET, apply_app_palette, configure_app_theme,
