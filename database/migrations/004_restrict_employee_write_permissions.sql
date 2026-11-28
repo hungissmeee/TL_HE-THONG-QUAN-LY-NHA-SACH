@@ -48,7 +48,8 @@ GRANT SELECT, INSERT ON OBJECT::dbo.PHIEU_DOI_TRA TO rl_QuanLy;
 GRANT SELECT, INSERT ON OBJECT::dbo.CHI_TIET_DOI_TRA TO rl_QuanLy;
 
 -- Đăng ký ca: nhân viên được tự đăng ký nhưng không tự xóa lịch sử đăng ký.
-REVOKE DELETE ON OBJECT::dbo.LAMCA FROM rl_ThuNgan, rl_NhanVienKho, rl_KeToan;
+REVOKE DELETE ON OBJECT::dbo.LAMCA FROM rl_ThuNgan, rl_NhanVienKho;
+REVOKE INSERT, UPDATE, DELETE ON OBJECT::dbo.LAMCA FROM rl_KeToan;
 GRANT SELECT, INSERT ON OBJECT::dbo.LAMCA TO rl_ThuNgan;
 GRANT SELECT, INSERT ON OBJECT::dbo.LAMCA TO rl_NhanVienKho;
 GRANT SELECT ON OBJECT::dbo.LAMCA TO rl_KeToan;
