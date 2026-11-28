@@ -43,7 +43,7 @@ class MainWindow(SidebarNavigationMixin, QMainWindow):
         ),
         "Kế toán": (
             "home", "products", "suppliers", "imports", "invoices",
-            "shifts", "report_center",
+            "returns", "shifts", "report_center",
         ),
     }
 
