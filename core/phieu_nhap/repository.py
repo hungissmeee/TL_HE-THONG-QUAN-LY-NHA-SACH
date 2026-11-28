@@ -291,28 +291,30 @@ class PhieuNhapRepository:
         conn = self._connection()
         cursor = conn.cursor()
         try:
-            # Không tin vai trò do UI truyền lên; kiểm tra principal SQL thực.
+            # Lấy vai trò từ principal SQL và hồ sơ nhân viên; không tin role/is_admin từ UI.
             cursor.execute("""
                 SELECT CASE
-                    WHEN USER_NAME() = N'admin' THEN 1
+                    WHEN USER_NAME() = N'admin' THEN N'admin'
                     WHEN IS_ROLEMEMBER(N'rl_QuanLy') = 1
                      AND EXISTS (
                          SELECT 1 FROM dbo.NHAN_VIEN
                          WHERE MANV = USER_NAME()
                            AND MANV = ? AND VAITRO = N'Quản lý'
                      )
-                    THEN 1
+                    THEN N'quản lý'
                     WHEN IS_ROLEMEMBER(N'rl_NhanVienKho') = 1
                      AND EXISTS (
                          SELECT 1 FROM dbo.NHAN_VIEN
                          WHERE MANV = USER_NAME()
                            AND MANV = ? AND VAITRO = N'Nhân viên kho'
                      )
-                    THEN 1 ELSE 0
+                    THEN N'nhân viên kho'
+                    ELSE N''
                 END
             """, str(username or "").strip(), str(username or "").strip())
             permission = cursor.fetchone()
-            if permission is None or int(permission[0] or 0) != 1:
+            actual_role = str(permission[0] or "").strip().casefold() if permission else ""
+            if actual_role not in {"admin", "quản lý", "nhân viên kho"}:
                 raise PermissionError(
                     "Chỉ Quản lý, Nhân viên kho hoặc Admin được chỉnh sửa chi tiết phiếu nhập."
                 )
@@ -334,7 +336,10 @@ class PhieuNhapRepository:
             if header is None:
                 raise LookupError("Không tìm thấy phiếu nhập.")
             self._assert_modify_permission(
-                (header[0], header[1], header[2]), username, role, is_admin
+                (header[0], header[1], header[2]),
+                username,
+                actual_role,
+                actual_role == "admin",
             )
             if not items:
                 raise ValueError("Phiếu nhập phải có ít nhất một sản phẩm.")
@@ -430,47 +435,19 @@ class PhieuNhapRepository:
                 if cursor.rowcount != 1:
                     raise RuntimeError(f"Không thể cập nhật tồn kho sản phẩm {code}.")
 
-            role_name = str(role or "").strip().casefold()
-            may_delete_lines = (
-                bool(is_admin)
-                or str(username or "").strip().casefold() == "admin"
-                or role_name == "quản lý"
+            # Cả Quản lý và Nhân viên kho đều được thêm/sửa/bỏ từng dòng.
+            # Quyền thực tế đã được xác thực từ USER_NAME(), IS_ROLEMEMBER và NHAN_VIEN.
+            # Việc hoàn tác tồn kho/giá vốn đã được tính cho toàn bộ mã cũ và mới ở trên.
+            cursor.execute(
+                "DELETE FROM dbo.CHI_TIET_PHIEU_NHAP WHERE MAPN = ?",
+                import_code,
             )
-            removed_codes = set(old_items) - set(new_items)
-            if removed_codes and not may_delete_lines:
-                raise PermissionError(
-                    "Nhân viên kho không có quyền xóa mặt hàng đã lưu khỏi phiếu nhập."
-                )
-            if may_delete_lines:
-                cursor.execute(
-                    "DELETE FROM dbo.CHI_TIET_PHIEU_NHAP WHERE MAPN = ?",
-                    import_code,
-                )
-                for code, item in new_items.items():
-                    cursor.execute("""
-                        INSERT INTO dbo.CHI_TIET_PHIEU_NHAP
-                            (MAPN, MASP, DONGIA, SOLUONG, VAT)
-                        VALUES (?, ?, ?, ?, ?)
-                    """, import_code, code, item["price"], item["quantity"], item["vat"])
-            else:
-                # Vai trò Nhân viên kho không có quyền DELETE trên CHI_TIET_PHIEU_NHAP.
-                for code, item in new_items.items():
-                    if code in old_items:
-                        cursor.execute("""
-                            UPDATE dbo.CHI_TIET_PHIEU_NHAP
-                            SET DONGIA = ?, SOLUONG = ?, VAT = ?
-                            WHERE MAPN = ? AND MASP = ?
-                        """, item["price"], item["quantity"], item["vat"], import_code, code)
-                        if cursor.rowcount != 1:
-                            raise RuntimeError(
-                                f"Không thể cập nhật chi tiết sản phẩm {code}."
-                            )
-                    else:
-                        cursor.execute("""
-                            INSERT INTO dbo.CHI_TIET_PHIEU_NHAP
-                                (MAPN, MASP, DONGIA, SOLUONG, VAT)
-                            VALUES (?, ?, ?, ?, ?)
-                        """, import_code, code, item["price"], item["quantity"], item["vat"])
+            for code, item in new_items.items():
+                cursor.execute("""
+                    INSERT INTO dbo.CHI_TIET_PHIEU_NHAP
+                        (MAPN, MASP, DONGIA, SOLUONG, VAT)
+                    VALUES (?, ?, ?, ?, ?)
+                """, import_code, code, item["price"], item["quantity"], item["vat"])
 
             cursor.execute("""
                 UPDATE dbo.PHIEU_NHAP
