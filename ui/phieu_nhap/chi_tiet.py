@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QAbstractItemView,
     QGroupBox,
+    QMessageBox,
 )
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
@@ -39,12 +40,18 @@ class ImportDetailDialog(QDialog):
     """Hiển thị thông tin chung, hàng hóa và nội dung in của phiếu nhập."""
     """Chi tiết và in phiếu nhập khổ A4."""
 
-    def __init__(self, db, import_code, parent=None, on_cancel=None):
+    def __init__(
+        self, db, import_code, parent=None, on_cancel=None, can_edit=False
+    ):
         super().__init__(parent)
         self.db = db
         self.service = PhieuNhapService(PhieuNhapRepository(db))
         self.import_code = import_code
         self.on_cancel = on_cancel
+        self.can_edit = bool(can_edit)
+        self.username = (getattr(db, "username", "") or "").strip()
+        self.is_admin = self.username.casefold() == "admin"
+        self.has_later_stock_movement = False
         self.header = None
         self.items = []
         self._load_import()
@@ -53,8 +60,13 @@ class ImportDetailDialog(QDialog):
         self._build_ui()
 
     def _load_import(self):
-        data = self.service.get_import_detail(self.import_code)
+        data = self.service.get_import_detail(
+            self.import_code, self.username, self.is_admin
+        )
         self.header = data["header"]
+        self.has_later_stock_movement = bool(
+            self.header.get("has_later_stock_movement")
+        )
         self.header["total"] = as_decimal(self.header.get("total"))
         self.header["status"] = int(self.header.get("status") or 0)
         for detail in data["items"]:
@@ -131,6 +143,10 @@ class ImportDetailDialog(QDialog):
 
         buttons = QHBoxLayout()
         buttons.addStretch()
+        if self.can_edit and self.header["status"] == 1:
+            edit_button = QPushButton("Chỉnh sửa")
+            edit_button.clicked.connect(self.edit_import)
+            buttons.addWidget(edit_button)
         if self.on_cancel is not None and self.header["status"] == 1:
             cancel_button = QPushButton("Hủy phiếu nhập")
             cancel_button.setObjectName("dangerButton")
@@ -144,6 +160,42 @@ class ImportDetailDialog(QDialog):
         buttons.addWidget(print_button)
         buttons.addWidget(close_button)
         root.addLayout(buttons)
+
+    def edit_import(self):
+        """Mở biểu mẫu chỉnh sửa riêng từ cửa sổ chi tiết phiếu nhập."""
+        if not self.can_edit or self.header["status"] != 1:
+            return
+        from .tao_bieu_mau import EditImportDialog
+
+        try:
+            # Đọc lại dữ liệu và lịch sử kho ngay trước khi mở biểu mẫu sửa.
+            import_data = self.service.get_import_detail(
+                self.import_code, self.username, self.is_admin
+            )
+            if int(import_data["header"].get("status") or 0) != 1:
+                QMessageBox.warning(
+                    self, "Không thể chỉnh sửa",
+                    "Phiếu nhập đã bị hủy nên không thể chỉnh sửa."
+                )
+                return
+            has_later = bool(
+                import_data["header"].get("has_later_stock_movement")
+            )
+            editor = EditImportDialog(
+                self.db,
+                import_data,
+                self,
+                allow_edit_details=not has_later,
+            )
+            editor.exec()
+            if getattr(editor, "saved_changes", False):
+                self.accept()
+        except (ValueError, LookupError, PermissionError) as error:
+            QMessageBox.warning(self, "Không thể chỉnh sửa phiếu nhập", str(error))
+        except Exception as error:
+            QMessageBox.critical(
+                self, "Lỗi chỉnh sửa phiếu nhập", str(error)
+            )
 
     def cancel_import(self):
         """Gọi quy trình hủy phiếu nhập có kiểm tra quyền và cập nhật tồn kho."""

@@ -27,7 +27,7 @@ from ui.table_sort import (
     resume_table_sorting,
 )
 from .dung_chung import money, date_text
-from .tao_bieu_mau import CreateImportDialog, EditImportDialog
+from .tao_bieu_mau import CreateImportDialog
 from .chi_tiet import ImportDetailDialog
 from core.phieu_nhap.repository import PhieuNhapRepository
 from core.phieu_nhap.service import PhieuNhapService
@@ -57,7 +57,6 @@ class ImportWindow(QWidget):
         self.is_warehouse = self.employee_role.casefold() == "nhân viên kho"
         self.can_view = can_view_imports(self.username, self.employee_role)
         self.can_create = self.is_admin or self.is_manager or self.is_warehouse
-        self.can_edit = self.is_admin or self.is_manager or self.is_warehouse
         self.can_cancel = self.is_admin or self.is_manager or self.is_warehouse
         self._build_ui()
         # Trang được khởi tạo cho mọi tài khoản trong MainWindow, kể cả tài khoản
@@ -95,11 +94,6 @@ class ImportWindow(QWidget):
         self.create_button.setVisible(self.can_create)
         self.create_button.clicked.connect(self.open_create_import)
         top.addWidget(self.create_button)
-        self.edit_button = QPushButton("Chỉnh sửa")
-        self.edit_button.clicked.connect(self.open_selected_import_edit)
-        self.edit_button.setVisible(self.can_edit)
-        self.edit_button.setEnabled(False)
-        top.addWidget(self.edit_button)
         refresh_button = QPushButton("Làm mới")
         refresh_button.clicked.connect(self.load_imports)
         top.addWidget(refresh_button)
@@ -202,8 +196,6 @@ class ImportWindow(QWidget):
     def update_action_buttons(self):
         """Xác định quyền hủy phiếu nhập đang chọn để truyền vào popup chi tiết."""
         self._selected_can_cancel = False
-        self._selected_can_edit = False
-        self.edit_button.setEnabled(False)
         if not self.can_view:
             return
 
@@ -216,9 +208,6 @@ class ImportWindow(QWidget):
         status = int(code_item.data(Qt.ItemDataRole.UserRole + 1) or 0)
         if status != 1:
             return
-
-        self._selected_can_edit = self.can_edit
-        self.edit_button.setEnabled(self._selected_can_edit)
 
         if not self.can_cancel:
             return
@@ -309,44 +298,6 @@ class ImportWindow(QWidget):
         if item:
             self.open_import_detail(row, 0)
 
-    def open_selected_import_edit(self):
-        """Mở màn hình chỉnh sửa riêng, không đưa trường nhập liệu vào popup xem."""
-        if not self.can_edit:
-            return
-        row = self.table.currentRow()
-        if row < 0:
-            QMessageBox.information(
-                self, "Chưa chọn phiếu", "Vui lòng chọn phiếu nhập cần chỉnh sửa."
-            )
-            return
-        item = self.table.item(row, 0)
-        if item is None:
-            return
-        try:
-            detail_data = self.service.get_import_detail(
-                item.text(), self.username, self.is_admin
-            )
-            header = detail_data["header"]
-            if int(header.get("status") or 0) != 1:
-                QMessageBox.warning(
-                    self, "Không thể chỉnh sửa",
-                    "Phiếu nhập đã bị hủy nên không thể chỉnh sửa."
-                )
-                return
-            has_later = bool(header.get("has_later_stock_movement"))
-            dialog = EditImportDialog(
-                self.db,
-                detail_data,
-                self,
-                allow_edit_details=not has_later,
-            )
-            dialog.exec()
-            self.load_imports()
-        except Exception as error:
-            QMessageBox.critical(
-                self, "Không thể mở chỉnh sửa phiếu nhập", str(error)
-            )
-
     def open_import_detail(self, row, column):
         """Hiển thị chi tiết phiếu nhập và nội dung in."""
         if not self.can_view:
@@ -363,6 +314,10 @@ class ImportWindow(QWidget):
             has_later = bool(
                 detail_data["header"].get("has_later_stock_movement")
             )
+            active_import = int(detail_data["header"].get("status") or 0) == 1
+            can_edit = active_import and (
+                self.is_admin or self.is_manager or self.is_warehouse
+            )
             dialog = ImportDetailDialog(
                 self.db,
                 item.text(),
@@ -371,6 +326,7 @@ class ImportWindow(QWidget):
                     self.cancel_selected_import
                     if self._selected_can_cancel and not has_later else None
                 ),
+                can_edit=can_edit,
             )
             dialog.exec()
             self.load_imports()

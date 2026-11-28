@@ -1136,19 +1136,20 @@ class ShiftDateFormatterTests(unittest.TestCase):
 class ImportDialogLayoutTests(unittest.TestCase):
     """Đảm bảo xem và chỉnh sửa phiếu nhập là hai thao tác riêng."""
 
-    def test_import_list_has_separate_edit_action(self):
+    def test_import_edit_action_is_inside_detail_dialog_not_list(self):
         import inspect
         from ui.phieu_nhap.danh_sach import ImportWindow
+        from ui.phieu_nhap.chi_tiet import ImportDetailDialog
 
-        build_ui = inspect.getsource(ImportWindow._build_ui)
-        edit_handler = inspect.getsource(ImportWindow.open_selected_import_edit)
-        view_handler = inspect.getsource(ImportWindow.open_import_detail)
+        list_ui = inspect.getsource(ImportWindow._build_ui)
+        detail_ui = inspect.getsource(ImportDetailDialog._build_ui)
+        edit_handler = inspect.getsource(ImportDetailDialog.edit_import)
 
-        self.assertIn('QPushButton("Chỉnh sửa")', build_ui)
-        self.assertIn("self.edit_button.clicked.connect(self.open_selected_import_edit)", build_ui)
+        self.assertNotIn('QPushButton("Chỉnh sửa")', list_ui)
+        self.assertNotIn("open_selected_import_edit", inspect.getsource(ImportWindow))
+        self.assertIn('QPushButton("Chỉnh sửa")', detail_ui)
+        self.assertIn("self.edit_button.clicked.connect(self.edit_import)", detail_ui)
         self.assertIn("EditImportDialog(", edit_handler)
-        self.assertIn("ImportDetailDialog(", view_handler)
-        self.assertNotIn("EditImportDialog", view_handler)
 
     def test_import_detail_dialog_is_read_only_again(self):
         import inspect

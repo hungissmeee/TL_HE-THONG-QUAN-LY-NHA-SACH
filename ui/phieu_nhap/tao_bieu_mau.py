@@ -491,6 +491,7 @@ class EditImportDialog(CreateImportDialog):
         self, db, import_data, parent=None, allow_edit_details=True
     ):
         self.import_data = import_data
+        self.saved_changes = False
         self.allow_edit_details = bool(
             allow_edit_details
             and not import_data["header"].get("has_later_stock_movement")
@@ -584,6 +585,7 @@ class EditImportDialog(CreateImportDialog):
                 self.username, self.employee.get("vaitro"),
                 is_admin=self.is_admin,
             )
+            self.saved_changes = True
             self.initial_supplier_code = str(supplier_code)
             self.initial_supplier_invoice = supplier_invoice or ""
             self.import_data["header"]["mancc"] = str(supplier_code)
@@ -647,6 +649,7 @@ class EditImportDialog(CreateImportDialog):
                 self.import_code, items, self.username,
                 self.employee.get("vaitro"), is_admin=self.is_admin,
             )
+            self.saved_changes = True
             QMessageBox.information(
                 self, "Cập nhật thành công",
                 f"Phiếu nhập {self.import_code} đã được cập nhật.\n"
