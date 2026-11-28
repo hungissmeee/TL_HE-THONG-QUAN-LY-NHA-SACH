@@ -301,15 +301,32 @@ class PhieuNhapRepository:
                          WHERE MANV = USER_NAME()
                            AND MANV = ? AND VAITRO = N'Quản lý'
                      )
+                    THEN 1
+                    WHEN IS_ROLEMEMBER(N'rl_NhanVienKho') = 1
+                     AND EXISTS (
+                         SELECT 1 FROM dbo.NHAN_VIEN
+                         WHERE MANV = USER_NAME()
+                           AND MANV = ? AND VAITRO = N'Nhân viên kho'
+                     )
                     THEN 1 ELSE 0
                 END
-            """, str(username or "").strip())
+            """, str(username or "").strip(), str(username or "").strip())
             permission = cursor.fetchone()
             if permission is None or int(permission[0] or 0) != 1:
-                raise PermissionError("Chỉ Quản lý/Admin được hủy phiếu nhập.")
+                raise PermissionError(
+                    "Chỉ Quản lý, Nhân viên kho hoặc Admin được chỉnh sửa chi tiết phiếu nhập."
+                )
 
             cursor.execute("""
-                SELECT TRANGTHAI, NGAYNHAP
+                SELECT
+                    TRANGTHAI,
+                    MANV,
+                    CASE
+                        WHEN NGAYNHAP >= DATEADD(MINUTE, -5, SYSDATETIME())
+                         AND NGAYNHAP <= SYSDATETIME()
+                        THEN 1 ELSE 0
+                    END,
+                    NGAYNHAP
                 FROM dbo.PHIEU_NHAP WITH (UPDLOCK, HOLDLOCK)
                 WHERE MAPN = ?
             """, import_code)
