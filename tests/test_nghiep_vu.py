@@ -1260,23 +1260,20 @@ class ReportCenterTests(unittest.TestCase):
         self.assertEqual(
             REPORTS["revenue"]["headers"],
             [
-                "Thời gian", "Số lượng bán", "Doanh thu bán", "Tiền hoàn",
-                "Doanh thu thuần", "Tiền mặt thực tế", "Giá vốn ước tính",
-                "SL hàng hỏng", "Giá trị hàng hỏng ước tính",
-                "Lợi nhuận ước tính",
+                "Ngày", "Số lượng", "Doanh thu", "Giá vốn",
+                "Giá trị hàng hỏng", "Tiền hoàn", "Lợi nhuận",
             ],
         )
-        self.assertEqual(
-            REPORTS["revenue"]["money_cols"], [2, 3, 4, 5, 6, 8, 9]
-        )
-        self.assertEqual(REPORTS["revenue"]["number_cols"], [1, 7])
+        self.assertEqual(REPORTS["revenue"]["money_cols"], [2, 3, 4, 5, 6])
+        self.assertEqual(REPORTS["revenue"]["number_cols"], [1])
+        self.assertEqual(REPORTS["revenue"]["date_cols"], [0])
+        self.assertEqual(REPORTS["revenue"]["sum_cols"], [1, 2, 3, 4, 5, 6])
         self.assertEqual(
             REPORTS["revenue"]["group_headers"],
             [
                 (1, 2, "BÁN HÀNG"),
-                (3, 5, "DOANH THU & TIỀN MẶT"),
-                (6, 8, "GIÁ VỐN & HÀNG HỎNG"),
-                (9, 9, "KẾT QUẢ"),
+                (3, 5, "GIÁ VỐN & HOÀN TRẢ"),
+                (6, 6, "KẾT QUẢ"),
             ],
         )
 
