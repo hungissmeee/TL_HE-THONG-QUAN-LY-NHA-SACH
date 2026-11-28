@@ -1150,6 +1150,54 @@ class ReportCenterTests(unittest.TestCase):
         self.assertIn(".xlsx", source)
         self.assertNotIn(".csv", source)
 
+    def test_report_filters_keep_keyword_search_without_employee_selector(self):
+        import inspect
+        from ui.bao_cao.trung_tam_bao_cao import ReportCenterPage, REPORTS
+
+        source = inspect.getsource(ReportCenterPage)
+        self.assertNotIn("employee_combo", source)
+        self.assertIn("self.search_input = QLineEdit()", source)
+        self.assertIn('daily_sales_report(start, end, None, keyword)', source)
+        self.assertTrue(REPORTS["daily_sales"]["search"])
+
+    def test_report_column_orders_prioritize_operational_fields(self):
+        from ui.bao_cao.trung_tam_bao_cao import REPORTS
+
+        self.assertEqual(
+            REPORTS["import_detail"]["headers"],
+            [
+                "Mã phiếu nhập", "Ngày nhập", "Loại phiếu", "Nhà cung cấp",
+                "Mã hàng", "Tên hàng", "Số lượng", "Đơn giá nhập",
+                "Thành tiền", "Số HĐ NCC", "Nhân viên lập",
+            ],
+        )
+        self.assertEqual(
+            REPORTS["sales_product"]["headers"][:5],
+            ["Mã hàng", "Tên hàng", "Đơn vị", "Mã vạch", "ISBN"],
+        )
+        self.assertEqual(
+            REPORTS["stock_movement"]["group_headers"],
+            [
+                (0, 2, "Thông tin hàng hóa"),
+                (3, 4, "Tồn đầu kỳ"),
+                (5, 8, "Tăng tồn trong kỳ"),
+                (9, 12, "Giảm tồn trong kỳ"),
+                (13, 14, "Tồn cuối kỳ"),
+            ],
+        )
+
+    def test_period_selector_refreshes_period_label_and_wrapped_table_headers(self):
+        import inspect
+        from ui.bao_cao.trung_tam_bao_cao import ReportCenterPage
+
+        source = inspect.getsource(ReportCenterPage)
+        self.assertIn("def _on_period_changed(self, *_):", source)
+        self.assertIn("self._build_table_headers(REPORTS[self.current_report])", source)
+        self.assertIn("period_date_fmt", source)
+        build_ui = inspect.getsource(ReportCenterPage._build_ui)
+        self.assertIn("setWordWrap(True)", build_ui)
+        self.assertIn("setMinimumHeight(46)", build_ui)
+
     def test_report_center_does_not_use_legacy_kpi_cards(self):
         import inspect
         from ui.bao_cao.trung_tam_bao_cao import ReportCenterPage
