@@ -21,6 +21,8 @@ from ui.calendar_utils import configure_date_edit_calendar
 
 from database.connection import Database
 from core.nhan_vien.repository import NhanVienRepository, ROLE_MAP
+from core.hoa_don.repository import HoaDonRepository
+from core.phieu_nhap.repository import PhieuNhapRepository
 from core.doi_tra.repository import ReturnRepository
 from ui.product_table import ProductTableWidget
 from ui.table_sort import (
