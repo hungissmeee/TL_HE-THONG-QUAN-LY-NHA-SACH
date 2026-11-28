@@ -520,35 +520,70 @@ class BaoCaoRepository:
 
     @staticmethod
     def _stock_movements_cte():
+        """
+        Dựng biến động kho từ các chứng từ có ảnh hưởng thực tế đến SLTON.
+
+        - Nhập: chỉ chi tiết phiếu nhập hợp lệ.
+        - Xuất: hóa đơn hợp lệ + hàng mới giao khi đổi - hàng nguyên vẹn
+          được nhận lại khi hoàn tiền.
+        - Hàng hỏng hoàn tiền không làm giảm xuất vì không được nhập lại kho.
+        """
         return """
             WITH Bounds AS (
                 SELECT CONVERT(date, ?) AS START_DATE,
                        DATEADD(day, 1, CONVERT(date, ?)) AS END_EXCLUSIVE
             ),
+            ReturnByInvoiceProduct AS (
+                SELECT PDT.MAHD, CTDT.MASP,
+                    SUM(CASE
+                        WHEN CTDT.HINH_THUC_XU_LY = 0
+                         AND CTDT.TINHTRANGHANG = 1
+                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0
+                    END) AS SL_HOAN_NGUYEN,
+                    SUM(CASE
+                        WHEN CTDT.HINH_THUC_XU_LY = 1
+                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0
+                    END) AS SL_DOI_XUAT
+                FROM dbo.PHIEU_DOI_TRA PDT
+                INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT
+                    ON CTDT.MAPDT = PDT.MAPDT
+                GROUP BY PDT.MAHD, CTDT.MASP
+            ),
             Movements AS (
                 SELECT CT.MASP, PN.NGAYNHAP AS NGAY, PN.MAPN AS CHUNG_TU,
                     N'Phiếu nhập' AS LOAI_CHUNG_TU, N'Nhập hàng' AS LOAI,
                     SUM(COALESCE(CT.SOLUONG, 0)) AS SL_NHAP,
-                    SUM(COALESCE(CT.SOLUONG, 0) * COALESCE(CT.DONGIA, 0)) AS GT_NHAP,
+                    SUM(COALESCE(CT.SOLUONG, 0)
+                        * COALESCE(CT.DONGIA, 0)) AS GT_NHAP,
                     CAST(0 AS BIGINT) AS SL_XUAT,
                     CAST(0 AS DECIMAL(18, 2)) AS GT_XUAT
                 FROM dbo.PHIEU_NHAP PN
-                INNER JOIN dbo.CHI_TIET_PHIEU_NHAP CT ON CT.MAPN = PN.MAPN
+                INNER JOIN dbo.CHI_TIET_PHIEU_NHAP CT
+                    ON CT.MAPN = PN.MAPN
                 WHERE ISNULL(PN.TRANGTHAI, 1) = 1
                 GROUP BY CT.MASP, PN.NGAYNHAP, PN.MAPN
 
                 UNION ALL
 
                 SELECT CT.MASP, HD.NGAYLAP, HD.MAHD,
-                    N'Hóa đơn' AS LOAI_CHUNG_TU, N'Bán hàng' AS LOAI,
-                    CAST(0 AS BIGINT), CAST(0 AS DECIMAL(18, 2)),
-                    SUM(COALESCE(CT.SOLUONG, 0)),
-                    SUM(COALESCE(CT.SOLUONG, 0) * COALESCE(SP.GIANHAP, 0))
+                    N'Hóa đơn' AS LOAI_CHUNG_TU, N'Bán hàng sau đối trừ trả hàng' AS LOAI,
+                    CAST(0 AS BIGINT) AS SL_NHAP,
+                    CAST(0 AS DECIMAL(18, 2)) AS GT_NHAP,
+                    SUM(COALESCE(CT.SOLUONG, 0))
+                        + COALESCE(MAX(R.SL_DOI_XUAT), 0)
+                        - COALESCE(MAX(R.SL_HOAN_NGUYEN), 0) AS SL_XUAT,
+                    (
+                        SUM(COALESCE(CT.SOLUONG, 0))
+                        + COALESCE(MAX(R.SL_DOI_XUAT), 0)
+                        - COALESCE(MAX(R.SL_HOAN_NGUYEN), 0)
+                    ) * COALESCE(SP.GIANHAP, 0) AS GT_XUAT
                 FROM dbo.HOA_DON HD
                 INNER JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
                 INNER JOIN dbo.SAN_PHAM SP ON SP.MASP = CT.MASP
+                LEFT JOIN ReturnByInvoiceProduct R
+                    ON R.MAHD = HD.MAHD AND R.MASP = CT.MASP
                 WHERE HD.TRANGTHAI = 1
-                GROUP BY CT.MASP, HD.NGAYLAP, HD.MAHD
+                GROUP BY CT.MASP, HD.NGAYLAP, HD.MAHD, SP.GIANHAP
             )
         """
 
@@ -563,30 +598,37 @@ class BaoCaoRepository:
         sql = self._stock_movements_cte() + f"""
             , MovementSummary AS (
                 SELECT M.MASP,
-                    SUM(CASE WHEN M.NGAY >= B.START_DATE
-                        THEN M.SL_NHAP - M.SL_XUAT ELSE 0 END) AS NET_FROM_START,
-                    SUM(CASE WHEN M.NGAY >= B.END_EXCLUSIVE
-                        THEN M.SL_NHAP - M.SL_XUAT ELSE 0 END) AS NET_AFTER_END,
-                    SUM(CASE WHEN M.NGAY >= B.START_DATE AND M.NGAY < B.END_EXCLUSIVE
+                    SUM(CASE WHEN M.NGAY < B.START_DATE
+                        THEN M.SL_NHAP - M.SL_XUAT ELSE 0 END) AS TON_DAU,
+                    SUM(CASE
+                        WHEN M.NGAY >= B.START_DATE AND M.NGAY < B.END_EXCLUSIVE
                         THEN M.SL_NHAP ELSE 0 END) AS SL_NHAP,
-                    SUM(CASE WHEN M.NGAY >= B.START_DATE AND M.NGAY < B.END_EXCLUSIVE
+                    SUM(CASE
+                        WHEN M.NGAY >= B.START_DATE AND M.NGAY < B.END_EXCLUSIVE
                         THEN M.GT_NHAP ELSE 0 END) AS GT_NHAP,
-                    SUM(CASE WHEN M.NGAY >= B.START_DATE AND M.NGAY < B.END_EXCLUSIVE
+                    SUM(CASE
+                        WHEN M.NGAY >= B.START_DATE AND M.NGAY < B.END_EXCLUSIVE
                         THEN M.SL_XUAT ELSE 0 END) AS SL_XUAT,
-                    SUM(CASE WHEN M.NGAY >= B.START_DATE AND M.NGAY < B.END_EXCLUSIVE
+                    SUM(CASE
+                        WHEN M.NGAY >= B.START_DATE AND M.NGAY < B.END_EXCLUSIVE
                         THEN M.GT_XUAT ELSE 0 END) AS GT_XUAT
-                FROM Movements M CROSS JOIN Bounds B
+                FROM Movements M
+                CROSS JOIN Bounds B
                 GROUP BY M.MASP
             )
             SELECT SP.MASP, COALESCE(SP.TENSP, N''), COALESCE(SP.DVT, N''),
-                COALESCE(SP.SLTON, 0) - COALESCE(M.NET_FROM_START, 0),
-                (COALESCE(SP.SLTON, 0) - COALESCE(M.NET_FROM_START, 0))
-                    * COALESCE(SP.GIANHAP, 0),
+                COALESCE(M.TON_DAU, 0),
+                COALESCE(M.TON_DAU, 0) * COALESCE(SP.GIANHAP, 0),
                 COALESCE(M.SL_NHAP, 0), COALESCE(M.GT_NHAP, 0),
                 COALESCE(M.SL_XUAT, 0), COALESCE(M.GT_XUAT, 0),
-                COALESCE(SP.SLTON, 0) - COALESCE(M.NET_AFTER_END, 0),
-                (COALESCE(SP.SLTON, 0) - COALESCE(M.NET_AFTER_END, 0))
-                    * COALESCE(SP.GIANHAP, 0)
+                COALESCE(M.TON_DAU, 0)
+                    + COALESCE(M.SL_NHAP, 0)
+                    - COALESCE(M.SL_XUAT, 0),
+                (
+                    COALESCE(M.TON_DAU, 0)
+                    + COALESCE(M.SL_NHAP, 0)
+                    - COALESCE(M.SL_XUAT, 0)
+                ) * COALESCE(SP.GIANHAP, 0)
             FROM dbo.SAN_PHAM SP
             LEFT JOIN MovementSummary M ON M.MASP = SP.MASP
             WHERE (COALESCE(SP.IS_DELETED, 0) = 0 OR M.MASP IS NOT NULL)
@@ -594,7 +636,6 @@ class BaoCaoRepository:
             ORDER BY SP.TENSP, SP.MASP
         """
         return self._fetch_all(sql, tuple(params))
-
 
     def stock_card_report(self, start_date, end_date, keyword=""):
         search_sql = ""
@@ -607,19 +648,19 @@ class BaoCaoRepository:
         sql = self._stock_movements_cte() + f"""
             , Opening AS (
                 SELECT SP.MASP,
-                    COALESCE(SP.SLTON, 0) - COALESCE(SUM(
-                        CASE WHEN M.NGAY >= B.START_DATE
-                            THEN M.SL_NHAP - M.SL_XUAT ELSE 0 END
-                    ), 0) AS TON_DAU
+                    COALESCE(SUM(CASE WHEN M.NGAY < B.START_DATE
+                        THEN M.SL_NHAP - M.SL_XUAT ELSE 0 END), 0) AS TON_DAU
                 FROM dbo.SAN_PHAM SP
                 CROSS JOIN Bounds B
                 LEFT JOIN Movements M ON M.MASP = SP.MASP
-                GROUP BY SP.MASP, SP.SLTON
+                GROUP BY SP.MASP
             ),
             PeriodMovements AS (
                 SELECT M.*
-                FROM Movements M CROSS JOIN Bounds B
-                WHERE M.NGAY >= B.START_DATE AND M.NGAY < B.END_EXCLUSIVE
+                FROM Movements M
+                CROSS JOIN Bounds B
+                WHERE M.NGAY >= B.START_DATE
+                  AND M.NGAY < B.END_EXCLUSIVE
             ),
             RunningMovements AS (
                 SELECT P.*,
