@@ -1,16 +1,47 @@
 ﻿/*
     KHOI TAO CSDL QUAN LY NHA SACH
 
-    Chay mot lan bang tai khoan DBA.
-    SQL Server login admin can duoc tao truoc khi chay file nay.
-    File tao database, bang, rang buoc, role, user database admin va cap quyen.
+    Chay mot lan bang tai khoan DBA (sysadmin hoac tai khoan co quyen tao database/login).
+    Neu chua co, file se tu tao SQL Server Login admin va sinh mat khau ngau nhien.
+    Hay luu mat khau hien ra o ket qua chay script; script khong hien lai mat khau neu login da ton tai.
+    File tao database, bang, rang buoc, role, login/user admin va cap quyen.
     Khong tao du lieu mau hoac tai khoan nhan vien.
 */
 -- 1. Tao database
 CREATE DATABASE CSDLQLNHASACH;
 GO
 
--- 2. Chuyen vao database vua tao
+-- 2. Tao SQL Server Login admin neu chua ton tai
+-- Mat khau duoc sinh ngau nhien (co chu hoa, chu thuong, ky tu dac biet va chu so).
+-- Chi hien mat khau o lan tao moi; hay luu lai de dang nhap ung dung.
+USE master;
+GO
+
+IF SUSER_ID(N'admin') IS NULL
+BEGIN
+    DECLARE @AdminPassword NVARCHAR(128);
+    DECLARE @CreateAdminLoginSql NVARCHAR(MAX);
+
+    SET @AdminPassword =
+        N'Bh!' + CONVERT(NVARCHAR(64), CRYPT_GEN_RANDOM(32), 2);
+
+    SET @CreateAdminLoginSql =
+        N'CREATE LOGIN [admin] WITH PASSWORD = '
+        + QUOTENAME(@AdminPassword, '''')
+        + N', CHECK_POLICY = ON, CHECK_EXPIRATION = OFF,'
+        + N' DEFAULT_DATABASE = [CSDLQLNHASACH];';
+
+    EXEC sys.sp_executesql @CreateAdminLoginSql;
+
+    SELECT @AdminPassword AS [MAT_KHAU_KHOI_TAO_ADMIN];
+END
+ELSE
+BEGIN
+    PRINT N'SQL Server Login admin da ton tai; giu nguyen mat khau hien tai.';
+END;
+GO
+
+-- 3. Chuyen vao database vua tao
 USE CSDLQLNHASACH;
 GO
 
