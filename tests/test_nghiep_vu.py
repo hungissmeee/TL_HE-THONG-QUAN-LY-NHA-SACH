@@ -1077,6 +1077,21 @@ class EmployeeDocumentPermissionTests(unittest.TestCase):
         self.assertIn("GRANT SELECT ON dbo.CHI_TIET_DOI_TRA TO rl_KeToan", script)
         self.assertNotIn("GRANT SELECT, INSERT, UPDATE ON dbo.PHIEU_DOI_TRA TO rl_KeToan", script)
         self.assertNotIn("GRANT SELECT, INSERT, UPDATE ON dbo.CHI_TIET_DOI_TRA TO rl_KeToan", script)
+        self.assertNotIn("GRANT SELECT, INSERT, DELETE ON dbo.LAMCA TO rl_KeToan", script)
+        migration = (
+            Path(__file__).resolve().parents[1]
+            / "database"
+            / "migrations"
+            / "004_restrict_employee_write_permissions.sql"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            "REVOKE INSERT, UPDATE, DELETE ON OBJECT::dbo.LAMCA FROM rl_KeToan",
+            migration,
+        )
+        self.assertIn(
+            "REVOKE UPDATE, DELETE ON OBJECT::dbo.HOA_DON FROM rl_QuanLy",
+            migration,
+        )
 
 
 class ReturnPagePermissionTests(unittest.TestCase):
