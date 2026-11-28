@@ -7,6 +7,7 @@ from decimal import (
 from PySide6.QtCore import (
     Qt,
     QDate,
+    QPoint,
 )
 from PySide6.QtGui import (
     QDoubleValidator,
@@ -39,6 +40,41 @@ from ui.table_sort import (
 )
 
 
+def _show_lookup_popup(anchor, popup):
+    """Hiển thị danh sách gợi ý nổi dưới ô tìm kiếm, không chiếm chỗ trong form."""
+    if popup.count() <= 0:
+        popup.hide()
+        return
+
+    row_height = max(popup.sizeHintForRow(0), 24)
+    height = min(max(row_height * min(popup.count(), 8) + 6, 72), 220)
+    width = max(anchor.width(), 260)
+    screen = anchor.screen()
+    position = anchor.mapToGlobal(QPoint(0, anchor.height()))
+
+    if screen is not None:
+        available = screen.availableGeometry()
+        width = min(width, available.width())
+        height = min(height, available.height())
+        x = max(
+            available.left(),
+            min(position.x(), available.right() - width + 1),
+        )
+        y = position.y()
+        if y + height > available.bottom() + 1:
+            above = anchor.mapToGlobal(QPoint(0, 0))
+            y = above.y() - height
+        y = max(
+            available.top(),
+            min(y, available.bottom() - height + 1),
+        )
+        position = QPoint(x, y)
+
+    popup.resize(width, height)
+    popup.move(position)
+    popup.show()
+
+
 class SearchableSingleSelect(QWidget):
     """Widget tìm kiếm và chọn một mục từ danh sách dữ liệu."""
     """Ô tìm kiếm để chọn một mục từ danh mục SQL Server."""
@@ -54,8 +90,11 @@ class SearchableSingleSelect(QWidget):
         self.search_input.setPlaceholderText(placeholder)
         self.search_input.textEdited.connect(self._on_search)
 
-        self.results = QListWidget()
-        self.results.setMaximumHeight(115)
+        # Popup độc lập, không nằm trong layout nên không làm form nhảy chiều cao.
+        self.results = QListWidget(self)
+        self.results.setWindowFlags(Qt.WindowType.Popup)
+        self.results.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.results.setMaximumHeight(220)
         self.results.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.results.itemClicked.connect(self._select_item)
         self.results.hide()
@@ -64,7 +103,6 @@ class SearchableSingleSelect(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
         layout.addWidget(self.search_input)
-        layout.addWidget(self.results)
 
     def set_options(self, options, selected_code=None):
         """options: iterable (code, name, is_deleted)."""
@@ -95,7 +133,7 @@ class SearchableSingleSelect(QWidget):
         self._selected_code = None
         self._selected_label = ""
         self._populate_results(text)
-        self.results.setVisible(self.results.count() > 0)
+        _show_lookup_popup(self.search_input, self.results)
 
     def _populate_results(self, keyword=""):
         self.results.clear()
@@ -161,21 +199,24 @@ class SearchableMultiSelect(QWidget):
         self.search_input.setPlaceholderText(placeholder)
         self.search_input.textEdited.connect(self._on_search)
 
-        self.results = QListWidget()
-        self.results.setMaximumHeight(115)
+        # Popup độc lập, không chiếm diện tích của biểu mẫu sản phẩm.
+        self.results = QListWidget(self)
+        self.results.setWindowFlags(Qt.WindowType.Popup)
+        self.results.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.results.setMaximumHeight(220)
         self.results.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.results.itemClicked.connect(self._toggle_item)
         self.results.hide()
 
         self.selected_label = QLabel("Chưa chọn mục nào")
-        self.selected_label.setWordWrap(True)
+        self.selected_label.setWordWrap(False)
+        self.selected_label.setMaximumHeight(22)
         self.selected_label.setStyleSheet("color: #AAB7C8; font-size: 13px;")
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
         layout.addWidget(self.search_input)
-        layout.addWidget(self.results)
         layout.addWidget(self.selected_label)
 
     def set_options(self, options, selected_codes=None):
@@ -196,7 +237,7 @@ class SearchableMultiSelect(QWidget):
 
     def _on_search(self, text):
         self._populate_results(text)
-        self.results.setVisible(self.results.count() > 0)
+        _show_lookup_popup(self.search_input, self.results)
 
     def _populate_results(self, keyword=""):
         self.results.clear()
@@ -219,6 +260,7 @@ class SearchableMultiSelect(QWidget):
         self._update_selected_label()
         # Giữ kết quả đang tìm để người dùng có thể chọn nhiều mục cùng từ khóa.
         self._populate_results(self.search_input.text())
+        _show_lookup_popup(self.search_input, self.results)
 
     def _update_selected_label(self):
         selected_names = [
@@ -226,12 +268,11 @@ class SearchableMultiSelect(QWidget):
             for code, name, _ in self.options
             if code in self.selected_codes
         ]
-        if selected_names:
-            text = f"Đã chọn {len(selected_names)}: " + ", ".join(selected_names)
-        else:
-            text = "Chưa chọn mục nào"
+        text = f"Đã chọn {len(selected_names)} mục" if selected_names else "Chưa chọn mục nào"
         self.selected_label.setText(text)
-        self.selected_label.setToolTip(text)
+        self.selected_label.setToolTip(
+            "\n".join(selected_names) if selected_names else text
+        )
 
     def checked_codes(self):
         # Giữ tên phương thức cũ để không phải sửa phần lưu dữ liệu.

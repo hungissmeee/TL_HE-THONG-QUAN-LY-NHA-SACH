@@ -549,6 +549,38 @@ class SearchableSelectorTests(unittest.TestCase):
         self.assertIn("đã xóa mềm", selector.results.item(0).text())
         selector.close()
 
+    def test_lookup_results_use_floating_popup_not_inline_layout(self):
+        single = SearchableSingleSelect()
+        single.set_options([("NXB001", "Nhà xuất bản A", False)])
+        single_height = single.sizeHint().height()
+        single._on_search("Nhà")
+        self.assertTrue(single.results.isWindow())
+        self.assertTrue(single.results.windowFlags() & Qt.WindowType.Popup)
+        self.assertEqual(single.layout().indexOf(single.results), -1)
+        self.assertEqual(single.sizeHint().height(), single_height)
+        single.close()
+
+        multi = SearchableMultiSelect()
+        multi.set_options([("TG001", "Tác giả A", False)])
+        multi_height = multi.sizeHint().height()
+        multi._on_search("Tác")
+        self.assertTrue(multi.results.isWindow())
+        self.assertTrue(multi.results.windowFlags() & Qt.WindowType.Popup)
+        self.assertEqual(multi.layout().indexOf(multi.results), -1)
+        self.assertEqual(multi.sizeHint().height(), multi_height)
+        multi.close()
+
+    def test_multi_select_summary_stays_compact_and_names_remain_in_tooltip(self):
+        selector = SearchableMultiSelect()
+        selector.set_options([
+            ("TG001", "Tác giả A", False),
+            ("TG002", "Tác giả B", False),
+        ], selected_codes={"TG001", "TG002"})
+        self.assertEqual(selector.selected_label.text(), "Đã chọn 2 mục")
+        self.assertIn("Tác giả A", selector.selected_label.toolTip())
+        self.assertIn("Tác giả B", selector.selected_label.toolTip())
+        selector.close()
+
 
 class CatalogAddDialogTests(unittest.TestCase):
     """Kiểm thử popup thêm danh mục dùng chung."""
