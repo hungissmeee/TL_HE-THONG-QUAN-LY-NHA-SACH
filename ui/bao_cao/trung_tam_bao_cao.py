@@ -307,11 +307,11 @@ class ReportCenterPage(QWidget):
             }
             QTableWidget#reportGroupHeader {
                 background: #29374B; color: #E5E7EB;
-                border: 1px solid #39465A; font-weight: 700;
+                border: none; font-weight: 700;
             }
             QTableWidget#reportFooter {
                 background: #29374B; color: #F3F4F6;
-                border: 1px solid #536174; font-weight: 800;
+                border: none; font-weight: 800;
             }
             QHeaderView { background: #202938; color: #E5E7EB; }
             QHeaderView::section {
@@ -480,6 +480,10 @@ class ReportCenterPage(QWidget):
             QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
         )
         self.group_header.setFixedHeight(30)
+        self.group_header.setFrameShape(QFrame.Shape.NoFrame)
+        self.group_header.setHorizontalScrollMode(
+            QAbstractItemView.ScrollMode.ScrollPerPixel
+        )
         self.group_header.verticalHeader().setVisible(False)
         self.group_header.horizontalHeader().setVisible(False)
         self.group_header.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -509,6 +513,9 @@ class ReportCenterPage(QWidget):
         # QHeaderView của PySide6 không hỗ trợ setWordWrap; chiều rộng cột
         # đã được tính theo tiêu đề và tooltip giữ nội dung đầy đủ khi cần.
         self.table.horizontalHeader().setStretchLastSection(False)
+        self.table.setHorizontalScrollMode(
+            QAbstractItemView.ScrollMode.ScrollPerPixel
+        )
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.table.setFrameShape(QFrame.Shape.NoFrame)
@@ -522,6 +529,10 @@ class ReportCenterPage(QWidget):
             QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
         )
         self.footer.setFixedHeight(32)
+        self.footer.setFrameShape(QFrame.Shape.NoFrame)
+        self.footer.setHorizontalScrollMode(
+            QAbstractItemView.ScrollMode.ScrollPerPixel
+        )
         self.footer.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.footer.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.footer.verticalHeader().setVisible(False)
@@ -542,6 +553,9 @@ class ReportCenterPage(QWidget):
         )
         self.table.horizontalScrollBar().rangeChanged.connect(
             self._sync_horizontal_scroll_range
+        )
+        self.table.verticalScrollBar().rangeChanged.connect(
+            self._sync_auxiliary_viewport_margins
         )
 
         self.status_label = QLabel("Chọn nhóm báo cáo ở thanh phía trên.")
@@ -840,6 +854,7 @@ class ReportCenterPage(QWidget):
         # Sorting can detach spans from their opening-balance rows. The report
         # is already ordered by product and voucher chronology by its SQL query.
         self.table.setSortingEnabled(self.current_report != "stock_card")
+        self._sync_auxiliary_viewport_margins()
         self._fit_columns_to_content()
         self._fill_footer()
         self._sync_footer_widths()
@@ -882,21 +897,32 @@ class ReportCenterPage(QWidget):
         self.footer.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
     def _sync_footer_widths(self, *_):
-        self.footer.setColumnCount(self.table.columnCount())
-        self.group_header.setColumnCount(self.table.columnCount())
-        for col in range(self.table.columnCount()):
+        column_count = self.table.columnCount()
+        self.footer.setColumnCount(column_count)
+        self.group_header.setColumnCount(column_count)
+        for col in range(column_count):
             width = self.table.columnWidth(col)
             self.footer.setColumnWidth(col, width)
             self.group_header.setColumnWidth(col, width)
-        # Không đặt width cố định: footer và header nhóm phải co theo viewport.
-        # QSizePolicy.Ignored ngăn sizeHint tổng chiều rộng các cột ép cửa sổ rộng ra.
-        self._sync_horizontal_scroll_range(
-            0, self.table.horizontalScrollBar().maximum()
+
+        self._sync_auxiliary_viewport_margins()
+        source = self.table.horizontalScrollBar()
+        self._sync_horizontal_scroll_range(source.minimum(), source.maximum())
+
+    def _sync_auxiliary_viewport_margins(self, *_):
+        vertical_bar = self.table.verticalScrollBar()
+        gutter = (
+            vertical_bar.sizeHint().width()
+            if vertical_bar.maximum() > vertical_bar.minimum()
+            else 0
         )
+        for target in (self.footer, self.group_header):
+            target.setViewportMargins(0, 0, gutter, 0)
 
     def _sync_horizontal_scroll_range(self, minimum, maximum):
-        page_step = self.table.horizontalScrollBar().pageStep()
-        value = self.table.horizontalScrollBar().value()
+        source = self.table.horizontalScrollBar()
+        page_step = source.pageStep()
+        value = source.value()
         for target in (self.footer, self.group_header):
             scrollbar = target.horizontalScrollBar()
             scrollbar.setRange(minimum, maximum)
