@@ -266,11 +266,11 @@ class ImportServiceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "bị lặp"):
             self.service.create_import(data)
 
-    def test_get_import_detail_disables_return_history_for_warehouse(self):
+    def test_get_import_detail_reads_return_history_for_warehouse(self):
         self.service.get_import_detail(" PN000001 ", "warehouse")
         self.assertEqual(
             self.repository.import_detail_read,
-            ("PN000001", False),
+            ("PN000001", True),
         )
 
     def test_get_import_detail_reads_return_history_for_manager(self):
