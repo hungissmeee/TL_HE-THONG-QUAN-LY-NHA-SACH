@@ -23,7 +23,7 @@ REVOKE UPDATE ON OBJECT::dbo.CA_LAM_VIEC
 
 -- LAMCA: cac vai tro khong sua truc tiep ban ghi dang ky.
 -- Quan ly van can INSERT/DELETE cho cac nghiep vu dang ky va xoa ca sap bat dau.
-REVOKE UPDATE ON OBJECT::dbo.LAMCA FROM rl_QuanLy;
+REVOKE INSERT, UPDATE ON OBJECT::dbo.LAMCA FROM rl_QuanLy;
 
 -- Ke toan duoc dang ky ca dang dien ra nhu cac nhan vien khac,
 -- ngoai quyen ghi TMCUOICA sau khi ca ket thuc.
