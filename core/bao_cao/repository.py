@@ -521,33 +521,18 @@ class BaoCaoRepository:
     @staticmethod
     def _stock_movements_cte():
         """
-        Dựng biến động kho từ các chứng từ có ảnh hưởng thực tế đến SLTON.
+        Dựng sổ biến động kho theo đúng ngày phát sinh từng chứng từ.
 
-        - Nhập: chỉ chi tiết phiếu nhập hợp lệ.
-        - Xuất: hóa đơn hợp lệ + hàng mới giao khi đổi - hàng nguyên vẹn
-          được nhận lại khi hoàn tiền.
-        - Hàng hỏng hoàn tiền không làm giảm xuất vì không được nhập lại kho.
+        Nhập: chỉ phiếu nhập hợp lệ.
+        Xuất: hóa đơn hợp lệ; phiếu đổi trả được ghi nhận riêng theo ngày xử lý:
+          - Hàng nguyên vẹn hoàn tiền: giảm lượng xuất ròng (nhập lại tồn).
+          - Hàng hỏng hoàn tiền: không giảm xuất vì hàng không quay lại tồn.
+          - Đổi hàng: tính sản phẩm mới giao cho khách vào lượng xuất.
         """
         return """
             WITH Bounds AS (
                 SELECT CONVERT(date, ?) AS START_DATE,
                        DATEADD(day, 1, CONVERT(date, ?)) AS END_EXCLUSIVE
-            ),
-            ReturnByInvoiceProduct AS (
-                SELECT PDT.MAHD, CTDT.MASP,
-                    SUM(CASE
-                        WHEN CTDT.HINH_THUC_XU_LY = 0
-                         AND CTDT.TINHTRANGHANG = 1
-                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0
-                    END) AS SL_HOAN_NGUYEN,
-                    SUM(CASE
-                        WHEN CTDT.HINH_THUC_XU_LY = 1
-                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0
-                    END) AS SL_DOI_XUAT
-                FROM dbo.PHIEU_DOI_TRA PDT
-                INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT
-                    ON CTDT.MAPDT = PDT.MAPDT
-                GROUP BY PDT.MAHD, CTDT.MASP
             ),
             Movements AS (
                 SELECT CT.MASP, PN.NGAYNHAP AS NGAY, PN.MAPN AS CHUNG_TU,
@@ -566,24 +551,53 @@ class BaoCaoRepository:
                 UNION ALL
 
                 SELECT CT.MASP, HD.NGAYLAP, HD.MAHD,
-                    N'Hóa đơn' AS LOAI_CHUNG_TU, N'Bán hàng sau đối trừ trả hàng' AS LOAI,
+                    N'Hóa đơn' AS LOAI_CHUNG_TU, N'Bán hàng' AS LOAI,
                     CAST(0 AS BIGINT) AS SL_NHAP,
                     CAST(0 AS DECIMAL(18, 2)) AS GT_NHAP,
+                    SUM(COALESCE(CT.SOLUONG, 0)) AS SL_XUAT,
                     SUM(COALESCE(CT.SOLUONG, 0))
-                        + COALESCE(MAX(R.SL_DOI_XUAT), 0)
-                        - COALESCE(MAX(R.SL_HOAN_NGUYEN), 0) AS SL_XUAT,
-                    (
-                        SUM(COALESCE(CT.SOLUONG, 0))
-                        + COALESCE(MAX(R.SL_DOI_XUAT), 0)
-                        - COALESCE(MAX(R.SL_HOAN_NGUYEN), 0)
-                    ) * COALESCE(SP.GIANHAP, 0) AS GT_XUAT
+                        * COALESCE(SP.GIANHAP, 0) AS GT_XUAT
                 FROM dbo.HOA_DON HD
-                INNER JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
+                INNER JOIN dbo.CHI_TIET_HOA_DON CT
+                    ON CT.MAHD = HD.MAHD
                 INNER JOIN dbo.SAN_PHAM SP ON SP.MASP = CT.MASP
-                LEFT JOIN ReturnByInvoiceProduct R
-                    ON R.MAHD = HD.MAHD AND R.MASP = CT.MASP
                 WHERE HD.TRANGTHAI = 1
                 GROUP BY CT.MASP, HD.NGAYLAP, HD.MAHD, SP.GIANHAP
+
+                UNION ALL
+
+                SELECT CTDT.MASP, PDT.NGAY_DOI_TRA, PDT.MAPDT,
+                    N'Phiếu đổi trả' AS LOAI_CHUNG_TU,
+                    N'Đối trừ hàng trả / xuất hàng đổi' AS LOAI,
+                    CAST(0 AS BIGINT) AS SL_NHAP,
+                    CAST(0 AS DECIMAL(18, 2)) AS GT_NHAP,
+                    (
+                        SUM(CASE
+                            WHEN CTDT.HINH_THUC_XU_LY = 1
+                            THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0
+                        END)
+                        - SUM(CASE
+                            WHEN CTDT.HINH_THUC_XU_LY = 0
+                             AND CTDT.TINHTRANGHANG = 1
+                            THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0
+                        END)
+                    ) AS SL_XUAT,
+                    (
+                        SUM(CASE
+                            WHEN CTDT.HINH_THUC_XU_LY = 1
+                            THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0
+                        END)
+                        - SUM(CASE
+                            WHEN CTDT.HINH_THUC_XU_LY = 0
+                             AND CTDT.TINHTRANGHANG = 1
+                            THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0
+                        END)
+                    ) * COALESCE(SP.GIANHAP, 0) AS GT_XUAT
+                FROM dbo.PHIEU_DOI_TRA PDT
+                INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT
+                    ON CTDT.MAPDT = PDT.MAPDT
+                INNER JOIN dbo.SAN_PHAM SP ON SP.MASP = CTDT.MASP
+                GROUP BY CTDT.MASP, PDT.NGAY_DOI_TRA, PDT.MAPDT, SP.GIANHAP
             )
         """
 
