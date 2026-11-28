@@ -1192,6 +1192,9 @@ class ReportServiceTests(unittest.TestCase):
         )
         self.assertIn("M.NGAY >= B.START_DATE", repository.sql)
         self.assertIn("NET_FROM_START", repository.sql)
+        self.assertIn("FROM dbo.PHIEU_NHAP PN", repository.sql)
+        self.assertIn("FROM dbo.HOA_DON HD", repository.sql)
+        self.assertNotIn("PHIEU_DOI_TRA", repository.sql)
         self.assertNotIn("DONGIAHOAN", repository.sql)
         self.assertEqual(
             repository.params,
@@ -1242,7 +1245,6 @@ class ReportServiceTests(unittest.TestCase):
         self.assertIn("FROM dbo.PHIEU_DOI_TRA PDT", repository.sql)
         self.assertIn("PDT.TONG_TIEN_HOAN", repository.sql)
         self.assertIn("ISNULL(PN.TRANGTHAI, 1) = 1", repository.sql)
-        self.assertIn("FULL", repository.sql) if False else None
         self.assertNotIn("TIENKHACHDUA", repository.sql)
         self.assertEqual(repository.sql.count("?"), 6)
         self.assertEqual(
