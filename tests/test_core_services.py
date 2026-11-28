@@ -1334,10 +1334,16 @@ class ReportServiceTests(unittest.TestCase):
         self.assertIn("AS DOANH_THU_THUAN", repository.sql)
         self.assertIn("AS LOI_NHUAN_UOC_TINH", repository.sql)
         self.assertIn("CTDT.HINH_THUC_XU_LY", repository.sql)
-        self.assertEqual(repository.sql.count("?"), 6)
+        self.assertIn("ShiftCash AS", repository.sql)
+        self.assertIn("C.TMCUOICA", repository.sql)
+        self.assertIn("C.TMDAUCA", repository.sql)
+        self.assertIn("C.TMCUOICA IS NULL", repository.sql)
+        self.assertIn("AS TIEN_MAT_THUC_TE", repository.sql)
+        self.assertEqual(repository.sql.count("?"), 8)
         self.assertEqual(
             repository.params,
             (
+                "2026-01-01", "2026-01-31",
                 "2026-01-01", "2026-01-31",
                 "2026-01-01", "2026-01-31",
                 "2026-01-01", "2026-01-31",
