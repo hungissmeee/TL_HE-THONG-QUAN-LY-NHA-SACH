@@ -1175,7 +1175,7 @@ class ReportServiceTests(unittest.TestCase):
             select,
         )
 
-    def test_stock_movement_uses_historical_opening_and_net_export_after_returns(self):
+    def test_stock_movement_uses_historical_opening_and_return_date_adjustments(self):
         class CaptureRepository(BaoCaoRepository):
             def __init__(self):
                 self.sql = ""
@@ -1190,20 +1190,17 @@ class ReportServiceTests(unittest.TestCase):
         repository.stock_movement_report(
             "2026-11-01", "2026-11-28", "SP001"
         )
-        self.assertIn("ReturnByInvoiceProduct AS", repository.sql)
+        self.assertIn("M.NGAY < B.START_DATE", repository.sql)
+        self.assertIn("N'Phiếu đổi trả' AS LOAI_CHUNG_TU", repository.sql)
+        self.assertIn("PDT.NGAY_DOI_TRA", repository.sql)
         self.assertIn("CTDT.HINH_THUC_XU_LY = 0", repository.sql)
         self.assertIn("CTDT.TINHTRANGHANG = 1", repository.sql)
         self.assertIn("CTDT.HINH_THUC_XU_LY = 1", repository.sql)
-        self.assertIn("M.NGAY < B.START_DATE", repository.sql)
         self.assertIn("COALESCE(M.TON_DAU, 0)", repository.sql)
         self.assertIn("+ COALESCE(M.SL_NHAP, 0)", repository.sql)
         self.assertIn("- COALESCE(M.SL_XUAT, 0)", repository.sql)
-        movement_sql = repository.sql.split("definitely-not-present", 1)[0]
-        stock_part = repository.sql.split("SELECT SP.MASP", 1)[1]
-        self.assertIn("COALESCE(M.TON_DAU, 0)", stock_part)
         self.assertNotIn("SP.SLTON", repository.sql)
-        self.assertIn("FROM dbo.PHIEU_NHAP PN", repository.sql)
-        self.assertIn("FROM dbo.HOA_DON HD", repository.sql)
+        self.assertNotIn("ReturnByInvoiceProduct", repository.sql)
         self.assertEqual(
             repository.params,
             ("2026-11-01", "2026-11-28", "%SP001%", "%SP001%", "%SP001%"),
@@ -1211,7 +1208,7 @@ class ReportServiceTests(unittest.TestCase):
 
 
 
-    def test_stock_card_uses_historical_opening_and_net_invoice_movements(self):
+    def test_stock_card_uses_return_voucher_date_for_running_stock_balance(self):
         class CaptureRepository(BaoCaoRepository):
             def __init__(self):
                 self.sql = ""
@@ -1226,14 +1223,16 @@ class ReportServiceTests(unittest.TestCase):
         repository.stock_card_report(
             "2026-11-01", "2026-11-28", "SP001"
         )
-        self.assertIn("ReturnByInvoiceProduct AS", repository.sql)
-        self.assertIn("M.NGAY < B.START_DATE", repository.sql)
+        self.assertIn("N'Phiếu đổi trả' AS LOAI_CHUNG_TU", repository.sql)
+        self.assertIn("PDT.NGAY_DOI_TRA", repository.sql)
         self.assertIn("O.TON_DAU + SUM(P.SL_NHAP - P.SL_XUAT)", repository.sql)
         self.assertNotIn("SP.SLTON", repository.sql)
         self.assertEqual(
             repository.params,
             ("2026-11-01", "2026-11-28", "%SP001%", "%SP001%", "%SP001%"),
         )
+
+
 
     def test_shift_report_binds_all_six_date_placeholders(self):
         class CaptureRepository(BaoCaoRepository):
