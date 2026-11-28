@@ -2,6 +2,7 @@
 
 from decimal import Decimal, ROUND_HALF_UP
 
+from core.audit_log import write_audit_log
 from core.sql_support import resolve_connection
 
 
@@ -238,7 +239,8 @@ class PhieuNhapRepository:
                 SELECT TRANGTHAI, MANV,
                        CASE WHEN NGAYNHAP >= DATEADD(MINUTE, -5, SYSDATETIME())
                                   AND NGAYNHAP <= SYSDATETIME()
-                            THEN 1 ELSE 0 END
+                            THEN 1 ELSE 0 END,
+                       MANCC, SHDNCC
                 FROM dbo.PHIEU_NHAP WITH (UPDLOCK, HOLDLOCK)
                 WHERE MAPN = ?
             """, import_code)
@@ -276,6 +278,14 @@ class PhieuNhapRepository:
             """, supplier_code, supplier_invoice, import_code)
             if cursor.rowcount != 1:
                 raise RuntimeError("Không thể cập nhật thông tin chung của phiếu nhập.")
+            write_audit_log(
+                cursor,
+                "PHIEU_NHAP",
+                "UPDATE",
+                {"MAPN": import_code},
+                before={"MANCC": header[3], "SHDNCC": header[4]},
+                after={"MANCC": supplier_code, "SHDNCC": supplier_invoice},
+            )
             conn.commit()
             return True
         except Exception:
@@ -473,6 +483,25 @@ class PhieuNhapRepository:
             """, total, import_code)
             if cursor.rowcount != 1:
                 raise RuntimeError("Không thể cập nhật tổng giá trị phiếu nhập.")
+            write_audit_log(
+                cursor,
+                "CHI_TIET_PHIEU_NHAP",
+                "UPDATE",
+                {"MAPN": import_code},
+                before=[
+                    {"MASP": code, **item}
+                    for code, item in old_items.items()
+                ],
+                after=[
+                    {
+                        "MASP": code,
+                        "SOLUONG": item["quantity"],
+                        "DONGIA": item["price"],
+                        "VAT": item["vat"],
+                    }
+                    for code, item in new_items.items()
+                ],
+            )
             conn.commit()
             return True
         except Exception:
@@ -696,6 +725,17 @@ class PhieuNhapRepository:
             """, import_code)
             if cursor.rowcount != 1:
                 raise RuntimeError("Không thể cập nhật trạng thái phiếu nhập.")
+            write_audit_log(
+                cursor,
+                "PHIEU_NHAP",
+                "CANCEL",
+                {"MAPN": import_code},
+                before={"TRANGTHAI": 1, "CHI_TIET": [
+                    {"MASP": row[0], "SOLUONG": row[1], "GIATRI": row[2]}
+                    for row in details
+                ]},
+                after={"TRANGTHAI": 0},
+            )
             conn.commit()
             return True
         except Exception:
