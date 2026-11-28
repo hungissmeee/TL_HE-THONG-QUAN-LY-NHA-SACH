@@ -85,10 +85,10 @@ class SupplierWindow(QWidget):
         root.addLayout(header)
 
         description = QLabel(
-            "Quản lý thông tin nhà cung cấp. Nhà cung cấp đã phát sinh phiếu nhập được ngừng hoạt động thay vì xóa khỏi cơ sở dữ liệu."
+            "Nhà cung cấp đã có phiếu nhập sẽ được ngừng hoạt động thay vì xóa."
         )
         description.setWordWrap(True)
-        description.setStyleSheet("color: #AAB7C8; font-size: 11px;")
+        description.setStyleSheet("color: #AAB7C8; font-size: 13px;")
         root.addWidget(description)
 
         search = QHBoxLayout()
