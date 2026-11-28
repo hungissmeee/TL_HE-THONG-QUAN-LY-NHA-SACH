@@ -40,9 +40,9 @@ from ui.nha_cung_cap.bieu_mau import SupplierFormDialog
 from ui.nha_cung_cap.danh_sach import can_view_suppliers
 from ui.nhan_vien import EmployeeWindow
 from ui.phieu_nhap.tao_bieu_mau import CreateImportDialog
-from ui.phieu_nhap.danh_sach import can_view_imports
+from ui.phieu_nhap.danh_sach import can_view_imports, can_cancel_imports
 from ui.hoa_don.tao_bieu_mau import CreateInvoiceDialog
-from ui.hoa_don.danh_sach import InvoiceWindow
+from ui.hoa_don.danh_sach import InvoiceWindow, can_cancel_invoices
 from ui.ca_lam_viec.tao_bieu_mau import ShiftCreateDialog
 from ui.ca_lam_viec.danh_sach import ShiftWindow
 from ui.main_windows import MainWindow
@@ -1001,6 +1001,80 @@ class ImportPagePermissionTests(unittest.TestCase):
 
     def test_admin_can_view_import_page(self):
         self.assertTrue(can_view_imports("admin", ""))
+
+
+class EmployeeDocumentPermissionTests(unittest.TestCase):
+    """Hủy chứng từ nhạy cảm chỉ dành cho Admin/Quản lý."""
+
+    def test_only_manager_and_admin_can_cancel_invoices(self):
+        for username, role, expected in (
+            ("admin", "", True),
+            ("QL01", "Quản lý", True),
+            ("TN01", "Thu ngân", False),
+            ("KHO01", "Nhân viên kho", False),
+            ("KT01", "Kế toán", False),
+        ):
+            with self.subTest(username=username, role=role):
+                self.assertEqual(can_cancel_invoices(username, role), expected)
+
+    def test_only_manager_and_admin_can_cancel_imports(self):
+        for username, role, expected in (
+            ("admin", "", True),
+            ("QL01", "Quản lý", True),
+            ("TN01", "Thu ngân", False),
+            ("KHO01", "Nhân viên kho", False),
+            ("KT01", "Kế toán", False),
+        ):
+            with self.subTest(username=username, role=role):
+                self.assertEqual(can_cancel_imports(username, role), expected)
+
+    def test_only_admin_can_delete_return_voucher(self):
+        self.assertTrue(ReturnWindow.can_delete_return("ADMIN"))
+        self.assertFalse(ReturnWindow.can_delete_return("QL01"))
+        self.assertFalse(ReturnWindow.can_delete_return("KT01"))
+
+    def test_repositories_validate_real_sql_principal_for_sensitive_actions(self):
+        import inspect
+
+        invoice_source = inspect.getsource(HoaDonRepository.cancel_invoice)
+        import_source = inspect.getsource(PhieuNhapRepository.cancel_import)
+        return_source = inspect.getsource(ReturnRepository.delete_return)
+
+        for source in (invoice_source, import_source):
+            self.assertIn("USER_NAME()", source)
+            self.assertIn("IS_ROLEMEMBER(N'rl_QuanLy')", source)
+            self.assertIn("VAITRO = N'Quản lý'", source)
+
+        self.assertIn("USER_NAME() = N'admin'", return_source)
+        self.assertNotIn("self.ensure_manager(", return_source)
+
+    def test_database_script_has_no_employee_delete_grant_on_business_documents(self):
+        from pathlib import Path
+
+        script = (
+            Path(__file__).resolve().parents[1]
+            / "database"
+            / "script.sql"
+        ).read_text(encoding="utf-8")
+        for role in ("rl_QuanLy", "rl_ThuNgan", "rl_NhanVienKho", "rl_KeToan"):
+            for table in ("HOA_DON", "PHIEU_NHAP"):
+                self.assertNotIn(
+                    f"GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.{table} TO {role}",
+                    script,
+                )
+
+    def test_accounting_role_only_reads_return_documents(self):
+        from pathlib import Path
+
+        script = (
+            Path(__file__).resolve().parents[1]
+            / "database"
+            / "script.sql"
+        ).read_text(encoding="utf-8")
+        self.assertIn("GRANT SELECT ON dbo.PHIEU_DOI_TRA TO rl_KeToan", script)
+        self.assertIn("GRANT SELECT ON dbo.CHI_TIET_DOI_TRA TO rl_KeToan", script)
+        self.assertNotIn("GRANT SELECT, INSERT, UPDATE ON dbo.PHIEU_DOI_TRA TO rl_KeToan", script)
+        self.assertNotIn("GRANT SELECT, INSERT, UPDATE ON dbo.CHI_TIET_DOI_TRA TO rl_KeToan", script)
 
 
 class ReturnPagePermissionTests(unittest.TestCase):
