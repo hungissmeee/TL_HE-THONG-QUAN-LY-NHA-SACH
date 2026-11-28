@@ -435,19 +435,36 @@ class PhieuNhapRepository:
                 if cursor.rowcount != 1:
                     raise RuntimeError(f"Không thể cập nhật tồn kho sản phẩm {code}.")
 
-            # Cả Quản lý và Nhân viên kho đều được thêm/sửa/bỏ từng dòng.
-            # Quyền thực tế đã được xác thực từ USER_NAME(), IS_ROLEMEMBER và NHAN_VIEN.
-            # Việc hoàn tác tồn kho/giá vốn đã được tính cho toàn bộ mã cũ và mới ở trên.
-            cursor.execute(
-                "DELETE FROM dbo.CHI_TIET_PHIEU_NHAP WHERE MAPN = ?",
-                import_code,
-            )
-            for code, item in new_items.items():
+            # Quản lý và Nhân viên kho đều được thêm/sửa/bỏ từng dòng.
+            # Chỉ xóa các dòng thực sự bị bỏ, tránh xóa và tạo lại toàn bộ chi tiết.
+            removed_codes = set(old_items) - set(new_items)
+            for code in sorted(removed_codes, key=str.casefold):
                 cursor.execute("""
-                    INSERT INTO dbo.CHI_TIET_PHIEU_NHAP
-                        (MAPN, MASP, DONGIA, SOLUONG, VAT)
-                    VALUES (?, ?, ?, ?, ?)
-                """, import_code, code, item["price"], item["quantity"], item["vat"])
+                    DELETE FROM dbo.CHI_TIET_PHIEU_NHAP
+                    WHERE MAPN = ? AND MASP = ?
+                """, import_code, code)
+                if cursor.rowcount != 1:
+                    raise RuntimeError(
+                        f"Không thể bỏ mặt hàng {code} khỏi phiếu nhập."
+                    )
+
+            for code, item in new_items.items():
+                if code in old_items:
+                    cursor.execute("""
+                        UPDATE dbo.CHI_TIET_PHIEU_NHAP
+                        SET DONGIA = ?, SOLUONG = ?, VAT = ?
+                        WHERE MAPN = ? AND MASP = ?
+                    """, item["price"], item["quantity"], item["vat"], import_code, code)
+                    if cursor.rowcount != 1:
+                        raise RuntimeError(
+                            f"Không thể cập nhật chi tiết sản phẩm {code}."
+                        )
+                else:
+                    cursor.execute("""
+                        INSERT INTO dbo.CHI_TIET_PHIEU_NHAP
+                            (MAPN, MASP, DONGIA, SOLUONG, VAT)
+                        VALUES (?, ?, ?, ?, ?)
+                    """, import_code, code, item["price"], item["quantity"], item["vat"])
 
             cursor.execute("""
                 UPDATE dbo.PHIEU_NHAP
