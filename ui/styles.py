@@ -29,6 +29,7 @@ MAIN_WINDOW_STYLESHEET = """
 
             QWidget {
                 color: #E5E7EB;
+                font-size: 13px;
             }
 
             QWidget#sidebar {
@@ -43,7 +44,7 @@ MAIN_WINDOW_STYLESHEET = """
 
             QLabel#subtitle {
                 color: #AAB7C8;
-                font-size: 10px;
+                font-size: 13px;
             }
 
             QScrollArea#sidebarScroll,
@@ -59,7 +60,7 @@ MAIN_WINDOW_STYLESHEET = """
                 border-radius: 5px;
                 padding: 8px 6px;
                 text-align: left;
-                font-size: 11px;
+                font-size: 13px;
                 font-weight: bold;
             }
 
@@ -177,7 +178,7 @@ MAIN_WINDOW_STYLESHEET = """
 
             QLabel#tableActionHint {
                 color: #AAB7C8;
-                font-size: 11px;
+                font-size: 13px;
                 background: transparent;
                 border: none;
             }
@@ -484,7 +485,7 @@ MAIN_WINDOW_STYLESHEET = """
 
             QLabel#accountInfo {
                 color: #AAB7C8;
-                font-size: 11px;
+                font-size: 13px;
             }
 
             QPushButton#logoutButton {
