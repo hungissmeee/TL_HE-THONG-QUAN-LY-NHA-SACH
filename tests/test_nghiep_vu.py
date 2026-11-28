@@ -1295,8 +1295,6 @@ class ReportCenterTests(unittest.TestCase):
         self.assertIn("row_index, 0, row_index, last_col, label", workbook_source)
         self.assertNotIn("for col in (12, 13)", workbook_source)
 
-    def test_report_center_does_not_use_legacy_kpi_cards(self):
-
     def test_report_center_uses_shared_native_combo_style(self):
         import inspect
         from ui.bao_cao.trung_tam_bao_cao import ReportCenterPage
