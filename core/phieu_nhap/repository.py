@@ -200,6 +200,19 @@ class PhieuNhapRepository:
         return cursor.fetchone() is not None
 
     @staticmethod
+    def _assert_header_edit_permission(status, username, role, is_admin=False):
+        """Quản lý/nhân viên kho được sửa thông tin chung trên phiếu còn hiệu lực."""
+        if int(status or 0) != 1:
+            raise ValueError("Phiếu nhập đã bị hủy, không được chỉnh sửa nữa.")
+        role = str(role or "").strip().casefold()
+        username = str(username or "").strip()
+        admin = bool(is_admin) or username.casefold() == "admin"
+        if not (admin or role in {"quản lý", "nhân viên kho"}):
+            raise PermissionError(
+                "Chỉ Quản lý, Nhân viên kho hoặc Admin được sửa thông tin chung phiếu nhập."
+            )
+
+    @staticmethod
     def _assert_modify_permission(header, username, role, is_admin=False):
         """Dùng lại quyền sửa chứng từ hiện tại: quản lý mọi phiếu, kho theo chủ phiếu/5 phút."""
         status, owner, within_five_minutes = header
@@ -237,7 +250,9 @@ class PhieuNhapRepository:
             header = cursor.fetchone()
             if header is None:
                 raise LookupError("Không tìm thấy phiếu nhập.")
-            self._assert_modify_permission(header, username, role, is_admin)
+            self._assert_header_edit_permission(
+                header[0], username, role, is_admin
+            )
 
             cursor.execute("""
                 SELECT 1

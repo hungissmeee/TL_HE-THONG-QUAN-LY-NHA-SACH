@@ -44,7 +44,7 @@ class ImportDetailDialog(QDialog):
 
     def __init__(
         self, db, import_code, parent=None, on_cancel=None,
-        can_edit=False, has_later_stock_movement=False
+        can_edit=False, can_edit_header=None, has_later_stock_movement=False
     ):
         super().__init__(parent)
         self.db = db
@@ -52,6 +52,7 @@ class ImportDetailDialog(QDialog):
         self.import_code = import_code
         self.on_cancel = on_cancel
         self.can_edit = bool(can_edit)
+        self.can_edit_header = bool(can_edit if can_edit_header is None else can_edit_header)
         self.has_later_stock_movement = bool(has_later_stock_movement)
         self.username = (getattr(db, "username", "") or "").strip()
         self.is_admin = self.username.casefold() == "admin"
@@ -127,7 +128,7 @@ class ImportDetailDialog(QDialog):
             warning.setStyleSheet("color: #B45309;")
             root.addWidget(warning)
 
-        if self.can_edit and h["status"] == 1:
+        if self.can_edit_header and h["status"] == 1:
             header_edit = QGroupBox("Chỉnh sửa thông tin chung")
             header_form = QFormLayout(header_edit)
             self.supplier_combo = QComboBox()

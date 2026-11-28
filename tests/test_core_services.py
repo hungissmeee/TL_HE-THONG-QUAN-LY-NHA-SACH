@@ -292,6 +292,24 @@ class ImportServiceTests(unittest.TestCase):
             ("PN000001", "NCC001", "INV-01", "NV001", "Quản lý", False),
         )
 
+    def test_header_edit_permissions_allow_warehouse_and_manager(self):
+        PhieuNhapRepository._assert_header_edit_permission(
+            1, "warehouse", "Nhân viên kho"
+        )
+        PhieuNhapRepository._assert_header_edit_permission(
+            1, "manager", "Quản lý"
+        )
+
+    def test_header_edit_permission_rejects_other_roles_and_cancelled_vouchers(self):
+        with self.assertRaises(PermissionError):
+            PhieuNhapRepository._assert_header_edit_permission(
+                1, "accountant", "Kế toán"
+            )
+        with self.assertRaisesRegex(ValueError, "đã bị hủy"):
+            PhieuNhapRepository._assert_header_edit_permission(
+                0, "warehouse", "Nhân viên kho"
+            )
+
     def test_update_import_header_requires_supplier(self):
         with self.assertRaisesRegex(ValueError, "nhà cung cấp"):
             self.service.update_import_header(
