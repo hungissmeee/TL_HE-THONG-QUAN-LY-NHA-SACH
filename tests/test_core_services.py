@@ -383,6 +383,16 @@ class ImportServiceTests(unittest.TestCase):
         self.assertIn("CHI_TIET_DOI_TRA", cursor.sql)
         self.assertEqual(len(cursor.params), 7)
 
+    def test_create_import_requires_active_supplier_under_transaction_lock(self):
+        import inspect
+
+        source = inspect.getsource(PhieuNhapRepository.create_import)
+        supplier_check = source.index('FROM dbo.NHA_CUNG_CAP WITH (UPDLOCK, HOLDLOCK)')
+        voucher_insert = source.index('INSERT INTO dbo.PHIEU_NHAP')
+        self.assertLess(supplier_check, voucher_insert)
+        self.assertIn('WHERE MANCC = ? AND ISNULL(IS_DELETED, 0) = 0', source)
+        self.assertIn('Nhà cung cấp không tồn tại hoặc đã ngừng sử dụng.', source)
+
     def test_cancel_import_locks_products_before_history_check_and_reverses_import_value(self):
         import inspect
 
@@ -1427,6 +1437,22 @@ class ReportServiceTests(unittest.TestCase):
         self.assertIn(
             "COALESCE(SP.BARCODE, N''), COALESCE(BK.ISBN, N'')",
             select,
+        )
+        self.assertIn("InvoiceLineBase AS", repository.sql)
+        self.assertIn("InvoiceLineRunning AS", repository.sql)
+        self.assertIn("InvoiceLineDiscount AS", repository.sql)
+        self.assertIn("AllocatedDiscount AS", repository.sql)
+        self.assertIn(
+            "ROUND(TIEN_HANG_HD * TYLEGIAM / 100.0, 2) AS TIEN_GIAM_HD",
+            repository.sql,
+        )
+        self.assertIn("TIEN_HANG_LUY_KE", repository.sql)
+        self.assertIn("TIEN_HANG_TRUOC", repository.sql)
+        self.assertIn("SUM(TIEN_HANG_DONG - TIEN_GIAM_DONG) AS DOANH_THU_THUAN", repository.sql)
+        self.assertIn("SUM(SO_LUONG) AS SL_BAN", repository.sql)
+        self.assertNotIn(
+            "COALESCE(CT.SOLUONG, 0) * COALESCE(CT.DONGIA, 0)\n                        * (1 - COALESCE(KM.TYLEGIAM, 0) / 100.0)",
+            repository.sql,
         )
 
     def test_stock_movement_uses_historical_opening_and_return_date_adjustments(self):
