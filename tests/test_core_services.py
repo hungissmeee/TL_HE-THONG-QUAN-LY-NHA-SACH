@@ -1067,18 +1067,20 @@ class ReportServiceTests(unittest.TestCase):
             "AS THUC_THU",
             "COALESCE(RH.TIEN_HOAN, 0)",
             "AS DOANH_THU_SAU_HOAN",
-            "AS TIEN_THUA",
             "I.TENNV,",
-            "I.SO_DONG, N'Bán hàng'",
+            "N'Bán hàng'",
         ]
         positions = [select.index(token) for token in ordered_tokens]
         self.assertEqual(positions, sorted(positions))
-        self.assertNotIn("COALESCE(RH.SO_PHIEU_TRA, 0)", select)
+        self.assertNotIn("AS TIEN_THUA", select)
+        self.assertNotIn("SO_DONG", select)
         self.assertEqual(
             repository.params,
             ("2026-01-01", "2026-01-31",
              "%NV01%", "%NV01%", "%NV01%", "%NV01%"),
         )
+
+
 
     def test_import_detail_projection_puts_product_and_amount_before_extra_fields(self):
         class CaptureRepository(BaoCaoRepository):
