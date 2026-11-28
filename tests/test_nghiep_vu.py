@@ -1342,7 +1342,7 @@ class ReportCenterTests(unittest.TestCase):
         import inspect
         from ui.styles import MAIN_WINDOW_STYLESHEET
         from ui.bao_cao.trung_tam_bao_cao import REPORTS, ReportCenterPage
-        from ui.login import LoginDialog
+        from ui.login import LoginWindow
         from ui.doi_mat_khau import ChangePasswordDialog
 
         self.assertIn("font-size: 13px;", MAIN_WINDOW_STYLESHEET)
@@ -1354,7 +1354,7 @@ class ReportCenterTests(unittest.TestCase):
         self.assertNotIn("description_label", report_ui)
         self.assertNotIn("filter_note", report_ui)
 
-        login_ui = inspect.getsource(LoginDialog.__init__)
+        login_ui = inspect.getsource(LoginWindow.__init__)
         self.assertNotIn("SQL Server", login_ui)
         password_ui = inspect.getsource(ChangePasswordDialog.__init__)
         self.assertNotIn("SQL SERVER", password_ui)
