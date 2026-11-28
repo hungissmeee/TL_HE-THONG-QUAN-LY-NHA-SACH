@@ -557,6 +557,9 @@ class ReportCenterPage(QWidget):
         self.table.verticalScrollBar().rangeChanged.connect(
             self._sync_auxiliary_viewport_margins
         )
+        self.table.horizontalHeader().geometriesChanged.connect(
+            self._sync_footer_widths
+        )
 
         self.status_label = QLabel("Chọn nhóm báo cáo ở thanh phía trên.")
         self.status_label.setStyleSheet("color: #AAB7C8; font-size: 10px;")
@@ -906,30 +909,24 @@ class ReportCenterPage(QWidget):
             self.group_header.setColumnWidth(col, width)
 
         self._sync_auxiliary_viewport_margins()
-        source = self.table.horizontalScrollBar()
-        self._sync_horizontal_scroll_range(source.minimum(), source.maximum())
+        self._sync_horizontal_scroll_range()
 
     def _sync_auxiliary_viewport_margins(self, *_):
         """
-        Make auxiliary viewports exactly as wide as the data viewport.
-        Measuring the real viewports avoids a small accumulated difference at
-        the far-right end on platforms with different scrollbar metrics.
+        Reserve exactly the width occupied by the data table's visible vertical
+        scrollbar, so all three tables have the same horizontal viewport.
         """
-        if not hasattr(self, "table") or not hasattr(self, "footer"):
+        if not hasattr(self, "table"):
             return
-        target_width = self.table.viewport().width()
+        vertical_bar = self.table.verticalScrollBar()
+        gutter = 0
+        if vertical_bar.maximum() > vertical_bar.minimum():
+            gutter = vertical_bar.width() or vertical_bar.sizeHint().width()
+
         for target in (self.footer, self.group_header):
             margins = target.viewportMargins()
-            current_width = target.viewport().width()
-            difference = current_width - target_width
-            right_margin = max(0, margins.right() + difference)
-            if right_margin != margins.right():
-                target.setViewportMargins(
-                    margins.left(),
-                    margins.top(),
-                    right_margin,
-                    margins.bottom(),
-                )
+            if margins.right() != gutter or margins.left() or margins.top() or margins.bottom():
+                target.setViewportMargins(0, 0, gutter, 0)
 
     def _sync_horizontal_scroll_range(self, minimum=None, maximum=None):
         source = self.table.horizontalScrollBar()
@@ -938,28 +935,27 @@ class ReportCenterPage(QWidget):
         source_page_step = source.pageStep()
         source_single_step = source.singleStep()
         source_value = source.value()
+        source_offset = self.table.horizontalHeader().offset()
+
         for target in (self.footer, self.group_header):
             scrollbar = target.horizontalScrollBar()
             scrollbar.setRange(source_minimum, source_maximum)
             scrollbar.setPageStep(source_page_step)
             scrollbar.setSingleStep(source_single_step)
             scrollbar.setValue(source_value)
+            target.horizontalHeader().setOffset(source_offset)
 
     def _sync_horizontal_scroll(self, value):
         source = self.table.horizontalScrollBar()
-        minimum = source.minimum()
-        maximum = source.maximum()
-        page_step = source.pageStep()
-        single_step = source.singleStep()
+        source_offset = self.table.horizontalHeader().offset()
         for target in (self.footer, self.group_header):
             scrollbar = target.horizontalScrollBar()
-            # Re-apply the range as well as the value. Qt can recalculate the
-            # auxiliary view's own range after a resize/layout; copying only
-            # value then causes a shortfall visible only at the right edge.
-            scrollbar.setRange(minimum, maximum)
-            scrollbar.setPageStep(page_step)
-            scrollbar.setSingleStep(single_step)
+            scrollbar.setRange(source.minimum(), source.maximum())
+            scrollbar.setPageStep(source.pageStep())
+            scrollbar.setSingleStep(source.singleStep())
             scrollbar.setValue(value)
+            # Synchronize actual column offset as well as scrollbar value.
+            target.horizontalHeader().setOffset(source_offset)
 
     def export_xlsx(self):
         if not self.rows:
