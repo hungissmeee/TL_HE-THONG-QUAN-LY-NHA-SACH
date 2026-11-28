@@ -335,6 +335,136 @@ class BaoCaoRepository:
             start_date, end_date,
         ))
 
+    def revenue_by_shift_report(self, start_date, end_date):
+        return self._fetch_all("""
+            WITH InvoiceTotals AS (
+                SELECT
+                    CAST(HD.NGAYLAP AS date) AS NGAY,
+                    HD.MAHD,
+                    HD.MACA,
+                    C.SOCA,
+                    COALESCE(KM.TYLEGIAM, 0) AS TYLEGIAM,
+                    SUM(COALESCE(CT.SOLUONG, 0)) AS SL_BAN,
+                    SUM(COALESCE(CT.SOLUONG, 0)
+                        * COALESCE(CT.DONGIA, 0)) AS TIEN_HANG,
+                    SUM(COALESCE(CT.SOLUONG, 0)
+                        * COALESCE(SP.GIANHAP, 0)) AS GIA_VON
+                FROM dbo.HOA_DON HD
+                INNER JOIN dbo.CHI_TIET_HOA_DON CT
+                    ON CT.MAHD = HD.MAHD
+                INNER JOIN dbo.SAN_PHAM SP ON SP.MASP = CT.MASP
+                LEFT JOIN dbo.CA_LAM_VIEC C ON C.MACA = HD.MACA
+                LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
+                WHERE HD.TRANGTHAI = 1
+                  AND HD.NGAYLAP >= CONVERT(date, ?)
+                  AND HD.NGAYLAP < DATEADD(day, 1, CONVERT(date, ?))
+                GROUP BY CAST(HD.NGAYLAP AS date), HD.MAHD, HD.MACA,
+                         C.SOCA, KM.TYLEGIAM
+            ),
+            Sales AS (
+                SELECT NGAY, MACA, SOCA,
+                    SUM(SL_BAN) AS SL_BAN,
+                    SUM(TIEN_HANG
+                        - ROUND(TIEN_HANG * TYLEGIAM / 100.0, 2)) AS DOANH_THU,
+                    SUM(GIA_VON) AS GIA_VON
+                FROM InvoiceTotals
+                GROUP BY NGAY, MACA, SOCA
+            ),
+            ReturnDetails AS (
+                SELECT
+                    CAST(PDT.NGAY_DOI_TRA AS date) AS NGAY,
+                    HD.MACA,
+                    C.SOCA,
+                    SUM(CASE
+                        WHEN ISNULL(CTDT.TINHTRANGHANG, 1) = 0
+                        THEN COALESCE(CTDT.SOLUONG, 0)
+                            * COALESCE(SP.GIANHAP, 0)
+                        ELSE 0
+                    END) AS GT_HANG_HONG,
+                    SUM(
+                        CASE
+                            WHEN ISNULL(CTDT.TINHTRANGHANG, 1) = 0
+                              OR (
+                                  ISNULL(CTDT.HINH_THUC_XU_LY, 0) = 0
+                                  AND ISNULL(CTDT.TINHTRANGHANG, 1) = 1
+                              )
+                            THEN -COALESCE(CTDT.SOLUONG, 0)
+                                * COALESCE(SP.GIANHAP, 0)
+                            ELSE 0
+                        END
+                        + CASE
+                            WHEN ISNULL(CTDT.HINH_THUC_XU_LY, 0) = 1
+                            THEN COALESCE(CTDT.SOLUONG, 0)
+                                * COALESCE(SP.GIANHAP, 0)
+                            ELSE 0
+                        END
+                    ) AS DIEU_CHINH_GIA_VON
+                FROM dbo.PHIEU_DOI_TRA PDT
+                INNER JOIN dbo.HOA_DON HD ON HD.MAHD = PDT.MAHD
+                LEFT JOIN dbo.CA_LAM_VIEC C ON C.MACA = HD.MACA
+                INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT
+                    ON CTDT.MAPDT = PDT.MAPDT
+                INNER JOIN dbo.SAN_PHAM SP ON SP.MASP = CTDT.MASP
+                WHERE PDT.NGAY_DOI_TRA >= CONVERT(date, ?)
+                  AND PDT.NGAY_DOI_TRA < DATEADD(day, 1, CONVERT(date, ?))
+                GROUP BY CAST(PDT.NGAY_DOI_TRA AS date), HD.MACA, C.SOCA
+            ),
+            Refunds AS (
+                SELECT
+                    CAST(PDT.NGAY_DOI_TRA AS date) AS NGAY,
+                    HD.MACA,
+                    C.SOCA,
+                    SUM(COALESCE(PDT.TONG_TIEN_HOAN, 0)) AS TIEN_HOAN
+                FROM dbo.PHIEU_DOI_TRA PDT
+                INNER JOIN dbo.HOA_DON HD ON HD.MAHD = PDT.MAHD
+                LEFT JOIN dbo.CA_LAM_VIEC C ON C.MACA = HD.MACA
+                WHERE PDT.NGAY_DOI_TRA >= CONVERT(date, ?)
+                  AND PDT.NGAY_DOI_TRA < DATEADD(day, 1, CONVERT(date, ?))
+                GROUP BY CAST(PDT.NGAY_DOI_TRA AS date), HD.MACA, C.SOCA
+            ),
+            Periods AS (
+                SELECT NGAY, MACA, SOCA FROM Sales
+                UNION
+                SELECT NGAY, MACA, SOCA FROM ReturnDetails
+                UNION
+                SELECT NGAY, MACA, SOCA FROM Refunds
+            ),
+            Totals AS (
+                SELECT P.NGAY, P.MACA, P.SOCA,
+                    COALESCE(S.SL_BAN, 0) AS SL_BAN,
+                    COALESCE(S.DOANH_THU, 0) AS DOANH_THU,
+                    COALESCE(S.GIA_VON, 0)
+                        + COALESCE(D.DIEU_CHINH_GIA_VON, 0) AS GIA_VON,
+                    COALESCE(D.GT_HANG_HONG, 0) AS GT_HANG_HONG,
+                    COALESCE(F.TIEN_HOAN, 0) AS TIEN_HOAN
+                FROM Periods P
+                LEFT JOIN Sales S
+                    ON S.NGAY = P.NGAY
+                    AND (S.MACA = P.MACA OR (S.MACA IS NULL AND P.MACA IS NULL))
+                LEFT JOIN ReturnDetails D
+                    ON D.NGAY = P.NGAY
+                    AND (D.MACA = P.MACA OR (D.MACA IS NULL AND P.MACA IS NULL))
+                LEFT JOIN Refunds F
+                    ON F.NGAY = P.NGAY
+                    AND (F.MACA = P.MACA OR (F.MACA IS NULL AND P.MACA IS NULL))
+            )
+            SELECT P.NGAY,
+                CASE
+                    WHEN P.MACA IS NULL THEN N'Chưa xác định'
+                    ELSE CONCAT(N'Ca ', P.SOCA)
+                END AS CA,
+                P.SL_BAN, P.DOANH_THU, P.GIA_VON,
+                P.GT_HANG_HONG, P.TIEN_HOAN,
+                P.DOANH_THU - P.GIA_VON
+                    - P.GT_HANG_HONG - P.TIEN_HOAN AS LOI_NHUAN
+            FROM Totals P
+            ORDER BY P.NGAY, P.SOCA, P.MACA
+        """, (
+            start_date, end_date,
+            start_date, end_date,
+            start_date, end_date,
+        ))
+
     def sales_by_employee_report(self, start_date, end_date, keyword=""):
         search_sql = ""
         params = [start_date, end_date, start_date, end_date]
