@@ -1146,7 +1146,8 @@ class ReportCenterTests(unittest.TestCase):
         self.assertIn("stock_card", REPORTS)
         self.assertIn("daily_sales", REPORTS)
         self.assertIn("sales_time", REPORTS)
-        self.assertIn("cash_flow", REPORTS)
+        self.assertIn("revenue", REPORTS)
+        self.assertNotIn("cash_flow", REPORTS)
         self.assertIn("import_product", REPORTS)
         source = inspect.getsource(ReportCenterPage.export_xlsx)
         self.assertIn(".xlsx", source)
@@ -1255,7 +1256,16 @@ class ReportCenterTests(unittest.TestCase):
                 "Doanh số sau hoàn theo kỳ",
             ],
         )
-        self.assertTrue(REPORTS["cash_flow"]["period"])
+        self.assertTrue(REPORTS["revenue"]["period"])
+        self.assertEqual(
+            REPORTS["revenue"]["headers"],
+            [
+                "Thời gian", "Số lượng bán", "Doanh thu bán",
+                "Giá vốn hàng bán", "SL hàng hỏng", "Giá trị hàng hỏng",
+                "Tiền hoàn", "Doanh thu thuần", "Lợi nhuận ước tính",
+            ],
+        )
+        self.assertEqual(REPORTS["revenue"]["money_cols"], [2, 3, 5, 6, 7, 8])
 
     def test_period_selector_refreshes_period_label_and_wrapped_table_headers(self):
         import inspect
