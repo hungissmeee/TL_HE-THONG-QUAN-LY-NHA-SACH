@@ -178,7 +178,9 @@ class CatalogEditDialog(QDialog):
 class CatalogDetailDialog(QDialog):
     """Popup chi tiết chứa toàn bộ thao tác sửa và xóa mềm danh mục."""
 
-    def __init__(self, title, values, on_edit, on_delete, parent=None):
+    def __init__(
+        self, title, values, on_edit, on_delete, parent=None, can_delete=True
+    ):
         super().__init__(parent)
         self.on_edit = on_edit
         self.on_delete = on_delete
@@ -206,10 +208,11 @@ class CatalogDetailDialog(QDialog):
         edit_button.clicked.connect(self._edit)
         actions.addWidget(edit_button)
 
-        delete_button = QPushButton("Xóa mềm")
-        delete_button.setObjectName("dangerButton")
-        delete_button.clicked.connect(self._delete)
-        actions.addWidget(delete_button)
+        if can_delete:
+            delete_button = QPushButton("Xóa mềm")
+            delete_button.setObjectName("dangerButton")
+            delete_button.clicked.connect(self._delete)
+            actions.addWidget(delete_button)
 
         actions.addStretch()
         close_button = QPushButton("Đóng")
@@ -390,12 +393,18 @@ class CatalogPage(QWidget):
         name_column = self.config["fields"][1][0]
         record_name = str(record_values.get(name_column) or "")
 
+        try:
+            can_delete = self.service.can_soft_delete()
+        except Exception:
+            can_delete = False
+
         dialog = CatalogDetailDialog(
             self.config["title"],
             display_values,
             on_edit=lambda: self.edit_record(record_id, record_values),
             on_delete=lambda: self.delete_record_by_id(record_id, record_name),
             parent=self,
+            can_delete=can_delete,
         )
         dialog.exec()
 
