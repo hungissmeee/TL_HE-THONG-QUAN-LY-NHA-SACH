@@ -491,31 +491,31 @@ class TableSortingTests(unittest.TestCase):
 
 
 class SearchableSelectorTests(unittest.TestCase):
-    """Kiểm thử chọn một và nhiều giá trị từ danh mục."""
+    """Kiểm thử bộ chọn danh mục dựa trên QCompleter native của Qt."""
 
-    def test_single_select_stores_selected_code(self):
+    def test_single_select_uses_native_completer_and_selects_code(self):
+        from PySide6.QtWidgets import QCompleter
+
         selector = SearchableSingleSelect()
         selector.set_options([
             ("NXB001", "Nhà xuất bản A", False),
             ("NXB002", "Nhà xuất bản B", False),
         ])
-        selector._populate_results("A")
-        selector._select_item(selector.results.item(0))
+        self.assertIsInstance(selector.search_input.completer(), QCompleter)
+        self.assertIs(selector.results, selector.completer.popup())
 
+        selector._select_label("NXB001 - Nhà xuất bản A")
         self.assertEqual(selector.currentData(), "NXB001")
-        self.assertIn("NXB001", selector.search_input.text())
+        self.assertEqual(selector.search_input.text(), "NXB001 - Nhà xuất bản A")
         selector.close()
 
-    def test_single_select_clears_previous_choice_when_search_changes(self):
+    def test_single_select_clears_previous_choice_when_user_edits(self):
         selector = SearchableSingleSelect()
         selector.set_options([("TH001", "Thương hiệu A", False)])
-        selector._populate_results()
-        selector._select_item(selector.results.item(0))
+        selector._select_label("TH001 - Thương hiệu A")
 
-        selector._on_search("không tồn tại")
-
+        selector._on_search("TH")
         self.assertIsNone(selector.currentData())
-        self.assertEqual(selector.results.count(), 0)
         selector.close()
 
     def test_multi_select_can_add_and_remove_multiple_codes(self):
@@ -524,15 +524,12 @@ class SearchableSelectorTests(unittest.TestCase):
             ("TG001", "Tác giả A", False),
             ("TG002", "Tác giả B", False),
         ])
-        selector._populate_results()
-        selector._toggle_item(selector.results.item(0))
-        selector._populate_results()
-        selector._toggle_item(selector.results.item(1))
 
+        selector._toggle_label("TG001 - Tác giả A")
+        selector._toggle_label("TG002 - Tác giả B")
         self.assertEqual(selector.checked_codes(), ["TG001", "TG002"])
 
-        selector._populate_results()
-        selector._toggle_item(selector.results.item(0))
+        selector._toggle_label("✓ TG001 - Tác giả A")
         self.assertEqual(selector.checked_codes(), ["TG002"])
         selector.close()
 
@@ -542,33 +539,73 @@ class SearchableSelectorTests(unittest.TestCase):
             ("TG001", "Tác giả cũ", True),
             ("TG002", "Tác giả mới", False),
         ], selected_codes={"TG001"})
-        selector._populate_results()
 
         self.assertEqual(selector.checked_codes(), ["TG001"])
-        self.assertIn("Tác giả cũ", selector.results.item(0).text())
-        self.assertIn("đã xóa mềm", selector.results.item(0).text())
+        self.assertIn("Tác giả cũ", selector._populate_results()[0])
+        self.assertIn("đã xóa mềm", selector._populate_results()[0])
         selector.close()
 
-    def test_lookup_results_use_floating_popup_not_inline_layout(self):
+    def test_lookup_widgets_use_native_completer_and_do_not_inline_results(self):
+        from PySide6.QtWidgets import QCompleter
+
         single = SearchableSingleSelect()
         single.set_options([("NXB001", "Nhà xuất bản A", False)])
-        single_height = single.sizeHint().height()
-        single._on_search("Nhà")
-        self.assertTrue(single.results.isWindow())
-        self.assertTrue(single.results.windowFlags() & Qt.WindowType.Popup)
+        self.assertIsInstance(single.search_input.completer(), QCompleter)
         self.assertEqual(single.layout().indexOf(single.results), -1)
-        self.assertEqual(single.sizeHint().height(), single_height)
+        self.assertEqual(single.completer.completionMode(), QCompleter.CompletionMode.PopupCompletion)
         single.close()
 
         multi = SearchableMultiSelect()
         multi.set_options([("TG001", "Tác giả A", False)])
-        multi_height = multi.sizeHint().height()
-        multi._on_search("Tác")
-        self.assertTrue(multi.results.isWindow())
-        self.assertTrue(multi.results.windowFlags() & Qt.WindowType.Popup)
+        self.assertIsInstance(multi.search_input.completer(), QCompleter)
         self.assertEqual(multi.layout().indexOf(multi.results), -1)
-        self.assertEqual(multi.sizeHint().height(), multi_height)
+        self.assertEqual(multi.completer.completionMode(), QCompleter.CompletionMode.PopupCompletion)
         multi.close()
+
+    def test_single_select_keeps_focus_while_typing_with_suggestions_open(self):
+        from PySide6.QtTest import QTest
+
+        selector = SearchableSingleSelect()
+        selector.set_options([
+            ("NXB001", "Nhà xuất bản A", False),
+            ("NXB002", "Nhà xuất bản B", False),
+        ])
+        selector.show()
+        selector.search_input.setFocus()
+        QTest.keyClicks(selector.search_input, "Nhà xuất")
+        QApplication.processEvents()
+
+        self.assertEqual(selector.search_input.text(), "Nhà xuất")
+        self.assertTrue(selector.search_input.hasFocus())
+        self.assertTrue(selector.completer.popup().isVisible())
+
+        QTest.keyClicks(selector.search_input, " bản")
+        QApplication.processEvents()
+        self.assertEqual(selector.search_input.text(), "Nhà xuất bản")
+        self.assertTrue(selector.search_input.hasFocus())
+        selector.close()
+
+    def test_multi_select_keeps_search_query_and_focus_after_each_selection(self):
+        selector = SearchableMultiSelect()
+        selector.set_options([
+            ("TG001", "Tác giả A", False),
+            ("TG002", "Tác giả B", False),
+        ])
+        selector.show()
+        selector.search_input.setFocus()
+        selector.search_input.setText("Tác giả")
+        selector._last_query = "Tác giả"
+
+        selector._toggle_label("TG001 - Tác giả A")
+        QApplication.processEvents()
+
+        self.assertEqual(selector.search_input.text(), "Tác giả")
+        self.assertTrue(selector.search_input.hasFocus())
+        self.assertEqual(selector.checked_codes(), ["TG001"])
+        self.assertTrue(
+            any("TG002" in label for label in selector._populate_results("Tác giả"))
+        )
+        selector.close()
 
     def test_multi_select_summary_stays_compact_and_names_remain_in_tooltip(self):
         selector = SearchableMultiSelect()
@@ -581,46 +618,7 @@ class SearchableSelectorTests(unittest.TestCase):
         self.assertIn("Tác giả B", selector.selected_label.toolTip())
         selector.close()
 
-    def test_single_select_popup_dismisses_on_outside_click(self):
-        from ui.san_pham.bo_chon import _show_lookup_popup
 
-        selector = SearchableSingleSelect()
-        selector.set_options([("NXB001", "Nhà xuất bản A", False)])
-        selector.resize(360, 120)
-        selector.show()
-        selector._populate_results()
-        _show_lookup_popup(selector.search_input, selector.results)
-        QApplication.processEvents()
-
-        self.assertTrue(selector.results.isVisible())
-        outside = selector.mapToGlobal(QPoint(selector.width() - 2, selector.height() - 2))
-        selector._popup_dismiss_filter.dismiss_if_outside(outside)
-        self.assertFalse(selector.results.isVisible())
-        selector.close()
-
-    def test_multi_select_popup_stays_open_for_anchor_or_popup_click_and_closes_outside(self):
-        from ui.san_pham.bo_chon import _show_lookup_popup
-
-        selector = SearchableMultiSelect()
-        selector.set_options([("TG001", "Tác giả A", False)])
-        selector.resize(360, 120)
-        selector.show()
-        selector._populate_results()
-        _show_lookup_popup(selector.search_input, selector.results)
-        QApplication.processEvents()
-
-        popup_point = selector.results.frameGeometry().center()
-        selector._popup_dismiss_filter.dismiss_if_outside(popup_point)
-        self.assertTrue(selector.results.isVisible())
-
-        anchor_point = selector.search_input.mapToGlobal(QPoint(4, 4))
-        selector._popup_dismiss_filter.dismiss_if_outside(anchor_point)
-        self.assertTrue(selector.results.isVisible())
-
-        outside = selector.mapToGlobal(QPoint(selector.width() - 2, selector.height() - 2))
-        selector._popup_dismiss_filter.dismiss_if_outside(outside)
-        self.assertFalse(selector.results.isVisible())
-        selector.close()
 
 
 class CatalogAddDialogTests(unittest.TestCase):

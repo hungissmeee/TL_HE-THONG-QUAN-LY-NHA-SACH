@@ -1,117 +1,28 @@
-"""SearchableSingleSelect: thành phần giao diện quản lý sản phẩm."""
+"""Các bộ chọn danh mục tìm kiếm dùng QCompleter native của Qt."""
 
-from decimal import (
-    Decimal,
-    InvalidOperation,
-)
-from PySide6.QtCore import (
-    Qt,
-    QDate,
-    QPoint,
-    QRect,
-    QEvent,
-    QObject,
-)
-from PySide6.QtGui import (
-    QDoubleValidator,
-    QIntValidator,
-)
+from PySide6.QtCore import Qt, QStringListModel, QTimer
 from PySide6.QtWidgets import (
-    QApplication,
     QWidget,
-    QDialog,
     QLabel,
-    QPushButton,
     QLineEdit,
     QVBoxLayout,
-    QHBoxLayout,
-    QFormLayout,
-    QTableWidget,
-    QHeaderView,
-    QMessageBox,
-    QAbstractItemView,
-    QComboBox,
-    QListWidget,
-    QListWidgetItem,
-    QDateEdit,
-    QGroupBox,
-)
-from ui.table_sort import (
-    SortableTableWidgetItem as QTableWidgetItem,
-    prepare_sortable_table,
-    pause_table_sorting,
-    resume_table_sorting,
+    QCompleter,
 )
 
 
-class _LookupPopupDismissFilter(QObject):
-    """Đóng popup khi nhấn bên ngoài, nhưng không chặn cú nhấn của widget đích."""
-
-    def __init__(self, anchor, popup):
-        super().__init__(anchor)
-        self.anchor = anchor
-        self.popup = popup
-
-    def dismiss_if_outside(self, global_position):
-        if not self.popup.isVisible():
-            return
-
-        popup_rect = self.popup.frameGeometry()
-        anchor_rect = QRect(
-            self.anchor.mapToGlobal(QPoint(0, 0)),
-            self.anchor.size(),
-        )
-        if (
-            not popup_rect.contains(global_position)
-            and not anchor_rect.contains(global_position)
-        ):
-            self.popup.hide()
-
-    def eventFilter(self, watched, event):
-        if event.type() == QEvent.Type.MouseButtonPress:
-            self.dismiss_if_outside(event.globalPosition().toPoint())
-        # Không tiêu thụ sự kiện: widget được nhấn bên dưới vẫn nhận click bình thường.
-        return False
-
-
-def _show_lookup_popup(anchor, popup):
-    """Hiển thị danh sách gợi ý nổi dưới ô tìm kiếm, không chiếm chỗ trong form."""
-    if popup.count() <= 0:
-        popup.hide()
-        return
-
-    row_height = max(popup.sizeHintForRow(0), 24)
-    height = min(max(row_height * min(popup.count(), 8) + 6, 72), 220)
-    width = max(anchor.width(), 260)
-    screen = anchor.screen()
-    position = anchor.mapToGlobal(QPoint(0, anchor.height()))
-
-    if screen is not None:
-        available = screen.availableGeometry()
-        width = min(width, available.width())
-        height = min(height, available.height())
-        x = max(
-            available.left(),
-            min(position.x(), available.right() - width + 1),
-        )
-        y = position.y()
-        if y + height > available.bottom() + 1:
-            above = anchor.mapToGlobal(QPoint(0, 0))
-            y = above.y() - height
-        y = max(
-            available.top(),
-            min(y, available.bottom() - height + 1),
-        )
-        position = QPoint(x, y)
-
-    popup.resize(width, height)
-    popup.move(position)
-    popup.show()
+def _make_completer(parent, model):
+    """Tạo completer dùng popup và cơ chế focus/keyboard native của Qt."""
+    completer = QCompleter(model, parent)
+    completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+    completer.setFilterMode(Qt.MatchFlag.MatchContains)
+    completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+    completer.setMaxVisibleItems(8)
+    completer.setWrapAround(False)
+    return completer
 
 
 class SearchableSingleSelect(QWidget):
-    """Widget tìm kiếm và chọn một mục từ danh sách dữ liệu."""
-    """Ô tìm kiếm để chọn một mục từ danh mục SQL Server."""
+    """Ô tìm kiếm và chọn một mục từ danh mục SQL Server."""
 
     def __init__(self, placeholder="Tìm để chọn...", parent=None):
         super().__init__(parent)
@@ -119,30 +30,26 @@ class SearchableSingleSelect(QWidget):
         self._selected_code = None
         self._selected_label = ""
         self._syncing_text = False
+        self._label_to_code = {}
 
-        self.search_input = QLineEdit()
+        self.search_input = QLineEdit(self)
         self.search_input.setPlaceholderText(placeholder)
         self.search_input.textEdited.connect(self._on_search)
 
-        # Popup độc lập, không nằm trong layout nên không làm form nhảy chiều cao.
-        self.results = QListWidget(self)
-        self.results.setWindowFlags(Qt.WindowType.Popup)
-        self.results.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.results.setMaximumHeight(220)
-        self.results.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
-        self.results.itemClicked.connect(self._select_item)
-        self.results.hide()
-        self._popup_dismiss_filter = _LookupPopupDismissFilter(
-            self.search_input, self.results
-        )
-        app = QApplication.instance()
-        if app is not None:
-            app.installEventFilter(self._popup_dismiss_filter)
+        self._model = QStringListModel(self)
+        self.completer = _make_completer(self, self._model)
+        self.search_input.setCompleter(self.completer)
+        self.completer.activated[str].connect(self._select_label)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
         layout.addWidget(self.search_input)
+
+    @property
+    def results(self):
+        """Popup QListView native do QCompleter quản lý."""
+        return self.completer.popup()
 
     def set_options(self, options, selected_code=None):
         """options: iterable (code, name, is_deleted)."""
@@ -150,111 +57,88 @@ class SearchableSingleSelect(QWidget):
             (str(code), str(name or ""), bool(is_deleted))
             for code, name, is_deleted in options
         ]
+        self._label_to_code = {}
+        labels = []
         self._selected_code = None
         self._selected_label = ""
 
         for code, name, is_deleted in self.options:
+            suffix = " (đã xóa mềm)" if is_deleted else ""
+            label = f"{code} - {name}{suffix}"
+            labels.append(label)
+            self._label_to_code[label] = code
             if selected_code is not None and str(selected_code) == code:
-                suffix = " (đã xóa mềm)" if is_deleted else ""
                 self._selected_code = code
-                self._selected_label = f"{code} - {name}{suffix}"
-                break
+                self._selected_label = label
 
+        self._model.setStringList(labels)
         self._syncing_text = True
         self.search_input.setText(self._selected_label)
         self._syncing_text = False
-        self.results.clear()
-        self.results.hide()
+        self.completer.popup().hide()
 
     def _on_search(self, text):
         if self._syncing_text:
             return
-        # Khi người dùng thay nội dung ô tìm kiếm, lựa chọn trước đó bị bỏ.
-        self._selected_code = None
-        self._selected_label = ""
-        self._populate_results(text)
-        _show_lookup_popup(self.search_input, self.results)
+        if text != self._selected_label:
+            self._selected_code = None
+            self._selected_label = ""
 
     def _populate_results(self, keyword=""):
-        self.results.clear()
+        """Trả về các lựa chọn khớp từ khóa; Qt tự lọc model khi người dùng gõ."""
         keyword = (keyword or "").strip().casefold()
-        for code, name, is_deleted in self.options:
-            if keyword and keyword not in code.casefold() and keyword not in name.casefold():
-                continue
-            suffix = " (đã xóa mềm)" if is_deleted else ""
-            item = QListWidgetItem(f"{code} - {name}{suffix}")
-            item.setData(Qt.ItemDataRole.UserRole, code)
-            self.results.addItem(item)
+        return [
+            label for label in self._label_to_code
+            if not keyword or keyword in label.casefold()
+        ]
 
     def _select_item(self, item):
-        code = item.data(Qt.ItemDataRole.UserRole)
-        for option_code, name, is_deleted in self.options:
-            if option_code == code:
-                suffix = " (đã xóa mềm)" if is_deleted else ""
-                self._selected_code = option_code
-                self._selected_label = f"{option_code} - {name}{suffix}"
-                break
+        """Giữ tương thích cho các luồng gọi nội bộ bằng chuỗi hoặc QModelIndex."""
+        if hasattr(item, "data"):
+            label = item.data(Qt.ItemDataRole.DisplayRole)
+        elif hasattr(item, "text"):
+            label = item.text()
+        else:
+            label = str(item)
+        self._select_label(str(label or ""))
 
+    def _select_label(self, label):
+        code = self._label_to_code.get(str(label))
+        if code is None:
+            return
+        self._selected_code = code
+        self._selected_label = str(label)
         self._syncing_text = True
         self.search_input.setText(self._selected_label)
         self._syncing_text = False
-        self.results.hide()
+        self.search_input.setFocus(Qt.FocusReason.OtherFocusReason)
+        self.search_input.setCursorPosition(len(self._selected_label))
+        self.completer.popup().hide()
 
     def currentData(self):
         return self._selected_code
 
 
-
-
-"""SearchableMultiSelect: thành phần giao diện quản lý sản phẩm."""
-
-from decimal import Decimal, InvalidOperation
-from PySide6.QtCore import Qt, QDate
-from PySide6.QtGui import QDoubleValidator, QIntValidator
-from PySide6.QtWidgets import (
-    QWidget, QDialog, QLabel, QLineEdit, QPushButton, QComboBox,
-    QVBoxLayout, QHBoxLayout, QFormLayout, QTableWidget,
-    QHeaderView, QAbstractItemView, QMessageBox, QSpinBox,
-    QDoubleSpinBox, QGroupBox, QDateEdit, QCheckBox,
-    QListWidget, QListWidgetItem, QCompleter, QFrame,
-)
-from ui.table_sort import (
-    SortableTableWidgetItem as QTableWidgetItem,
-    prepare_sortable_table,
-    pause_table_sorting,
-    resume_table_sorting,
-)
-
-
 class SearchableMultiSelect(QWidget):
-    """Widget tìm kiếm và chọn nhiều mục từ danh sách dữ liệu."""
-    """Ô tìm kiếm để chọn nhiều mục; nhấn kết quả để thêm/bỏ chọn."""
+    """Ô tìm kiếm dùng QCompleter native để chọn nhiều mục."""
 
     def __init__(self, placeholder="Tìm để chọn...", parent=None):
         super().__init__(parent)
         self.options = []
         self.selected_codes = set()
+        self._last_query = ""
+        self._label_to_code = {}
 
-        self.search_input = QLineEdit()
+        self.search_input = QLineEdit(self)
         self.search_input.setPlaceholderText(placeholder)
         self.search_input.textEdited.connect(self._on_search)
 
-        # Popup độc lập, không chiếm diện tích của biểu mẫu sản phẩm.
-        self.results = QListWidget(self)
-        self.results.setWindowFlags(Qt.WindowType.Popup)
-        self.results.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.results.setMaximumHeight(220)
-        self.results.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
-        self.results.itemClicked.connect(self._toggle_item)
-        self.results.hide()
-        self._popup_dismiss_filter = _LookupPopupDismissFilter(
-            self.search_input, self.results
-        )
-        app = QApplication.instance()
-        if app is not None:
-            app.installEventFilter(self._popup_dismiss_filter)
+        self._model = QStringListModel(self)
+        self.completer = _make_completer(self, self._model)
+        self.search_input.setCompleter(self.completer)
+        self.completer.activated[str].connect(self._toggle_label)
 
-        self.selected_label = QLabel("Chưa chọn mục nào")
+        self.selected_label = QLabel("Chưa chọn mục nào", self)
         self.selected_label.setWordWrap(False)
         self.selected_label.setMaximumHeight(22)
         self.selected_label.setStyleSheet("color: #AAB7C8; font-size: 13px;")
@@ -264,6 +148,11 @@ class SearchableMultiSelect(QWidget):
         layout.setSpacing(4)
         layout.addWidget(self.search_input)
         layout.addWidget(self.selected_label)
+
+    @property
+    def results(self):
+        """Popup QListView native do QCompleter quản lý."""
+        return self.completer.popup()
 
     def set_options(self, options, selected_codes=None):
         """options: iterable (code, name, is_deleted)."""
@@ -276,37 +165,75 @@ class SearchableMultiSelect(QWidget):
             str(code) for code in (selected_codes or set())
             if str(code) in valid_codes
         }
+        self._last_query = ""
         self.search_input.clear()
-        self.results.clear()
-        self.results.hide()
+        self.completer.popup().hide()
+        self._refresh_completion_model()
         self._update_selected_label()
 
     def _on_search(self, text):
-        self._populate_results(text)
-        _show_lookup_popup(self.search_input, self.results)
+        self._last_query = text
 
     def _populate_results(self, keyword=""):
-        self.results.clear()
+        """Trả về lựa chọn khớp từ khóa mà không tự quản lý popup."""
         keyword = (keyword or "").strip().casefold()
+        return [
+            label for label, _ in self._completion_entries()
+            if not keyword or keyword in label.casefold()
+        ]
+
+    def _completion_entries(self):
+        entries = []
+        self._label_to_code = {}
         for code, name, is_deleted in self.options:
-            if keyword and keyword not in code.casefold() and keyword not in name.casefold():
-                continue
             marker = "✓ " if code in self.selected_codes else ""
             suffix = " (đã xóa mềm)" if is_deleted else ""
-            item = QListWidgetItem(f"{marker}{code} - {name}{suffix}")
-            item.setData(Qt.ItemDataRole.UserRole, code)
-            self.results.addItem(item)
+            label = f"{marker}{code} - {name}{suffix}"
+            entries.append((label, code))
+            self._label_to_code[label] = code
+        return entries
+
+    def _refresh_completion_model(self):
+        self._model.setStringList(
+            [label for label, _ in self._completion_entries()]
+        )
+        self.completer.setCompletionPrefix(self._last_query)
 
     def _toggle_item(self, item):
-        code = str(item.data(Qt.ItemDataRole.UserRole))
+        """Giữ tương thích cho các luồng gọi nội bộ bằng chuỗi hoặc QModelIndex."""
+        if hasattr(item, "data"):
+            label = item.data(Qt.ItemDataRole.DisplayRole)
+        elif hasattr(item, "text"):
+            label = item.text()
+        else:
+            label = str(item)
+        self._toggle_label(str(label or ""))
+
+    def _toggle_label(self, label):
+        code = self._label_to_code.get(str(label))
+        if code is None:
+            return
         if code in self.selected_codes:
             self.selected_codes.remove(code)
         else:
             self.selected_codes.add(code)
+
+        # QCompleter có thể đặt nội dung mục vừa chọn vào QLineEdit.
+        # Khôi phục từ khóa gốc để người dùng tiếp tục gõ/chọn mục khác.
+        self._refresh_completion_model()
+        self.search_input.setText(self._last_query)
+        self.search_input.setFocus(Qt.FocusReason.OtherFocusReason)
+        self.search_input.setCursorPosition(len(self._last_query))
         self._update_selected_label()
-        # Giữ kết quả đang tìm để người dùng có thể chọn nhiều mục cùng từ khóa.
-        self._populate_results(self.search_input.text())
-        _show_lookup_popup(self.search_input, self.results)
+
+        if self._last_query.strip():
+            QTimer.singleShot(0, self._reopen_completer)
+
+    def _reopen_completer(self):
+        if not self.isVisible() or not self.search_input.hasFocus():
+            return
+        self.completer.setCompletionPrefix(self._last_query)
+        self.completer.complete()
 
     def _update_selected_label(self):
         selected_names = [
@@ -314,18 +241,17 @@ class SearchableMultiSelect(QWidget):
             for code, name, _ in self.options
             if code in self.selected_codes
         ]
-        text = f"Đã chọn {len(selected_names)} mục" if selected_names else "Chưa chọn mục nào"
+        text = (
+            f"Đã chọn {len(selected_names)} mục"
+            if selected_names else "Chưa chọn mục nào"
+        )
         self.selected_label.setText(text)
         self.selected_label.setToolTip(
             "\n".join(selected_names) if selected_names else text
         )
 
     def checked_codes(self):
-        # Giữ tên phương thức cũ để không phải sửa phần lưu dữ liệu.
         return [
             code for code, _, _ in self.options
             if code in self.selected_codes
         ]
-
-
-
