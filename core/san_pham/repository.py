@@ -1,5 +1,6 @@
 """Repository truy cập dữ liệu sản phẩm và các liên kết sách/sản phẩm khác."""
 
+from core.audit_log import write_audit_log
 from core.sql_support import resolve_connection
 
 
@@ -383,6 +384,25 @@ class SanPhamRepository:
             if not code:
                 code = self._next_product_code(cursor, lock_table=True)
 
+            before_product = None
+            if product_code:
+                cursor.execute("""
+                    SELECT TENSP, BARCODE, DVT, GIABAN, VAT, ISNULL(IS_DELETED, 0)
+                    FROM dbo.SAN_PHAM WITH (UPDLOCK, HOLDLOCK)
+                    WHERE MASP = ?
+                """, code)
+                row_before = cursor.fetchone()
+                if row_before is None:
+                    raise LookupError("Sản phẩm không tồn tại hoặc đã bị xóa mềm!")
+                before_product = {
+                    "TENSP": row_before[0],
+                    "BARCODE": row_before[1],
+                    "DVT": row_before[2],
+                    "GIABAN": row_before[3],
+                    "VAT": row_before[4],
+                    "IS_DELETED": row_before[5],
+                }
+
             barcode = data.get("barcode") or None
             if barcode:
                 cursor.execute("""
@@ -473,6 +493,27 @@ class SanPhamRepository:
                         VALUES (?, ?, ?)
                     """, code, data.get("ngaysx"), data.get("math"))
 
+            write_audit_log(
+                cursor,
+                "SAN_PHAM",
+                "UPDATE" if product_code else "INSERT",
+                {"MASP": code},
+                before=before_product,
+                after={
+                    "TENSP": data["tensp"],
+                    "BARCODE": barcode,
+                    "DVT": data["dvt"],
+                    "GIABAN": data["giaban"],
+                    "VAT": data["vat"],
+                    "ISBN": data.get("isbn"),
+                    "NAMXB": data.get("namxb"),
+                    "MANXB": data.get("manxb"),
+                    "AUTHORS": data.get("authors"),
+                    "GENRES": data.get("genres"),
+                    "NGAYSX": data.get("ngaysx"),
+                    "MATH": data.get("math"),
+                },
+            )
             conn.commit()
             return code
         except Exception:
@@ -512,6 +553,14 @@ class SanPhamRepository:
                 raise RuntimeError(
                     "Không thể xóa sản phẩm. Vui lòng tải lại dữ liệu và thử lại."
                 )
+            write_audit_log(
+                cursor,
+                "SAN_PHAM",
+                "UPDATE",
+                {"MASP": product_code},
+                before={"TENSP": product[0], "IS_DELETED": 0},
+                after={"TENSP": product[0], "IS_DELETED": 1},
+            )
             conn.commit()
             return product[0]
         except Exception:
