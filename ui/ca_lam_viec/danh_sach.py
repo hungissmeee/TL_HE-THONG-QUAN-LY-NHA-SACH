@@ -202,7 +202,7 @@ class ShiftWindow(QWidget):
         self.employee_name_label = QLabel(
             f"Tài khoản: {self.username} | Vai trò: {self.employee_role}"
         )
-        self.employee_server_time_label = QLabel("Giờ SQL Server: --")
+        self.employee_server_time_label = QLabel("Thời gian hệ thống: --")
         info.addWidget(self.employee_name_label)
         info.addStretch()
         info.addWidget(self.employee_server_time_label)
@@ -218,7 +218,7 @@ class ShiftWindow(QWidget):
             note_text = "Chỉ hiển thị ca đang diễn ra tại thời điểm hiện tại. Bạn chỉ có thể đăng ký ca đang diễn ra."
         note = QLabel(note_text)
         note.setWordWrap(True)
-        note.setStyleSheet("color: #AAB7C8; font-size: 11px;")
+        note.setStyleSheet("color: #AAB7C8; font-size: 13px;")
         root.addWidget(note)
 
         self.employee_shift_table = self._make_table(
@@ -241,10 +241,10 @@ class ShiftWindow(QWidget):
         try:
             server_now = self.service.get_server_time()
             self.employee_server_time_label.setText(
-                "Giờ SQL Server: " + server_now.strftime("%d/%m/%Y %H:%M:%S")
+                "Thời gian hệ thống: " + server_now.strftime("%d/%m/%Y %H:%M:%S")
             )
         except Exception as error:
-            self._show_db_error("Không lấy được thời gian SQL Server", error)
+            self._show_db_error("Không lấy được thời gian hệ thống", error)
             return
         self.load_employee_shifts()
 
@@ -364,7 +364,7 @@ class ShiftWindow(QWidget):
         self.add_shift_button.clicked.connect(self.add_shift)
         header.addWidget(self.add_shift_button)
 
-        self.manager_server_time_label = QLabel("Giờ SQL Server: --")
+        self.manager_server_time_label = QLabel("Thời gian hệ thống: --")
         header.addWidget(self.manager_server_time_label)
 
         self.manager_refresh_button = QPushButton("Làm mới")
@@ -454,7 +454,7 @@ class ShiftWindow(QWidget):
     def refresh_manager_view(self):
         try:
             summary = self.service.get_manager_summary()
-            self.manager_server_time_label.setText("Giờ SQL Server: " + summary["server_time"].strftime("%d/%m/%Y %H:%M:%S"))
+            self.manager_server_time_label.setText("Thời gian hệ thống: " + summary["server_time"].strftime("%d/%m/%Y %H:%M:%S"))
             self.active_shift_stat.setText(f"Ca đang diễn ra: {summary['active_shifts']}")
             self.active_employee_stat.setText(f"Nhân viên đang làm: {summary['active_employees']}")
             self.today_shift_stat.setText(f"Ca trong ngày: {summary['today_shifts']}")
