@@ -1133,6 +1133,45 @@ class ShiftDateFormatterTests(unittest.TestCase):
 
 
 
+class ImportDialogLayoutTests(unittest.TestCase):
+    """Đảm bảo xem và chỉnh sửa phiếu nhập là hai thao tác riêng."""
+
+    def test_import_list_has_separate_edit_action(self):
+        import inspect
+        from ui.phieu_nhap.danh_sach import ImportWindow
+
+        build_ui = inspect.getsource(ImportWindow._build_ui)
+        edit_handler = inspect.getsource(ImportWindow.open_selected_import_edit)
+        view_handler = inspect.getsource(ImportWindow.open_import_detail)
+
+        self.assertIn('QPushButton("Chỉnh sửa")', build_ui)
+        self.assertIn("self.edit_button.clicked.connect(self.open_selected_import_edit)", build_ui)
+        self.assertIn("EditImportDialog(", edit_handler)
+        self.assertIn("ImportDetailDialog(", view_handler)
+        self.assertNotIn("EditImportDialog", view_handler)
+
+    def test_import_detail_dialog_is_read_only_again(self):
+        import inspect
+        from ui.phieu_nhap.chi_tiet import ImportDetailDialog
+
+        source = inspect.getsource(ImportDetailDialog._build_ui)
+        self.assertIn('"In phiếu nhập"', source)
+        self.assertIn('"Đóng"', source)
+        self.assertNotIn("Chỉnh sửa thông tin chung", source)
+        self.assertNotIn("Sửa chi tiết hàng hóa", source)
+        self.assertNotIn("self.supplier_combo", source)
+
+    def test_separate_import_editor_keeps_detail_lock_and_header_edit(self):
+        import inspect
+        from ui.phieu_nhap.tao_bieu_mau import EditImportDialog
+
+        source = inspect.getsource(EditImportDialog)
+        self.assertIn("def save_import_header", source)
+        self.assertIn("self.save_header_button", source)
+        self.assertIn("if not self.allow_edit_details", source)
+        self.assertIn("self.cart_table.setEnabled(False)", source)
+
+
 class ReportCenterTests(unittest.TestCase):
     """Kiểm tra trung tâm báo cáo thống nhất và danh mục POS."""
 
