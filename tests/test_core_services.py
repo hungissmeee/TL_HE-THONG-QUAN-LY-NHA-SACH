@@ -880,6 +880,10 @@ class FakeReportRepository(BaoCaoRepository):
         self.calls.append(("import_detail_report", start, end, keyword))
         return []
 
+    def import_product_report(self, start, end, keyword=""):
+        self.calls.append(("import_product_report", start, end, keyword))
+        return []
+
     def import_supplier_report(self, start, end, keyword=""):
         self.calls.append(("import_supplier_report", start, end, keyword))
         return []
@@ -911,7 +915,7 @@ class ReportServiceTests(unittest.TestCase):
             "daily_sales_report", "sales_by_period_report",
             "sales_by_employee_report", "sales_by_product_report",
             "promotion_report", "return_detail_report",
-            "import_detail_report", "import_supplier_report",
+            "import_detail_report", "import_product_report", "import_supplier_report",
             "current_inventory_report", "stock_movement_report",
             "stock_card_report", "shift_report",
         ):
@@ -957,6 +961,17 @@ class ReportServiceTests(unittest.TestCase):
             self.service.sales_by_product_report(
                 "2026-01-01", "2026-01-31", "x" * 101
             )
+
+    def test_import_product_report_delegates_with_validated_dates_and_keyword(self):
+        self.service.import_product_report(
+            "2026-11-01", "2026-11-30", "BARCODE01"
+        )
+        self.assertEqual(
+            self.repository.calls[-1],
+            ("import_product_report", "2026-11-01", "2026-11-30", "BARCODE01"),
+        )
+        with self.assertRaisesRegex(ValueError, "không được lớn hơn"):
+            self.service.import_product_report("2026-11-30", "2026-11-01")
 
     def test_current_inventory_validates_threshold_and_status(self):
         self.service.current_inventory_report(10, "low", "book")
@@ -1030,8 +1045,8 @@ class ReportServiceTests(unittest.TestCase):
         repository.daily_sales_report("2026-01-01", "2026-01-31", None, "NV01")
         select = repository.sql.split("FROM InvoiceLines I", 1)[0]
         ordered_tokens = [
-            "SELECT I.MAHD, I.NGAYLAP, I.TENNV,",
-            "N'Khách lẻ',",
+            "SELECT CAST(I.NGAYLAP AS date), I.MAHD, N'Bán hàng', I.TENNV,",
+            "CASE WHEN I.SOCA IS NULL",
             "I.SO_DONG, I.SO_LUONG, I.TIEN_HANG,",
             "COALESCE(RH.SO_PHIEU_TRA, 0)",
             "COALESCE(I.TIENKHACHDUA, 0)",
@@ -1059,13 +1074,40 @@ class ReportServiceTests(unittest.TestCase):
         ordered_tokens = [
             "SELECT PN.MAPN, PN.NGAYNHAP",
             "COALESCE(NCC.TENNCC, PN.MANCC, N''), CT.MASP",
-            "COALESCE(SP.TENSP, N''), COALESCE(CT.SOLUONG, 0)",
-            "COALESCE(CT.DONGIA, 0)",
+            "COALESCE(SP.TENSP, N''), COALESCE(SP.DVT, N''),",
+            "COALESCE(CT.SOLUONG, 0), COALESCE(CT.DONGIA, 0)",
             "COALESCE(CT.SOLUONG, 0) * COALESCE(CT.DONGIA, 0)",
             "COALESCE(PN.SHDNCC, N''), COALESCE(NV.TENNV, PN.MANV, N'')",
         ]
         positions = [select.index(token) for token in ordered_tokens]
         self.assertEqual(positions, sorted(positions))
+
+    def test_import_product_report_uses_only_persisted_purchase_values(self):
+        class CaptureRepository(BaoCaoRepository):
+            def __init__(self):
+                self.sql = ""
+                self.params = None
+
+            def _fetch_all(self, sql, params=()):
+                self.sql = sql
+                self.params = params
+                return []
+
+        repository = CaptureRepository()
+        repository.import_product_report(
+            "2026-01-01", "2026-01-31", "BOOK"
+        )
+        self.assertIn("SUM(CT.SOLUONG)", repository.sql)
+        self.assertIn("SUM(CT.SOLUONG * CT.DONGIA)", repository.sql)
+        self.assertIn("COUNT(DISTINCT PN.MAPN)", repository.sql)
+        self.assertIn("PN.TRANGTHAI", repository.sql)
+        self.assertNotIn("CHIETKHAU", repository.sql.upper())
+        self.assertNotIn("TRALAI", repository.sql.upper())
+        self.assertEqual(
+            repository.params,
+            ("2026-01-01", "2026-01-31",
+             "%BOOK%", "%BOOK%", "%BOOK%", "%BOOK%"),
+        )
 
     def test_sales_product_projection_matches_product_report_column_order(self):
         class CaptureRepository(BaoCaoRepository):
