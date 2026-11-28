@@ -21,7 +21,7 @@ class ChangePasswordDialog(QDialog):
         self.setWindowModality(Qt.WindowModality.WindowModal)
 
         # Tiêu đề
-        title = QLabel("ĐỔI MẬT KHẨU SQL SERVER")
+        title = QLabel("ĐỔI MẬT KHẨU TÀI KHOẢN")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # Mật khẩu hiện tại
