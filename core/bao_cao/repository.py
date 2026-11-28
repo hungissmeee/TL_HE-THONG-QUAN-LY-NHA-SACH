@@ -242,10 +242,9 @@ class BaoCaoRepository:
                     SUM(COALESCE(CT.SOLUONG, 0)
                         * COALESCE(CT.DONGIA, 0)) AS TIEN_HANG,
                     SUM(COALESCE(CT.SOLUONG, 0)
-                        * COALESCE(SP.GIANHAP, 0)) AS GIA_VON
+                        * COALESCE(CT.GIAVON, 0)) AS GIA_VON
                 FROM dbo.HOA_DON HD
                 INNER JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
-                INNER JOIN dbo.SAN_PHAM SP ON SP.MASP = CT.MASP
                 LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
                 WHERE HD.TRANGTHAI = 1
                   AND HD.NGAYLAP >= CONVERT(date, ?)
@@ -266,7 +265,7 @@ class BaoCaoRepository:
                     SUM(CASE
                         WHEN ISNULL(CTDT.TINHTRANGHANG, 1) = 0
                         THEN COALESCE(CTDT.SOLUONG, 0)
-                            * COALESCE(SP.GIANHAP, 0)
+                            * COALESCE(CTHD.GIAVON, 0)
                         ELSE 0
                     END) AS GT_HANG_HONG,
                     SUM(
@@ -277,20 +276,21 @@ class BaoCaoRepository:
                                   AND ISNULL(CTDT.TINHTRANGHANG, 1) = 1
                               )
                             THEN -COALESCE(CTDT.SOLUONG, 0)
-                                * COALESCE(SP.GIANHAP, 0)
+                                * COALESCE(CTHD.GIAVON, 0)
                             ELSE 0
                         END
                         + CASE
                             WHEN ISNULL(CTDT.HINH_THUC_XU_LY, 0) = 1
                             THEN COALESCE(CTDT.SOLUONG, 0)
-                                * COALESCE(SP.GIANHAP, 0)
+                                * COALESCE(CTHD.GIAVON, 0)
                             ELSE 0
                         END
                     ) AS DIEU_CHINH_GIA_VON
                 FROM dbo.PHIEU_DOI_TRA PDT
                 INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT
                     ON CTDT.MAPDT = PDT.MAPDT
-                INNER JOIN dbo.SAN_PHAM SP ON SP.MASP = CTDT.MASP
+                INNER JOIN dbo.CHI_TIET_HOA_DON CTHD
+                    ON CTHD.MAHD = PDT.MAHD AND CTHD.MASP = CTDT.MASP
                 WHERE PDT.NGAY_DOI_TRA >= CONVERT(date, ?)
                   AND PDT.NGAY_DOI_TRA < DATEADD(day, 1, CONVERT(date, ?))
                 GROUP BY {return_key}
@@ -348,11 +348,10 @@ class BaoCaoRepository:
                     SUM(COALESCE(CT.SOLUONG, 0)
                         * COALESCE(CT.DONGIA, 0)) AS TIEN_HANG,
                     SUM(COALESCE(CT.SOLUONG, 0)
-                        * COALESCE(SP.GIANHAP, 0)) AS GIA_VON
+                        * COALESCE(CT.GIAVON, 0)) AS GIA_VON
                 FROM dbo.HOA_DON HD
                 INNER JOIN dbo.CHI_TIET_HOA_DON CT
                     ON CT.MAHD = HD.MAHD
-                INNER JOIN dbo.SAN_PHAM SP ON SP.MASP = CT.MASP
                 LEFT JOIN dbo.CA_LAM_VIEC C ON C.MACA = HD.MACA
                 LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
                 WHERE HD.TRANGTHAI = 1
@@ -378,7 +377,7 @@ class BaoCaoRepository:
                     SUM(CASE
                         WHEN ISNULL(CTDT.TINHTRANGHANG, 1) = 0
                         THEN COALESCE(CTDT.SOLUONG, 0)
-                            * COALESCE(SP.GIANHAP, 0)
+                            * COALESCE(CTHD.GIAVON, 0)
                         ELSE 0
                     END) AS GT_HANG_HONG,
                     SUM(
@@ -389,13 +388,13 @@ class BaoCaoRepository:
                                   AND ISNULL(CTDT.TINHTRANGHANG, 1) = 1
                               )
                             THEN -COALESCE(CTDT.SOLUONG, 0)
-                                * COALESCE(SP.GIANHAP, 0)
+                                * COALESCE(CTHD.GIAVON, 0)
                             ELSE 0
                         END
                         + CASE
                             WHEN ISNULL(CTDT.HINH_THUC_XU_LY, 0) = 1
                             THEN COALESCE(CTDT.SOLUONG, 0)
-                                * COALESCE(SP.GIANHAP, 0)
+                                * COALESCE(CTHD.GIAVON, 0)
                             ELSE 0
                         END
                     ) AS DIEU_CHINH_GIA_VON
@@ -404,7 +403,8 @@ class BaoCaoRepository:
                 LEFT JOIN dbo.CA_LAM_VIEC C ON C.MACA = HD.MACA
                 INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT
                     ON CTDT.MAPDT = PDT.MAPDT
-                INNER JOIN dbo.SAN_PHAM SP ON SP.MASP = CTDT.MASP
+                INNER JOIN dbo.CHI_TIET_HOA_DON CTHD
+                    ON CTHD.MAHD = HD.MAHD AND CTHD.MASP = CTDT.MASP
                 WHERE PDT.NGAY_DOI_TRA >= CONVERT(date, ?)
                   AND PDT.NGAY_DOI_TRA < DATEADD(day, 1, CONVERT(date, ?))
                 GROUP BY CAST(PDT.NGAY_DOI_TRA AS date), HD.MACA, C.SOCA
@@ -791,14 +791,13 @@ class BaoCaoRepository:
                     CAST(0 AS BIGINT) AS SL_NHAP,
                     CAST(0 AS DECIMAL(18, 2)) AS GT_NHAP,
                     SUM(COALESCE(CT.SOLUONG, 0)) AS SL_XUAT,
-                    SUM(COALESCE(CT.SOLUONG, 0))
-                        * COALESCE(SP.GIANHAP, 0) AS GT_XUAT
+                    SUM(COALESCE(CT.SOLUONG, 0)
+                        * COALESCE(CT.GIAVON, 0)) AS GT_XUAT
                 FROM dbo.HOA_DON HD
                 INNER JOIN dbo.CHI_TIET_HOA_DON CT
                     ON CT.MAHD = HD.MAHD
-                INNER JOIN dbo.SAN_PHAM SP ON SP.MASP = CT.MASP
                 WHERE HD.TRANGTHAI = 1
-                GROUP BY CT.MASP, HD.NGAYLAP, HD.MAHD, SP.GIANHAP
+                GROUP BY CT.MASP, HD.NGAYLAP, HD.MAHD
 
                 UNION ALL
 
@@ -828,12 +827,13 @@ class BaoCaoRepository:
                              AND CTDT.TINHTRANGHANG = 1
                             THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0
                         END)
-                    ) * COALESCE(SP.GIANHAP, 0) AS GT_XUAT
+                    ) * COALESCE(CTHD.GIAVON, 0) AS GT_XUAT
                 FROM dbo.PHIEU_DOI_TRA PDT
                 INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT
                     ON CTDT.MAPDT = PDT.MAPDT
-                INNER JOIN dbo.SAN_PHAM SP ON SP.MASP = CTDT.MASP
-                GROUP BY CTDT.MASP, PDT.NGAY_DOI_TRA, PDT.MAPDT, SP.GIANHAP
+                INNER JOIN dbo.CHI_TIET_HOA_DON CTHD
+                    ON CTHD.MAHD = PDT.MAHD AND CTHD.MASP = CTDT.MASP
+                GROUP BY CTDT.MASP, PDT.NGAY_DOI_TRA, PDT.MAPDT, CTHD.GIAVON
             )
         """
 

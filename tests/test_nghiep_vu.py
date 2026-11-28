@@ -1122,7 +1122,7 @@ class InvoiceSafetyTests(unittest.TestCase):
                 return next(self.rows)
 
         cursor = SequentialCursor([
-            ("100.00", "8.00"),
+            ("100.00", "8.00", "50.00"),
             ("15.00",),
         ])
         cart = {

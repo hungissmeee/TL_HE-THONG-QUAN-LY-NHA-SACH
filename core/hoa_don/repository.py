@@ -212,10 +212,11 @@ class HoaDonRepository:
 
     @staticmethod
     def assert_cart_prices_unchanged(cursor, cart, promotion_code, expected_discount_rate):
-        """Từ chối thanh toán nếu giá/VAT sản phẩm hoặc khuyến mãi đã thay đổi/hết hạn."""
+        """Đối chiếu giá/VAT và chụp giá vốn bình quân trong lúc đang khóa sản phẩm."""
+        cost_snapshots = {}
         for product_code, item in cart.items():
             cursor.execute("""
-                SELECT GIABAN, VAT
+                SELECT GIABAN, VAT, GIANHAP
                 FROM dbo.SAN_PHAM WITH (UPDLOCK, HOLDLOCK)
                 WHERE MASP = ? AND ISNULL(IS_DELETED, 0) = 0
             """, product_code)
@@ -231,6 +232,13 @@ class HoaDonRepository:
                 raise RuntimeError(
                     f"Giá bán hoặc VAT của sản phẩm {product_code} đã thay đổi trong lúc lập hóa đơn."
                 )
+
+            cost = Decimal(str(current[2] or 0))
+            if not cost.is_finite() or cost < 0:
+                raise RuntimeError(
+                    f"Giá vốn bình quân của sản phẩm {product_code} không hợp lệ."
+                )
+            cost_snapshots[product_code] = cost
 
         if promotion_code:
             cursor.execute("""
@@ -249,6 +257,7 @@ class HoaDonRepository:
                 raise RuntimeError(
                     "Chương trình khuyến mãi đã hết hạn hoặc thay đổi tỷ lệ giảm. Hãy tải lại biểu mẫu trước khi thanh toán."
                 )
+        return cost_snapshots
 
     @staticmethod
     def assert_active_shift(cursor, employee, shift):
@@ -305,7 +314,7 @@ class HoaDonRepository:
             if not is_admin:
                 self.assert_active_shift(cursor, employee, shift)
 
-            self.assert_cart_prices_unchanged(
+            cost_snapshots = self.assert_cart_prices_unchanged(
                 cursor,
                 payload["cart"],
                 payload.get("promotion_code"),
@@ -335,10 +344,10 @@ class HoaDonRepository:
                     )
                 cursor.execute("""
                     INSERT INTO dbo.CHI_TIET_HOA_DON
-                        (MAHD, MASP, DONGIA, SOLUONG, VAT)
-                    VALUES (?, ?, ?, ?, ?)
+                        (MAHD, MASP, DONGIA, SOLUONG, VAT, GIAVON)
+                    VALUES (?, ?, ?, ?, ?, ?)
                 """, invoice_code, product_code, item["price"],
-                     item["quantity"], item["vat"])
+                     item["quantity"], item["vat"], cost_snapshots[product_code])
 
             conn.commit()
             return invoice_code

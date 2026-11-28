@@ -510,6 +510,72 @@ class InvoiceServiceTests(unittest.TestCase):
 
 
 
+class InvoiceCostSnapshotTests(unittest.TestCase):
+    def test_invoice_persists_cost_captured_under_product_lock(self):
+        class FakeCursor:
+            def __init__(self):
+                self.calls = []
+                self.last_sql = ""
+                self.rowcount = 1
+
+            def execute(self, sql, *params):
+                self.last_sql = sql
+                self.calls.append((sql, params))
+                return self
+
+            def fetchone(self):
+                if "SELECT GIABAN, VAT, GIANHAP" in self.last_sql:
+                    return (Decimal("100.25"), Decimal("8.00"), Decimal("50.75"))
+                if "MAX(TRY_CONVERT(BIGINT, SUBSTRING(MAHD" in self.last_sql:
+                    return (0,)
+                return None
+
+            def close(self):
+                pass
+
+        class FakeConnection:
+            def __init__(self):
+                self.fake_cursor = FakeCursor()
+                self.committed = False
+                self.rolled_back = False
+
+            def cursor(self):
+                return self.fake_cursor
+
+            def commit(self):
+                self.committed = True
+
+            def rollback(self):
+                self.rolled_back = True
+
+        connection = FakeConnection()
+        repository = HoaDonRepository(connection)
+        code = repository.create_invoice({
+            "employee": {"manv": None},
+            "active_shift": None,
+            "cart": {
+                "SP001": {
+                    "quantity": 2,
+                    "price": Decimal("100.25"),
+                    "vat": Decimal("8.00"),
+                }
+            },
+            "promotion_code": None,
+            "discount_rate": Decimal("0"),
+            "cash": Decimal("200.50"),
+        }, is_admin=True)
+
+        self.assertEqual(code, "HD000001")
+        self.assertTrue(connection.committed)
+        self.assertFalse(connection.rolled_back)
+        sql_calls = connection.fake_cursor.calls
+        cost_read = next(call for call in sql_calls if "SELECT GIABAN, VAT, GIANHAP" in call[0])
+        self.assertIn("UPDLOCK, HOLDLOCK", cost_read[0])
+        detail_insert = next(call for call in sql_calls if "INSERT INTO dbo.CHI_TIET_HOA_DON" in call[0])
+        self.assertIn("GIAVON", detail_insert[0])
+        self.assertEqual(detail_insert[1][-1], Decimal("50.75"))
+
+
 class FakeReturnRepository(ReturnRepository):
     def __init__(self):
         self.created = None
@@ -1366,6 +1432,8 @@ class ReportServiceTests(unittest.TestCase):
         self.assertIn("M.NGAY < B.START_DATE", repository.sql)
         self.assertIn("N'Phiếu đổi trả' AS LOAI_CHUNG_TU", repository.sql)
         self.assertIn("PDT.NGAY_DOI_TRA", repository.sql)
+        self.assertIn("CT.GIAVON", repository.sql)
+        self.assertIn("CTHD.GIAVON", repository.sql)
         self.assertIn("CTDT.HINH_THUC_XU_LY = 0", repository.sql)
         self.assertIn("CTDT.TINHTRANGHANG = 1", repository.sql)
         self.assertIn("CTDT.HINH_THUC_XU_LY = 1", repository.sql)
@@ -1481,7 +1549,9 @@ class ReportServiceTests(unittest.TestCase):
         self.assertNotIn("HD.NGAYLAP", sales_cte)
         self.assertIn("SUM(COALESCE(CT.SOLUONG, 0)) AS SL_BAN", repository.sql)
         self.assertIn("CT.DONGIA", repository.sql)
-        self.assertIn("SP.GIANHAP", repository.sql)
+        self.assertIn("CT.GIAVON", repository.sql)
+        self.assertIn("CTHD.GIAVON", repository.sql)
+        self.assertNotIn("SP.GIANHAP", repository.sql)
         self.assertIn("CTDT.TINHTRANGHANG", repository.sql)
         self.assertIn("AS GT_HANG_HONG", repository.sql)
         self.assertIn("PDT.TONG_TIEN_HOAN", repository.sql)
@@ -1527,6 +1597,9 @@ class ReportServiceTests(unittest.TestCase):
         self.assertIn("C.SOCA", repository.sql)
         self.assertIn("PDT.MAHD", repository.sql)
         self.assertIn("INNER JOIN dbo.HOA_DON HD ON HD.MAHD = PDT.MAHD", repository.sql)
+        self.assertIn("CT.GIAVON", repository.sql)
+        self.assertIn("CTHD.GIAVON", repository.sql)
+        self.assertNotIn("SP.GIANHAP", repository.sql)
         self.assertIn("CAST(PDT.NGAY_DOI_TRA AS date)", repository.sql)
         self.assertIn("CTDT.TINHTRANGHANG", repository.sql)
         self.assertIn("CTDT.HINH_THUC_XU_LY", repository.sql)
