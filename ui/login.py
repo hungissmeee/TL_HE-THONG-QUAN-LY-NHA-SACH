@@ -23,7 +23,7 @@ class LoginWindow(QWidget):
         self.title = QLabel("ĐĂNG NHẬP HỆ THỐNG")
 
         self.username = QLineEdit()
-        self.username.setPlaceholderText("Tài khoản SQL Server")
+        self.username.setPlaceholderText("Tài khoản")
 
         self.password = QLineEdit()
         self.password.setPlaceholderText("Mật khẩu")
