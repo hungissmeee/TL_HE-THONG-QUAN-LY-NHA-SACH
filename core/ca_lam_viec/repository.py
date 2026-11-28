@@ -494,7 +494,8 @@ class CaLamViecRepository:
                     "Không thể xóa ca vì đã có hóa đơn liên kết với ca này."
                 )
 
-            cursor.execute("DELETE FROM dbo.LAMCA WHERE MACA = ?", int(shift_id))
+            # LAMCA tu dong duoc xoa boi FK ON DELETE CASCADE khi xoa ca.
+            # Quan ly khong can va khong duoc cap quyen DELETE truc tiep tren LAMCA.
             cursor.execute("DELETE FROM dbo.CA_LAM_VIEC WHERE MACA = ?", int(shift_id))
             if cursor.rowcount != 1:
                 raise RuntimeError("Không thể xóa ca làm việc đã chọn.")
