@@ -580,15 +580,59 @@ class SearchableSelectorTests(unittest.TestCase):
         self.assertEqual(selector.search_input.text(), "Nhà xuất bản")
         selector.close()
 
-    def test_multi_select_summary_stays_compact_and_names_remain_in_tooltip(self):
+    def test_multi_select_selected_label_displays_selected_names(self):
         selector = SearchableMultiSelect()
         selector.set_options([
             ("TG001", "Tác giả A", False),
             ("TG002", "Tác giả B", False),
-        ], selected_codes={"TG001", "TG002"})
-        self.assertEqual(selector.selected_label.text(), "Đã chọn 2 mục")
+            ("TG003", "Tác giả C", False),
+        ], selected_codes={"TG001", "TG003"})
+        self.assertEqual(
+            selector.selected_label.text(),
+            "Đã chọn: Tác giả A, Tác giả C",
+        )
         self.assertIn("Tác giả A", selector.selected_label.toolTip())
-        self.assertIn("Tác giả B", selector.selected_label.toolTip())
+        self.assertIn("Tác giả C", selector.selected_label.toolTip())
+        self.assertNotIn("Tác giả B", selector.selected_label.text())
+        selector.close()
+
+    def test_multi_select_clears_query_after_multiple_choices_and_updates_names(self):
+        selector = SearchableMultiSelect()
+        selector.set_options([
+            ("TG001", "Tác giả A", False),
+            ("TG002", "Tác giả B", False),
+        ])
+        selector.search_input.setText("Tác giả A")
+        selector._last_query = "Tác giả A"
+
+        selector._toggle_label("TG001 - Tác giả A")
+        self.assertEqual(selector.search_input.text(), "")
+        self.assertEqual(selector.selected_label.text(), "Đã chọn: Tác giả A")
+
+        selector.search_input.setText("Tác giả B")
+        selector._last_query = "Tác giả B"
+        selector._toggle_label("TG002 - Tác giả B")
+        self.assertEqual(selector.search_input.text(), "")
+        self.assertEqual(
+            selector.selected_label.text(),
+            "Đã chọn: Tác giả A, Tác giả B",
+        )
+
+        selector._toggle_label("✓ TG001 - Tác giả A")
+        self.assertEqual(selector.selected_label.text(), "Đã chọn: Tác giả B")
+        selector.close()
+
+    def test_multi_select_input_opens_native_completer_on_focus_and_click(self):
+        from ui.san_pham.bo_chon import _CompleterSearchLineEdit
+        from PySide6.QtWidgets import QLineEdit
+
+        selector = SearchableMultiSelect()
+        selector.set_options([("TG001", "Tác giả A", False)])
+        self.assertIsInstance(selector.search_input, _CompleterSearchLineEdit)
+        self.assertIsInstance(selector.search_input, QLineEdit)
+        self.assertIs(selector.search_input.completer(), selector.completer)
+        self.assertTrue(callable(selector.search_input.focusInEvent))
+        self.assertTrue(callable(selector.search_input.mousePressEvent))
         selector.close()
 
 
