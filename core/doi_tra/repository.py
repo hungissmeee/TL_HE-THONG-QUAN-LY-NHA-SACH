@@ -2,6 +2,7 @@
 
 from decimal import Decimal
 
+from core.audit_log import write_audit_log
 from core.sql_support import resolve_connection, restore_and_activate_product
 from core.doi_tra.calculation import calculate_invoice_refund
 
@@ -516,6 +517,20 @@ class ReturnRepository:
                     line["condition"], line["action"],
                 )
 
+            write_audit_log(
+                cursor,
+                "PHIEU_DOI_TRA",
+                "INSERT",
+                {"MAPDT": return_code},
+                before=None,
+                after={
+                    "MAHD": invoice_code,
+                    "MANV": employee_code,
+                    "LY_DO": reason,
+                    "TONG_TIEN_HOAN": total_refund,
+                    "CHI_TIET": payload["items"],
+                },
+            )
             conn.commit()
             return {
                 "return_code": return_code,
@@ -595,6 +610,24 @@ class ReturnRepository:
             )
             if cursor.rowcount != 1:
                 raise RuntimeError("Không thể xóa đầu phiếu đổi trả.")
+            write_audit_log(
+                cursor,
+                "PHIEU_DOI_TRA",
+                "DELETE",
+                {"MAPDT": return_code},
+                before={
+                    "CHI_TIET": [
+                        {
+                            "MASP": row[0],
+                            "SOLUONG": row[1],
+                            "TINHTRANGHANG": row[2],
+                            "HINH_THUC_XU_LY": row[3],
+                        }
+                        for row in details
+                    ],
+                },
+                after=None,
+            )
             conn.commit()
             return True
         except Exception:
