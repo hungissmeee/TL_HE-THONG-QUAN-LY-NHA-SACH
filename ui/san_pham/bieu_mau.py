@@ -176,14 +176,6 @@ class ProductFormDialog(QDialog):
         common_form.addRow("Số lượng tồn (tự động):", self.slton)
         common_form.addRow("VAT (%):", self.vat)
 
-        inventory_note = QLabel(
-            "Giá nhập bình quân và số lượng tồn không chỉnh sửa tại biểu mẫu "
-            "sản phẩm. Hệ thống tự cập nhật khi lập/hủy phiếu nhập, hóa đơn "
-            "và xử lý đổi trả."
-        )
-        inventory_note.setWordWrap(True)
-        inventory_note.setStyleSheet("color: #AAB7C8; font-size: 11px;")
-        common_form.addRow("", inventory_note)
         content_layout.addWidget(common_group)
 
         self.type_stack = QStackedWidget()
