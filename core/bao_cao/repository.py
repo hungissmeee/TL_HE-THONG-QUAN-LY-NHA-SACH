@@ -30,6 +30,7 @@ class BaoCaoRepository:
         """)
 
 
+
     def daily_sales_report(self, start_date, end_date, employee_code=None, keyword=""):
         search_sql = ""
         employee_sql = ""
@@ -81,14 +82,11 @@ class BaoCaoRepository:
                 INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT
                 GROUP BY PDT.MAHD
             )
-            SELECT CAST(I.NGAYLAP AS date), I.MAHD, N'Bán hàng', I.TENNV,
-                CASE WHEN I.SOCA IS NULL THEN N'—' ELSE CONCAT(N'Ca ', I.SOCA) END,
-                CASE WHEN I.TRANGTHAI = 1 THEN N'Hợp lệ' ELSE N'Đã hủy' END,
-                I.SO_DONG, I.SO_LUONG, I.TIEN_HANG,
+            SELECT I.MAHD, I.NGAYLAP, I.SO_LUONG, I.TIEN_HANG,
                 ROUND(I.TIEN_HANG * I.TYLEGIAM / 100.0, 2) AS TIEN_GIAM,
                 CASE WHEN I.TRANGTHAI = 1
                     THEN I.TIEN_HANG - ROUND(I.TIEN_HANG * I.TYLEGIAM / 100.0, 2)
-                    ELSE 0 END AS DOANH_THU_THUAN,
+                    ELSE 0 END AS THUC_THU,
                 COALESCE(RH.SO_PHIEU_TRA, 0), COALESCE(RL.SL_HOAN_TIEN, 0),
                 COALESCE(RL.SL_DOI_HANG, 0), COALESCE(RH.TIEN_HOAN, 0),
                 CASE WHEN I.TRANGTHAI = 1
@@ -100,7 +98,11 @@ class BaoCaoRepository:
                         I.TIEN_HANG - ROUND(I.TIEN_HANG * I.TYLEGIAM / 100.0, 2)
                         THEN COALESCE(I.TIENKHACHDUA, 0)
                           - (I.TIEN_HANG - ROUND(I.TIEN_HANG * I.TYLEGIAM / 100.0, 2))
-                        ELSE 0 END ELSE 0 END AS TIEN_THUA
+                        ELSE 0 END ELSE 0 END AS TIEN_THUA,
+                I.TENNV,
+                CASE WHEN I.SOCA IS NULL THEN N'—' ELSE CONCAT(N'Ca ', I.SOCA) END,
+                CASE WHEN I.TRANGTHAI = 1 THEN N'Hợp lệ' ELSE N'Đã hủy' END,
+                I.SO_DONG, N'Bán hàng'
             FROM InvoiceLines I
             LEFT JOIN ReturnHeaders RH ON RH.MAHD = I.MAHD
             LEFT JOIN ReturnLines RL ON RL.MAHD = I.MAHD
@@ -449,6 +451,7 @@ class BaoCaoRepository:
             ORDER BY SUM(PN.TONGTRIGIA) DESC, NCC.TENNCC
         """, tuple(params))
 
+
     def current_inventory_report(self, threshold=5, status="all", keyword=""):
         status_sql = ""
         params = [threshold]
@@ -459,24 +462,28 @@ class BaoCaoRepository:
             status_sql = " AND COALESCE(SP.SLTON, 0) <= 0"
         search_sql = ""
         if keyword:
-            search_sql = " AND (SP.MASP LIKE ? OR SP.TENSP LIKE ? OR SP.BARCODE LIKE ?)"
+            search_sql = """
+                AND (SP.MASP LIKE ? OR SP.TENSP LIKE ? OR SP.BARCODE LIKE ?)
+            """
             params.extend([f"%{keyword}%"] * 3)
         return self._fetch_all(f"""
-            SELECT SP.MASP, COALESCE(SP.BARCODE, N''),
-                COALESCE(SP.TENSP, N''), COALESCE(SP.DVT, N''),
-                COALESCE(SP.SLTON, 0), COALESCE(SP.GIANHAP, 0),
-                COALESCE(SP.GIABAN, 0),
+            SELECT ROW_NUMBER() OVER (
+                    ORDER BY COALESCE(SP.TENSP, N''), SP.MASP
+                ) AS STT,
+                SP.MASP, COALESCE(SP.TENSP, N''),
+                COALESCE(SP.DVT, N''), COALESCE(SP.SLTON, 0),
                 COALESCE(SP.SLTON, 0) * COALESCE(SP.GIANHAP, 0),
+                COALESCE(SP.GIANHAP, 0), COALESCE(SP.GIABAN, 0),
+                COALESCE(SP.BARCODE, N''),
                 CASE WHEN COALESCE(SP.SLTON, 0) <= 0 THEN N'Hết hàng'
                      WHEN SP.SLTON <= ? THEN N'Sắp hết' ELSE N'Còn hàng' END
             FROM dbo.SAN_PHAM SP
             WHERE COALESCE(SP.IS_DELETED, 0) = 0
               {status_sql}
               {search_sql}
-            ORDER BY COALESCE(SP.SLTON, 0), SP.TENSP
+            ORDER BY COALESCE(SP.TENSP, N''), SP.MASP
         """, tuple(params))
 
-    @staticmethod
     def _stock_movements_cte():
         return """
             WITH Bounds AS (
