@@ -2,7 +2,7 @@
     KHOI TAO CSDL QUAN LY NHA SACH
 
     Chay mot lan bang tai khoan DBA (sysadmin hoac tai khoan co quyen tao database/login).
-    Nhap mat khau muon dung vao bien @AdminPassword tai muc 2 truoc khi chay.
+    Thay mat khau mau trong lenh CREATE LOGIN tai muc 2 bang mat khau rieng truoc khi chay.
     File se tao SQL Server Login admin neu chua co; neu da co thi giu nguyen mat khau.
     File tao database, bang, rang buoc, role, login/user admin va cap quyen.
     Khong tao du lieu mau hoac tai khoan nhan vien.
@@ -11,41 +11,19 @@
 CREATE DATABASE CSDLQLNHASACH;
 GO
 
--- 2. Tao SQL Server Login admin
--- SUA GIA TRI @AdminPassword THANH MAT KHAU BAN MUON DUNG TRUOC KHI CHAY.
+-- 2. Tao SQL Server Login admin neu chua ton tai
+-- THAY MAT KHAU MAU BEN DUOI BANG MAT KHAU BAN TU NHAP.
 -- Neu Login admin da ton tai, script giu nguyen mat khau hien tai.
 USE master;
 GO
 
-DECLARE @AdminPassword NVARCHAR(128) = N'NHAP_MAT_KHAU_CUA_BAN';
-DECLARE @AdminPasswordLiteral NVARCHAR(258);
-DECLARE @AdminLoginSql NVARCHAR(MAX);
-
 IF SUSER_ID(N'admin') IS NULL
 BEGIN
-    IF @AdminPassword IS NULL
-       OR @AdminPassword = N'NHAP_MAT_KHAU_CUA_BAN'
-       OR LEN(@AdminPassword) < 8
-    BEGIN
-        THROW 50001, N'Hay nhap mat khau admin rieng (toi thieu 8 ky tu) vao bien @AdminPassword truoc khi chay script.', 1;
-    END;
-
-    -- Escape mat khau thanh SQL string literal an toan.
-    SET @AdminPasswordLiteral = QUOTENAME(@AdminPassword, '''');
-
-    IF @AdminPasswordLiteral IS NULL
-    BEGIN
-        THROW 50002, N'Mat khau admin khong hop le hoac vuot qua do dai cho phep.', 1;
-    END;
-
-    SET @AdminLoginSql =
-        N'CREATE LOGIN [admin] WITH PASSWORD = '
-        + @AdminPasswordLiteral
-        + N', CHECK_POLICY = ON, CHECK_EXPIRATION = OFF,'
-        + N' DEFAULT_DATABASE = [CSDLQLNHASACH];';
-
-    EXEC sys.sp_executesql @AdminLoginSql;
-    PRINT N'Da tao SQL Server Login admin bang mat khau da nhap.';
+    CREATE LOGIN [admin]
+    WITH PASSWORD = N'NHAP_MAT_KHAU_CUA_BAN',
+         CHECK_POLICY = ON,
+         CHECK_EXPIRATION = OFF,
+         DEFAULT_DATABASE = [CSDLQLNHASACH];
 END
 ELSE
 BEGIN
