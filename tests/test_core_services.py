@@ -908,6 +908,10 @@ class FakeReportRepository(BaoCaoRepository):
         self.calls.append(("revenue_report", start, end, period))
         return []
 
+    def revenue_by_shift_report(self, start, end):
+        self.calls.append(("revenue_by_shift_report", start, end))
+        return []
+
     def shift_report(self, start, end):
         self.calls.append(("shift_report", start, end))
         return []
@@ -921,7 +925,7 @@ class ReportServiceTests(unittest.TestCase):
     def test_service_exposes_defined_report_methods(self):
         for method in (
             "daily_sales_report", "sales_by_period_report", "cash_flow_report",
-            "revenue_report",
+            "revenue_report", "revenue_by_shift_report",
             "sales_by_employee_report", "sales_by_product_report",
             "promotion_report", "return_detail_report",
             "import_detail_report", "import_product_report", "import_supplier_report",
@@ -986,6 +990,15 @@ class ReportServiceTests(unittest.TestCase):
             self.service.revenue_report(
                 "2026-01-01", "2026-01-31", "invalid"
             )
+
+    def test_revenue_by_shift_report_delegates_and_validates_dates(self):
+        self.service.revenue_by_shift_report("2026-01-01", "2026-01-31")
+        self.assertEqual(
+            self.repository.calls[-1],
+            ("revenue_by_shift_report", "2026-01-01", "2026-01-31"),
+        )
+        with self.assertRaisesRegex(ValueError, "không được lớn hơn"):
+            self.service.revenue_by_shift_report("2026-01-31", "2026-01-01")
 
     def test_keyword_length_is_limited(self):
         with self.assertRaisesRegex(ValueError, "100 ký tự"):
@@ -1354,6 +1367,37 @@ class ReportServiceTests(unittest.TestCase):
             ),
         )
 
+
+    def test_revenue_by_shift_groups_invoices_and_returns_by_original_invoice_shift(self):
+        class CaptureRepository(BaoCaoRepository):
+            def __init__(self):
+                self.sql = ""
+                self.params = None
+
+            def _fetch_all(self, sql, params=()):
+                self.sql = sql
+                self.params = params
+                return []
+
+        repository = CaptureRepository()
+        repository.revenue_by_shift_report("2026-01-01", "2026-01-31")
+        self.assertIn("HD.MACA", repository.sql)
+        self.assertIn("C.SOCA", repository.sql)
+        self.assertIn("PDT.MAHD", repository.sql)
+        self.assertIn("INNER JOIN dbo.HOA_DON HD ON HD.MAHD = PDT.MAHD", repository.sql)
+        self.assertIn("CAST(PDT.NGAY_DOI_TRA AS date)", repository.sql)
+        self.assertIn("CTDT.TINHTRANGHANG", repository.sql)
+        self.assertIn("CTDT.HINH_THUC_XU_LY", repository.sql)
+        self.assertIn("P.DOANH_THU - P.GIA_VON", repository.sql)
+        self.assertEqual(repository.sql.count("?"), 6)
+        self.assertEqual(
+            repository.params,
+            (
+                "2026-01-01", "2026-01-31",
+                "2026-01-01", "2026-01-31",
+                "2026-01-01", "2026-01-31",
+            ),
+        )
 
     def test_employee_report_does_not_multiply_return_header_amounts(self):
         class CaptureRepository(BaoCaoRepository):
