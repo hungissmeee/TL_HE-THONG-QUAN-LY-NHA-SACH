@@ -176,7 +176,7 @@ REPORTS = {
     },
     "stock_movement": {
         "title": "BÁO CÁO NHẬP – XUẤT – TỒN KHO",
-        "description": "Nhập kho lấy từ chi tiết phiếu nhập hợp lệ. Xuất kho = hàng bán theo hóa đơn hợp lệ + hàng mới xuất để đổi - hàng nguyên vẹn hoàn tiền nhận lại kho; hàng hỏng vẫn được tính là đã xuất. Cuối kỳ = đầu kỳ + nhập - xuất.",
+        "description": "Nhập kho lấy từ phiếu nhập hợp lệ. Xuất kho lấy từ hóa đơn hợp lệ, cộng hàng mới xuất khi đổi và trừ hàng nguyên vẹn được hoàn vào kho; hàng hỏng không làm giảm xuất. Phiếu đổi trả được tính theo ngày xử lý.",
         "method": "stock_movement_report",
         "headers": [
             "Mã hàng", "Tên hàng", "ĐVT",
@@ -200,7 +200,7 @@ REPORTS = {
 
     "stock_card": {
         "title": "BÁO CÁO XUẤT NHẬP TỒN CHI TIẾT (THẺ KHO)",
-        "description": "Thẻ kho dùng cùng cách tính tồn đầu và lượng xuất ròng như báo cáo tổng hợp; các dòng hóa đơn đã được đối trừ hàng nguyên vẹn hoàn tiền và cộng hàng mới xuất để đổi.",
+        "description": "Thẻ kho ghi riêng hóa đơn và phiếu đổi trả theo ngày phát sinh; hàng nguyên vẹn hoàn tiền làm giảm xuất ròng, hàng mới giao khi đổi làm tăng xuất.",
         "method": "stock_card_report",
         "headers": [
             "Mã hàng", "Tên hàng", "Ngày chứng từ", "Số chứng từ",
@@ -637,15 +637,15 @@ class ReportCenterPage(QWidget):
         self._build_table_headers(definition)
         note_by_report = {
             "stock_movement": (
-                "Tồn đầu = tổng nhập hợp lệ trừ tổng xuất ròng của toàn bộ chứng từ trước ngày bắt đầu; giả định tồn ban đầu của hệ thống bằng 0. "
-                "Nhập kỳ chỉ lấy phiếu nhập hợp lệ. Xuất ròng = hóa đơn hợp lệ + hàng mới xuất để đổi - hàng nguyên vẹn hoàn tiền nhận lại kho; "
-                "hàng hỏng không được trừ khỏi xuất. Tồn cuối = tồn đầu + nhập kỳ - xuất kỳ. "
-                "Giá trị tồn và xuất ước tính theo giá nhập hiện tại."
+                "Tồn đầu = tổng nhập hợp lệ trừ tổng xuất ròng của các chứng từ trước ngày bắt đầu; giả định tồn ban đầu bằng 0. "
+                "Nhập kỳ chỉ lấy phiếu nhập hợp lệ. Xuất ròng = hóa đơn hợp lệ + lượng hàng mới xuất khi đổi - hàng nguyên vẹn nhận lại khi hoàn tiền. "
+                "Phiếu đổi trả được tính theo ngày xử lý; hàng hỏng không làm giảm xuất. "
+                "Tồn cuối = tồn đầu + nhập kỳ - xuất kỳ. Giá trị tồn và xuất ước tính theo giá nhập hiện tại."
             ),
             "stock_card": (
                 "Số dư đầu kỳ được tính từ các chứng từ trước ngày bắt đầu, giả định tồn ban đầu bằng 0. "
-                "Số lượng hóa đơn đã đối trừ hàng nguyên vẹn hoàn tiền và cộng hàng mới xuất để đổi. "
-                "Giá trị nhập lấy theo đơn giá phiếu nhập; giá trị tồn và xuất ước tính theo giá nhập hiện tại."
+                "Hóa đơn và phiếu đổi trả được ghi theo ngày phát sinh thực tế; hàng nguyên vẹn hoàn tiền làm giảm xuất, "
+                "hàng mới giao khi đổi làm tăng xuất. Giá trị nhập lấy theo đơn giá phiếu nhập; giá trị tồn và xuất ước tính theo giá nhập hiện tại."
             ),
             "current_inventory": (
                 "Báo cáo chỉ liệt kê hàng hóa trong danh mục SAN_PHAM; CSDL không quản lý tài sản máy móc, thiết bị. "
