@@ -520,6 +520,7 @@ class BaoCaoRepository:
         return self._fetch_all(f"""
             WITH InvoiceLineBase AS (
                 SELECT HD.MAHD, CT.MASP,
+                    COALESCE(CT.SOLUONG, 0) AS SO_LUONG,
                     CAST(
                         COALESCE(CT.SOLUONG, 0) * COALESCE(CT.DONGIA, 0)
                         AS DECIMAL(28, 2)
@@ -533,7 +534,7 @@ class BaoCaoRepository:
                   AND HD.NGAYLAP < DATEADD(day, 1, CONVERT(date, ?))
             ),
             InvoiceLineRunning AS (
-                SELECT MAHD, MASP, TIEN_HANG_DONG, TYLEGIAM,
+                SELECT MAHD, MASP, SO_LUONG, TIEN_HANG_DONG, TYLEGIAM,
                     SUM(TIEN_HANG_DONG) OVER (
                         PARTITION BY MAHD
                     ) AS TIEN_HANG_HD,
@@ -550,13 +551,13 @@ class BaoCaoRepository:
                 FROM InvoiceLineBase
             ),
             InvoiceLineDiscount AS (
-                SELECT MAHD, MASP, TIEN_HANG_DONG,
+                SELECT MAHD, MASP, SO_LUONG, TIEN_HANG_DONG,
                     TIEN_HANG_HD, TIEN_HANG_LUY_KE, TIEN_HANG_TRUOC,
                     ROUND(TIEN_HANG_HD * TYLEGIAM / 100.0, 2) AS TIEN_GIAM_HD
                 FROM InvoiceLineRunning
             ),
             AllocatedDiscount AS (
-                SELECT MAHD, MASP, TIEN_HANG_DONG,
+                SELECT MAHD, MASP, SO_LUONG, TIEN_HANG_DONG,
                     CASE
                         WHEN TIEN_HANG_HD > 0 THEN
                             ROUND(
@@ -574,8 +575,7 @@ class BaoCaoRepository:
             Sales AS (
                 SELECT MASP,
                     COUNT(DISTINCT MAHD) AS SO_HD,
-                    SUM(TIEN_HANG_DONG * 0 + 1) AS SO_DONG,
-                    SUM(TIEN_HANG_DONG) AS SL_TIEN_HANG,
+                    SUM(SO_LUONG) AS SL_BAN,
                     SUM(TIEN_HANG_DONG) AS DOANH_SO,
                     SUM(TIEN_HANG_DONG - TIEN_GIAM_DONG) AS DOANH_THU_THUAN
                 FROM AllocatedDiscount
