@@ -272,7 +272,7 @@ class CatalogPage(QWidget):
         description = QLabel(
             "Nhấp đúp vào một dòng để xem chi tiết và thực hiện chỉnh sửa hoặc xóa."
         )
-        description.setStyleSheet("color: #AAB7C8; font-size: 11px;")
+        description.setStyleSheet("color: #AAB7C8; font-size: 13px;")
         layout.addWidget(description)
 
         search_layout = QHBoxLayout()
