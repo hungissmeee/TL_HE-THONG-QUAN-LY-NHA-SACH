@@ -822,9 +822,7 @@ class ReportCenterPage(QWidget):
                 if is_opening_balance and col == 0:
                     product_code = str(values[0] or "").strip()
                     product_name = str(values[1] or "").strip()
-                    display_value = (
-                        f"Số dư đầu kỳ — {product_code} — {product_name}"
-                    )
+                    display_value = f"{product_code} - {product_name}"
                 item = SortableTableWidgetItem(
                     self._format_value(display_value, col, definition)
                 )
@@ -834,9 +832,11 @@ class ReportCenterPage(QWidget):
                 item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
                 if col in definition.get("money_cols", []) or col in definition.get("number_cols", []):
                     item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+                elif is_opening_balance and col == 0:
+                    item.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
                 self.table.setItem(row, col, item)
             if is_opening_balance:
-                self.table.setSpan(row, 0, 1, 12)
+                self.table.setSpan(row, 0, 1, 14)
         # Sorting can detach spans from their opening-balance rows. The report
         # is already ordered by product and voucher chronology by its SQL query.
         self.table.setSortingEnabled(self.current_report != "stock_card")
@@ -1046,19 +1046,10 @@ class ReportCenterPage(QWidget):
                 and str(row[5] or "") == "Số dư đầu kỳ"
             )
             if is_opening_balance:
-                label = (
-                    f"Số dư đầu kỳ — {str(row[0] or '').strip()} — "
-                    f"{str(row[1] or '').strip()}"
-                )
+                label = f"{str(row[0] or '').strip()} - {str(row[1] or '').strip()}"
                 worksheet.merge_range(
-                    row_index, 0, row_index, 11, label, opening_balance_fmt
+                    row_index, 0, row_index, last_col, label, opening_balance_fmt
                 )
-                # Only write opening inventory quantity and value. The other
-                # merged cells intentionally do not show receipt/issue values.
-                for col in (12, 13):
-                    value = row[col]
-                    fmt = number_fmt if col in definition.get("number_cols", []) else money_fmt
-                    worksheet.write_number(row_index, col, float(value or 0), fmt)
                 continue
 
             for col, value in enumerate(row):
