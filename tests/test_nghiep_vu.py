@@ -1260,12 +1260,25 @@ class ReportCenterTests(unittest.TestCase):
         self.assertEqual(
             REPORTS["revenue"]["headers"],
             [
-                "Thời gian", "Số lượng bán", "Doanh thu bán",
-                "Giá vốn ước tính", "SL hàng hỏng", "Giá trị hàng hỏng ước tính",
-                "Tiền hoàn", "Doanh thu thuần", "Lợi nhuận ước tính",
+                "Thời gian", "Số lượng bán", "Doanh thu bán", "Tiền hoàn",
+                "Doanh thu thuần", "Tiền mặt thực tế", "Giá vốn ước tính",
+                "SL hàng hỏng", "Giá trị hàng hỏng ước tính",
+                "Lợi nhuận ước tính",
             ],
         )
-        self.assertEqual(REPORTS["revenue"]["money_cols"], [2, 3, 5, 6, 7, 8])
+        self.assertEqual(
+            REPORTS["revenue"]["money_cols"], [2, 3, 4, 5, 6, 8, 9]
+        )
+        self.assertEqual(REPORTS["revenue"]["number_cols"], [1, 7])
+        self.assertEqual(
+            REPORTS["revenue"]["group_headers"],
+            [
+                (1, 2, "BÁN HÀNG"),
+                (3, 5, "DOANH THU & TIỀN MẶT"),
+                (6, 8, "GIÁ VỐN & HÀNG HỎNG"),
+                (9, 9, "KẾT QUẢ"),
+            ],
+        )
 
     def test_period_selector_refreshes_period_label_and_wrapped_table_headers(self):
         import inspect
