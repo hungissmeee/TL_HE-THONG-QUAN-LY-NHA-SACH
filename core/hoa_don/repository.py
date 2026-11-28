@@ -362,13 +362,25 @@ class HoaDonRepository:
         conn = self._connection()
         cursor = conn.cursor()
         try:
+            # Không tin role/is_admin do UI truyền lên; xác thực principal SQL thực.
             cursor.execute("""
-                SELECT TRANGTHAI, MANV,
-                       CASE
-                           WHEN NGAYLAP >= DATEADD(MINUTE, -5, SYSDATETIME())
-                            AND NGAYLAP <= SYSDATETIME()
-                           THEN 1 ELSE 0
-                       END
+                SELECT CASE
+                    WHEN USER_NAME() = N'admin' THEN 1
+                    WHEN IS_ROLEMEMBER(N'rl_QuanLy') = 1
+                     AND EXISTS (
+                         SELECT 1 FROM dbo.NHAN_VIEN
+                         WHERE MANV = USER_NAME()
+                           AND MANV = ? AND VAITRO = N'Quản lý'
+                     )
+                    THEN 1 ELSE 0
+                END
+            """, str(username or "").strip())
+            permission = cursor.fetchone()
+            if permission is None or int(permission[0] or 0) != 1:
+                raise PermissionError("Chỉ Quản lý/Admin được hủy hóa đơn.")
+
+            cursor.execute("""
+                SELECT TRANGTHAI
                 FROM dbo.HOA_DON WITH (UPDLOCK, HOLDLOCK)
                 WHERE MAHD = ?
             """, invoice_code)
@@ -378,27 +390,12 @@ class HoaDonRepository:
             if invoice[0] is None or int(invoice[0]) != 1:
                 raise ValueError("Hóa đơn đã bị hủy hoặc không còn ở trạng thái có hiệu lực.")
 
-            role = str(role or "").strip().casefold()
-            admin = bool(is_admin) or str(username or "").strip().casefold() == "admin"
-            manager = role == "quản lý"
-            cashier = role == "thu ngân"
-            if not (admin or manager or cashier):
-                raise PermissionError("Tài khoản không có quyền hủy hóa đơn.")
-
             cursor.execute("""
                 SELECT TOP (1) MAHD
                 FROM dbo.PHIEU_DOI_TRA WITH (UPDLOCK, HOLDLOCK)
                 WHERE MAHD = ?
             """, invoice_code)
             self.assert_no_return_vouchers(cursor.fetchone() is not None)
-
-            if cashier and not admin and not manager:
-                if str(invoice[1] or "").strip().casefold() != str(username or "").strip().casefold():
-                    raise PermissionError("Thu ngân chỉ được hủy hóa đơn do chính mình lập.")
-                if int(invoice[2] or 0) != 1:
-                    raise PermissionError(
-                        "Thu ngân chỉ được hủy hóa đơn do mình tạo trong vòng 5 phút kể từ thời điểm lập."
-                    )
 
             cursor.execute("""
                 SELECT MASP, SUM(ISNULL(SOLUONG, 0))
