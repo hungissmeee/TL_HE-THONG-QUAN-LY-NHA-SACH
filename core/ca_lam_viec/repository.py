@@ -187,6 +187,14 @@ class CaLamViecRepository:
         """
         try:
             cursor.execute(sql, int(shift_id), str(username or "").strip())
+            write_audit_log(
+                cursor,
+                "LAMCA",
+                "INSERT",
+                {"MANV": str(username or "").strip(), "MACA": int(shift_id)},
+                before=None,
+                after={"MANV": str(username or "").strip(), "MACA": int(shift_id)},
+            )
             conn.commit()
             return True
         except Exception:
@@ -298,6 +306,20 @@ class CaLamViecRepository:
             if row is None:
                 raise RuntimeError("SQL Server không trả về mã ca vừa tạo.")
             shift_id = int(row[0])
+            write_audit_log(
+                cursor,
+                "CA_LAM_VIEC",
+                "INSERT",
+                {"MACA": shift_id},
+                before=None,
+                after={
+                    "SOCA": values["soca"],
+                    "NGAYLAM": values["ngaylam"],
+                    "TGMO": values["tgmo"],
+                    "TGDONG": values["tgdong"],
+                    "TMDAUCA": values["tmdauca"],
+                },
+            )
             conn.commit()
             return shift_id
         except Exception:
@@ -506,6 +528,14 @@ class CaLamViecRepository:
             cursor.execute("DELETE FROM dbo.CA_LAM_VIEC WHERE MACA = ?", int(shift_id))
             if cursor.rowcount != 1:
                 raise RuntimeError("Không thể xóa ca làm việc đã chọn.")
+            write_audit_log(
+                cursor,
+                "CA_LAM_VIEC",
+                "DELETE",
+                {"MACA": int(shift_id)},
+                before={"MACA": int(shift_id)},
+                after=None,
+            )
             conn.commit()
             return True
         except Exception:
