@@ -144,9 +144,9 @@ class ImportDetailDialog(QDialog):
         buttons = QHBoxLayout()
         buttons.addStretch()
         if self.can_edit and self.header["status"] == 1:
-            edit_button = QPushButton("Chỉnh sửa")
-            edit_button.clicked.connect(self.edit_import)
-            buttons.addWidget(edit_button)
+            self.edit_button = QPushButton("Chỉnh sửa")
+            self.edit_button.clicked.connect(self.edit_import)
+            buttons.addWidget(self.edit_button)
         if self.on_cancel is not None and self.header["status"] == 1:
             cancel_button = QPushButton("Hủy phiếu nhập")
             cancel_button.setObjectName("dangerButton")
