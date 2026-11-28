@@ -31,15 +31,16 @@ REPORTS = {
         "headers": [
             "Mã chứng từ", "Thời gian", "SL sản phẩm", "Doanh thu",
             "Giảm giá", "Thực thu", "Tiền hoàn", "Doanh thu sau hoàn",
-            "Tiền thừa", "Nhân viên", "Ca", "Trạng thái",
-            "Số dòng", "Loại chứng từ",
+            "Nhân viên", "Ca", "Trạng thái", "Loại chứng từ",
         ],
-        "money_cols": [3, 4, 5, 6, 7, 8],
-        "number_cols": [2, 12],
+        "money_cols": [3, 4, 5, 6, 7],
+        "number_cols": [2],
         "date_cols": [1],
-        "sum_cols": [2, 3, 4, 5, 6, 7, 8],
+        "sum_cols": [2, 3, 4, 5, 6, 7],
         "search": True,
     },
+
+
 
     "sales_time": {
         "title": "BÁO CÁO BÁN HÀNG THEO THỜI GIAN",
@@ -301,7 +302,7 @@ class ReportCenterPage(QWidget):
             QTableWidget#reportTable {
                 background: #202938; alternate-background-color: #263448;
                 color: #E5E7EB; gridline-color: #344256;
-                border: 1px solid #39465A; selection-background-color: #3B526E;
+                border: none; selection-background-color: #3B526E;
                 selection-color: #FFFFFF; font-size: 10px;
             }
             QTableWidget#reportGroupHeader {
@@ -436,12 +437,10 @@ class ReportCenterPage(QWidget):
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Tìm mã / tên / chứng từ...")
         self.search_input.setMinimumWidth(100)
-        self.search_input.setMaximumWidth(260)
         self.search_input.setSizePolicy(
-            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
         )
-        filter_layout.addWidget(self.search_input)
-        filter_layout.addStretch(1)
+        filter_layout.addWidget(self.search_input, 1)
 
         self.view_button = QPushButton("Xem báo cáo")
         self.view_button.clicked.connect(self.refresh_data)
