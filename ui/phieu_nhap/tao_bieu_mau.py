@@ -487,8 +487,14 @@ class CreateImportDialog(QDialog):
 class EditImportDialog(CreateImportDialog):
     """Chỉnh sửa mặt hàng của phiếu nhập còn đủ điều kiện nghiệp vụ."""
 
-    def __init__(self, db, import_data, parent=None):
+    def __init__(
+        self, db, import_data, parent=None, allow_edit_details=True
+    ):
         self.import_data = import_data
+        self.allow_edit_details = bool(
+            allow_edit_details
+            and not import_data["header"].get("has_later_stock_movement")
+        )
         self.import_code = str(import_data["header"]["mapn"])
         self.original_import_codes = {
             str(item["masp"]) for item in import_data["items"]
@@ -500,9 +506,19 @@ class EditImportDialog(CreateImportDialog):
         self.setWindowTitle(f"Chỉnh sửa chi tiết phiếu nhập {self.import_code}")
         self.import_type_combo.setCurrentText(str(header.get("loai") or ""))
         self.import_type_combo.setEnabled(False)
-        self.supplier_combo.setEnabled(False)
-        self.supplier_invoice_input.setEnabled(False)
         self.add_supplier_button.setVisible(False)
+        current_supplier = str(header.get("mancc") or "")
+        if current_supplier and self.supplier_combo.findData(current_supplier) < 0:
+            self.supplier_combo.addItem(
+                f"{header.get('tenncc') or current_supplier} ({current_supplier})",
+                current_supplier,
+            )
+        supplier_index = self.supplier_combo.findData(current_supplier)
+        if supplier_index >= 0:
+            self.supplier_combo.setCurrentIndex(supplier_index)
+        self.initial_supplier_code = current_supplier
+        self.initial_supplier_invoice = str(header.get("shdncc") or "")
+        self.supplier_invoice_input.setText(self.initial_supplier_invoice)
         self.employee_label.setText(
             f"{header.get('tennv') or ''} ({header.get('manv') or ''})"
         )
@@ -521,10 +537,84 @@ class EditImportDialog(CreateImportDialog):
             }
         self.refresh_cart()
         self.update_total()
-        self.save_button.setText("Lưu thay đổi")
+        self.save_button.setText("Lưu chi tiết hàng hóa")
+        if not self.allow_edit_details:
+            self.product_search.setEnabled(False)
+            self.cart_table.setEnabled(False)
+            self.save_button.setEnabled(False)
+
+        edit_actions = QHBoxLayout()
+        if not self.allow_edit_details:
+            warning = QLabel(
+                "Đã có giao dịch kho phát sinh sau phiếu nhập. "
+                "Chỉ được sửa thông tin chung; chi tiết hàng hóa đã bị khóa."
+            )
+            warning.setWordWrap(True)
+            warning.setStyleSheet("color: #B45309;")
+            edit_actions.addWidget(warning, 1)
+        else:
+            edit_actions.addStretch()
+        self.save_header_button = QPushButton("Lưu thông tin chung")
+        self.save_header_button.clicked.connect(self.save_import_header)
+        edit_actions.addWidget(self.save_header_button)
+        self.layout().insertLayout(2, edit_actions)
         self.product_search.setFocus()
 
+    def save_import_header(self):
+        """Lưu nhà cung cấp và số chứng từ mà không đổi ngày hoặc người lập."""
+        supplier_code = self.supplier_combo.currentData()
+        supplier_invoice = self.supplier_invoice_input.text().strip() or None
+        if not supplier_code:
+            QMessageBox.warning(
+                self, "Thiếu nhà cung cấp",
+                "Vui lòng chọn nhà cung cấp hợp lệ."
+            )
+            return
+        if (
+            str(supplier_code) == self.initial_supplier_code
+            and (supplier_invoice or "") == self.initial_supplier_invoice
+        ):
+            QMessageBox.information(
+                self, "Không có thay đổi", "Thông tin chung chưa có thay đổi."
+            )
+            return
+        try:
+            self.service.update_import_header(
+                self.import_code, supplier_code, supplier_invoice,
+                self.username, self.employee.get("vaitro"),
+                is_admin=self.is_admin,
+            )
+            self.initial_supplier_code = str(supplier_code)
+            self.initial_supplier_invoice = supplier_invoice or ""
+            self.import_data["header"]["mancc"] = str(supplier_code)
+            self.import_data["header"]["shdncc"] = supplier_invoice
+            QMessageBox.information(
+                self, "Cập nhật thành công",
+                "Thông tin nhà cung cấp và số hóa đơn đã được cập nhật. "
+                "Bạn có thể tiếp tục chỉnh sửa chi tiết hàng hóa trong cửa sổ này."
+            )
+        except (ValueError, LookupError, PermissionError) as error:
+            QMessageBox.warning(self, "Không thể cập nhật thông tin", str(error))
+        except Exception as error:
+            QMessageBox.critical(
+                self, "Lỗi cập nhật thông tin",
+                f"{error}\\n\\nMọi thay đổi đã được hoàn tác."
+            )
+
     def save_import(self):
+        if not self.allow_edit_details:
+            return
+        pending_supplier = str(self.supplier_combo.currentData() or "")
+        pending_invoice = self.supplier_invoice_input.text().strip()
+        if (
+            pending_supplier != self.initial_supplier_code
+            or pending_invoice != self.initial_supplier_invoice
+        ):
+            QMessageBox.warning(
+                self, "Thông tin chung chưa được lưu",
+                "Vui lòng lưu thông tin chung trước khi lưu chi tiết hàng hóa."
+            )
+            return
         if not self.cart:
             QMessageBox.warning(
                 self, "Chưa có sản phẩm",
