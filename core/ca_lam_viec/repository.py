@@ -195,65 +195,7 @@ class CaLamViecRepository:
         """Kế toán ghi tiền cuối ca sau thời điểm kết thúc, chỉ một lần."""
         conn = self._connection()
         cursor = conn.cursor()
-        sql = """
-            SET XACT_ABORT ON;
-            DECLARE @Maca INT = ?;
-            DECLARE @Manv VARCHAR(20) = ?;
-            DECLARE @Cash DECIMAL(15,2) = ?;
-            DECLARE @Now DATETIME2 = SYSDATETIME();
-            DECLARE @WorkDate DATE;
-            DECLARE @StartTime TIME;
-            DECLARE @EndTime TIME;
-            DECLARE @EndAt DATETIME2;
-            DECLARE @ExistingCash DECIMAL(15,2);
-
-            IF LOWER(@Manv) <> N'admin'
-               AND LOWER(ORIGINAL_LOGIN()) <> LOWER(@Manv)
-                THROW 51200, N'Tài khoản SQL Server không khớp với nhân viên kế toán.', 1;
-
-            IF LOWER(@Manv) <> N'admin'
-               AND NOT EXISTS (
-                    SELECT 1
-                    FROM dbo.NHAN_VIEN
-                    WHERE MANV = @Manv
-                      AND LTRIM(RTRIM(VAITRO)) = N'Kế toán'
-               )
-                THROW 51201, N'Chỉ nhân viên có vai trò Kế toán được ghi tiền cuối ca.', 1;
-
-            SELECT
-                @WorkDate = CAST(NGAYLAM AS DATE),
-                @StartTime = TGMO,
-                @EndTime = TGDONG,
-                @ExistingCash = TMCUOICA
-            FROM dbo.CA_LAM_VIEC WITH (UPDLOCK, HOLDLOCK)
-            WHERE MACA = @Maca;
-
-            IF @WorkDate IS NULL OR @EndTime IS NULL OR @StartTime IS NULL
-                THROW 51202, N'Không tìm thấy ca hoặc ca chưa có giờ làm hợp lệ.', 1;
-
-            SET @EndAt = DATEADD(
-                SECOND,
-                DATEDIFF(SECOND, CAST('00:00:00' AS TIME), @EndTime),
-                DATEADD(
-                    DAY,
-                    CASE WHEN @EndTime <= @StartTime THEN 1 ELSE 0 END,
-                    CAST(@WorkDate AS DATETIME2)
-                )
-            );
-
-            IF @Now < @EndAt
-                THROW 51203, N'Chỉ được ghi tiền sau khi ca đã kết thúc.', 1;
-
-            IF @ExistingCash IS NOT NULL
-                THROW 51204, N'Tiền cuối ca đã được ghi trước đó. Mỗi ca chỉ được ghi một lần.', 1;
-
-            UPDATE dbo.CA_LAM_VIEC
-            SET TMCUOICA = @Cash
-            WHERE MACA = @Maca AND TMCUOICA IS NULL;
-
-            IF @@ROWCOUNT <> 1
-                THROW 51205, N'Không thể ghi tiền. Có thể ca đã được chốt bởi kế toán khác.', 1;
-        """
+        sql = "EXEC dbo.usp_GhiTienCuoiCa ?, ?, ?;"
         try:
             cursor.execute(
                 sql, int(shift_id), str(username or "").strip(), closing_cash
