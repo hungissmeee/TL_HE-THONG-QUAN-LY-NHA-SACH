@@ -314,8 +314,11 @@ class ImportWindow(QWidget):
             can_edit_header = active_import and (
                 self.is_admin or self.is_manager or self.is_warehouse
             )
-            can_manage_stock = active_import and (
+            can_edit_details = active_import and (
                 self.is_admin or self.is_manager or self.is_warehouse
+            )
+            can_cancel_selected = (
+                self._selected_can_cancel and not has_later
             )
             dialog = ImportDetailDialog(
                 self.db,
@@ -323,9 +326,9 @@ class ImportWindow(QWidget):
                 self,
                 on_cancel=(
                     self.cancel_selected_import
-                    if can_manage_stock and not has_later else None
+                    if can_cancel_selected else None
                 ),
-                can_edit=can_manage_stock,
+                can_edit=can_edit_details,
                 can_edit_header=can_edit_header,
                 has_later_stock_movement=has_later,
             )
