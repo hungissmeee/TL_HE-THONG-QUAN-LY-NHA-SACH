@@ -26,7 +26,6 @@ from ui.table_sort import SORT_ROLE, SortableTableWidgetItem
 REPORTS = {
     "daily_sales": {
         "title": "BÁO CÁO CUỐI NGÀY BÁN HÀNG",
-        "description": "Theo dõi hóa đơn, doanh thu, giảm giá, thực thu và tiền hoàn liên quan; không hiển thị số lượng phiếu hoặc dòng đổi trả.",
         "method": "daily_sales_report",
         "headers": [
             "Mã chứng từ", "Thời gian", "SL sản phẩm", "Doanh thu",
@@ -44,7 +43,6 @@ REPORTS = {
 
     "sales_time": {
         "title": "BÁO CÁO BÁN HÀNG THEO THỜI GIAN",
-        "description": "Tổng hợp số hóa đơn, tiền hàng, giảm giá, doanh số và tiền hoàn theo ngày, tháng hoặc năm; không cộng số lượng hàng bán và số phiếu đổi trả.",
         "method": "sales_by_period_report",
         "headers": [
             "Thời gian", "SL đơn bán", "Tổng tiền hàng",
@@ -60,7 +58,6 @@ REPORTS = {
 
     "sales_employee": {
         "title": "BÁO CÁO BÁN HÀNG THEO NHÂN VIÊN",
-        "description": "Doanh số ghi theo nhân viên lập hóa đơn; tiền hoàn ghi theo nhân viên trực tiếp xử lý phiếu đổi trả.",
         "method": "sales_by_employee_report",
         "headers": [
             "Mã NV", "Tên nhân viên", "SL hóa đơn",
@@ -74,7 +71,6 @@ REPORTS = {
 
     "sales_product": {
         "title": "BÁO CÁO BÁN HÀNG THEO SẢN PHẨM",
-        "description": "Tổng hợp số lượng và doanh số theo từng mặt hàng. Hệ thống chưa quản lý hồ sơ khách hàng nên không tách doanh số theo từng khách.",
         "method": "sales_by_product_report",
         "headers": [
             "Mã hàng", "Tên hàng", "ĐVT", "Số lượng bán",
@@ -88,7 +84,6 @@ REPORTS = {
     },
     "promotion": {
         "title": "BÁO CÁO HIỆU QUẢ KHUYẾN MÃI",
-        "description": "Tổng hợp theo hóa đơn hợp lệ trong kỳ; tiền hoàn được cộng lũy kế theo hóa đơn thuộc chương trình.",
         "method": "promotion_report",
         "headers": [
             "Mã khuyến mãi", "Tên chương trình", "Tỷ lệ giảm",
@@ -104,7 +99,6 @@ REPORTS = {
 
     "import_detail": {
         "title": "BÁO CÁO CHI TIẾT NHẬP HÀNG",
-        "description": "Chi tiết từng dòng hàng trên phiếu nhập còn hiệu lực trong kỳ đã chọn.",
         "method": "import_detail_report",
         "headers": [
             "Mã phiếu nhập", "Ngày nhập", "Loại phiếu", "Nhà cung cấp",
@@ -119,7 +113,6 @@ REPORTS = {
     },
     "import_product": {
         "title": "TỔNG HỢP MUA HÀNG THEO MẶT HÀNG",
-        "description": "Tổng hợp số lượng, trị giá và đơn giá bình quân nhập theo sản phẩm. CSDL hiện không lưu chiết khấu mua hoặc phiếu trả nhà cung cấp nên không hiển thị các chỉ tiêu đó.",
         "method": "import_product_report",
         "headers": [
             "Mã hàng", "Tên hàng", "ĐVT", "Số lượng mua",
@@ -133,7 +126,6 @@ REPORTS = {
     },
     "import_supplier": {
         "title": "BÁO CÁO NHẬP HÀNG THEO NHÀ CUNG CẤP",
-        "description": "Tổng hợp số phiếu, số lượng và trị giá nhập theo nhà cung cấp.",
         "method": "import_supplier_report",
         "headers": [
             "Mã NCC", "Nhà cung cấp", "Số điện thoại",
@@ -146,7 +138,6 @@ REPORTS = {
     },
     "return_detail": {
         "title": "BÁO CÁO CHI TIẾT ĐỔI TRẢ",
-        "description": "Tiền hoàn chỉ lấy ở cấp phiếu đổi trả; không có đơn giá hoàn từng dòng sản phẩm.",
         "method": "return_detail_report",
         "headers": [
             "Mã phiếu đổi trả", "Ngày xử lý", "Hóa đơn gốc", "Nhân viên xử lý",
@@ -161,7 +152,6 @@ REPORTS = {
     },
     "current_inventory": {
         "title": "BÁO CÁO TỒN KHO HIỆN TẠI",
-        "description": "Bảng kê hàng hóa đang tồn với số lượng và giá trị ước tính theo giá nhập hiện lưu. Hệ thống không quản lý nhóm tài sản máy móc, thiết bị.",
         "method": "current_inventory_report",
         "headers": [
             "STT", "Mã hàng", "Tên hàng hóa", "ĐVT", "Số lượng tồn",
@@ -177,7 +167,6 @@ REPORTS = {
     },
     "stock_movement": {
         "title": "BÁO CÁO NHẬP – XUẤT – TỒN KHO",
-        "description": "Nhập kho lấy từ phiếu nhập hợp lệ. Xuất kho lấy từ hóa đơn hợp lệ, cộng hàng mới xuất khi đổi và trừ hàng nguyên vẹn được hoàn vào kho; hàng hỏng không làm giảm xuất. Phiếu đổi trả được tính theo ngày xử lý.",
         "method": "stock_movement_report",
         "headers": [
             "Mã hàng", "Tên hàng", "ĐVT",
@@ -201,7 +190,6 @@ REPORTS = {
 
     "stock_card": {
         "title": "BÁO CÁO XUẤT NHẬP TỒN CHI TIẾT (THẺ KHO)",
-        "description": "Thẻ kho ghi riêng hóa đơn và phiếu đổi trả theo ngày phát sinh; hàng nguyên vẹn hoàn tiền làm giảm xuất ròng, hàng mới giao khi đổi làm tăng xuất.",
         "method": "stock_card_report",
         "headers": [
             "Mã hàng", "Tên hàng", "Ngày chứng từ", "Số chứng từ",
@@ -225,7 +213,6 @@ REPORTS = {
 
     "cash_flow": {
         "title": "BÁO CÁO TỔNG HỢP THU – CHI",
-        "description": "Tiền thu lấy từ hóa đơn hợp lệ sau giảm giá. Tiền chi gồm trị giá phiếu nhập hợp lệ và tiền hoàn khách; chưa bao gồm các khoản chi phí vận hành không được lưu trong CSDL.",
         "method": "cash_flow_report",
         "headers": [
             "Thời gian", "Tiền thu bán hàng", "Tiền chi nhập hàng",
@@ -294,8 +281,7 @@ class ReportCenterPage(QWidget):
             QWidget#reportPaper { background: #171B24; }
             QLabel { color: #D6DEE9; background: transparent; }
             QLabel#reportTitle { color: #F3F4F6; font-size: 18px; font-weight: 800; }
-            QLabel#reportDescription { color: #AAB7C8; font-size: 10px; }
-            QLabel#reportPeriod { color: #D6DEE9; font-size: 11px; font-weight: 600; }
+            QLabel#reportPeriod { color: #D6DEE9; font-size: 13px; font-weight: 600; }
             QFrame#reportFilters {
                 background: #202938; border: 1px solid #39465A; border-radius: 5px;
             }
@@ -303,7 +289,7 @@ class ReportCenterPage(QWidget):
                 background: #202938; alternate-background-color: #263448;
                 color: #E5E7EB; gridline-color: #344256;
                 border: none; selection-background-color: #3B526E;
-                selection-color: #FFFFFF; font-size: 10px;
+                selection-color: #FFFFFF; font-size: 13px;
             }
             QTableWidget#reportGroupHeader {
                 background: #29374B; color: #E5E7EB;
@@ -371,11 +357,6 @@ class ReportCenterPage(QWidget):
         self.title_label = QLabel("BÁO CÁO CUỐI NGÀY BÁN HÀNG")
         self.title_label.setObjectName("reportTitle")
         right.addWidget(self.title_label)
-
-        self.description_label = QLabel("")
-        self.description_label.setObjectName("reportDescription")
-        self.description_label.setWordWrap(True)
-        right.addWidget(self.description_label)
 
         self.period_label = QLabel("")
         self.period_label.setObjectName("reportPeriod")
@@ -451,11 +432,6 @@ class ReportCenterPage(QWidget):
         filter_layout.addWidget(self.export_button)
 
         right.addWidget(filter_frame)
-
-        self.filter_note = QLabel("")
-        self.filter_note.setWordWrap(True)
-        self.filter_note.setStyleSheet("color: #AAB7C8; font-size: 9px;")
-        right.addWidget(self.filter_note)
 
         # Một khung bảng duy nhất: tiêu đề nhóm cột, dữ liệu và hàng tổng cộng
         # nối liền nhau, không có khoảng cách như ba bảng độc lập.
@@ -562,7 +538,7 @@ class ReportCenterPage(QWidget):
         )
 
         self.status_label = QLabel("Chọn nhóm báo cáo ở thanh phía trên.")
-        self.status_label.setStyleSheet("color: #AAB7C8; font-size: 10px;")
+        self.status_label.setStyleSheet("color: #AAB7C8; font-size: 13px;")
         right.addWidget(self.status_label)
         root.addWidget(self.right_panel, 1)
 
@@ -614,7 +590,6 @@ class ReportCenterPage(QWidget):
     def _configure_report(self):
         definition = REPORTS[self.current_report]
         self.title_label.setText(definition["title"])
-        self.description_label.setText(definition["description"])
 
         selected_group = next(
             (
@@ -651,24 +626,6 @@ class ReportCenterPage(QWidget):
         self.search_input.setVisible(bool(definition.get("search")))
         self.search_input.clear()
         self._build_table_headers(definition)
-        note_by_report = {
-            "stock_movement": (
-                "Tồn đầu = tổng nhập hợp lệ trừ tổng xuất ròng của các chứng từ trước ngày bắt đầu; giả định tồn ban đầu bằng 0. "
-                "Nhập kỳ chỉ lấy phiếu nhập hợp lệ. Xuất ròng = hóa đơn hợp lệ + lượng hàng mới xuất khi đổi - hàng nguyên vẹn nhận lại khi hoàn tiền. "
-                "Phiếu đổi trả được tính theo ngày xử lý; hàng hỏng không làm giảm xuất. "
-                "Tồn cuối = tồn đầu + nhập kỳ - xuất kỳ. Giá trị tồn và xuất ước tính theo giá nhập hiện tại."
-            ),
-            "stock_card": (
-                "Số dư đầu kỳ được tính từ các chứng từ trước ngày bắt đầu, giả định tồn ban đầu bằng 0. "
-                "Hóa đơn và phiếu đổi trả được ghi theo ngày phát sinh thực tế; hàng nguyên vẹn hoàn tiền làm giảm xuất, "
-                "hàng mới giao khi đổi làm tăng xuất. Giá trị nhập lấy theo đơn giá phiếu nhập; giá trị tồn và xuất ước tính theo giá nhập hiện tại."
-            ),
-            "current_inventory": (
-                "Báo cáo chỉ liệt kê hàng hóa trong danh mục SAN_PHAM; CSDL không quản lý tài sản máy móc, thiết bị. "
-                "Giá trị tồn (*) ước tính bằng số lượng tồn nhân giá nhập hiện lưu, không phải giá vốn lịch sử."
-            ),
-        }
-        self.filter_note.setText(note_by_report.get(self.current_report, ""))
         self.refresh_data()
 
     def _on_period_changed(self, *_):
