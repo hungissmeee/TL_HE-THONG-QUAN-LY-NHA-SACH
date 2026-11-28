@@ -970,7 +970,7 @@ class ReportCenterPage(QWidget):
             "num_format": "#,##0.00",
         })
 
-        headers = definition["headers"]
+        headers = self._active_headers(definition)
         last_col = len(headers) - 1
         worksheet.merge_range(0, 0, 0, last_col, definition["title"], title_fmt)
         worksheet.set_row(0, 28)
