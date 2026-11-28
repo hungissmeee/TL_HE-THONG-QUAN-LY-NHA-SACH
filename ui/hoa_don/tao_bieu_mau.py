@@ -125,7 +125,7 @@ class CreateInvoiceDialog(QDialog):
             "Số lượng được điều chỉnh ngay trong giỏ hàng."
         )
         search_hint.setWordWrap(True)
-        search_hint.setStyleSheet("color: #AAB7C8; font-size: 11px;")
+        search_hint.setStyleSheet("color: #AAB7C8; font-size: 13px;")
         products_layout.addWidget(search_hint)
         root.addWidget(products_group)
 
