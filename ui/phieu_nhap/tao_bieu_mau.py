@@ -150,7 +150,7 @@ class CreateImportDialog(QDialog):
             "Số lượng và đơn giá nhập được chỉnh ngay trong giỏ hàng."
         )
         search_hint.setWordWrap(True)
-        search_hint.setStyleSheet("color: #AAB7C8; font-size: 11px;")
+        search_hint.setStyleSheet("color: #AAB7C8; font-size: 13px;")
         product_layout.addWidget(search_hint)
         root.addWidget(product_box)
 
@@ -175,10 +175,6 @@ class CreateImportDialog(QDialog):
             "font-size: 20px; font-weight: bold; color: #16A34A;"
         )
         total_layout.addRow("Tổng tiền hàng (đã gồm VAT):", self.total_label)
-        total_layout.addRow(
-            "Ghi chú:",
-            QLabel("VAT được lưu để tham chiếu; không cộng lại vào đơn giá.")
-        )
         bottom.addWidget(total_box, 2)
 
         actions = QVBoxLayout()
