@@ -1168,7 +1168,7 @@ class ReportCenterTests(unittest.TestCase):
         self.assertTrue(REPORTS["daily_sales"]["search"])
 
     def test_report_column_orders_prioritize_operational_fields(self):
-        from ui.bao_cao.trung_tam_bao_cao import REPORTS
+        from ui.bao_cao.trung_tam_bao_cao import ReportCenterPage, REPORTS
 
         self.assertEqual(
             REPORTS["daily_sales"]["headers"][:6],
@@ -1282,7 +1282,7 @@ class ReportCenterTests(unittest.TestCase):
         self.assertNotIn("period", REPORTS["revenue_by_shift"])
         self.assertIn(
             ("revenue_by_shift", "Doanh thu theo ca"),
-            dict(GROUPS)["BÁO CÁO DOANH THU"],
+            dict(ReportCenterPage.GROUPS)["BÁO CÁO DOANH THU"],
         )
         self.assertEqual(
             REPORTS["revenue"]["group_headers"],
