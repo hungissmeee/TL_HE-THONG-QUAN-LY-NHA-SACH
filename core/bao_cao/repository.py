@@ -68,31 +68,19 @@ class BaoCaoRepository:
                          C.SOCA, KM.TYLEGIAM
             ),
             ReturnHeaders AS (
-                SELECT MAHD, COUNT(*) AS SO_PHIEU_TRA,
-                    SUM(COALESCE(TONG_TIEN_HOAN, 0)) AS TIEN_HOAN
-                FROM dbo.PHIEU_DOI_TRA GROUP BY MAHD
-            ),
-            ReturnLines AS (
-                SELECT PDT.MAHD,
-                    SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 0
-                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_HOAN_TIEN,
-                    SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 1
-                        THEN COALESCE(CTDT.SOLUONG, 0) ELSE 0 END) AS SL_DOI_HANG
-                FROM dbo.PHIEU_DOI_TRA PDT
-                INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT
-                GROUP BY PDT.MAHD
+                SELECT MAHD, SUM(COALESCE(TONG_TIEN_HOAN, 0)) AS TIEN_HOAN
+                FROM dbo.PHIEU_DOI_TRA
+                GROUP BY MAHD
             )
             SELECT I.MAHD, I.NGAYLAP, I.SO_LUONG, I.TIEN_HANG,
                 ROUND(I.TIEN_HANG * I.TYLEGIAM / 100.0, 2) AS TIEN_GIAM,
                 CASE WHEN I.TRANGTHAI = 1
                     THEN I.TIEN_HANG - ROUND(I.TIEN_HANG * I.TYLEGIAM / 100.0, 2)
                     ELSE 0 END AS THUC_THU,
-                COALESCE(RH.SO_PHIEU_TRA, 0), COALESCE(RL.SL_HOAN_TIEN, 0),
-                COALESCE(RL.SL_DOI_HANG, 0), COALESCE(RH.TIEN_HOAN, 0),
+                COALESCE(RH.TIEN_HOAN, 0),
                 CASE WHEN I.TRANGTHAI = 1
                     THEN I.TIEN_HANG - ROUND(I.TIEN_HANG * I.TYLEGIAM / 100.0, 2)
                          - COALESCE(RH.TIEN_HOAN, 0) ELSE 0 END AS DOANH_THU_SAU_HOAN,
-                COALESCE(I.TIENKHACHDUA, 0),
                 CASE WHEN I.TRANGTHAI = 1
                     THEN CASE WHEN COALESCE(I.TIENKHACHDUA, 0) >
                         I.TIEN_HANG - ROUND(I.TIEN_HANG * I.TYLEGIAM / 100.0, 2)
@@ -105,7 +93,6 @@ class BaoCaoRepository:
                 I.SO_DONG, N'Bán hàng'
             FROM InvoiceLines I
             LEFT JOIN ReturnHeaders RH ON RH.MAHD = I.MAHD
-            LEFT JOIN ReturnLines RL ON RL.MAHD = I.MAHD
             WHERE 1 = 1 {search_sql}
             ORDER BY I.NGAYLAP DESC, I.MAHD DESC
         """, tuple(params))
@@ -127,8 +114,7 @@ class BaoCaoRepository:
                 SELECT HD.MAHD, HD.NGAYLAP, HD.TRANGTHAI,
                     COALESCE(KM.TYLEGIAM, 0) AS TYLEGIAM,
                     COALESCE(SUM(COALESCE(CT.DONGIA, 0)
-                        * COALESCE(CT.SOLUONG, 0)), 0) AS TIEN_HANG,
-                    COALESCE(SUM(COALESCE(CT.SOLUONG, 0)), 0) AS SL_BAN
+                        * COALESCE(CT.SOLUONG, 0)), 0) AS TIEN_HANG
                 FROM dbo.HOA_DON HD
                 LEFT JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
                 LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
@@ -139,7 +125,6 @@ class BaoCaoRepository:
             Sales AS (
                 SELECT {sales_key} AS KY,
                     COUNT(CASE WHEN TRANGTHAI = 1 THEN 1 END) AS SO_HOA_DON,
-                    SUM(CASE WHEN TRANGTHAI = 1 THEN SL_BAN ELSE 0 END) AS SL_BAN,
                     SUM(CASE WHEN TRANGTHAI = 1 THEN TIEN_HANG ELSE 0 END) AS TIEN_HANG,
                     SUM(CASE WHEN TRANGTHAI = 1
                         THEN ROUND(TIEN_HANG * TYLEGIAM / 100.0, 2) ELSE 0 END) AS TIEN_GIAM,
@@ -149,36 +134,104 @@ class BaoCaoRepository:
                 FROM InvoiceTotals GROUP BY {sales_key}
             ),
             ReturnHeaders AS (
-                SELECT {return_key} AS KY, COUNT(*) AS SO_PHIEU_TRA,
+                SELECT {return_key} AS KY,
                     SUM(COALESCE(TONG_TIEN_HOAN, 0)) AS TIEN_HOAN
                 FROM dbo.PHIEU_DOI_TRA
                 WHERE NGAY_DOI_TRA >= CONVERT(date, ?)
                   AND NGAY_DOI_TRA < DATEADD(day, 1, CONVERT(date, ?))
                 GROUP BY {return_key}
-            ),
-            ReturnLines AS (
-                SELECT {return_key} AS KY, SUM(COALESCE(CTDT.SOLUONG, 0)) AS SL_TRA
-                FROM dbo.PHIEU_DOI_TRA PDT
-                INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT
-                WHERE PDT.NGAY_DOI_TRA >= CONVERT(date, ?)
-                  AND PDT.NGAY_DOI_TRA < DATEADD(day, 1, CONVERT(date, ?))
-                GROUP BY {return_key}
             )
-            SELECT COALESCE(S.KY, H.KY, L.KY), COALESCE(S.SO_HOA_DON, 0),
-                COALESCE(S.SL_BAN, 0), COALESCE(S.TIEN_HANG, 0),
-                COALESCE(S.TIEN_GIAM, 0), COALESCE(S.DOAN_SO, 0),
-                COALESCE(H.SO_PHIEU_TRA, 0), COALESCE(L.SL_TRA, 0),
-                COALESCE(H.TIEN_HOAN, 0),
+            SELECT COALESCE(S.KY, H.KY), COALESCE(S.SO_HOA_DON, 0),
+                COALESCE(S.TIEN_HANG, 0), COALESCE(S.TIEN_GIAM, 0),
+                COALESCE(S.DOAN_SO, 0), COALESCE(H.TIEN_HOAN, 0),
                 COALESCE(S.DOAN_SO, 0) - COALESCE(H.TIEN_HOAN, 0)
             FROM Sales S
             FULL OUTER JOIN ReturnHeaders H ON H.KY = S.KY
-            FULL OUTER JOIN ReturnLines L ON L.KY = COALESCE(S.KY, H.KY)
             ORDER BY 1
-        """, (start_date, end_date, start_date, end_date, start_date, end_date))
+        """, (start_date, end_date, start_date, end_date))
+
+    def cash_flow_report(self, start_date, end_date, period="day"):
+        sales_periods = {
+            "day": "CAST(NGAYLAP AS date)",
+            "month": "DATEFROMPARTS(YEAR(NGAYLAP), MONTH(NGAYLAP), 1)",
+            "year": "DATEFROMPARTS(YEAR(NGAYLAP), 1, 1)",
+        }
+        import_periods = {
+            "day": "CAST(NGAYNHAP AS date)",
+            "month": "DATEFROMPARTS(YEAR(NGAYNHAP), MONTH(NGAYNHAP), 1)",
+            "year": "DATEFROMPARTS(YEAR(NGAYNHAP), 1, 1)",
+        }
+        return_periods = {
+            "day": "CAST(NGAY_DOI_TRA AS date)",
+            "month": "DATEFROMPARTS(YEAR(NGAY_DOI_TRA), MONTH(NGAY_DOI_TRA), 1)",
+            "year": "DATEFROMPARTS(YEAR(NGAY_DOI_TRA), 1, 1)",
+        }
+        sales_key = sales_periods[period]
+        import_key = import_periods[period]
+        return_key = return_periods[period]
+        return self._fetch_all(f"""
+            WITH InvoiceTotals AS (
+                SELECT HD.MAHD, HD.NGAYLAP,
+                    COALESCE(KM.TYLEGIAM, 0) AS TYLEGIAM,
+                    COALESCE(SUM(COALESCE(CT.DONGIA, 0)
+                        * COALESCE(CT.SOLUONG, 0)), 0) AS TIEN_HANG
+                FROM dbo.HOA_DON HD
+                LEFT JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
+                LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
+                WHERE HD.TRANGTHAI = 1
+                  AND HD.NGAYLAP >= CONVERT(date, ?)
+                  AND HD.NGAYLAP < DATEADD(day, 1, CONVERT(date, ?))
+                GROUP BY HD.MAHD, HD.NGAYLAP, KM.TYLEGIAM
+            ),
+            Receipts AS (
+                SELECT {sales_key} AS KY,
+                    SUM(TIEN_HANG - ROUND(TIEN_HANG * TYLEGIAM / 100.0, 2)) AS TIEN_THU
+                FROM InvoiceTotals
+                GROUP BY {sales_key}
+            ),
+            Purchases AS (
+                SELECT {import_key} AS KY,
+                    SUM(COALESCE(PN.TONGTRIGIA, 0)) AS TIEN_CHI_NHAP
+                FROM dbo.PHIEU_NHAP PN
+                WHERE ISNULL(PN.TRANGTHAI, 1) = 1
+                  AND PN.NGAYNHAP >= CONVERT(date, ?)
+                  AND PN.NGAYNHAP < DATEADD(day, 1, CONVERT(date, ?))
+                GROUP BY {import_key}
+            ),
+            Refunds AS (
+                SELECT {return_key} AS KY,
+                    SUM(COALESCE(PDT.TONG_TIEN_HOAN, 0)) AS TIEN_HOAN
+                FROM dbo.PHIEU_DOI_TRA PDT
+                WHERE PDT.NGAY_DOI_TRA >= CONVERT(date, ?)
+                  AND PDT.NGAY_DOI_TRA < DATEADD(day, 1, CONVERT(date, ?))
+                GROUP BY {return_key}
+            ),
+            Periods AS (
+                SELECT KY FROM Receipts
+                UNION
+                SELECT KY FROM Purchases
+                UNION
+                SELECT KY FROM Refunds
+            )
+            SELECT P.KY, COALESCE(R.TIEN_THU, 0),
+                COALESCE(PU.TIEN_CHI_NHAP, 0), COALESCE(F.TIEN_HOAN, 0),
+                COALESCE(PU.TIEN_CHI_NHAP, 0) + COALESCE(F.TIEN_HOAN, 0),
+                COALESCE(R.TIEN_THU, 0) - COALESCE(PU.TIEN_CHI_NHAP, 0)
+                    - COALESCE(F.TIEN_HOAN, 0)
+            FROM Periods P
+            LEFT JOIN Receipts R ON R.KY = P.KY
+            LEFT JOIN Purchases PU ON PU.KY = P.KY
+            LEFT JOIN Refunds F ON F.KY = P.KY
+            ORDER BY P.KY
+        """, (
+            start_date, end_date,
+            start_date, end_date,
+            start_date, end_date,
+        ))
 
     def sales_by_employee_report(self, start_date, end_date, keyword=""):
         search_sql = ""
-        params = [start_date, end_date, start_date, end_date, start_date, end_date]
+        params = [start_date, end_date, start_date, end_date]
         if keyword:
             search_sql = " AND (NV.MANV LIKE ? OR NV.TENNV LIKE ?)"
             params.extend((f"%{keyword}%", f"%{keyword}%"))
@@ -186,8 +239,7 @@ class BaoCaoRepository:
             WITH InvoiceTotals AS (
                 SELECT HD.MAHD, HD.MANV, COALESCE(KM.TYLEGIAM, 0) AS TYLEGIAM,
                     COALESCE(SUM(COALESCE(CT.DONGIA, 0)
-                        * COALESCE(CT.SOLUONG, 0)), 0) AS TIEN_HANG,
-                    COALESCE(SUM(CT.SOLUONG), 0) AS SL_BAN
+                        * COALESCE(CT.SOLUONG, 0)), 0) AS TIEN_HANG
                 FROM dbo.HOA_DON HD
                 LEFT JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
                 LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
@@ -197,44 +249,28 @@ class BaoCaoRepository:
                 GROUP BY HD.MAHD, HD.MANV, KM.TYLEGIAM
             ),
             Sales AS (
-                SELECT MANV, COUNT(*) AS SO_HD, SUM(SL_BAN) AS SL_BAN,
-                    SUM(TIEN_HANG) AS TIEN_HANG,
+                SELECT MANV, COUNT(*) AS SO_HD, SUM(TIEN_HANG) AS TIEN_HANG,
                     SUM(ROUND(TIEN_HANG * TYLEGIAM / 100.0, 2)) AS TIEN_GIAM,
                     SUM(TIEN_HANG - ROUND(TIEN_HANG * TYLEGIAM / 100.0, 2)) AS DOAN_SO
                 FROM InvoiceTotals GROUP BY MANV
             ),
             ReturnHeaders AS (
-                SELECT MANV, COUNT(*) AS SO_PHIEU,
-                    SUM(COALESCE(TONG_TIEN_HOAN, 0)) AS TIEN_HOAN
+                SELECT MANV, SUM(COALESCE(TONG_TIEN_HOAN, 0)) AS TIEN_HOAN
                 FROM dbo.PHIEU_DOI_TRA
                 WHERE NGAY_DOI_TRA >= CONVERT(date, ?)
                   AND NGAY_DOI_TRA < DATEADD(day, 1, CONVERT(date, ?))
                 GROUP BY MANV
-            ),
-            ReturnLines AS (
-                SELECT PDT.MANV,
-                    SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 0 THEN CTDT.SOLUONG ELSE 0 END) AS SL_HOAN,
-                    SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 1 THEN CTDT.SOLUONG ELSE 0 END) AS SL_DOI
-                FROM dbo.PHIEU_DOI_TRA PDT
-                INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT
-                WHERE PDT.NGAY_DOI_TRA >= CONVERT(date, ?)
-                  AND PDT.NGAY_DOI_TRA < DATEADD(day, 1, CONVERT(date, ?))
-                GROUP BY PDT.MANV
             )
             SELECT COALESCE(NV.MANV, S.MANV, H.MANV), COALESCE(NV.TENNV, N''),
-                COALESCE(S.SO_HD, 0), COALESCE(S.SL_BAN, 0),
-                COALESCE(S.TIEN_HANG, 0), COALESCE(S.TIEN_GIAM, 0),
-                COALESCE(S.DOAN_SO, 0), COALESCE(H.SO_PHIEU, 0),
-                COALESCE(L.SL_HOAN, 0), COALESCE(L.SL_DOI, 0),
+                COALESCE(S.SO_HD, 0), COALESCE(S.TIEN_HANG, 0),
+                COALESCE(S.TIEN_GIAM, 0), COALESCE(S.DOAN_SO, 0),
                 COALESCE(H.TIEN_HOAN, 0)
             FROM Sales S
             FULL OUTER JOIN ReturnHeaders H ON H.MANV = S.MANV
-            LEFT JOIN ReturnLines L ON L.MANV = COALESCE(S.MANV, H.MANV)
             LEFT JOIN dbo.NHAN_VIEN NV ON NV.MANV = COALESCE(S.MANV, H.MANV)
             WHERE 1 = 1 {search_sql}
             ORDER BY COALESCE(S.DOAN_SO, 0) DESC, NV.TENNV
         """, tuple(params))
-
 
     def sales_by_product_report(self, start_date, end_date, keyword=""):
         search_sql = ""
@@ -313,8 +349,7 @@ class BaoCaoRepository:
                 GROUP BY HD.MAHD, HD.MAKM, KM.TENKM, KM.TYLEGIAM
             ),
             Returns AS (
-                SELECT MAHD, COUNT(*) AS SO_PHIEU_TRA,
-                    SUM(COALESCE(TONG_TIEN_HOAN, 0)) AS TIEN_HOAN
+                SELECT MAHD, SUM(COALESCE(TONG_TIEN_HOAN, 0)) AS TIEN_HOAN
                 FROM dbo.PHIEU_DOI_TRA GROUP BY MAHD
             ),
             Sales AS (
@@ -322,14 +357,13 @@ class BaoCaoRepository:
                     SUM(I.TIEN_HANG) AS TIEN_HANG,
                     SUM(ROUND(I.TIEN_HANG * I.TYLEGIAM / 100.0, 2)) AS TIEN_GIAM,
                     SUM(I.TIEN_HANG - ROUND(I.TIEN_HANG * I.TYLEGIAM / 100.0, 2)) AS DOAN_SO,
-                    SUM(COALESCE(R.SO_PHIEU_TRA, 0)) AS SO_PHIEU_TRA,
                     SUM(COALESCE(R.TIEN_HOAN, 0)) AS TIEN_HOAN
                 FROM InvoiceTotals I
                 LEFT JOIN Returns R ON R.MAHD = I.MAHD
                 GROUP BY I.MAKM, I.TENKM, I.TYLEGIAM
             )
             SELECT S.MAKM, S.TENKM, S.TYLEGIAM, S.SO_HD, S.TIEN_HANG,
-                S.TIEN_GIAM, S.DOAN_SO, S.SO_PHIEU_TRA, S.TIEN_HOAN,
+                S.TIEN_GIAM, S.DOAN_SO, S.TIEN_HOAN,
                 S.DOAN_SO - S.TIEN_HOAN
             FROM Sales S
             LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = S.MAKM
@@ -493,7 +527,7 @@ class BaoCaoRepository:
             ),
             Movements AS (
                 SELECT CT.MASP, PN.NGAYNHAP AS NGAY, PN.MAPN AS CHUNG_TU,
-                    N'Nhập nhà cung cấp' AS LOAI,
+                    N'Phiếu nhập' AS LOAI_CHUNG_TU, N'Nhập hàng' AS LOAI,
                     SUM(COALESCE(CT.SOLUONG, 0)) AS SL_NHAP,
                     SUM(COALESCE(CT.SOLUONG, 0) * COALESCE(CT.DONGIA, 0)) AS GT_NHAP,
                     CAST(0 AS BIGINT) AS SL_XUAT,
@@ -505,7 +539,8 @@ class BaoCaoRepository:
 
                 UNION ALL
 
-                SELECT CT.MASP, HD.NGAYLAP, HD.MAHD, N'Bán hàng',
+                SELECT CT.MASP, HD.NGAYLAP, HD.MAHD,
+                    N'Hóa đơn' AS LOAI_CHUNG_TU, N'Bán hàng' AS LOAI,
                     CAST(0 AS BIGINT), CAST(0 AS DECIMAL(18, 2)),
                     SUM(COALESCE(CT.SOLUONG, 0)),
                     SUM(COALESCE(CT.SOLUONG, 0) * COALESCE(SP.GIANHAP, 0))
@@ -514,35 +549,8 @@ class BaoCaoRepository:
                 INNER JOIN dbo.SAN_PHAM SP ON SP.MASP = CT.MASP
                 WHERE HD.TRANGTHAI = 1
                 GROUP BY CT.MASP, HD.NGAYLAP, HD.MAHD
-
-                UNION ALL
-
-                SELECT CTDT.MASP, PDT.NGAY_DOI_TRA, PDT.MAPDT,
-                    N'Khách trả nhập lại',
-                    SUM(COALESCE(CTDT.SOLUONG, 0)),
-                    SUM(COALESCE(CTDT.SOLUONG, 0) * COALESCE(SP.GIANHAP, 0)),
-                    CAST(0 AS BIGINT), CAST(0 AS DECIMAL(18, 2))
-                FROM dbo.PHIEU_DOI_TRA PDT
-                INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT
-                INNER JOIN dbo.SAN_PHAM SP ON SP.MASP = CTDT.MASP
-                WHERE CTDT.HINH_THUC_XU_LY = 0 AND CTDT.TINHTRANGHANG = 1
-                GROUP BY CTDT.MASP, PDT.NGAY_DOI_TRA, PDT.MAPDT
-
-                UNION ALL
-
-                SELECT CTDT.MASP, PDT.NGAY_DOI_TRA, PDT.MAPDT,
-                    N'Xuất đổi hàng', CAST(0 AS BIGINT),
-                    CAST(0 AS DECIMAL(18, 2)),
-                    SUM(COALESCE(CTDT.SOLUONG, 0)),
-                    SUM(COALESCE(CTDT.SOLUONG, 0) * COALESCE(SP.GIANHAP, 0))
-                FROM dbo.PHIEU_DOI_TRA PDT
-                INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT
-                INNER JOIN dbo.SAN_PHAM SP ON SP.MASP = CTDT.MASP
-                WHERE CTDT.HINH_THUC_XU_LY = 1
-                GROUP BY CTDT.MASP, PDT.NGAY_DOI_TRA, PDT.MAPDT
             )
         """
-
 
     def stock_movement_report(self, start_date, end_date, keyword=""):
         search_sql = ""
@@ -617,7 +625,7 @@ class BaoCaoRepository:
                 SELECT P.*,
                     O.TON_DAU + SUM(P.SL_NHAP - P.SL_XUAT) OVER (
                         PARTITION BY P.MASP
-                        ORDER BY P.NGAY, P.CHUNG_TU, P.LOAI
+                        ORDER BY P.NGAY, P.CHUNG_TU, P.LOAI_CHUNG_TU
                         ROWS UNBOUNDED PRECEDING
                     ) AS TON_SAU
                 FROM PeriodMovements P
@@ -627,6 +635,7 @@ class BaoCaoRepository:
                 SELECT SP.MASP, COALESCE(SP.TENSP, N'') AS TENSP,
                     CAST(NULL AS DATETIME) AS NGAY,
                     CAST(NULL AS VARCHAR(20)) AS CHUNG_TU,
+                    N'Số dư đầu kỳ' AS LOAI_CHUNG_TU,
                     N'Số dư đầu kỳ' AS DIEN_GIAI,
                     COALESCE(SP.DVT, N'') AS DVT,
                     COALESCE(SP.GIANHAP, 0) AS DON_GIA,
@@ -646,7 +655,8 @@ class BaoCaoRepository:
                 UNION ALL
 
                 SELECT P.MASP, COALESCE(SP.TENSP, N''),
-                    P.NGAY, P.CHUNG_TU, P.LOAI, COALESCE(SP.DVT, N''),
+                    P.NGAY, P.CHUNG_TU, P.LOAI_CHUNG_TU, P.LOAI,
+                    COALESCE(SP.DVT, N''),
                     CASE
                         WHEN P.SL_NHAP > 0 THEN P.GT_NHAP / NULLIF(P.SL_NHAP, 0)
                         WHEN P.SL_XUAT > 0 THEN P.GT_XUAT / NULLIF(P.SL_XUAT, 0)
@@ -660,9 +670,10 @@ class BaoCaoRepository:
                 FROM RunningMovements P
                 INNER JOIN dbo.SAN_PHAM SP ON SP.MASP = P.MASP
             )
-            SELECT A.MASP, A.TENSP, A.NGAY, A.CHUNG_TU, A.DIEN_GIAI,
-                A.DVT, A.DON_GIA, A.SL_NHAP, A.GT_NHAP,
-                A.SL_XUAT, A.GT_XUAT, A.TON_SAU, A.GT_TON
+            SELECT A.MASP, A.TENSP, A.NGAY, A.CHUNG_TU,
+                A.LOAI_CHUNG_TU, A.DIEN_GIAI, A.DVT, A.DON_GIA,
+                A.SL_NHAP, A.GT_NHAP, A.SL_XUAT, A.GT_XUAT,
+                A.TON_SAU, A.GT_TON
             FROM AllRows A
             WHERE 1 = 1 {search_sql}
             ORDER BY A.MASP, A.SORT_ORDER, A.NGAY, A.CHUNG_TU, A.DIEN_GIAI
