@@ -290,10 +290,14 @@ class SearchableMultiSelect(QWidget):
         QTimer.singleShot(0, self._finish_selection)
 
     def _finish_selection(self):
+        """Xóa từ khóa và mở lại popup native để tiếp tục chọn nhiều mục."""
         self._last_query = ""
         self.search_input.clear()
+        self._refresh_completion_model("")
         self.completer.setCompletionPrefix("")
-        self.completer.popup().hide()
+        self.search_input.setFocus(Qt.FocusReason.OtherFocusReason)
+        # QCompleter tự đóng popup sau signal activated; mở lại ngay ở lượt event kế tiếp.
+        self.completer.complete(self.search_input.rect())
 
     def _update_selected_label(self):
         selected_names = [

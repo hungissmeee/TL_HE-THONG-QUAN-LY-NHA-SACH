@@ -599,6 +599,31 @@ class SearchableSelectorTests(unittest.TestCase):
         self.assertEqual(selector.selected_label.text(), "Đã chọn: Nam Cao")
         selector.close()
 
+    def test_finish_selection_clears_query_and_reopens_native_completer(self):
+        from unittest.mock import patch
+
+        selector = SearchableMultiSelect()
+        selector.set_options([
+            ("TG001", "Nguyễn Nhật Ánh", False),
+            ("TG002", "Nam Cao", False),
+        ])
+        selector.search_input.setText("Nguyễn")
+        selector._last_query = "Nguyễn"
+        selector._toggle_label("TG001 - Nguyễn Nhật Ánh")
+
+        with patch.object(selector.completer, "complete") as complete:
+            selector._finish_selection()
+            complete.assert_called_once_with(selector.search_input.rect())
+
+        self.assertEqual(selector.search_input.text(), "")
+        self.assertEqual(selector._last_query, "")
+        self.assertEqual(selector.completer.completionPrefix(), "")
+        self.assertEqual(
+            selector._populate_results("")[0],
+            "✓ TG001 - Nguyễn Nhật Ánh",
+        )
+        selector.close()
+
     def test_keeps_existing_soft_deleted_choice(self):
         selector = SearchableMultiSelect()
         selector.set_options([
