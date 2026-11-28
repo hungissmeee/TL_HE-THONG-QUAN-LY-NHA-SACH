@@ -300,6 +300,21 @@ class ImportServiceTests(unittest.TestCase):
             1, "manager", "Quản lý"
         )
 
+    def test_warehouse_can_edit_import_details_without_five_minute_limit(self):
+        PhieuNhapRepository._assert_modify_permission(
+            (1, "OTHER-EMPLOYEE", 0), "warehouse", "Nhân viên kho"
+        )
+
+    def test_detail_edit_permission_rejects_other_roles_and_cancelled_vouchers(self):
+        with self.assertRaises(PermissionError):
+            PhieuNhapRepository._assert_modify_permission(
+                (1, "NV001", 1), "accountant", "Kế toán"
+            )
+        with self.assertRaisesRegex(ValueError, "đã bị hủy"):
+            PhieuNhapRepository._assert_modify_permission(
+                (0, "warehouse", 1), "warehouse", "Nhân viên kho"
+            )
+
     def test_header_edit_permission_rejects_other_roles_and_cancelled_vouchers(self):
         with self.assertRaises(PermissionError):
             PhieuNhapRepository._assert_header_edit_permission(
