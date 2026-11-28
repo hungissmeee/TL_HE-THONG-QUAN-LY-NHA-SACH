@@ -404,7 +404,7 @@ GRANT UPDATE ON dbo.THUONG_HIEU (TENTH, XUATXU) TO rl_NhanVienKho;
 
 -- 7.4 ROLE KE TOAN (rl_KeToan)
 GRANT SELECT ON dbo.CA_LAM_VIEC TO rl_KeToan;
-GRANT UPDATE ON dbo.CA_LAM_VIEC (TMCUOICA) TO rl_KeToan;
+-- Chot tien cuoi ca thong qua dbo.usp_GhiTienCuoiCa, khong cap UPDATE truc tiep.
 GRANT SELECT ON dbo.CHI_TIET_DOI_TRA TO rl_KeToan;
 GRANT SELECT ON dbo.CHI_TIET_HOA_DON TO rl_KeToan;
 GRANT SELECT ON dbo.CHI_TIET_PHIEU_NHAP TO rl_KeToan;
@@ -425,4 +425,308 @@ GRANT SELECT ON dbo.THUOC_TG TO rl_KeToan;
 GRANT SELECT ON dbo.THUOC_TL TO rl_KeToan;
 GRANT SELECT ON dbo.THUONG_HIEU TO rl_KeToan;
 
+GO
+
+
+-- Thu tuc chot ca va nhat ky thay doi dung chung voi database da migration.
+-- Kiem soat chot tien cuoi ca va ghi nhat ky thay doi du lieu nhay cam.
+-- Chay sau migration 006 tren database da ton tai.
+-- Co the chay lai an toan.
+SET XACT_ABORT ON;
+GO
+
+IF DATABASE_PRINCIPAL_ID(N'rl_KeToan') IS NULL
+BEGIN
+    THROW 51007, N'Thieu role Ke toan.', 1;
+END;
+GO
+
+-- Kiem soat viec chot tien cuoi ca:
+-- chi tai khoan Ke toan dung dang nhap moi duoc chot, chi sau khi ca ket thuc,
+-- va moi ca chi duoc chot mot lan. Admin duoc phep quan tri.
+CREATE OR ALTER PROCEDURE dbo.usp_GhiTienCuoiCa
+    @Maca INT,
+    @Manv VARCHAR(20),
+    @Cash DECIMAL(15,2)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    DECLARE @Now DATETIME2 = SYSDATETIME();
+    DECLARE @WorkDate DATE;
+    DECLARE @StartTime TIME;
+    DECLARE @EndTime TIME;
+    DECLARE @EndAt DATETIME2;
+    DECLARE @ExistingCash DECIMAL(15,2);
+
+    IF @Cash IS NULL OR @Cash < 0
+        THROW 51206, N'Tien cuoi ca phai la so khong am.', 1;
+
+    IF USER_NAME() <> N'admin'
+    BEGIN
+        IF LOWER(ORIGINAL_LOGIN()) <> LOWER(@Manv)
+            THROW 51200, N'Tai khoan SQL Server khong khop voi nhan vien ke toan.', 1;
+
+        IF IS_ROLEMEMBER(N'rl_KeToan') <> 1
+           OR NOT EXISTS (
+                SELECT 1
+                FROM dbo.NHAN_VIEN
+                WHERE MANV = @Manv
+                  AND LTRIM(RTRIM(VAITRO)) = N'Kế toán'
+           )
+            THROW 51201, N'Chi nhan vien co vai tro Ke toan duoc ghi tien cuoi ca.', 1;
+    END;
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        SELECT
+            @WorkDate = CAST(NGAYLAM AS DATE),
+            @StartTime = TGMO,
+            @EndTime = TGDONG,
+            @ExistingCash = TMCUOICA
+        FROM dbo.CA_LAM_VIEC WITH (UPDLOCK, HOLDLOCK)
+        WHERE MACA = @Maca;
+
+        IF @WorkDate IS NULL OR @StartTime IS NULL OR @EndTime IS NULL
+            THROW 51202, N'Khong tim thay ca hoac ca chua co gio lam hop le.', 1;
+
+        SET @EndAt = DATEADD(
+            SECOND,
+            DATEDIFF(SECOND, CAST('00:00:00' AS TIME), @EndTime),
+            DATEADD(
+                DAY,
+                CASE WHEN @EndTime <= @StartTime THEN 1 ELSE 0 END,
+                CAST(@WorkDate AS DATETIME2)
+            )
+        );
+
+        IF @Now < @EndAt
+            THROW 51203, N'Chi duoc ghi tien sau khi ca da ket thuc.', 1;
+
+        IF @ExistingCash IS NOT NULL
+            THROW 51204, N'Tien cuoi ca da duoc ghi truoc do. Moi ca chi duoc ghi mot lan.', 1;
+
+        UPDATE dbo.CA_LAM_VIEC
+        SET TMCUOICA = @Cash
+        WHERE MACA = @Maca AND TMCUOICA IS NULL;
+
+        IF @@ROWCOUNT <> 1
+            THROW 51205, N'Khong the ghi tien. Co the ca da duoc chot boi ke toan khac.', 1;
+
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF XACT_STATE() <> 0
+            ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH;
+END;
+GO
+
+REVOKE UPDATE ON OBJECT::dbo.CA_LAM_VIEC FROM rl_KeToan;
+GRANT EXECUTE ON OBJECT::dbo.usp_GhiTienCuoiCa TO rl_KeToan;
+GO
+
+-- Nhat ky chi doc: luu tai khoan SQL, bang, hanh dong,
+-- khoa ban ghi va JSON du lieu truoc/sau. Nhan vien thuong khong co quyen sua/xoa.
+IF OBJECT_ID(N'dbo.NHAT_KY_THAY_DOI', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.NHAT_KY_THAY_DOI (
+        ID BIGINT IDENTITY(1,1) NOT NULL
+            CONSTRAINT PK_NHAT_KY_THAY_DOI PRIMARY KEY,
+        THOIGIAN DATETIME2(7) NOT NULL
+            CONSTRAINT DF_NHAT_KY_THAY_DOI_THOIGIAN DEFAULT SYSDATETIME(),
+        TAIKHOAN_SQL NVARCHAR(128) NOT NULL,
+        BANG_TAC_DONG SYSNAME NOT NULL,
+        HANH_DONG NVARCHAR(10) NOT NULL,
+        KHOA_DULIEU NVARCHAR(MAX) NULL,
+        DU_LIEU_TRUOC NVARCHAR(MAX) NULL,
+        DU_LIEU_SAU NVARCHAR(MAX) NULL
+    );
+END;
+GO
+
+GRANT SELECT ON OBJECT::dbo.NHAT_KY_THAY_DOI TO rl_QuanLy, rl_KeToan;
+GO
+
+CREATE OR ALTER TRIGGER dbo.trg_Audit_PHIEU_NHAP
+ON dbo.PHIEU_NHAP
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @Action NVARCHAR(10) =
+        CASE WHEN EXISTS (SELECT 1 FROM inserted) AND EXISTS (SELECT 1 FROM deleted) THEN N'UPDATE'
+             WHEN EXISTS (SELECT 1 FROM inserted) THEN N'INSERT' ELSE N'DELETE' END;
+    DECLARE @Keys NVARCHAR(MAX) =
+        (SELECT K.MAPN FROM (
+            SELECT MAPN FROM inserted UNION SELECT MAPN FROM deleted
+        ) K FOR JSON PATH);
+    DECLARE @Before NVARCHAR(MAX) = (SELECT * FROM deleted FOR JSON PATH, INCLUDE_NULL_VALUES);
+    DECLARE @After NVARCHAR(MAX) = (SELECT * FROM inserted FOR JSON PATH, INCLUDE_NULL_VALUES);
+    INSERT dbo.NHAT_KY_THAY_DOI (TAIKHOAN_SQL, BANG_TAC_DONG, HANH_DONG, KHOA_DULIEU, DU_LIEU_TRUOC, DU_LIEU_SAU)
+    VALUES (ORIGINAL_LOGIN(), N'PHIEU_NHAP', @Action, @Keys, @Before, @After);
+END;
+GO
+
+CREATE OR ALTER TRIGGER dbo.trg_Audit_CHI_TIET_PHIEU_NHAP
+ON dbo.CHI_TIET_PHIEU_NHAP
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @Action NVARCHAR(10) =
+        CASE WHEN EXISTS (SELECT 1 FROM inserted) AND EXISTS (SELECT 1 FROM deleted) THEN N'UPDATE'
+             WHEN EXISTS (SELECT 1 FROM inserted) THEN N'INSERT' ELSE N'DELETE' END;
+    DECLARE @Keys NVARCHAR(MAX) =
+        (SELECT K.MAPN, K.MASP FROM (
+            SELECT MAPN, MASP FROM inserted UNION SELECT MAPN, MASP FROM deleted
+        ) K FOR JSON PATH);
+    DECLARE @Before NVARCHAR(MAX) = (SELECT * FROM deleted FOR JSON PATH, INCLUDE_NULL_VALUES);
+    DECLARE @After NVARCHAR(MAX) = (SELECT * FROM inserted FOR JSON PATH, INCLUDE_NULL_VALUES);
+    INSERT dbo.NHAT_KY_THAY_DOI (TAIKHOAN_SQL, BANG_TAC_DONG, HANH_DONG, KHOA_DULIEU, DU_LIEU_TRUOC, DU_LIEU_SAU)
+    VALUES (ORIGINAL_LOGIN(), N'CHI_TIET_PHIEU_NHAP', @Action, @Keys, @Before, @After);
+END;
+GO
+
+CREATE OR ALTER TRIGGER dbo.trg_Audit_HOA_DON
+ON dbo.HOA_DON
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @Action NVARCHAR(10) =
+        CASE WHEN EXISTS (SELECT 1 FROM inserted) AND EXISTS (SELECT 1 FROM deleted) THEN N'UPDATE'
+             WHEN EXISTS (SELECT 1 FROM inserted) THEN N'INSERT' ELSE N'DELETE' END;
+    DECLARE @Keys NVARCHAR(MAX) =
+        (SELECT K.MAHD FROM (
+            SELECT MAHD FROM inserted UNION SELECT MAHD FROM deleted
+        ) K FOR JSON PATH);
+    DECLARE @Before NVARCHAR(MAX) = (SELECT * FROM deleted FOR JSON PATH, INCLUDE_NULL_VALUES);
+    DECLARE @After NVARCHAR(MAX) = (SELECT * FROM inserted FOR JSON PATH, INCLUDE_NULL_VALUES);
+    INSERT dbo.NHAT_KY_THAY_DOI (TAIKHOAN_SQL, BANG_TAC_DONG, HANH_DONG, KHOA_DULIEU, DU_LIEU_TRUOC, DU_LIEU_SAU)
+    VALUES (ORIGINAL_LOGIN(), N'HOA_DON', @Action, @Keys, @Before, @After);
+END;
+GO
+
+CREATE OR ALTER TRIGGER dbo.trg_Audit_CHI_TIET_HOA_DON
+ON dbo.CHI_TIET_HOA_DON
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @Action NVARCHAR(10) =
+        CASE WHEN EXISTS (SELECT 1 FROM inserted) AND EXISTS (SELECT 1 FROM deleted) THEN N'UPDATE'
+             WHEN EXISTS (SELECT 1 FROM inserted) THEN N'INSERT' ELSE N'DELETE' END;
+    DECLARE @Keys NVARCHAR(MAX) =
+        (SELECT K.MAHD, K.MASP FROM (
+            SELECT MAHD, MASP FROM inserted UNION SELECT MAHD, MASP FROM deleted
+        ) K FOR JSON PATH);
+    DECLARE @Before NVARCHAR(MAX) = (SELECT * FROM deleted FOR JSON PATH, INCLUDE_NULL_VALUES);
+    DECLARE @After NVARCHAR(MAX) = (SELECT * FROM inserted FOR JSON PATH, INCLUDE_NULL_VALUES);
+    INSERT dbo.NHAT_KY_THAY_DOI (TAIKHOAN_SQL, BANG_TAC_DONG, HANH_DONG, KHOA_DULIEU, DU_LIEU_TRUOC, DU_LIEU_SAU)
+    VALUES (ORIGINAL_LOGIN(), N'CHI_TIET_HOA_DON', @Action, @Keys, @Before, @After);
+END;
+GO
+
+CREATE OR ALTER TRIGGER dbo.trg_Audit_SAN_PHAM
+ON dbo.SAN_PHAM
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @Action NVARCHAR(10) =
+        CASE WHEN EXISTS (SELECT 1 FROM inserted) AND EXISTS (SELECT 1 FROM deleted) THEN N'UPDATE'
+             WHEN EXISTS (SELECT 1 FROM inserted) THEN N'INSERT' ELSE N'DELETE' END;
+    DECLARE @Keys NVARCHAR(MAX) =
+        (SELECT K.MASP FROM (
+            SELECT MASP FROM inserted UNION SELECT MASP FROM deleted
+        ) K FOR JSON PATH);
+    DECLARE @Before NVARCHAR(MAX) = (SELECT * FROM deleted FOR JSON PATH, INCLUDE_NULL_VALUES);
+    DECLARE @After NVARCHAR(MAX) = (SELECT * FROM inserted FOR JSON PATH, INCLUDE_NULL_VALUES);
+    INSERT dbo.NHAT_KY_THAY_DOI (TAIKHOAN_SQL, BANG_TAC_DONG, HANH_DONG, KHOA_DULIEU, DU_LIEU_TRUOC, DU_LIEU_SAU)
+    VALUES (ORIGINAL_LOGIN(), N'SAN_PHAM', @Action, @Keys, @Before, @After);
+END;
+GO
+
+CREATE OR ALTER TRIGGER dbo.trg_Audit_CA_LAM_VIEC
+ON dbo.CA_LAM_VIEC
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @Action NVARCHAR(10) =
+        CASE WHEN EXISTS (SELECT 1 FROM inserted) AND EXISTS (SELECT 1 FROM deleted) THEN N'UPDATE'
+             WHEN EXISTS (SELECT 1 FROM inserted) THEN N'INSERT' ELSE N'DELETE' END;
+    DECLARE @Keys NVARCHAR(MAX) =
+        (SELECT K.MACA FROM (
+            SELECT MACA FROM inserted UNION SELECT MACA FROM deleted
+        ) K FOR JSON PATH);
+    DECLARE @Before NVARCHAR(MAX) = (SELECT * FROM deleted FOR JSON PATH, INCLUDE_NULL_VALUES);
+    DECLARE @After NVARCHAR(MAX) = (SELECT * FROM inserted FOR JSON PATH, INCLUDE_NULL_VALUES);
+    INSERT dbo.NHAT_KY_THAY_DOI (TAIKHOAN_SQL, BANG_TAC_DONG, HANH_DONG, KHOA_DULIEU, DU_LIEU_TRUOC, DU_LIEU_SAU)
+    VALUES (ORIGINAL_LOGIN(), N'CA_LAM_VIEC', @Action, @Keys, @Before, @After);
+END;
+GO
+
+CREATE OR ALTER TRIGGER dbo.trg_Audit_LAMCA
+ON dbo.LAMCA
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @Action NVARCHAR(10) =
+        CASE WHEN EXISTS (SELECT 1 FROM inserted) AND EXISTS (SELECT 1 FROM deleted) THEN N'UPDATE'
+             WHEN EXISTS (SELECT 1 FROM inserted) THEN N'INSERT' ELSE N'DELETE' END;
+    DECLARE @Keys NVARCHAR(MAX) =
+        (SELECT K.MANV, K.MACA FROM (
+            SELECT MANV, MACA FROM inserted UNION SELECT MANV, MACA FROM deleted
+        ) K FOR JSON PATH);
+    DECLARE @Before NVARCHAR(MAX) = (SELECT * FROM deleted FOR JSON PATH, INCLUDE_NULL_VALUES);
+    DECLARE @After NVARCHAR(MAX) = (SELECT * FROM inserted FOR JSON PATH, INCLUDE_NULL_VALUES);
+    INSERT dbo.NHAT_KY_THAY_DOI (TAIKHOAN_SQL, BANG_TAC_DONG, HANH_DONG, KHOA_DULIEU, DU_LIEU_TRUOC, DU_LIEU_SAU)
+    VALUES (ORIGINAL_LOGIN(), N'LAMCA', @Action, @Keys, @Before, @After);
+END;
+GO
+
+CREATE OR ALTER TRIGGER dbo.trg_Audit_PHIEU_DOI_TRA
+ON dbo.PHIEU_DOI_TRA
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @Action NVARCHAR(10) =
+        CASE WHEN EXISTS (SELECT 1 FROM inserted) AND EXISTS (SELECT 1 FROM deleted) THEN N'UPDATE'
+             WHEN EXISTS (SELECT 1 FROM inserted) THEN N'INSERT' ELSE N'DELETE' END;
+    DECLARE @Keys NVARCHAR(MAX) =
+        (SELECT K.MAPDT FROM (
+            SELECT MAPDT FROM inserted UNION SELECT MAPDT FROM deleted
+        ) K FOR JSON PATH);
+    DECLARE @Before NVARCHAR(MAX) = (SELECT * FROM deleted FOR JSON PATH, INCLUDE_NULL_VALUES);
+    DECLARE @After NVARCHAR(MAX) = (SELECT * FROM inserted FOR JSON PATH, INCLUDE_NULL_VALUES);
+    INSERT dbo.NHAT_KY_THAY_DOI (TAIKHOAN_SQL, BANG_TAC_DONG, HANH_DONG, KHOA_DULIEU, DU_LIEU_TRUOC, DU_LIEU_SAU)
+    VALUES (ORIGINAL_LOGIN(), N'PHIEU_DOI_TRA', @Action, @Keys, @Before, @After);
+END;
+GO
+
+CREATE OR ALTER TRIGGER dbo.trg_Audit_CHI_TIET_DOI_TRA
+ON dbo.CHI_TIET_DOI_TRA
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @Action NVARCHAR(10) =
+        CASE WHEN EXISTS (SELECT 1 FROM inserted) AND EXISTS (SELECT 1 FROM deleted) THEN N'UPDATE'
+             WHEN EXISTS (SELECT 1 FROM inserted) THEN N'INSERT' ELSE N'DELETE' END;
+    DECLARE @Keys NVARCHAR(MAX) =
+        (SELECT K.MAPDT, K.MASP FROM (
+            SELECT MAPDT, MASP FROM inserted UNION SELECT MAPDT, MASP FROM deleted
+        ) K FOR JSON PATH);
+    DECLARE @Before NVARCHAR(MAX) = (SELECT * FROM deleted FOR JSON PATH, INCLUDE_NULL_VALUES);
+    DECLARE @After NVARCHAR(MAX) = (SELECT * FROM inserted FOR JSON PATH, INCLUDE_NULL_VALUES);
+    INSERT dbo.NHAT_KY_THAY_DOI (TAIKHOAN_SQL, BANG_TAC_DONG, HANH_DONG, KHOA_DULIEU, DU_LIEU_TRUOC, DU_LIEU_SAU)
+    VALUES (ORIGINAL_LOGIN(), N'CHI_TIET_DOI_TRA', @Action, @Keys, @Before, @After);
+END;
 GO
