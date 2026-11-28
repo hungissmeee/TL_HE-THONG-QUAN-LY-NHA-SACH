@@ -229,6 +229,25 @@ REPORTS = {
         ],
         "period": True,
     },
+    "revenue_by_shift": {
+        "title": "BÁO CÁO DOANH THU THEO CA",
+        "method": "revenue_by_shift_report",
+        "headers": [
+            "Ngày", "Ca", "Số lượng", "Doanh thu",
+            "Giá vốn", "Giá trị hàng hỏng", "Tiền hoàn", "Lợi nhuận",
+        ],
+        "number_cols": [2],
+        "money_cols": [3, 4, 5, 6, 7],
+        "date_cols": [0],
+        "sum_cols": [2, 3, 4, 5, 6, 7],
+        "group_headers": [
+            (0, 1, "CA LÀM VIỆC"),
+            (2, 4, "BÁN HÀNG & GIÁ VỐN"),
+            (5, 6, "HOÀN TRẢ"),
+            (7, 7, "KẾT QUẢ"),
+        ],
+    },
+
 
 
 }
@@ -247,6 +266,7 @@ class ReportCenterPage(QWidget):
         ]),
         ("BÁO CÁO DOANH THU", [
             ("revenue", "Doanh thu theo thời gian"),
+            ("revenue_by_shift", "Doanh thu theo ca"),
         ]),
         ("BÁO CÁO HÀNG HÓA / KHO", [
             ("stock_movement", "Báo cáo nhập xuất tồn"),
