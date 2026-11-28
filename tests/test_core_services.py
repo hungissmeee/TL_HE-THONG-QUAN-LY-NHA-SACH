@@ -383,6 +383,21 @@ class ImportServiceTests(unittest.TestCase):
         self.assertIn("CHI_TIET_DOI_TRA", cursor.sql)
         self.assertEqual(len(cursor.params), 7)
 
+    def test_cancel_import_locks_products_before_history_check_and_reverses_import_value(self):
+        import inspect
+
+        source = inspect.getsource(PhieuNhapRepository.cancel_import)
+        lock_position = source.index('FROM dbo.SAN_PHAM WITH (UPDLOCK, HOLDLOCK)')
+        history_position = source.index('self._has_later_stock_movement(')
+        update_position = source.index('UPDATE dbo.SAN_PHAM')
+        self.assertLess(lock_position, history_position)
+        self.assertLess(history_position, update_position)
+        self.assertIn('SUM(ISNULL(SOLUONG, 0) * ISNULL(DONGIA, 0))', source)
+        self.assertIn('Decimal(current_stock) * current_average - import_value', source)
+        self.assertIn('ROUND_HALF_UP', source)
+        self.assertNotIn('OUTER APPLY', source)
+        self.assertNotIn('AVG_COST', source)
+
     def test_cancel_import_normalizes_code(self):
         self.assertTrue(self.service.cancel_import(" PN000001 ", "admin", "Quản lý", True))
         self.assertEqual(
