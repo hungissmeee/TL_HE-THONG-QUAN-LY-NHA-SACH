@@ -25,6 +25,9 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QAbstractItemView,
     QGroupBox,
+    QComboBox,
+    QLineEdit,
+    QMessageBox,
 )
 from ui.table_sort import (
     SortableTableWidgetItem as QTableWidgetItem,
@@ -39,12 +42,20 @@ class ImportDetailDialog(QDialog):
     """Hiển thị thông tin chung, hàng hóa và nội dung in của phiếu nhập."""
     """Chi tiết và in phiếu nhập khổ A4."""
 
-    def __init__(self, db, import_code, parent=None, on_cancel=None):
+    def __init__(
+        self, db, import_code, parent=None, on_cancel=None,
+        can_edit=False, has_later_stock_movement=False
+    ):
         super().__init__(parent)
         self.db = db
         self.service = PhieuNhapService(PhieuNhapRepository(db))
         self.import_code = import_code
         self.on_cancel = on_cancel
+        self.can_edit = bool(can_edit)
+        self.has_later_stock_movement = bool(has_later_stock_movement)
+        self.username = (getattr(db, "username", "") or "").strip()
+        self.is_admin = self.username.casefold() == "admin"
+        self.employee = self.service.get_employee(self.username, self.is_admin)
         self.header = None
         self.items = []
         self._load_import()
@@ -53,8 +64,13 @@ class ImportDetailDialog(QDialog):
         self._build_ui()
 
     def _load_import(self):
-        data = self.service.get_import_detail(self.import_code)
+        data = self.service.get_import_detail(
+            self.import_code, self.username, self.is_admin
+        )
         self.header = data["header"]
+        self.has_later_stock_movement = bool(
+            self.header.get("has_later_stock_movement")
+        )
         self.header["total"] = as_decimal(self.header.get("total"))
         self.header["status"] = int(self.header.get("status") or 0)
         for detail in data["items"]:
@@ -93,6 +109,53 @@ class ImportDetailDialog(QDialog):
         ))
         form.addRow("Trạng thái:", QLabel(status_text))
         root.addWidget(info)
+        if h.get("history_check_incomplete"):
+            warning_text = (
+                "Tài khoản hiện tại không có quyền xem lịch sử đổi trả trong SQL Server. "
+                "Chỉ được sửa thông tin chung; quản lý hoặc Admin cần kiểm tra và xử lý chi tiết/hủy phiếu."
+            )
+        elif self.has_later_stock_movement:
+            warning_text = (
+                "Có ít nhất một sản phẩm trong phiếu đã phát sinh giao dịch kho sau ngày nhập. "
+                "Hệ thống khóa chỉnh sửa chi tiết và hủy toàn bộ phiếu để bảo toàn lịch sử tồn kho."
+            )
+        else:
+            warning_text = ""
+        if warning_text:
+            warning = QLabel(warning_text)
+            warning.setWordWrap(True)
+            warning.setStyleSheet("color: #B45309;")
+            root.addWidget(warning)
+
+        if self.can_edit and h["status"] == 1:
+            header_edit = QGroupBox("Chỉnh sửa thông tin chung")
+            header_form = QFormLayout(header_edit)
+            self.supplier_combo = QComboBox()
+            current_supplier = str(h.get("mancc") or "")
+            supplier_rows = self.service.list_suppliers_for_import()
+            supplier_codes = set()
+            for code, name in supplier_rows:
+                self.supplier_combo.addItem(f"{name} ({code})", code)
+                supplier_codes.add(code)
+            if current_supplier and current_supplier not in supplier_codes:
+                self.supplier_combo.addItem(
+                    f"{h.get('tenncc') or current_supplier} ({current_supplier}) - không hoạt động",
+                    current_supplier,
+                )
+            current_index = self.supplier_combo.findData(current_supplier)
+            if current_index >= 0:
+                self.supplier_combo.setCurrentIndex(current_index)
+            self.supplier_invoice_input = QLineEdit(str(h.get("shdncc") or ""))
+            self.supplier_invoice_input.setMaxLength(50)
+            self.supplier_invoice_input.setPlaceholderText(
+                "Số hóa đơn/chứng từ của nhà cung cấp (nếu có)"
+            )
+            header_form.addRow("Nhà cung cấp:", self.supplier_combo)
+            header_form.addRow("Số HĐ nhà cung cấp:", self.supplier_invoice_input)
+            save_header_button = QPushButton("Lưu thông tin chung")
+            save_header_button.clicked.connect(self.save_import_header)
+            header_form.addRow(save_header_button)
+            root.addWidget(header_edit)
 
         self.table = QTableWidget(0, 7)
         self.table.setHorizontalHeaderLabels([
@@ -131,7 +194,17 @@ class ImportDetailDialog(QDialog):
 
         buttons = QHBoxLayout()
         buttons.addStretch()
-        if self.on_cancel is not None and self.header["status"] == 1:
+        if (
+            self.can_edit and self.header["status"] == 1
+            and not self.has_later_stock_movement
+        ):
+            edit_details_button = QPushButton("Sửa chi tiết hàng hóa")
+            edit_details_button.clicked.connect(self.edit_import_details)
+            buttons.addWidget(edit_details_button)
+        if (
+            self.on_cancel is not None and self.header["status"] == 1
+            and not self.has_later_stock_movement
+        ):
             cancel_button = QPushButton("Hủy phiếu nhập")
             cancel_button.setObjectName("dangerButton")
             cancel_button.clicked.connect(self.cancel_import)
@@ -145,9 +218,51 @@ class ImportDetailDialog(QDialog):
         buttons.addWidget(close_button)
         root.addLayout(buttons)
 
+    def save_import_header(self):
+        """Chỉ cập nhật nhà cung cấp và số hóa đơn NCC."""
+        supplier_code = self.supplier_combo.currentData()
+        if not supplier_code:
+            QMessageBox.warning(
+                self, "Thiếu nhà cung cấp",
+                "Vui lòng chọn nhà cung cấp hợp lệ."
+            )
+            return
+        try:
+            self.service.update_import_header(
+                self.import_code, supplier_code,
+                self.supplier_invoice_input.text(),
+                self.username, self.employee.get("vaitro"),
+                is_admin=self.is_admin,
+            )
+            QMessageBox.information(
+                self, "Cập nhật thành công",
+                "Thông tin nhà cung cấp và số hóa đơn đã được cập nhật. "
+                "Ngày nhập, nhân viên lập, loại phiếu và mã phiếu được giữ nguyên."
+            )
+            self.accept()
+        except (ValueError, LookupError, PermissionError) as error:
+            QMessageBox.warning(self, "Không thể cập nhật thông tin", str(error))
+        except Exception as error:
+            QMessageBox.critical(
+                self, "Lỗi cập nhật thông tin",
+                f"{error}\n\nMọi thay đổi đã được hoàn tác."
+            )
+
+    def edit_import_details(self):
+        """Mở màn hình sửa hàng hóa nếu phiếu chưa có giao dịch kho phát sinh sau."""
+        from .tao_bieu_mau import EditImportDialog
+
+        dialog = EditImportDialog(
+            self.db,
+            {"header": self.header, "items": self.items},
+            self,
+        )
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.accept()
+
     def cancel_import(self):
         """Gọi quy trình hủy phiếu nhập có kiểm tra quyền và cập nhật tồn kho."""
-        if self.on_cancel is None:
+        if self.on_cancel is None or self.has_later_stock_movement:
             return
         callback = self.on_cancel
         self.accept()

@@ -358,6 +358,15 @@ class CreateImportDialog(QDialog):
 
             remove_button = QPushButton("Bỏ")
             remove_button.setObjectName("dangerButton")
+            original_codes = getattr(self, "original_import_codes", set())
+            if (
+                code in original_codes
+                and not getattr(self, "allow_remove_existing", True)
+            ):
+                remove_button.setEnabled(False)
+                remove_button.setToolTip(
+                    "Phân quyền hiện tại không cho phép xóa mặt hàng đã lưu."
+                )
             remove_button.clicked.connect(
                 lambda _checked=False, product_code=code:
                 self._remove_cart_item(product_code)
@@ -472,4 +481,92 @@ class CreateImportDialog(QDialog):
             QMessageBox.critical(
                 self, "Không thể lập phiếu nhập",
                 f"{error}\n\nGiao dịch đã được hoàn tác; tồn kho không bị cập nhật dở dang.",
+            )
+
+
+class EditImportDialog(CreateImportDialog):
+    """Chỉnh sửa mặt hàng của phiếu nhập còn đủ điều kiện nghiệp vụ."""
+
+    def __init__(self, db, import_data, parent=None):
+        self.import_data = import_data
+        self.import_code = str(import_data["header"]["mapn"])
+        self.original_import_codes = {
+            str(item["masp"]) for item in import_data["items"]
+        }
+        super().__init__(db, parent)
+        header = import_data["header"]
+        role_name = str(self.employee.get("vaitro") or "").strip().casefold()
+        self.allow_remove_existing = self.is_admin or role_name == "quản lý"
+        self.setWindowTitle(f"Chỉnh sửa chi tiết phiếu nhập {self.import_code}")
+        self.import_type_combo.setCurrentText(str(header.get("loai") or ""))
+        self.import_type_combo.setEnabled(False)
+        self.supplier_combo.setEnabled(False)
+        self.supplier_invoice_input.setEnabled(False)
+        self.add_supplier_button.setVisible(False)
+        self.employee_label.setText(
+            f"{header.get('tennv') or ''} ({header.get('manv') or ''})"
+        )
+        self.cart.clear()
+        for detail in import_data["items"]:
+            code = str(detail["masp"])
+            product = self.products.get(code, {})
+            self.cart[code] = {
+                **product,
+                "masp": code,
+                "tensp": str(detail.get("tensp") or product.get("tensp") or code),
+                "dvt": str(detail.get("dvt") or product.get("dvt") or ""),
+                "price": as_decimal(detail.get("price")),
+                "vat": as_decimal(detail.get("vat")),
+                "quantity": int(detail.get("quantity") or 0),
+            }
+        self.refresh_cart()
+        self.update_total()
+        self.save_button.setText("Lưu thay đổi")
+        self.product_search.setFocus()
+
+    def save_import(self):
+        if not self.cart:
+            QMessageBox.warning(
+                self, "Chưa có sản phẩm",
+                "Phiếu nhập phải có ít nhất một sản phẩm."
+            )
+            return
+        total = self.calculate_total()
+        answer = QMessageBox.question(
+            self, "Xác nhận cập nhật phiếu nhập",
+            f"Phiếu nhập: {self.import_code}\n"
+            f"Số mặt hàng: {len(self.cart)}\n"
+            f"Tổng giá trị mới: {money(total)} đồng\n\n"
+            "Hệ thống sẽ cập nhật tồn kho và giá nhập bình quân. Tiếp tục?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        items = [
+            {
+                "product_code": code,
+                "quantity": item["quantity"],
+                "price": item["price"],
+                "vat": item["vat"],
+            }
+            for code, item in self.cart.items()
+        ]
+        try:
+            self.service.update_import_details(
+                self.import_code, items, self.username,
+                self.employee.get("vaitro"), is_admin=self.is_admin,
+            )
+            QMessageBox.information(
+                self, "Cập nhật thành công",
+                f"Phiếu nhập {self.import_code} đã được cập nhật.\n"
+                "Tồn kho, giá nhập bình quân và tổng giá trị đã được đồng bộ."
+            )
+            self.accept()
+        except (ValueError, LookupError, PermissionError) as error:
+            QMessageBox.warning(self, "Không thể cập nhật phiếu nhập", str(error))
+        except Exception as error:
+            QMessageBox.critical(
+                self, "Lỗi cập nhật phiếu nhập",
+                f"{error}\n\nMọi thay đổi đã được hoàn tác."
             )

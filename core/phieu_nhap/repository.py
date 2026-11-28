@@ -1,5 +1,7 @@
 """Repository SQL cho nghiệp vụ phiếu nhập kho."""
 
+from decimal import Decimal, ROUND_HALF_UP
+
 from core.sql_support import resolve_connection
 
 
@@ -92,7 +94,7 @@ class PhieuNhapRepository:
         finally:
             cursor.close()
 
-    def get_import_detail(self, import_code):
+    def get_import_detail(self, import_code, include_return_history=True):
         conn = self._connection()
         cursor = conn.cursor()
         try:
@@ -124,7 +126,333 @@ class PhieuNhapRepository:
                 dict(zip(("masp", "tensp", "dvt", "quantity", "price", "vat"), detail))
                 for detail in cursor.fetchall()
             ]
+            header["has_later_stock_movement"] = False
+            if int(header.get("status") or 0) == 1:
+                for item in items:
+                    item["has_later_movement"] = self._has_later_stock_movement(
+                        cursor, import_code, item["masp"], header["ngaynhap"],
+                        include_return_history=include_return_history,
+                    )
+                    header["has_later_stock_movement"] = (
+                        header["has_later_stock_movement"] or item["has_later_movement"]
+                    )
+                if not include_return_history:
+                    # Không thể xác minh lịch sử đổi trả bằng quyền hiện tại:
+                    # khóa an toàn chi tiết và hủy, nhưng vẫn cho sửa thông tin chung.
+                    header["history_check_incomplete"] = True
+                    header["has_later_stock_movement"] = True
+            else:
+                for item in items:
+                    item["has_later_movement"] = False
             return {"header": header, "items": items}
+        finally:
+            cursor.close()
+
+    @staticmethod
+    def _has_later_stock_movement(
+        cursor, import_code, product_code, import_date,
+        include_return_history=True
+    ):
+        """Kiểm tra phát sinh kho sau phiếu theo từng sản phẩm."""
+        if import_date is None:
+            return False
+        return_sql = ""
+        params = [
+            import_code, product_code, import_date,
+            product_code, import_date,
+        ]
+        if include_return_history:
+            return_sql = """
+                UNION ALL
+                SELECT PDT.NGAY_DOI_TRA AS NGAY_GIAO_DICH
+                FROM dbo.PHIEU_DOI_TRA PDT
+                INNER JOIN dbo.CHI_TIET_DOI_TRA CT ON CT.MAPDT = PDT.MAPDT
+                WHERE CT.MASP = ?
+                  AND PDT.NGAY_DOI_TRA > ?
+                  AND (
+                      ISNULL(CT.TINHTRANGHANG, 0) = 1
+                      OR ISNULL(CT.HINH_THUC_XU_LY, 0) = 1
+                  )
+            """
+            params.extend([product_code, import_date])
+        cursor.execute(f"""
+            SELECT TOP (1) 1
+            FROM (
+                SELECT PN.NGAYNHAP AS NGAY_GIAO_DICH
+                FROM dbo.PHIEU_NHAP PN
+                INNER JOIN dbo.CHI_TIET_PHIEU_NHAP CT ON CT.MAPN = PN.MAPN
+                WHERE PN.MAPN <> ?
+                  AND ISNULL(PN.TRANGTHAI, 1) = 1
+                  AND CT.MASP = ?
+                  AND PN.NGAYNHAP > ?
+
+                UNION ALL
+                SELECT HD.NGAYLAP AS NGAY_GIAO_DICH
+                FROM dbo.HOA_DON HD
+                INNER JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
+                WHERE ISNULL(HD.TRANGTHAI, 0) = 1
+                  AND CT.MASP = ?
+                  AND HD.NGAYLAP > ?
+                {return_sql}
+            ) AS GIAO_DICH
+            WHERE NGAY_GIAO_DICH IS NOT NULL
+        """, *params)
+        return cursor.fetchone() is not None
+
+    @staticmethod
+    def _assert_modify_permission(header, username, role, is_admin=False):
+        """Dùng lại quyền sửa chứng từ hiện tại: quản lý mọi phiếu, kho theo chủ phiếu/5 phút."""
+        status, owner, within_five_minutes = header
+        if int(status or 0) != 1:
+            raise ValueError("Phiếu nhập đã bị hủy, không được chỉnh sửa nữa.")
+        role = str(role or "").strip().casefold()
+        username = str(username or "").strip()
+        admin = bool(is_admin) or username.casefold() == "admin"
+        manager = role == "quản lý"
+        warehouse = role == "nhân viên kho"
+        if not (admin or manager or warehouse):
+            raise PermissionError("Tài khoản không có quyền chỉnh sửa phiếu nhập.")
+        if warehouse and not (admin or manager):
+            if str(owner or "").strip().casefold() != username.casefold():
+                raise PermissionError("Nhân viên kho chỉ được chỉnh sửa phiếu do mình lập.")
+            if int(within_five_minutes or 0) != 1:
+                raise PermissionError("Nhân viên kho chỉ được chỉnh sửa phiếu do mình lập trong vòng 5 phút.")
+
+    def update_import_header(
+        self, import_code, supplier_code, supplier_invoice,
+        username, role, is_admin=False
+    ):
+        """Chỉ sửa nhà cung cấp và số chứng từ NCC; giữ nguyên ngày, người lập và mã phiếu."""
+        conn = self._connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                SELECT TRANGTHAI, MANV,
+                       CASE WHEN NGAYNHAP >= DATEADD(MINUTE, -5, SYSDATETIME())
+                                  AND NGAYNHAP <= SYSDATETIME()
+                            THEN 1 ELSE 0 END
+                FROM dbo.PHIEU_NHAP WITH (UPDLOCK, HOLDLOCK)
+                WHERE MAPN = ?
+            """, import_code)
+            header = cursor.fetchone()
+            if header is None:
+                raise LookupError("Không tìm thấy phiếu nhập.")
+            self._assert_modify_permission(header, username, role, is_admin)
+
+            cursor.execute("""
+                SELECT 1
+                FROM dbo.NHA_CUNG_CAP WITH (UPDLOCK, HOLDLOCK)
+                WHERE MANCC = ? AND ISNULL(IS_DELETED, 0) = 0
+            """, supplier_code)
+            if cursor.fetchone() is None:
+                raise LookupError("Nhà cung cấp không tồn tại hoặc đã ngừng sử dụng.")
+
+            if supplier_invoice:
+                cursor.execute("""
+                    SELECT TOP (1) 1
+                    FROM dbo.PHIEU_NHAP WITH (UPDLOCK, HOLDLOCK)
+                    WHERE MAPN <> ? AND MANCC = ? AND SHDNCC = ?
+                      AND ISNULL(TRANGTHAI, 1) = 1
+                """, import_code, supplier_code, supplier_invoice)
+                if cursor.fetchone():
+                    raise ValueError(
+                        "Số hóa đơn nhà cung cấp này đã được ghi nhận cho nhà cung cấp đã chọn."
+                    )
+
+            cursor.execute("""
+                UPDATE dbo.PHIEU_NHAP
+                SET MANCC = ?, SHDNCC = ?
+                WHERE MAPN = ? AND TRANGTHAI = 1
+            """, supplier_code, supplier_invoice, import_code)
+            if cursor.rowcount != 1:
+                raise RuntimeError("Không thể cập nhật thông tin chung của phiếu nhập.")
+            conn.commit()
+            return True
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            cursor.close()
+
+    def update_import_details(
+        self, import_code, items, total, username, role, is_admin=False
+    ):
+        """Sửa chi tiết khi chưa có phát sinh kho tiếp theo; cập nhật tồn và giá vốn bình quân."""
+        conn = self._connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                SELECT TRANGTHAI, MANV,
+                       CASE WHEN NGAYNHAP >= DATEADD(MINUTE, -5, SYSDATETIME())
+                                  AND NGAYNHAP <= SYSDATETIME()
+                            THEN 1 ELSE 0 END,
+                       NGAYNHAP
+                FROM dbo.PHIEU_NHAP WITH (UPDLOCK, HOLDLOCK)
+                WHERE MAPN = ?
+            """, import_code)
+            header = cursor.fetchone()
+            if header is None:
+                raise LookupError("Không tìm thấy phiếu nhập.")
+            self._assert_modify_permission(
+                (header[0], header[1], header[2]), username, role, is_admin
+            )
+            if (
+                str(role or "").strip().casefold() == "nhân viên kho"
+                and not is_admin
+                and str(username or "").strip().casefold() != "admin"
+            ):
+                raise PermissionError(
+                    "Nhân viên kho không có quyền đọc lịch sử phiếu đổi trả trong SQL Server, "
+                    "nên quản lý hoặc Admin phải thực hiện sửa chi tiết để kiểm tra an toàn giao dịch kho."
+                )
+            if not items:
+                raise ValueError("Phiếu nhập phải có ít nhất một sản phẩm.")
+
+            cursor.execute("""
+                SELECT MASP, SOLUONG, DONGIA
+                FROM dbo.CHI_TIET_PHIEU_NHAP WITH (UPDLOCK, HOLDLOCK)
+                WHERE MAPN = ?
+            """, import_code)
+            old_items = {}
+            for row in cursor.fetchall():
+                code = str(row[0] or "").strip()
+                old_items[code] = {
+                    "quantity": int(row[1] or 0),
+                    "price": Decimal(str(row[2] or 0)),
+                }
+
+            new_items = {}
+            for item in items:
+                code = str(item["product_code"]).strip()
+                if not code or code in new_items:
+                    raise ValueError("Danh sách sản phẩm chỉnh sửa không hợp lệ hoặc bị trùng.")
+                new_items[code] = item
+
+            affected_codes = sorted(set(old_items) | set(new_items), key=str.casefold)
+            product_snapshots = {}
+            for code in affected_codes:
+                # Khóa dòng sản phẩm để không có giao dịch kho chen vào giữa lúc kiểm tra và cập nhật.
+                cursor.execute("""
+                    SELECT ISNULL(SLTON, 0), ISNULL(GIANHAP, 0),
+                           ISNULL(IS_DELETED, 0)
+                    FROM dbo.SAN_PHAM WITH (UPDLOCK, HOLDLOCK)
+                    WHERE MASP = ?
+                """, code)
+                product = cursor.fetchone()
+                if product is None:
+                    raise LookupError(f"Không tìm thấy sản phẩm {code}.")
+                is_deleted = int(product[2] or 0) == 1
+                if is_deleted and code not in old_items:
+                    raise ValueError(f"Sản phẩm {code} đã ngừng sử dụng, không thể thêm vào phiếu.")
+                if self._has_later_stock_movement(cursor, import_code, code, header[3]):
+                    raise ValueError(
+                        f"Không thể chỉnh sửa chi tiết phiếu nhập vì sản phẩm {code} "
+                        "đã có giao dịch kho phát sinh sau phiếu này."
+                    )
+                product_snapshots[code] = {
+                    "stock": int(product[0] or 0),
+                    "average_cost": Decimal(str(product[1] or 0)),
+                }
+
+            # Điều chỉnh số tồn và đảo phần giá trị của dòng cũ trước khi tính lại giá bình quân.
+            for code in affected_codes:
+                snapshot = product_snapshots[code]
+                current_stock = snapshot["stock"]
+                current_average = snapshot["average_cost"]
+                old_line = old_items.get(code, {"quantity": 0, "price": Decimal("0")})
+                new_line = new_items.get(code, {"quantity": 0, "price": Decimal("0")})
+                old_quantity = int(old_line["quantity"])
+                new_quantity = int(new_line["quantity"])
+                new_stock = current_stock - old_quantity + new_quantity
+                if new_stock < 0:
+                    raise ValueError(
+                        f"Không thể cập nhật sản phẩm {code} vì tồn kho sau điều chỉnh sẽ âm."
+                    )
+
+                remaining_value = (
+                    Decimal(current_stock) * current_average
+                    - Decimal(old_quantity) * old_line["price"]
+                )
+                rounding_tolerance = (
+                    Decimal(max(current_stock, 1)) * Decimal("0.005")
+                    + Decimal("0.01")
+                )
+                if remaining_value < -rounding_tolerance:
+                    raise ValueError(
+                        f"Không thể xác định lại giá nhập bình quân của sản phẩm {code}; "
+                        "dữ liệu giá vốn hiện tại không nhất quán."
+                    )
+                if remaining_value < 0:
+                    remaining_value = Decimal("0")
+                new_value = remaining_value + Decimal(new_quantity) * new_line["price"]
+                new_average = (
+                    (new_value / Decimal(new_stock)).quantize(
+                        Decimal("0.01"), rounding=ROUND_HALF_UP
+                    )
+                    if new_stock > 0 else Decimal("0.00")
+                )
+                cursor.execute("""
+                    UPDATE dbo.SAN_PHAM
+                    SET SLTON = ?, GIANHAP = ?
+                    WHERE MASP = ?
+                """, new_stock, new_average, code)
+                if cursor.rowcount != 1:
+                    raise RuntimeError(f"Không thể cập nhật tồn kho sản phẩm {code}.")
+
+            role_name = str(role or "").strip().casefold()
+            may_delete_lines = (
+                bool(is_admin)
+                or str(username or "").strip().casefold() == "admin"
+                or role_name == "quản lý"
+            )
+            removed_codes = set(old_items) - set(new_items)
+            if removed_codes and not may_delete_lines:
+                raise PermissionError(
+                    "Nhân viên kho không có quyền xóa mặt hàng đã lưu khỏi phiếu nhập."
+                )
+            if may_delete_lines:
+                cursor.execute(
+                    "DELETE FROM dbo.CHI_TIET_PHIEU_NHAP WHERE MAPN = ?",
+                    import_code,
+                )
+                for code, item in new_items.items():
+                    cursor.execute("""
+                        INSERT INTO dbo.CHI_TIET_PHIEU_NHAP
+                            (MAPN, MASP, DONGIA, SOLUONG, VAT)
+                        VALUES (?, ?, ?, ?, ?)
+                    """, import_code, code, item["price"], item["quantity"], item["vat"])
+            else:
+                # Vai trò Nhân viên kho không có quyền DELETE trên CHI_TIET_PHIEU_NHAP.
+                for code, item in new_items.items():
+                    if code in old_items:
+                        cursor.execute("""
+                            UPDATE dbo.CHI_TIET_PHIEU_NHAP
+                            SET DONGIA = ?, SOLUONG = ?, VAT = ?
+                            WHERE MAPN = ? AND MASP = ?
+                        """, item["price"], item["quantity"], item["vat"], import_code, code)
+                        if cursor.rowcount != 1:
+                            raise RuntimeError(
+                                f"Không thể cập nhật chi tiết sản phẩm {code}."
+                            )
+                    else:
+                        cursor.execute("""
+                            INSERT INTO dbo.CHI_TIET_PHIEU_NHAP
+                                (MAPN, MASP, DONGIA, SOLUONG, VAT)
+                            VALUES (?, ?, ?, ?, ?)
+                        """, import_code, code, item["price"], item["quantity"], item["vat"])
+
+            cursor.execute("""
+                UPDATE dbo.PHIEU_NHAP
+                SET TONGTRIGIA = ?
+                WHERE MAPN = ? AND TRANGTHAI = 1
+            """, total, import_code)
+            if cursor.rowcount != 1:
+                raise RuntimeError("Không thể cập nhật tổng giá trị phiếu nhập.")
+            conn.commit()
+            return True
+        except Exception:
+            conn.rollback()
+            raise
         finally:
             cursor.close()
 
@@ -209,7 +537,8 @@ class PhieuNhapRepository:
                 SELECT TRANGTHAI, MANV,
                        CASE WHEN NGAYNHAP >= DATEADD(MINUTE, -5, SYSDATETIME())
                                   AND NGAYNHAP <= SYSDATETIME()
-                            THEN 1 ELSE 0 END
+                            THEN 1 ELSE 0 END,
+                       NGAYNHAP
                 FROM dbo.PHIEU_NHAP WITH (UPDLOCK, HOLDLOCK)
                 WHERE MAPN = ?
             """, import_code)
@@ -225,10 +554,10 @@ class PhieuNhapRepository:
             if not (admin or manager or warehouse):
                 raise PermissionError("Tài khoản không có quyền hủy phiếu nhập.")
             if warehouse and not (admin or manager):
-                if str(header[1] or "").casefold() != str(username or "").casefold():
-                    raise PermissionError("Nhân viên kho chỉ được hủy phiếu do mình lập.")
-                if int(header[2] or 0) != 1:
-                    raise PermissionError("Chỉ được hủy phiếu do mình lập trong vòng 5 phút.")
+                raise PermissionError(
+                    "Nhân viên kho không có quyền đọc lịch sử phiếu đổi trả trong SQL Server, "
+                    "nên quản lý hoặc Admin phải thực hiện hủy phiếu sau khi kiểm tra giao dịch kho."
+                )
 
             cursor.execute("""
                 SELECT MASP, SUM(ISNULL(SOLUONG, 0))
@@ -238,6 +567,16 @@ class PhieuNhapRepository:
             details = cursor.fetchall()
             if not details:
                 raise ValueError("Phiếu nhập không có chi tiết sản phẩm.")
+            # Một sản phẩm có phát sinh tiếp theo cũng khóa hủy toàn bộ phiếu nhập.
+            for detail in details:
+                product_code = str(detail[0])
+                if self._has_later_stock_movement(
+                    cursor, import_code, product_code, header[3]
+                ):
+                    raise ValueError(
+                        f"Không thể hủy phiếu nhập vì sản phẩm {product_code} "
+                        "đã có giao dịch kho phát sinh sau phiếu này."
+                    )
             for detail in details:
                 product_code, quantity = str(detail[0]), int(detail[1] or 0)
                 if quantity <= 0:

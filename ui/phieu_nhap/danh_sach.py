@@ -306,11 +306,24 @@ class ImportWindow(QWidget):
             return
         try:
             self.update_action_buttons()
+            detail_data = self.service.get_import_detail(
+                item.text(), self.username, self.is_admin
+            )
+            has_later = bool(detail_data["header"].get("has_later_stock_movement"))
+            can_manage = bool(
+                self._selected_can_cancel
+                and int(detail_data["header"].get("status") or 0) == 1
+            )
             dialog = ImportDetailDialog(
                 self.db,
                 item.text(),
                 self,
-                on_cancel=self.cancel_selected_import if self._selected_can_cancel else None,
+                on_cancel=(
+                    self.cancel_selected_import
+                    if can_manage and not has_later else None
+                ),
+                can_edit=can_manage,
+                has_later_stock_movement=has_later,
             )
             dialog.exec()
             self.load_imports()

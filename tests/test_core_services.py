@@ -165,10 +165,35 @@ class FakeImportRepository(PhieuNhapRepository):
     def __init__(self):
         self.created = None
         self.cancelled = None
+        self.updated_header = None
+        self.updated_details = None
+        self.import_detail_read = None
+
+    def get_employee(self, username, is_admin=False):
+        roles = {
+            "warehouse": "Nhân viên kho",
+            "manager": "Quản lý",
+            "accountant": "Kế toán",
+        }
+        return {"manv": username, "tennv": username, "vaitro": roles.get(username, "")}
+
+    def get_import_detail(self, import_code, include_return_history=True):
+        self.import_detail_read = (import_code, include_return_history)
+        return {"header": {}, "items": []}
 
     def create_import(self, payload):
         self.created = payload
         return "PN000001"
+
+    def update_import_header(self, import_code, supplier_code, supplier_invoice, username, role, is_admin=False):
+        self.updated_header = (
+            import_code, supplier_code, supplier_invoice, username, role, is_admin
+        )
+        return True
+
+    def update_import_details(self, import_code, items, total, username, role, is_admin=False):
+        self.updated_details = (import_code, items, total, username, role, is_admin)
+        return True
 
     def cancel_import(self, import_code, username, role, is_admin=False):
         self.cancelled = (import_code, username, role, is_admin)
@@ -240,6 +265,90 @@ class ImportServiceTests(unittest.TestCase):
         data["items"][1]["product_code"] = "SP001"
         with self.assertRaisesRegex(ValueError, "bị lặp"):
             self.service.create_import(data)
+
+    def test_get_import_detail_disables_return_history_for_warehouse(self):
+        self.service.get_import_detail(" PN000001 ", "warehouse")
+        self.assertEqual(
+            self.repository.import_detail_read,
+            ("PN000001", False),
+        )
+
+    def test_get_import_detail_reads_return_history_for_manager(self):
+        self.service.get_import_detail(" PN000001 ", "manager")
+        self.assertEqual(
+            self.repository.import_detail_read,
+            ("PN000001", True),
+        )
+
+    def test_update_import_header_normalizes_and_delegates(self):
+        self.assertTrue(
+            self.service.update_import_header(
+                " PN000001 ", " NCC001 ", " INV-01 ",
+                "NV001", "Quản lý"
+            )
+        )
+        self.assertEqual(
+            self.repository.updated_header,
+            ("PN000001", "NCC001", "INV-01", "NV001", "Quản lý", False),
+        )
+
+    def test_update_import_header_requires_supplier(self):
+        with self.assertRaisesRegex(ValueError, "nhà cung cấp"):
+            self.service.update_import_header(
+                "PN000001", "", None, "NV001", "Quản lý"
+            )
+
+    def test_update_import_details_recalculates_total_and_normalizes_values(self):
+        items = [
+            {"product_code": "SP001", "quantity": 2, "price": "100.255", "vat": "8"},
+            {"product_code": "SP002", "quantity": 1, "price": "50", "vat": "0"},
+        ]
+        self.assertTrue(
+            self.service.update_import_details(
+                " PN000001 ", items, "NV001", "Quản lý"
+            )
+        )
+        self.assertEqual(self.repository.updated_details[0], "PN000001")
+        self.assertEqual(self.repository.updated_details[1][0]["price"], Decimal("100.26"))
+        self.assertEqual(self.repository.updated_details[2], Decimal("250.52"))
+
+    def test_update_import_details_rejects_duplicate_products(self):
+        items = [
+            {"product_code": "SP001", "quantity": 1, "price": "10", "vat": 0},
+            {"product_code": "SP001", "quantity": 1, "price": "10", "vat": 0},
+        ]
+        with self.assertRaisesRegex(ValueError, "bị lặp"):
+            self.service.update_import_details(
+                "PN000001", items, "NV001", "Quản lý"
+            )
+
+    def test_later_stock_movement_query_can_skip_unreadable_return_tables(self):
+        class CaptureCursor:
+            def __init__(self):
+                self.sql = ""
+                self.params = ()
+
+            def execute(self, sql, *params):
+                self.sql = sql
+                self.params = params
+
+            def fetchone(self):
+                return None
+
+        cursor = CaptureCursor()
+        PhieuNhapRepository._has_later_stock_movement(
+            cursor, "PN000001", "SP001", datetime(2026, 11, 1), False
+        )
+        self.assertNotIn("PHIEU_DOI_TRA", cursor.sql)
+        self.assertNotIn("CHI_TIET_DOI_TRA", cursor.sql)
+        self.assertEqual(len(cursor.params), 5)
+
+        PhieuNhapRepository._has_later_stock_movement(
+            cursor, "PN000001", "SP001", datetime(2026, 11, 1), True
+        )
+        self.assertIn("PHIEU_DOI_TRA", cursor.sql)
+        self.assertIn("CHI_TIET_DOI_TRA", cursor.sql)
+        self.assertEqual(len(cursor.params), 7)
 
     def test_cancel_import_normalizes_code(self):
         self.assertTrue(self.service.cancel_import(" PN000001 ", "admin", "Quản lý", True))
