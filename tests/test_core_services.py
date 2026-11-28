@@ -1308,7 +1308,7 @@ class ReportServiceTests(unittest.TestCase):
             ),
         )
 
-    def test_revenue_report_aggregates_sales_costs_damaged_goods_and_refunds(self):
+    def test_revenue_report_returns_only_seven_requested_columns(self):
         class CaptureRepository(BaoCaoRepository):
             def __init__(self):
                 self.sql = ""
@@ -1328,27 +1328,32 @@ class ReportServiceTests(unittest.TestCase):
         self.assertIn("CT.DONGIA", repository.sql)
         self.assertIn("SP.GIANHAP", repository.sql)
         self.assertIn("CTDT.TINHTRANGHANG", repository.sql)
-        self.assertIn("AS SL_HANG_HONG", repository.sql)
         self.assertIn("AS GT_HANG_HONG", repository.sql)
         self.assertIn("PDT.TONG_TIEN_HOAN", repository.sql)
-        self.assertIn("AS DOANH_THU_THUAN", repository.sql)
         self.assertIn("AS LOI_NHUAN_UOC_TINH", repository.sql)
         self.assertIn("CTDT.HINH_THUC_XU_LY", repository.sql)
-        self.assertIn("ShiftCash AS", repository.sql)
-        self.assertIn("C.TMCUOICA", repository.sql)
-        self.assertIn("C.TMDAUCA", repository.sql)
-        self.assertIn("C.TMCUOICA IS NULL", repository.sql)
-        self.assertIn("AS TIEN_MAT_THUC_TE", repository.sql)
-        self.assertEqual(repository.sql.count("?"), 8)
+        self.assertNotIn("ShiftCash AS", repository.sql)
+        self.assertNotIn("TIEN_MAT_THUC_TE", repository.sql)
+        select_start = repository.sql.index("SELECT KY, SL_BAN")
+        projection = repository.sql[select_start:repository.sql.index("FROM Totals", select_start)]
+        ordered_tokens = [
+            "SELECT KY, SL_BAN, DOANH_THU_BAN, GIA_VON,",
+            "GT_HANG_HONG, TIEN_HOAN,",
+            "DOANH_THU_BAN - GIA_VON - GT_HANG_HONG - TIEN_HOAN",
+            "AS LOI_NHUAN_UOC_TINH",
+        ]
+        positions = [projection.index(token) for token in ordered_tokens]
+        self.assertEqual(positions, sorted(positions))
+        self.assertEqual(repository.sql.count("?"), 6)
         self.assertEqual(
             repository.params,
             (
                 "2026-01-01", "2026-01-31",
                 "2026-01-01", "2026-01-31",
                 "2026-01-01", "2026-01-31",
-                "2026-01-01", "2026-01-31",
             ),
         )
+
 
     def test_employee_report_does_not_multiply_return_header_amounts(self):
         class CaptureRepository(BaoCaoRepository):
