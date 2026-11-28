@@ -487,6 +487,17 @@ class PhieuNhapRepository:
                         "Số hóa đơn nhà cung cấp này đã được ghi nhận cho nhà cung cấp đã chọn."
                     )
             import_code = self._next_import_code(cursor)
+
+            # Khóa nhà cung cấp và xác minh trạng thái ngay trong transaction.
+            # Nếu NCC bị ngừng sử dụng khi biểu mẫu còn mở, không được tạo phiếu.
+            cursor.execute("""
+                SELECT 1
+                FROM dbo.NHA_CUNG_CAP WITH (UPDLOCK, HOLDLOCK)
+                WHERE MANCC = ? AND ISNULL(IS_DELETED, 0) = 0
+            """, supplier_code)
+            if cursor.fetchone() is None:
+                raise LookupError("Nhà cung cấp không tồn tại hoặc đã ngừng sử dụng.")
+
             cursor.execute("""
                 INSERT INTO dbo.PHIEU_NHAP
                     (MAPN, NGAYNHAP, LOAIPHIEUNHAP, SHDNCC,
