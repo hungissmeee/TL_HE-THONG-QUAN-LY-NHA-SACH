@@ -311,15 +311,6 @@ class PhieuNhapRepository:
             self._assert_modify_permission(
                 (header[0], header[1], header[2]), username, role, is_admin
             )
-            if (
-                str(role or "").strip().casefold() == "nhân viên kho"
-                and not is_admin
-                and str(username or "").strip().casefold() != "admin"
-            ):
-                raise PermissionError(
-                    "Nhân viên kho không có quyền đọc lịch sử phiếu đổi trả trong SQL Server, "
-                    "nên quản lý hoặc Admin phải thực hiện sửa chi tiết để kiểm tra an toàn giao dịch kho."
-                )
             if not items:
                 raise ValueError("Phiếu nhập phải có ít nhất một sản phẩm.")
 
@@ -569,10 +560,10 @@ class PhieuNhapRepository:
             if not (admin or manager or warehouse):
                 raise PermissionError("Tài khoản không có quyền hủy phiếu nhập.")
             if warehouse and not (admin or manager):
-                raise PermissionError(
-                    "Nhân viên kho không có quyền đọc lịch sử phiếu đổi trả trong SQL Server, "
-                    "nên quản lý hoặc Admin phải thực hiện hủy phiếu sau khi kiểm tra giao dịch kho."
-                )
+                if str(header[1] or "").strip().casefold() != str(username or "").strip().casefold():
+                    raise PermissionError("Nhân viên kho chỉ được hủy phiếu do mình lập.")
+                if int(header[2] or 0) != 1:
+                    raise PermissionError("Nhân viên kho chỉ được hủy phiếu do mình lập trong vòng 5 phút.")
 
             cursor.execute("""
                 SELECT MASP, SUM(ISNULL(SOLUONG, 0))
