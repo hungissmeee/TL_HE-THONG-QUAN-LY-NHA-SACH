@@ -1147,6 +1147,7 @@ class ReportCenterTests(unittest.TestCase):
         self.assertIn("daily_sales", REPORTS)
         self.assertIn("sales_time", REPORTS)
         self.assertIn("revenue", REPORTS)
+        self.assertIn("revenue_by_shift", REPORTS)
         self.assertNotIn("cash_flow", REPORTS)
         self.assertIn("import_product", REPORTS)
         source = inspect.getsource(ReportCenterPage.export_xlsx)
@@ -1268,6 +1269,21 @@ class ReportCenterTests(unittest.TestCase):
         self.assertEqual(REPORTS["revenue"]["number_cols"], [1])
         self.assertEqual(REPORTS["revenue"]["date_cols"], [0])
         self.assertEqual(REPORTS["revenue"]["sum_cols"], [1, 2, 3, 4, 5, 6])
+        self.assertEqual(
+            REPORTS["revenue_by_shift"]["headers"],
+            [
+                "Ngày", "Ca", "Số lượng", "Doanh thu",
+                "Giá vốn", "Giá trị hàng hỏng", "Tiền hoàn", "Lợi nhuận",
+            ],
+        )
+        self.assertEqual(
+            REPORTS["revenue_by_shift"]["sum_cols"], [2, 3, 4, 5, 6, 7]
+        )
+        self.assertNotIn("period", REPORTS["revenue_by_shift"])
+        self.assertIn(
+            ("revenue_by_shift", "Doanh thu theo ca"),
+            dict(GROUPS)["BÁO CÁO DOANH THU"],
+        )
         self.assertEqual(
             REPORTS["revenue"]["group_headers"],
             [
