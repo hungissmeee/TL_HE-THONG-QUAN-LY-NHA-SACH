@@ -29,6 +29,7 @@ class BaoCaoRepository:
             ORDER BY TENNV, MANV
         """)
 
+
     def daily_sales_report(self, start_date, end_date, employee_code=None, keyword=""):
         search_sql = ""
         employee_sql = ""
@@ -80,20 +81,19 @@ class BaoCaoRepository:
                 INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT
                 GROUP BY PDT.MAHD
             )
-            SELECT I.MAHD, I.NGAYLAP, I.TENNV,
+            SELECT CAST(I.NGAYLAP AS date), I.MAHD, N'Bán hàng', I.TENNV,
                 CASE WHEN I.SOCA IS NULL THEN N'—' ELSE CONCAT(N'Ca ', I.SOCA) END,
-                N'Khách lẻ',
                 CASE WHEN I.TRANGTHAI = 1 THEN N'Hợp lệ' ELSE N'Đã hủy' END,
                 I.SO_DONG, I.SO_LUONG, I.TIEN_HANG,
                 ROUND(I.TIEN_HANG * I.TYLEGIAM / 100.0, 2) AS TIEN_GIAM,
                 CASE WHEN I.TRANGTHAI = 1
                     THEN I.TIEN_HANG - ROUND(I.TIEN_HANG * I.TYLEGIAM / 100.0, 2)
-                    ELSE 0 END AS DOAN_SO,
+                    ELSE 0 END AS DOANH_THU_THUAN,
                 COALESCE(RH.SO_PHIEU_TRA, 0), COALESCE(RL.SL_HOAN_TIEN, 0),
                 COALESCE(RL.SL_DOI_HANG, 0), COALESCE(RH.TIEN_HOAN, 0),
                 CASE WHEN I.TRANGTHAI = 1
                     THEN I.TIEN_HANG - ROUND(I.TIEN_HANG * I.TYLEGIAM / 100.0, 2)
-                         - COALESCE(RH.TIEN_HOAN, 0) ELSE 0 END AS CON_LAI_SAU_HOAN,
+                         - COALESCE(RH.TIEN_HOAN, 0) ELSE 0 END AS DOANH_THU_SAU_HOAN,
                 COALESCE(I.TIENKHACHDUA, 0),
                 CASE WHEN I.TRANGTHAI = 1
                     THEN CASE WHEN COALESCE(I.TIENKHACHDUA, 0) >
@@ -233,18 +233,29 @@ class BaoCaoRepository:
             ORDER BY COALESCE(S.DOAN_SO, 0) DESC, NV.TENNV
         """, tuple(params))
 
+
     def sales_by_product_report(self, start_date, end_date, keyword=""):
         search_sql = ""
         params = [start_date, end_date, start_date, end_date]
         if keyword:
-            search_sql = " AND (SP.MASP LIKE ? OR SP.TENSP LIKE ? OR SP.BARCODE LIKE ?)"
-            params.extend([f"%{keyword}%"] * 3)
+            search_sql = """
+                AND (SP.MASP LIKE ? OR SP.TENSP LIKE ?
+                     OR SP.BARCODE LIKE ? OR BK.ISBN LIKE ?)
+            """
+            params.extend([f"%{keyword}%"] * 4)
         return self._fetch_all(f"""
             WITH Sales AS (
-                SELECT CT.MASP, COUNT(DISTINCT HD.MAHD) AS SO_HD,
-                    SUM(COALESCE(CT.SOLUONG, 0)) AS SL_BAN
+                SELECT CT.MASP,
+                    COUNT(DISTINCT HD.MAHD) AS SO_HD,
+                    SUM(COALESCE(CT.SOLUONG, 0)) AS SL_BAN,
+                    SUM(COALESCE(CT.SOLUONG, 0) * COALESCE(CT.DONGIA, 0)) AS DOANH_SO,
+                    SUM(
+                        COALESCE(CT.SOLUONG, 0) * COALESCE(CT.DONGIA, 0)
+                        * (1 - COALESCE(KM.TYLEGIAM, 0) / 100.0)
+                    ) AS DOANH_THU_THUAN
                 FROM dbo.HOA_DON HD
                 INNER JOIN dbo.CHI_TIET_HOA_DON CT ON CT.MAHD = HD.MAHD
+                LEFT JOIN dbo.CHUONG_TRINH_KM KM ON KM.MAKM = HD.MAKM
                 WHERE HD.TRANGTHAI = 1
                   AND HD.NGAYLAP >= CONVERT(date, ?)
                   AND HD.NGAYLAP < DATEADD(day, 1, CONVERT(date, ?))
@@ -252,8 +263,10 @@ class BaoCaoRepository:
             ),
             Returns AS (
                 SELECT CTDT.MASP,
-                    SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 0 THEN CTDT.SOLUONG ELSE 0 END) AS SL_HOAN,
-                    SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 1 THEN CTDT.SOLUONG ELSE 0 END) AS SL_DOI
+                    SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 0
+                        THEN CTDT.SOLUONG ELSE 0 END) AS SL_HOAN,
+                    SUM(CASE WHEN CTDT.HINH_THUC_XU_LY = 1
+                        THEN CTDT.SOLUONG ELSE 0 END) AS SL_DOI
                 FROM dbo.PHIEU_DOI_TRA PDT
                 INNER JOIN dbo.CHI_TIET_DOI_TRA CTDT ON CTDT.MAPDT = PDT.MAPDT
                 WHERE PDT.NGAY_DOI_TRA >= CONVERT(date, ?)
@@ -261,10 +274,11 @@ class BaoCaoRepository:
                 GROUP BY CTDT.MASP
             )
             SELECT SP.MASP, COALESCE(SP.TENSP, N''), COALESCE(SP.DVT, N''),
+                COALESCE(S.SL_BAN, 0), COALESCE(S.DOANH_SO, 0),
+                COALESCE(S.DOANH_THU_THUAN, 0),
                 COALESCE(SP.BARCODE, N''), COALESCE(BK.ISBN, N''),
-                COALESCE(S.SO_HD, 0), COALESCE(S.SL_BAN, 0),
-                COALESCE(R.SL_HOAN, 0), COALESCE(R.SL_DOI, 0),
-                COALESCE(SP.SLTON, 0)
+                COALESCE(S.SO_HD, 0), COALESCE(R.SL_HOAN, 0),
+                COALESCE(R.SL_DOI, 0), COALESCE(SP.SLTON, 0)
             FROM dbo.SAN_PHAM SP
             LEFT JOIN Sales S ON S.MASP = SP.MASP
             LEFT JOIN Returns R ON R.MASP = SP.MASP
@@ -352,6 +366,7 @@ class BaoCaoRepository:
             ORDER BY PDT.NGAY_DOI_TRA DESC, PDT.MAPDT DESC
         """, tuple(params))
 
+
     def import_detail_report(self, start_date, end_date, keyword=""):
         search_sql = ""
         params = [start_date, end_date]
@@ -364,8 +379,8 @@ class BaoCaoRepository:
         return self._fetch_all(f"""
             SELECT PN.MAPN, PN.NGAYNHAP, COALESCE(PN.LOAIPHIEUNHAP, N''),
                 COALESCE(NCC.TENNCC, PN.MANCC, N''), CT.MASP,
-                COALESCE(SP.TENSP, N''), COALESCE(CT.SOLUONG, 0),
-                COALESCE(CT.DONGIA, 0),
+                COALESCE(SP.TENSP, N''), COALESCE(SP.DVT, N''),
+                COALESCE(CT.SOLUONG, 0), COALESCE(CT.DONGIA, 0),
                 COALESCE(CT.SOLUONG, 0) * COALESCE(CT.DONGIA, 0),
                 COALESCE(PN.SHDNCC, N''), COALESCE(NV.TENNV, PN.MANV, N'')
             FROM dbo.PHIEU_NHAP PN
@@ -378,6 +393,36 @@ class BaoCaoRepository:
               AND PN.NGAYNHAP < DATEADD(day, 1, CONVERT(date, ?))
               {search_sql}
             ORDER BY PN.NGAYNHAP DESC, PN.MAPN, SP.TENSP
+        """, tuple(params))
+
+    def import_product_report(self, start_date, end_date, keyword=""):
+        search_sql = ""
+        params = [start_date, end_date]
+        if keyword:
+            search_sql = """
+                AND (SP.MASP LIKE ? OR SP.TENSP LIKE ?
+                     OR SP.BARCODE LIKE ? OR BK.ISBN LIKE ?)
+            """
+            params.extend([f"%{keyword}%"] * 4)
+        return self._fetch_all(f"""
+            SELECT SP.MASP, COALESCE(SP.TENSP, N''), COALESCE(SP.DVT, N''),
+                COALESCE(SUM(CT.SOLUONG), 0) AS SL_MUA,
+                COALESCE(SUM(CT.SOLUONG * CT.DONGIA), 0) AS GIA_TRI_MUA,
+                CASE WHEN SUM(CT.SOLUONG) > 0
+                    THEN SUM(CT.SOLUONG * CT.DONGIA) / SUM(CT.SOLUONG)
+                    ELSE 0 END AS DON_GIA_BINH_QUAN,
+                COUNT(DISTINCT PN.MAPN) AS SO_PHIEU_NHAP,
+                COALESCE(SP.BARCODE, N''), COALESCE(BK.ISBN, N'')
+            FROM dbo.PHIEU_NHAP PN
+            INNER JOIN dbo.CHI_TIET_PHIEU_NHAP CT ON CT.MAPN = PN.MAPN
+            INNER JOIN dbo.SAN_PHAM SP ON SP.MASP = CT.MASP
+            LEFT JOIN dbo.SACH BK ON BK.MASP = SP.MASP
+            WHERE ISNULL(PN.TRANGTHAI, 1) = 1
+              AND PN.NGAYNHAP >= CONVERT(date, ?)
+              AND PN.NGAYNHAP < DATEADD(day, 1, CONVERT(date, ?))
+              {search_sql}
+            GROUP BY SP.MASP, SP.TENSP, SP.DVT, SP.BARCODE, BK.ISBN
+            ORDER BY SUM(CT.SOLUONG * CT.DONGIA) DESC, SP.TENSP
         """, tuple(params))
 
     def import_supplier_report(self, start_date, end_date, keyword=""):
@@ -490,11 +535,14 @@ class BaoCaoRepository:
             )
         """
 
+
     def stock_movement_report(self, start_date, end_date, keyword=""):
         search_sql = ""
         params = [start_date, end_date]
         if keyword:
-            search_sql = " AND (SP.MASP LIKE ? OR SP.TENSP LIKE ? OR SP.BARCODE LIKE ?)"
+            search_sql = """
+                AND (SP.MASP LIKE ? OR SP.TENSP LIKE ? OR SP.BARCODE LIKE ?)
+            """
             params.extend([f"%{keyword}%"] * 3)
         sql = self._stock_movements_cte() + f"""
             , MovementSummary AS (
@@ -504,59 +552,41 @@ class BaoCaoRepository:
                     SUM(CASE WHEN M.NGAY >= B.END_EXCLUSIVE
                         THEN M.SL_NHAP - M.SL_XUAT ELSE 0 END) AS NET_AFTER_END,
                     SUM(CASE WHEN M.NGAY >= B.START_DATE AND M.NGAY < B.END_EXCLUSIVE
-                              AND M.LOAI = N'Nhập nhà cung cấp'
                         THEN M.SL_NHAP ELSE 0 END) AS SL_NHAP,
                     SUM(CASE WHEN M.NGAY >= B.START_DATE AND M.NGAY < B.END_EXCLUSIVE
-                              AND M.LOAI = N'Khách trả nhập lại'
-                        THEN M.SL_NHAP ELSE 0 END) AS SL_KHACH_TRA,
+                        THEN M.GT_NHAP ELSE 0 END) AS GT_NHAP,
                     SUM(CASE WHEN M.NGAY >= B.START_DATE AND M.NGAY < B.END_EXCLUSIVE
-                              AND M.LOAI = N'Bán hàng'
-                        THEN M.SL_XUAT ELSE 0 END) AS SL_BAN,
+                        THEN M.SL_XUAT ELSE 0 END) AS SL_XUAT,
                     SUM(CASE WHEN M.NGAY >= B.START_DATE AND M.NGAY < B.END_EXCLUSIVE
-                              AND M.LOAI = N'Xuất đổi hàng'
-                        THEN M.SL_XUAT ELSE 0 END) AS SL_DOI
+                        THEN M.GT_XUAT ELSE 0 END) AS GT_XUAT
                 FROM Movements M CROSS JOIN Bounds B
                 GROUP BY M.MASP
-            ),
-            ImportValues AS (
-                SELECT CT.MASP,
-                    SUM(COALESCE(CT.SOLUONG, 0) * COALESCE(CT.DONGIA, 0)) AS GT_NHAP
-                FROM dbo.PHIEU_NHAP PN
-                INNER JOIN dbo.CHI_TIET_PHIEU_NHAP CT ON CT.MAPN = PN.MAPN
-                CROSS JOIN Bounds B
-                WHERE ISNULL(PN.TRANGTHAI, 1) = 1
-                  AND PN.NGAYNHAP >= B.START_DATE
-                  AND PN.NGAYNHAP < B.END_EXCLUSIVE
-                GROUP BY CT.MASP
             )
             SELECT SP.MASP, COALESCE(SP.TENSP, N''), COALESCE(SP.DVT, N''),
                 COALESCE(SP.SLTON, 0) - COALESCE(M.NET_FROM_START, 0),
                 (COALESCE(SP.SLTON, 0) - COALESCE(M.NET_FROM_START, 0))
                     * COALESCE(SP.GIANHAP, 0),
-                COALESCE(M.SL_NHAP, 0), COALESCE(I.GT_NHAP, 0),
-                COALESCE(M.SL_KHACH_TRA, 0),
-                COALESCE(M.SL_KHACH_TRA, 0) * COALESCE(SP.GIANHAP, 0),
-                COALESCE(M.SL_BAN, 0),
-                COALESCE(M.SL_BAN, 0) * COALESCE(SP.GIANHAP, 0),
-                COALESCE(M.SL_DOI, 0),
-                COALESCE(M.SL_DOI, 0) * COALESCE(SP.GIANHAP, 0),
+                COALESCE(M.SL_NHAP, 0), COALESCE(M.GT_NHAP, 0),
+                COALESCE(M.SL_XUAT, 0), COALESCE(M.GT_XUAT, 0),
                 COALESCE(SP.SLTON, 0) - COALESCE(M.NET_AFTER_END, 0),
                 (COALESCE(SP.SLTON, 0) - COALESCE(M.NET_AFTER_END, 0))
                     * COALESCE(SP.GIANHAP, 0)
             FROM dbo.SAN_PHAM SP
             LEFT JOIN MovementSummary M ON M.MASP = SP.MASP
-            LEFT JOIN ImportValues I ON I.MASP = SP.MASP
             WHERE COALESCE(SP.IS_DELETED, 0) = 0 OR M.MASP IS NOT NULL
             {search_sql}
             ORDER BY SP.TENSP, SP.MASP
         """
         return self._fetch_all(sql, tuple(params))
 
+
     def stock_card_report(self, start_date, end_date, keyword=""):
         search_sql = ""
         params = [start_date, end_date]
         if keyword:
-            search_sql = " AND (SP.MASP LIKE ? OR SP.TENSP LIKE ? OR SP.BARCODE LIKE ?)"
+            search_sql = """
+                AND (A.MASP LIKE ? OR A.TENSP LIKE ? OR A.BARCODE LIKE ?)
+            """
             params.extend([f"%{keyword}%"] * 3)
         sql = self._stock_movements_cte() + f"""
             , Opening AS (
@@ -574,20 +604,60 @@ class BaoCaoRepository:
                 SELECT M.*
                 FROM Movements M CROSS JOIN Bounds B
                 WHERE M.NGAY >= B.START_DATE AND M.NGAY < B.END_EXCLUSIVE
+            ),
+            RunningMovements AS (
+                SELECT P.*,
+                    O.TON_DAU + SUM(P.SL_NHAP - P.SL_XUAT) OVER (
+                        PARTITION BY P.MASP
+                        ORDER BY P.NGAY, P.CHUNG_TU, P.LOAI
+                        ROWS UNBOUNDED PRECEDING
+                    ) AS TON_SAU
+                FROM PeriodMovements P
+                INNER JOIN Opening O ON O.MASP = P.MASP
+            ),
+            AllRows AS (
+                SELECT SP.MASP, COALESCE(SP.TENSP, N'') AS TENSP,
+                    CAST(NULL AS DATETIME) AS NGAY,
+                    CAST(NULL AS VARCHAR(20)) AS CHUNG_TU,
+                    N'Số dư đầu kỳ' AS DIEN_GIAI,
+                    COALESCE(SP.DVT, N'') AS DVT,
+                    COALESCE(SP.GIANHAP, 0) AS DON_GIA,
+                    CAST(0 AS BIGINT) AS SL_NHAP,
+                    CAST(0 AS DECIMAL(18, 2)) AS GT_NHAP,
+                    CAST(0 AS BIGINT) AS SL_XUAT,
+                    CAST(0 AS DECIMAL(18, 2)) AS GT_XUAT,
+                    O.TON_DAU AS TON_SAU,
+                    O.TON_DAU * COALESCE(SP.GIANHAP, 0) AS GT_TON,
+                    COALESCE(SP.BARCODE, N'') AS BARCODE,
+                    0 AS SORT_ORDER
+                FROM Opening O
+                INNER JOIN dbo.SAN_PHAM SP ON SP.MASP = O.MASP
+                WHERE COALESCE(SP.IS_DELETED, 0) = 0
+                   OR EXISTS (SELECT 1 FROM Movements M WHERE M.MASP = SP.MASP)
+
+                UNION ALL
+
+                SELECT P.MASP, COALESCE(SP.TENSP, N''),
+                    P.NGAY, P.CHUNG_TU, P.LOAI, COALESCE(SP.DVT, N''),
+                    CASE
+                        WHEN P.SL_NHAP > 0 THEN P.GT_NHAP / NULLIF(P.SL_NHAP, 0)
+                        WHEN P.SL_XUAT > 0 THEN P.GT_XUAT / NULLIF(P.SL_XUAT, 0)
+                        ELSE COALESCE(SP.GIANHAP, 0)
+                    END,
+                    P.SL_NHAP, P.GT_NHAP, P.SL_XUAT, P.GT_XUAT,
+                    P.TON_SAU,
+                    P.TON_SAU * COALESCE(SP.GIANHAP, 0),
+                    COALESCE(SP.BARCODE, N''),
+                    1 AS SORT_ORDER
+                FROM RunningMovements P
+                INNER JOIN dbo.SAN_PHAM SP ON SP.MASP = P.MASP
             )
-            SELECT P.NGAY, P.LOAI, P.CHUNG_TU, P.MASP,
-                COALESCE(SP.TENSP, N''), O.TON_DAU,
-                P.SL_NHAP, P.GT_NHAP, P.SL_XUAT, P.GT_XUAT,
-                O.TON_DAU + SUM(P.SL_NHAP - P.SL_XUAT) OVER (
-                    PARTITION BY P.MASP
-                    ORDER BY P.NGAY, P.CHUNG_TU, P.LOAI
-                    ROWS UNBOUNDED PRECEDING
-                )
-            FROM PeriodMovements P
-            INNER JOIN Opening O ON O.MASP = P.MASP
-            INNER JOIN dbo.SAN_PHAM SP ON SP.MASP = P.MASP
+            SELECT A.MASP, A.TENSP, A.NGAY, A.CHUNG_TU, A.DIEN_GIAI,
+                A.DVT, A.DON_GIA, A.SL_NHAP, A.GT_NHAP,
+                A.SL_XUAT, A.GT_XUAT, A.TON_SAU, A.GT_TON
+            FROM AllRows A
             WHERE 1 = 1 {search_sql}
-            ORDER BY P.MASP, P.NGAY, P.CHUNG_TU, P.LOAI
+            ORDER BY A.MASP, A.SORT_ORDER, A.NGAY, A.CHUNG_TU, A.DIEN_GIAI
         """
         return self._fetch_all(sql, tuple(params))
 
