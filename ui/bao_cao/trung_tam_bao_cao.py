@@ -29,17 +29,16 @@ REPORTS = {
         "description": "Chi tiết hóa đơn, số lượng bán, giảm giá, tiền hoàn và số tiền còn lại theo hóa đơn gốc.",
         "method": "daily_sales_report",
         "headers": [
-            "Mã hóa đơn", "Khách hàng", "Nhân viên", "Ngày lập", "Ca",
-            "Số dòng", "SL bán", "Tiền hàng", "Giảm giá", "Doanh số",
-            "Số phiếu trả", "SL hoàn tiền", "SL đổi hàng", "Tiền hoàn",
-            "Còn lại sau hoàn", "Khách đưa", "Tiền thừa", "Trạng thái",
+            "Mã hóa đơn", "Ngày lập", "Nhân viên", "Ca", "Khách hàng",
+            "Trạng thái", "Số dòng", "SL bán", "Tiền hàng", "Giảm giá",
+            "Doanh số", "Số phiếu trả", "SL hoàn tiền", "SL đổi hàng",
+            "Tiền hoàn", "Còn lại sau hoàn", "Khách đưa", "Tiền thừa",
         ],
-        "money_cols": [7, 8, 9, 13, 14, 15, 16],
-        "number_cols": [5, 6, 10, 11, 12],
-        "date_cols": [3],
-        "sum_cols": [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+        "money_cols": [8, 9, 10, 14, 15, 16, 17],
+        "number_cols": [6, 7, 11, 12, 13],
+        "date_cols": [1],
+        "sum_cols": list(range(6, 18)),
         "search": True,
-        "employee": True,
     },
     "sales_time": {
         "title": "BÁO CÁO BÁN HÀNG THEO THỜI GIAN",
@@ -75,7 +74,7 @@ REPORTS = {
         "description": "Tập trung vào số hóa đơn, số lượng bán, hoàn tiền, đổi hàng và tồn hiện tại; không phân bổ tiền hoàn xuống từng sản phẩm.",
         "method": "sales_by_product_report",
         "headers": [
-            "Mã hàng", "Mã vạch", "ISBN", "Tên hàng", "Đơn vị",
+            "Mã hàng", "Tên hàng", "Đơn vị", "Mã vạch", "ISBN",
             "SL hóa đơn", "SL bán", "SL hoàn tiền", "SL đổi hàng", "Tồn hiện tại",
         ],
         "number_cols": [5, 6, 7, 8, 9],
@@ -103,13 +102,13 @@ REPORTS = {
         "method": "import_detail_report",
         "headers": [
             "Mã phiếu nhập", "Ngày nhập", "Loại phiếu", "Nhà cung cấp",
-            "Số HĐ NCC", "Nhân viên lập", "Mã hàng", "Tên hàng",
-            "Số lượng", "Đơn giá nhập", "Thành tiền",
+            "Mã hàng", "Tên hàng", "Số lượng", "Đơn giá nhập",
+            "Thành tiền", "Số HĐ NCC", "Nhân viên lập",
         ],
-        "money_cols": [9, 10],
-        "number_cols": [8],
+        "money_cols": [7, 8],
+        "number_cols": [6],
         "date_cols": [1],
-        "sum_cols": [8, 10],
+        "sum_cols": [6, 8],
         "search": True,
     },
     "import_supplier": {
@@ -175,10 +174,8 @@ REPORTS = {
         "group_headers": [
             (0, 2, "Thông tin hàng hóa"),
             (3, 4, "Tồn đầu kỳ"),
-            (5, 6, "Nhập trong kỳ"),
-            (7, 8, "Khách trả nhập lại"),
-            (9, 10, "Xuất bán"),
-            (11, 12, "Xuất đổi hàng"),
+            (5, 8, "Tăng tồn trong kỳ"),
+            (9, 12, "Giảm tồn trong kỳ"),
             (13, 14, "Tồn cuối kỳ"),
         ],
         "search": True,
@@ -251,7 +248,6 @@ class ReportCenterPage(QWidget):
         self.current_report = "daily_sales"
         self.rows = []
         self._build_ui()
-        self._load_employees()
         self._configure_report()
 
     def _build_ui(self):
@@ -390,15 +386,8 @@ class ReportCenterPage(QWidget):
         self.period_combo.addItem("Theo ngày", "day")
         self.period_combo.addItem("Theo tháng", "month")
         self.period_combo.addItem("Theo năm", "year")
+        self.period_combo.currentIndexChanged.connect(self.refresh_data)
         filter_layout.addWidget(self.period_combo)
-
-        self.employee_combo = QComboBox()
-        self.employee_combo.setMinimumWidth(120)
-        self.employee_combo.setSizePolicy(
-            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed
-        )
-        self.employee_combo.addItem("Tất cả nhân viên", "")
-        filter_layout.addWidget(self.employee_combo)
 
         self.stock_status_combo = QComboBox()
         self.stock_status_combo.addItem("Tất cả hàng hóa", "all")
@@ -416,10 +405,12 @@ class ReportCenterPage(QWidget):
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Tìm mã / tên / chứng từ...")
         self.search_input.setMinimumWidth(100)
+        self.search_input.setMaximumWidth(260)
         self.search_input.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed
         )
-        filter_layout.addWidget(self.search_input, 1)
+        filter_layout.addWidget(self.search_input)
+        filter_layout.addStretch(1)
 
         self.view_button = QPushButton("Xem báo cáo")
         self.view_button.clicked.connect(self.refresh_data)
@@ -525,14 +516,6 @@ class ReportCenterPage(QWidget):
         right.addWidget(self.status_label)
         root.addWidget(self.right_panel, 1)
 
-    def _load_employees(self):
-        try:
-            for code, name in self.service.employees():
-                self.employee_combo.addItem(f"{name} ({code})", str(code))
-        except Exception:
-            # Các báo cáo không cần lọc nhân viên vẫn có thể mở; lỗi sẽ hiện khi tải.
-            pass
-
     def _apply_date_preset(self, *_):
         preset = self.preset_combo.currentData()
         today = QDate.currentDate()
@@ -613,7 +596,6 @@ class ReportCenterPage(QWidget):
         ):
             widget.setVisible(not is_no_date)
         self.period_combo.setVisible(bool(definition.get("period")))
-        self.employee_combo.setVisible(bool(definition.get("employee")))
         self.stock_status_combo.setVisible(bool(definition.get("stock_filter")))
         self.threshold_spin.setVisible(bool(definition.get("stock_filter")))
         self.search_input.setVisible(bool(definition.get("search")))
@@ -636,8 +618,21 @@ class ReportCenterPage(QWidget):
         self.filter_note.setText(note_by_report.get(self.current_report, ""))
         self.refresh_data()
 
+    def _active_headers(self, definition):
+        headers = list(definition["headers"])
+        if self.current_report == "sales_time":
+            period_headers = {
+                "day": "Ngày",
+                "month": "Tháng",
+                "year": "Năm",
+            }
+            headers[0] = period_headers.get(
+                self.period_combo.currentData(), "Thời gian"
+            )
+        return headers
+
     def _build_table_headers(self, definition):
-        headers = definition["headers"]
+        headers = self._active_headers(definition)
         self.table.setSortingEnabled(False)
         self.table.clear()
         self.table.setColumnCount(len(headers))
@@ -648,6 +643,8 @@ class ReportCenterPage(QWidget):
         money_cols = set(definition.get("money_cols", []))
         number_cols = set(definition.get("number_cols", []))
         date_cols = set(definition.get("date_cols", []))
+        self._column_min_widths = []
+        metrics = self.table.fontMetrics()
         for col, header in enumerate(headers):
             if col in money_cols:
                 width = 132
@@ -661,7 +658,13 @@ class ReportCenterPage(QWidget):
                 width = 112
             else:
                 width = 122
+            width = max(width, metrics.horizontalAdvance(header) + 28)
+            width = min(width, 320)
+            self._column_min_widths.append(width)
             self.table.setColumnWidth(col, width)
+            header_item = self.table.horizontalHeaderItem(col)
+            if header_item is not None:
+                header_item.setToolTip(header)
 
         groups = definition.get("group_headers", [])
         self.group_header.clear()
@@ -703,8 +706,7 @@ class ReportCenterPage(QWidget):
 
         start, end = self._date_values()
         if self.current_report == "daily_sales":
-            employee = self.employee_combo.currentData() or None
-            return self.service.daily_sales_report(start, end, employee, keyword)
+            return self.service.daily_sales_report(start, end, None, keyword)
         if self.current_report == "sales_time":
             return self.service.sales_by_period_report(
                 start, end, self.period_combo.currentData()
@@ -743,6 +745,13 @@ class ReportCenterPage(QWidget):
     def _format_value(self, value, column, definition):
         if value is None:
             return ""
+        if self.current_report == "sales_time" and column == 0:
+            if hasattr(value, "strftime"):
+                formats = {"day": "%d/%m/%Y", "month": "%m/%Y", "year": "%Y"}
+                return value.strftime(
+                    formats.get(self.period_combo.currentData(), "%d/%m/%Y")
+                )
+            return str(value)
         if column in definition.get("date_cols", []):
             return date_text(value)
         if column in definition.get("money_cols", []):
@@ -755,7 +764,7 @@ class ReportCenterPage(QWidget):
 
     def _fill_table(self):
         definition = REPORTS[self.current_report]
-        headers = definition["headers"]
+        headers = self._active_headers(definition)
         self.table.setSortingEnabled(False)
         self.table.setRowCount(0)
         for values in self.rows:
@@ -765,13 +774,27 @@ class ReportCenterPage(QWidget):
                 item = SortableTableWidgetItem(self._format_value(value, col, definition))
                 item.setData(Qt.ItemDataRole.UserRole, value)
                 item.setData(SORT_ROLE, value)
+                item.setToolTip(str(value) if value is not None else "")
                 item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
                 if col in definition.get("money_cols", []) or col in definition.get("number_cols", []):
                     item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 self.table.setItem(row, col, item)
         self.table.setSortingEnabled(True)
+        self._fit_columns_to_content()
         self._fill_footer()
         self._sync_footer_widths()
+
+    def _fit_columns_to_content(self):
+        """Nới cột theo tiêu đề và nội dung, có giới hạn để vẫn cuộn ngang được."""
+        metrics = self.table.fontMetrics()
+        minimums = getattr(self, "_column_min_widths", [])
+        for column in range(self.table.columnCount()):
+            width = minimums[column] if column < len(minimums) else 100
+            for row in range(self.table.rowCount()):
+                item = self.table.item(row, column)
+                if item is not None:
+                    width = max(width, metrics.horizontalAdvance(item.text()) + 24)
+            self.table.setColumnWidth(column, min(width, 320))
 
     def _fill_footer(self):
         definition = REPORTS[self.current_report]
@@ -880,6 +903,17 @@ class ReportCenterPage(QWidget):
         date_fmt = workbook.add_format({
             "border": 1, "border_color": "#E0E6EC", "num_format": "dd/mm/yyyy hh:mm",
         })
+        period_formats = {
+            "day": "dd/mm/yyyy",
+            "month": "mm/yyyy",
+            "year": "yyyy",
+        }
+        period_date_fmt = workbook.add_format({
+            "border": 1, "border_color": "#E0E6EC",
+            "num_format": period_formats.get(
+                self.period_combo.currentData(), "dd/mm/yyyy"
+            ),
+        })
         percent_fmt = workbook.add_format({
             "border": 1, "border_color": "#E0E6EC", "num_format": "0.00%",
         })
@@ -932,10 +966,14 @@ class ReportCenterPage(QWidget):
                 worksheet.write(header_row, col, header, header_fmt)
 
         for col, header in enumerate(headers):
-            width = max(12, min(34, len(header) + 3))
+            longest_value = max(
+                (len(str(row[col])) for row in self.rows if col < len(row) and row[col] is not None),
+                default=0,
+            )
+            width = max(12, len(header) + 3, min(42, longest_value + 2))
             if col in definition.get("money_cols", []):
                 width = max(width, 17)
-            worksheet.set_column(col, col, width)
+            worksheet.set_column(col, col, min(width, 42))
 
         for row_index, row in enumerate(self.rows, start=data_row):
             for col, value in enumerate(row):
@@ -944,7 +982,12 @@ class ReportCenterPage(QWidget):
                 elif col in definition.get("date_cols", []) and isinstance(value, (datetime, date)):
                     if isinstance(value, date) and not isinstance(value, datetime):
                         value = datetime.combine(value, datetime.min.time())
-                    worksheet.write_datetime(row_index, col, value, date_fmt)
+                    fmt = (
+                        period_date_fmt
+                        if self.current_report == "sales_time" and col == 0
+                        else date_fmt
+                    )
+                    worksheet.write_datetime(row_index, col, value, fmt)
                 elif isinstance(value, (int, float, Decimal)):
                     number = float(value)
                     if col in definition.get("money_cols", []):
