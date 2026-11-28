@@ -1,17 +1,16 @@
 ﻿/*
-    KHOI TAO CAU TRUC CSDL QUAN LY NHA SACH
+    KHOI TAO CSDL QUAN LY NHA SACH
 
-    Chay mot lan bang tai khoan DBA co quyen tao database, bang va role.
-    SQL Server login admin phai duoc DBA tao truoc khi chay file nay.
-    File tao database, bang, rang buoc, role va user database admin;
-    khong tao du lieu mau hoac tai khoan nhan vien.
+    Chay mot lan bang tai khoan DBA.
+    SQL Server login admin can duoc tao truoc khi chay file nay.
+    File tao database, bang, rang buoc, role, user database admin va cap quyen.
+    Khong tao du lieu mau hoac tai khoan nhan vien.
 */
 -- 1. Tao database
 CREATE DATABASE CSDLQLNHASACH;
 GO
 
--- 2. Tai khoan SQL admin da duoc DBA tao truoc.
--- 3. Chuyen vao database vua tao
+-- 2. Chuyen vao database vua tao
 USE CSDLQLNHASACH;
 GO
 
@@ -301,6 +300,16 @@ GO
 -- Tao ho so admin trong bang NHAN_VIEN
 INSERT INTO dbo.NHAN_VIEN (MANV, TENNV, VAITRO, SDT)
 VALUES ('admin', N'Quản trị viên', N'Quản trị hệ thống', NULL);
+GO
+
+-- Cap quyen quan ly login nhan vien cho admin.
+USE master;
+GO
+GRANT CREATE LOGIN TO admin;
+GRANT ALTER ANY LOGIN TO admin;
+GO
+
+USE CSDLQLNHASACH;
 GO
 
 -- 7. CAP QUYEN THEO TUNG ROLE
