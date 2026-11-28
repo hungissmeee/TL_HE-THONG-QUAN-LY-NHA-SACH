@@ -1210,7 +1210,7 @@ class ReportServiceTests(unittest.TestCase):
 
 
 
-    def test_stock_card_uses_return_voucher_date_for_running_stock_balance(self):
+    def test_stock_card_omits_opening_balance_row_but_uses_it_for_running_stock(self):
         class CaptureRepository(BaoCaoRepository):
             def __init__(self):
                 self.sql = ""
@@ -1225,14 +1225,18 @@ class ReportServiceTests(unittest.TestCase):
         repository.stock_card_report(
             "2026-11-01", "2026-11-28", "SP001"
         )
-        self.assertIn("N'Phiếu đổi trả' AS LOAI_CHUNG_TU", repository.sql)
-        self.assertIn("PDT.NGAY_DOI_TRA", repository.sql)
+        self.assertIn("Opening AS", repository.sql)
         self.assertIn("O.TON_DAU + SUM(P.SL_NHAP - P.SL_XUAT)", repository.sql)
+        self.assertIn("FROM RunningMovements P", repository.sql)
+        self.assertNotIn("N'Số dư đầu kỳ' AS DIEN_GIAI", repository.sql)
+        self.assertNotIn("N'Số dư đầu kỳ' AS LOAI_CHUNG_TU", repository.sql)
+        self.assertNotIn("UNION ALL", repository.sql)
         self.assertNotIn("SP.SLTON", repository.sql)
         self.assertEqual(
             repository.params,
             ("2026-11-01", "2026-11-28", "%SP001%", "%SP001%", "%SP001%"),
         )
+
 
 
 
