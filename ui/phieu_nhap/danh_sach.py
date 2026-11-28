@@ -315,7 +315,7 @@ class ImportWindow(QWidget):
                 self.is_admin or self.is_manager or self.is_warehouse
             )
             can_manage_stock = active_import and (
-                self.is_admin or self.is_manager
+                self.is_admin or self.is_manager or self.is_warehouse
             )
             dialog = ImportDetailDialog(
                 self.db,
