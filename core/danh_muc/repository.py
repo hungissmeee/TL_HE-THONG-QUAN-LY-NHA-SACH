@@ -13,6 +13,24 @@ class CatalogRepository:
         self.connection_source = connection_source
         self.config = CATALOGS[catalog_type]
 
+    def can_soft_delete(self):
+        """Kiem tra quyen xoa mem danh muc tu quyen SQL thuc te."""
+        conn = resolve_connection(self.connection_source)
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                """
+                SELECT HAS_PERMS_BY_NAME(
+                    ?, 'OBJECT', 'UPDATE', 'IS_DELETED', 'COLUMN'
+                )
+                """,
+                f"dbo.{self.config['table']}",
+            )
+            row = cursor.fetchone()
+            return bool(row and row[0] == 1)
+        finally:
+            cursor.close()
+
     def list_records(self, keyword=""):
         """Lấy các bản ghi chưa xóa mềm, hỗ trợ tìm trên các cột đã cấu hình."""
         conn = resolve_connection(self.connection_source)
