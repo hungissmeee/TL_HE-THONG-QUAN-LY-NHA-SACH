@@ -1159,6 +1159,9 @@ class ReportCenterTests(unittest.TestCase):
         source = inspect.getsource(ReportCenterPage)
         self.assertNotIn("employee_combo", source)
         self.assertIn("self.search_input = QLineEdit()", source)
+        self.assertIn('filter_layout.addWidget(self.search_input, 1)', source)
+        self.assertIn("QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed", source)
+        self.assertNotIn("self.search_input.setMaximumWidth", source)
         self.assertIn('daily_sales_report(start, end, None, keyword)', source)
         self.assertTrue(REPORTS["daily_sales"]["search"])
 
@@ -1172,6 +1175,9 @@ class ReportCenterTests(unittest.TestCase):
                 "Doanh thu", "Giảm giá", "Thực thu",
             ],
         )
+        self.assertNotIn("Tiền thừa", REPORTS["daily_sales"]["headers"])
+        self.assertNotIn("Số dòng", REPORTS["daily_sales"]["headers"])
+        self.assertEqual(len(REPORTS["daily_sales"]["headers"]), 12)
         self.assertEqual(
             REPORTS["current_inventory"]["headers"],
             [
@@ -1262,6 +1268,16 @@ class ReportCenterTests(unittest.TestCase):
         build_ui = inspect.getsource(ReportCenterPage._build_ui)
         self.assertIn("setMinimumHeight(46)", build_ui)
         self.assertNotIn("horizontalHeader().setWordWrap", build_ui)
+
+    def test_group_header_and_search_input_use_aligned_expanding_layout(self):
+        import inspect
+        from ui.bao_cao.trung_tam_bao_cao import ReportCenterPage
+
+        source = inspect.getsource(ReportCenterPage._build_ui)
+        self.assertIn("filter_layout.addWidget(self.search_input, 1)", source)
+        self.assertIn("border: none; selection-background-color: #3B526E", source)
+        sync_source = inspect.getsource(ReportCenterPage._sync_footer_widths)
+        self.assertIn("self.group_header.setColumnWidth(col, width)", sync_source)
 
     def test_report_center_does_not_use_legacy_kpi_cards(self):
         import inspect
