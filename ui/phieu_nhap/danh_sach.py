@@ -42,6 +42,14 @@ def can_view_imports(username, employee_role):
     return (employee_role or "").strip().casefold() in IMPORT_VIEW_ROLES
 
 
+def can_cancel_imports(username, employee_role):
+    """Chỉ Admin/Quản lý được hủy phiếu nhập."""
+    return (
+        str(username or "").strip().casefold() == "admin"
+        or str(employee_role or "").strip().casefold() == "quản lý"
+    )
+
+
 class ImportWindow(QWidget):
     """Trang danh sách phiếu nhập, tìm kiếm, lập mới, xem chi tiết và hủy phiếu theo quyền."""
 
@@ -57,7 +65,7 @@ class ImportWindow(QWidget):
         self.can_view = can_view_imports(self.username, self.employee_role)
         self.can_create = self.is_admin or self.is_manager or self.is_warehouse
         # Hủy phiếu nhập chỉ dành cho Admin/Quản lý; Nhân viên kho chỉ lập/sửa theo quy định.
-        self.can_cancel = self.is_admin or self.is_manager
+        self.can_cancel = can_cancel_imports(self.username, self.employee_role)
         self._build_ui()
         # Trang được khởi tạo cho mọi tài khoản trong MainWindow, kể cả tài khoản
         # không có menu Phiếu nhập. Không được chạy truy vấn JOIN nhà cung cấp
