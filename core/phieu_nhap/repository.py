@@ -561,14 +561,36 @@ class PhieuNhapRepository:
                     raise PermissionError("Nhân viên kho chỉ được hủy phiếu do mình lập trong vòng 5 phút.")
 
             cursor.execute("""
-                SELECT MASP, SUM(ISNULL(SOLUONG, 0))
+                SELECT MASP, SUM(ISNULL(SOLUONG, 0)),
+                       SUM(ISNULL(SOLUONG, 0) * ISNULL(DONGIA, 0))
                 FROM dbo.CHI_TIET_PHIEU_NHAP WITH (UPDLOCK, HOLDLOCK)
-                WHERE MAPN = ? GROUP BY MASP
+                WHERE MAPN = ?
+                GROUP BY MASP
+                ORDER BY MASP
             """, import_code)
             details = cursor.fetchall()
             if not details:
                 raise ValueError("Phiếu nhập không có chi tiết sản phẩm.")
-            # Một sản phẩm có phát sinh tiếp theo cũng khóa hủy toàn bộ phiếu nhập.
+
+            # Khóa tất cả sản phẩm theo thứ tự mã để tuần tự hóa với bán hàng/nhập hàng.
+            # Giữ khóa đến commit: giao dịch kho khác không thể chen vào sau bước kiểm tra lịch sử.
+            product_snapshots = {}
+            for detail in details:
+                product_code = str(detail[0])
+                cursor.execute("""
+                    SELECT ISNULL(SLTON, 0), ISNULL(GIANHAP, 0)
+                    FROM dbo.SAN_PHAM WITH (UPDLOCK, HOLDLOCK)
+                    WHERE MASP = ?
+                """, product_code)
+                product = cursor.fetchone()
+                if product is None:
+                    raise LookupError(f"Không tìm thấy sản phẩm {product_code}.")
+                product_snapshots[product_code] = {
+                    "stock": int(product[0] or 0),
+                    "average_cost": Decimal(str(product[1] or 0)),
+                }
+
+            # Chỉ kiểm tra lịch sử sau khi đã giữ khóa sản phẩm.
             for detail in details:
                 product_code = str(detail[0])
                 if self._has_later_stock_movement(
@@ -578,39 +600,65 @@ class PhieuNhapRepository:
                         f"Không thể hủy phiếu nhập vì sản phẩm {product_code} "
                         "đã có giao dịch kho phát sinh sau phiếu này."
                     )
+
+            new_balances = {}
             for detail in details:
-                product_code, quantity = str(detail[0]), int(detail[1] or 0)
+                product_code = str(detail[0])
+                quantity = int(detail[1] or 0)
+                import_value = Decimal(str(detail[2] or 0))
                 if quantity <= 0:
                     raise ValueError(f"Số lượng nhập của {product_code} không hợp lệ.")
-                cursor.execute("""
-                    UPDATE dbo.SAN_PHAM SET SLTON = SLTON - ?
-                    WHERE MASP = ? AND ISNULL(SLTON, 0) >= ?
-                """, quantity, product_code, quantity)
-                if cursor.rowcount != 1:
+
+                snapshot = product_snapshots[product_code]
+                current_stock = snapshot["stock"]
+                current_average = snapshot["average_cost"]
+                new_stock = current_stock - quantity
+                if new_stock < 0:
                     raise ValueError(
                         f"Không thể hủy phiếu vì tồn kho {product_code} không còn đủ "
                         f"{quantity} sản phẩm để hoàn tác."
                     )
+
+                # Đảo giá trị của chính lần nhập này khỏi giá trị tồn hiện tại.
+                # Không tính lại toàn bộ lịch sử vì tồn kho có thể từng về 0,
+                # khiến giá bình quân của chu kỳ tồn trước không còn liên quan.
+                remaining_value = (
+                    Decimal(current_stock) * current_average - import_value
+                )
+                rounding_tolerance = (
+                    Decimal(max(current_stock, 1)) * Decimal("0.005")
+                    + Decimal("0.01")
+                )
+                if remaining_value < -rounding_tolerance:
+                    raise ValueError(
+                        f"Không thể xác định lại giá nhập bình quân của sản phẩm {product_code}; "
+                        "dữ liệu giá vốn hiện tại không nhất quán."
+                    )
+                if remaining_value < 0:
+                    remaining_value = Decimal("0")
+                new_average = (
+                    (remaining_value / Decimal(new_stock)).quantize(
+                        Decimal("0.01"), rounding=ROUND_HALF_UP
+                    )
+                    if new_stock > 0 else Decimal("0.00")
+                )
+                new_balances[product_code] = (new_stock, new_average)
+
+            for product_code, (new_stock, new_average) in new_balances.items():
+                cursor.execute("""
+                    UPDATE dbo.SAN_PHAM
+                    SET SLTON = ?, GIANHAP = ?
+                    WHERE MASP = ?
+                """, new_stock, new_average, product_code)
+                if cursor.rowcount != 1:
+                    raise RuntimeError(f"Không thể cập nhật tồn kho sản phẩm {product_code}.")
+
             cursor.execute("""
                 UPDATE dbo.PHIEU_NHAP SET TRANGTHAI = 0
                 WHERE MAPN = ? AND TRANGTHAI = 1
             """, import_code)
             if cursor.rowcount != 1:
                 raise RuntimeError("Không thể cập nhật trạng thái phiếu nhập.")
-            for detail in details:
-                product_code = str(detail[0])
-                cursor.execute("""
-                    UPDATE SP
-                    SET GIANHAP = CAST(COALESCE(T.AVG_COST, 0) AS DECIMAL(15, 2))
-                    FROM dbo.SAN_PHAM SP
-                    OUTER APPLY (
-                        SELECT SUM(CT.DONGIA * CT.SOLUONG)
-                               / NULLIF(SUM(CT.SOLUONG), 0) AS AVG_COST
-                        FROM dbo.CHI_TIET_PHIEU_NHAP CT
-                        INNER JOIN dbo.PHIEU_NHAP PN ON PN.MAPN = CT.MAPN
-                        WHERE CT.MASP = SP.MASP AND ISNULL(PN.TRANGTHAI, 1) = 1
-                    ) T WHERE SP.MASP = ?
-                """, product_code)
             conn.commit()
             return True
         except Exception:
