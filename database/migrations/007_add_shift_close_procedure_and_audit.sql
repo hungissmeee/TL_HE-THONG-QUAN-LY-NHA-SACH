@@ -1,5 +1,5 @@
--- Rut gon migration 007: giu bang nhat ky, chuyen viec ghi log va chot ca ve ung dung.
--- Neu ban cu cua migration 007 da duoc chay, go cac trigger/thu tuc cu.
+-- Don dep neu migration 007 phien ban cu da tao nhat ky va thu tuc chot ca.
+-- Nghiep vu chot ca hien duoc kiem tra trong Python; khong can bang log/trigger/procedure.
 SET XACT_ABORT ON;
 GO
 
@@ -13,27 +13,10 @@ DROP TRIGGER IF EXISTS dbo.trg_Audit_LAMCA;
 DROP TRIGGER IF EXISTS dbo.trg_Audit_PHIEU_DOI_TRA;
 DROP TRIGGER IF EXISTS dbo.trg_Audit_CHI_TIET_DOI_TRA;
 DROP PROCEDURE IF EXISTS dbo.usp_GhiTienCuoiCa;
+DROP TABLE IF EXISTS dbo.NHAT_KY_THAY_DOI;
 GO
 
-IF OBJECT_ID(N'dbo.NHAT_KY_THAY_DOI', N'U') IS NULL
-BEGIN
-    CREATE TABLE dbo.NHAT_KY_THAY_DOI (
-        ID BIGINT IDENTITY(1,1) NOT NULL
-            CONSTRAINT PK_NHAT_KY_THAY_DOI PRIMARY KEY,
-        THOIGIAN DATETIME2(7) NOT NULL
-            CONSTRAINT DF_NHAT_KY_THAY_DOI_THOIGIAN DEFAULT SYSDATETIME(),
-        TAIKHOAN_SQL NVARCHAR(128) NOT NULL,
-        BANG_TAC_DONG SYSNAME NOT NULL,
-        HANH_DONG NVARCHAR(10) NOT NULL,
-        KHOA_DULIEU NVARCHAR(MAX) NULL,
-        DU_LIEU_TRUOC NVARCHAR(MAX) NULL,
-        DU_LIEU_SAU NVARCHAR(MAX) NULL
-    );
-END;
-GO
-
-GRANT SELECT ON OBJECT::dbo.NHAT_KY_THAY_DOI TO rl_QuanLy, rl_KeToan;
-GRANT INSERT ON OBJECT::dbo.NHAT_KY_THAY_DOI TO rl_QuanLy, rl_ThuNgan, rl_NhanVienKho, rl_KeToan;
+-- Kich hoat lai quyen chot ca truc tiep cho Ke toan.
 REVOKE UPDATE ON OBJECT::dbo.CA_LAM_VIEC FROM rl_KeToan;
 GRANT UPDATE ON OBJECT::dbo.CA_LAM_VIEC (TMCUOICA) TO rl_KeToan;
 GO
