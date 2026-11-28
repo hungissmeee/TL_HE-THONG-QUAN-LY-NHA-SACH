@@ -904,6 +904,10 @@ class FakeReportRepository(BaoCaoRepository):
         self.calls.append(("cash_flow_report", start, end, period))
         return []
 
+    def revenue_report(self, start, end, period="day"):
+        self.calls.append(("revenue_report", start, end, period))
+        return []
+
     def shift_report(self, start, end):
         self.calls.append(("shift_report", start, end))
         return []
@@ -917,6 +921,7 @@ class ReportServiceTests(unittest.TestCase):
     def test_service_exposes_defined_report_methods(self):
         for method in (
             "daily_sales_report", "sales_by_period_report", "cash_flow_report",
+            "revenue_report",
             "sales_by_employee_report", "sales_by_product_report",
             "promotion_report", "return_detail_report",
             "import_detail_report", "import_product_report", "import_supplier_report",
@@ -968,6 +973,17 @@ class ReportServiceTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(ValueError, "thời gian"):
             self.service.cash_flow_report(
+                "2026-01-01", "2026-01-31", "invalid"
+            )
+
+    def test_revenue_report_delegates_and_validates_period(self):
+        self.service.revenue_report("2026-01-01", "2026-01-31", "month")
+        self.assertEqual(
+            self.repository.calls[-1],
+            ("revenue_report", "2026-01-01", "2026-01-31", "month"),
+        )
+        with self.assertRaisesRegex(ValueError, "thời gian"):
+            self.service.revenue_report(
                 "2026-01-01", "2026-01-31", "invalid"
             )
 
@@ -1282,6 +1298,39 @@ class ReportServiceTests(unittest.TestCase):
         self.assertIn("PDT.TONG_TIEN_HOAN", repository.sql)
         self.assertIn("ISNULL(PN.TRANGTHAI, 1) = 1", repository.sql)
         self.assertNotIn("TIENKHACHDUA", repository.sql)
+        self.assertEqual(repository.sql.count("?"), 6)
+        self.assertEqual(
+            repository.params,
+            (
+                "2026-01-01", "2026-01-31",
+                "2026-01-01", "2026-01-31",
+                "2026-01-01", "2026-01-31",
+            ),
+        )
+
+    def test_revenue_report_aggregates_sales_costs_damaged_goods_and_refunds(self):
+        class CaptureRepository(BaoCaoRepository):
+            def __init__(self):
+                self.sql = ""
+                self.params = None
+
+            def _fetch_all(self, sql, params=()):
+                self.sql = sql
+                self.params = params
+                return []
+
+        repository = CaptureRepository()
+        repository.revenue_report("2026-01-01", "2026-01-31", "month")
+        self.assertIn("SUM(COALESCE(CT.SOLUONG, 0)) AS SL_BAN", repository.sql)
+        self.assertIn("CT.DONGIA", repository.sql)
+        self.assertIn("SP.GIANHAP", repository.sql)
+        self.assertIn("CTDT.TINHTRANGHANG", repository.sql)
+        self.assertIn("AS SL_HANG_HONG", repository.sql)
+        self.assertIn("AS GT_HANG_HONG", repository.sql)
+        self.assertIn("PDT.TONG_TIEN_HOAN", repository.sql)
+        self.assertIn("AS DOANH_THU_THUAN", repository.sql)
+        self.assertIn("AS LOI_NHUAN_UOC_TINH", repository.sql)
+        self.assertIn("CTDT.HINH_THUC_XU_LY", repository.sql)
         self.assertEqual(repository.sql.count("?"), 6)
         self.assertEqual(
             repository.params,
