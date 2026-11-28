@@ -1195,8 +1195,8 @@ class ReportCenterTests(unittest.TestCase):
         self.assertIn("self._build_table_headers(REPORTS[self.current_report])", source)
         self.assertIn("period_date_fmt", source)
         build_ui = inspect.getsource(ReportCenterPage._build_ui)
-        self.assertIn("setWordWrap(True)", build_ui)
         self.assertIn("setMinimumHeight(46)", build_ui)
+        self.assertNotIn("horizontalHeader().setWordWrap", build_ui)
 
     def test_report_center_does_not_use_legacy_kpi_cards(self):
         import inspect
