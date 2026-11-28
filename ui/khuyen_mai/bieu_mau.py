@@ -82,7 +82,7 @@ class PromotionFormDialog(QDialog):
         note = QLabel(
             "Sau khi tạo, tỷ lệ giảm và thời hạn được giữ cố định để "
             "không làm thay đổi cách tính của hóa đơn cũ. Muốn ngừng áp dụng, "
-            "hãy ngừng áp dụng chương trình trong danh sách."
+            "hãy xóa chương trình trong danh sách."
         )
         note.setWordWrap(True)
         note.setStyleSheet("color: #AAB7C8; font-size: 13px;")
