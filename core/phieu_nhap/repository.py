@@ -558,12 +558,25 @@ class PhieuNhapRepository:
         conn = self._connection()
         cursor = conn.cursor()
         try:
+            # Chỉ principal SQL Admin/Quản lý được hủy; bỏ qua role truyền từ UI.
             cursor.execute("""
-                SELECT TRANGTHAI, MANV,
-                       CASE WHEN NGAYNHAP >= DATEADD(MINUTE, -5, SYSDATETIME())
-                                  AND NGAYNHAP <= SYSDATETIME()
-                            THEN 1 ELSE 0 END,
-                       NGAYNHAP
+                SELECT CASE
+                    WHEN USER_NAME() = N'admin' THEN 1
+                    WHEN IS_ROLEMEMBER(N'rl_QuanLy') = 1
+                     AND EXISTS (
+                         SELECT 1 FROM dbo.NHAN_VIEN
+                         WHERE MANV = USER_NAME()
+                           AND MANV = ? AND VAITRO = N'Quản lý'
+                     )
+                    THEN 1 ELSE 0
+                END
+            """, str(username or "").strip())
+            permission = cursor.fetchone()
+            if permission is None or int(permission[0] or 0) != 1:
+                raise PermissionError("Chỉ Quản lý/Admin được hủy phiếu nhập.")
+
+            cursor.execute("""
+                SELECT TRANGTHAI, NGAYNHAP
                 FROM dbo.PHIEU_NHAP WITH (UPDLOCK, HOLDLOCK)
                 WHERE MAPN = ?
             """, import_code)
@@ -572,6 +585,7 @@ class PhieuNhapRepository:
                 raise LookupError("Không tìm thấy phiếu nhập.")
             if int(header[0] or 0) != 1:
                 raise ValueError("Phiếu nhập đã bị hủy trước đó.")
+
             cursor.execute("""
                 SELECT MASP, SUM(ISNULL(SOLUONG, 0)),
                        SUM(ISNULL(SOLUONG, 0) * ISNULL(DONGIA, 0))
