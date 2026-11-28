@@ -65,7 +65,7 @@ class EmployeePermissionDialog(QDialog):
 
         # Trạng thái tài khoản
         if not employee["account_exists"]:
-            account_status = "Chưa có tài khoản SQL Server"
+            account_status = "Chưa có tài khoản đăng nhập"
         elif employee["account_enabled"]:
             account_status = "Đang hoạt động"
         else:
@@ -107,18 +107,6 @@ class EmployeePermissionDialog(QDialog):
         )
 
         role_layout.addWidget(self.role_combo)
-
-        role_description = QLabel(
-            "Phần mềm sẽ tự động cập nhật quyền truy cập "
-            "SQL Server theo vai trò được chọn."
-        )
-
-        role_description.setWordWrap(True)
-        role_description.setStyleSheet(
-            "color: #AAB7C8; font-size: 11px;"
-        )
-
-        role_layout.addWidget(role_description)
 
         # Nút lưu
         self.save_button = QPushButton("Lưu thay đổi")
