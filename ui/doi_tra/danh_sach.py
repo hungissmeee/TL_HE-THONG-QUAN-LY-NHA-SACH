@@ -36,6 +36,8 @@ class ReturnWindow(QWidget):
         self.can_view = self.can_view_returns(
             self.username, self.employee_role
         )
+        # Phiếu đổi trả liên quan đến tiền hoàn thực tế; nhân viên không được xóa lịch sử.
+        self.can_delete = self.is_admin
         self._build_ui()
         self.load_returns()
 
@@ -177,8 +179,8 @@ class ReturnWindow(QWidget):
             resume_table_sorting(self.table)
 
     def delete_return(self, return_code, parent_dialog=None):
-        if not self.can_manage:
-            QMessageBox.warning(self, "Không có quyền", "Chỉ Quản lý và Admin được xóa phiếu đổi trả.")
+        if not self.can_delete:
+            QMessageBox.warning(self, "Không có quyền", "Chỉ Admin được xóa phiếu đổi trả.")
             return False
         return_code = str(return_code or "").strip()
         if not return_code:
@@ -236,7 +238,7 @@ class ReturnWindow(QWidget):
                 self.db,
                 return_code,
                 self,
-                on_delete=self.delete_return if self.can_manage else None,
+                on_delete=self.delete_return if self.can_delete else None,
             )
             dialog.exec()
             self.load_returns()
