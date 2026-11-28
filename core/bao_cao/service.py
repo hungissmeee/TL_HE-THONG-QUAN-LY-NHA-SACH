@@ -67,6 +67,12 @@ class BaoCaoService:
         start, end = self.validate_dates(start_date, end_date)
         return self.repository.import_detail_report(start, end, self._keyword(keyword))
 
+    def import_product_report(self, start_date, end_date, keyword=""):
+        start, end = self.validate_dates(start_date, end_date)
+        return self.repository.import_product_report(
+            start, end, self._keyword(keyword)
+        )
+
     def import_supplier_report(self, start_date, end_date, keyword=""):
         start, end = self.validate_dates(start_date, end_date)
         return self.repository.import_supplier_report(start, end, self._keyword(keyword))
