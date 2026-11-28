@@ -3,7 +3,6 @@
 from PySide6.QtCore import (
     Qt,
     QDate,
-    QTimer,
 )
 from PySide6.QtWidgets import (
     QWidget,
@@ -57,19 +56,14 @@ class ImportWindow(QWidget):
         self.is_warehouse = self.employee_role.casefold() == "nhân viên kho"
         self.can_view = can_view_imports(self.username, self.employee_role)
         self.can_create = self.is_admin or self.is_manager or self.is_warehouse
-        self.can_cancel = self.is_admin or self.is_manager or self.is_warehouse
+        # Hủy phiếu nhập chỉ dành cho Admin/Quản lý; Nhân viên kho chỉ lập/sửa theo quy định.
+        self.can_cancel = self.is_admin or self.is_manager
         self._build_ui()
         # Trang được khởi tạo cho mọi tài khoản trong MainWindow, kể cả tài khoản
         # không có menu Phiếu nhập. Không được chạy truy vấn JOIN nhà cung cấp
         # khi vai trò hiện tại không có quyền xem trang này.
         if self.can_view:
             self.load_imports()
-
-        # Khóa nút hủy của Nhân viên kho sau khi hết giới hạn 5 phút.
-        self._cancel_permission_timer = QTimer(self)
-        self._cancel_permission_timer.setInterval(5000)
-        self._cancel_permission_timer.timeout.connect(self.update_action_buttons)
-        self._cancel_permission_timer.start()
 
     def _get_employee_role(self):
         try:
@@ -194,9 +188,9 @@ class ImportWindow(QWidget):
             resume_table_sorting(self.table)
 
     def update_action_buttons(self):
-        """Xác định quyền hủy phiếu nhập đang chọn để truyền vào popup chi tiết."""
+        """Chỉ Admin/Quản lý được hủy phiếu nhập đang có hiệu lực."""
         self._selected_can_cancel = False
-        if not self.can_view:
+        if not self.can_view or not self.can_cancel:
             return
 
         row = self.table.currentRow()
@@ -206,41 +200,7 @@ class ImportWindow(QWidget):
         if code_item is None:
             return
         status = int(code_item.data(Qt.ItemDataRole.UserRole + 1) or 0)
-        if status != 1:
-            return
-
-        if not self.can_cancel:
-            return
-        if self.is_admin or self.is_manager:
-            self._selected_can_cancel = True
-            return
-
-        owner = str(code_item.data(Qt.ItemDataRole.UserRole) or "")
-        can_cancel = self.is_warehouse and owner.casefold() == self.username.casefold()
-        if can_cancel:
-            conn = self.db.get_connection()
-            if conn is None:
-                return
-            cursor = None
-            try:
-                cursor = conn.cursor()
-                cursor.execute("""
-                    SELECT CASE
-                        WHEN NGAYNHAP >= DATEADD(MINUTE, -5, SYSDATETIME())
-                         AND NGAYNHAP <= SYSDATETIME()
-                        THEN 1 ELSE 0
-                    END
-                    FROM dbo.PHIEU_NHAP
-                    WHERE MAPN = ? AND MANV = ?
-                      AND ISNULL(TRANGTHAI, 1) = 1
-                """, code_item.text(), self.username)
-                result = cursor.fetchone()
-                self._selected_can_cancel = bool(result and result[0] == 1)
-            except Exception:
-                self._selected_can_cancel = False
-            finally:
-                if cursor is not None:
-                    cursor.close()
+        self._selected_can_cancel = status == 1
 
     def cancel_selected_import(self):
         if not self.can_cancel:
@@ -253,11 +213,6 @@ class ImportWindow(QWidget):
         if code_item is None:
             return
         import_code = code_item.text().strip()
-        owner = str(code_item.data(Qt.ItemDataRole.UserRole) or "")
-        if self.is_warehouse and not (self.is_admin or self.is_manager):
-            if owner.casefold() != self.username.casefold():
-                QMessageBox.warning(self, "Không có quyền", "Nhân viên kho chỉ được hủy phiếu do mình lập.")
-                return
         answer = QMessageBox.question(
             self, "Xác nhận hủy phiếu nhập",
             f"Bạn có chắc chắn muốn hủy phiếu nhập {import_code}?\n\n"
