@@ -365,7 +365,7 @@ class CreateImportDialog(QDialog):
             ):
                 remove_button.setEnabled(False)
                 remove_button.setToolTip(
-                    "Phân quyền hiện tại không cho phép xóa mặt hàng đã lưu."
+                    "Không được phép xóa mặt hàng đã lưu trong vai trò hiện tại."
                 )
             remove_button.clicked.connect(
                 lambda _checked=False, product_code=code:
@@ -503,7 +503,7 @@ class EditImportDialog(CreateImportDialog):
         super().__init__(db, parent)
         header = import_data["header"]
         role_name = str(self.employee.get("vaitro") or "").strip().casefold()
-        self.allow_remove_existing = self.is_admin or role_name == "quản lý"
+        self.allow_remove_existing = self.is_admin or role_name in {"quản lý", "nhân viên kho"}
         self.setWindowTitle(f"Chỉnh sửa chi tiết phiếu nhập {self.import_code}")
         self.import_type_combo.setCurrentText(str(header.get("loai") or ""))
         self.import_type_combo.setEnabled(False)
