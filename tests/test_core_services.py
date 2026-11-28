@@ -1210,7 +1210,7 @@ class ReportServiceTests(unittest.TestCase):
 
 
 
-    def test_stock_card_omits_opening_balance_row_but_uses_it_for_running_stock(self):
+    def test_stock_card_returns_opening_balance_row_with_pre_period_stock_value(self):
         class CaptureRepository(BaoCaoRepository):
             def __init__(self):
                 self.sql = ""
@@ -1222,15 +1222,12 @@ class ReportServiceTests(unittest.TestCase):
                 return []
 
         repository = CaptureRepository()
-        repository.stock_card_report(
-            "2026-11-01", "2026-11-28", "SP001"
-        )
-        self.assertIn("Opening AS", repository.sql)
-        self.assertIn("O.TON_DAU + SUM(P.SL_NHAP - P.SL_XUAT)", repository.sql)
-        self.assertIn("FROM RunningMovements P", repository.sql)
-        self.assertNotIn("N'Số dư đầu kỳ' AS DIEN_GIAI", repository.sql)
-        self.assertNotIn("N'Số dư đầu kỳ' AS LOAI_CHUNG_TU", repository.sql)
-        self.assertNotIn("UNION ALL", repository.sql)
+        repository.stock_card_report("2026-11-01", "2026-11-28", "SP001")
+        self.assertIn("N'Số dư đầu kỳ' AS DIEN_GIAI", repository.sql)
+        self.assertIn("O.TON_DAU AS TON_SAU", repository.sql)
+        self.assertIn("O.TON_DAU * COALESCE(SP.GIANHAP, 0) AS GT_TON", repository.sql)
+        self.assertIn("0 AS SORT_ORDER", repository.sql)
+        self.assertIn("UNION ALL", repository.sql)
         self.assertNotIn("SP.SLTON", repository.sql)
         self.assertEqual(
             repository.params,
