@@ -1342,14 +1342,39 @@ class ReportCenterTests(unittest.TestCase):
         self.assertIn("report_table_layout.addWidget(self.footer)", source)
         self.assertNotIn("right.addWidget(self.footer)", source)
 
-    def test_report_center_syncs_horizontal_scroll_for_totals_and_group_headers(self):
+    def test_report_horizontal_scroll_keeps_group_header_and_footer_aligned(self):
         import inspect
         from ui.bao_cao.trung_tam_bao_cao import ReportCenterPage
 
-        source = inspect.getsource(ReportCenterPage)
-        self.assertIn("_sync_horizontal_scroll_range", source)
-        self.assertIn("for target in (self.footer, self.group_header)", source)
-        self.assertIn("scrollbar.setValue(value)", source)
+        build_ui = inspect.getsource(ReportCenterPage._build_ui)
+        self.assertGreaterEqual(
+            build_ui.count("QAbstractItemView.ScrollMode.ScrollPerPixel"), 3
+        )
+        self.assertIn("self.group_header.setFrameShape(QFrame.Shape.NoFrame)", build_ui)
+        self.assertIn("self.table.setFrameShape(QFrame.Shape.NoFrame)", build_ui)
+        self.assertIn("self.footer.setFrameShape(QFrame.Shape.NoFrame)", build_ui)
+        self.assertIn("self.table.verticalScrollBar().rangeChanged.connect", build_ui)
+
+        sync_widths = inspect.getsource(ReportCenterPage._sync_footer_widths)
+        self.assertIn("self.footer.setColumnWidth(col, width)", sync_widths)
+        self.assertIn("self.group_header.setColumnWidth(col, width)", sync_widths)
+        self.assertIn("self._sync_auxiliary_viewport_margins()", sync_widths)
+
+        sync_margins = inspect.getsource(ReportCenterPage._sync_auxiliary_viewport_margins)
+        self.assertIn("vertical_bar.sizeHint().width()", sync_margins)
+        self.assertIn("target.setViewportMargins(0, 0, gutter, 0)", sync_margins)
+
+        sync_range = inspect.getsource(ReportCenterPage._sync_horizontal_scroll_range)
+        self.assertIn("scrollbar.setRange(minimum, maximum)", sync_range)
+        self.assertIn("scrollbar.setPageStep(page_step)", sync_range)
+        self.assertIn("scrollbar.setValue(value)", sync_range)
+
+        sync_value = inspect.getsource(ReportCenterPage._sync_horizontal_scroll)
+        self.assertIn("target.horizontalScrollBar().setValue(value)", sync_value)
+
+
+
+
 
 
 if __name__ == "__main__":
