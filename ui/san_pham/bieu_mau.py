@@ -47,6 +47,12 @@ class ProductFormDialog(QDialog):
         self.product_code = product_code
         self.is_edit = product_code is not None
         self.existing = None
+        try:
+            self.product_permissions = self.service.get_permissions()
+        except Exception:
+            self.product_permissions = {
+                "can_edit_sale_price": (getattr(db, "username", "") or "").casefold() == "admin"
+            }
 
         self.setWindowTitle("Chỉnh sửa sản phẩm" if self.is_edit else "Thêm sản phẩm mới")
         self.setMinimumSize(580, 480)
@@ -56,6 +62,16 @@ class ProductFormDialog(QDialog):
             self.load_existing_product()
 
         self.setup_ui()
+        can_edit_sale_price = bool(
+            self.product_permissions.get("can_edit_sale_price", False)
+        )
+        self.giaban.setReadOnly(not can_edit_sale_price)
+        if not can_edit_sale_price:
+            self.giaban.setToolTip(
+                "Chỉ Quản lý/Admin được thay đổi giá bán. Nhân viên kho chỉ xem giá hiện tại."
+            )
+            if not self.is_edit:
+                self.giaban.setText("0.00")
         self.load_lookup_data()
 
         if self.is_edit:
